@@ -3,7 +3,11 @@ import SwiftUI
 // Pantalla «Plan»: segmentos (Presupuesto/Metas), la barra del total y la lista
 // de categorías con su tope. Calcada de la app.
 struct PlanView: View {
-    @State private var seg = 0
+    @State private var seg: Int
+    init(seg: Int? = nil) {
+        let env = Int(ProcessInfo.processInfo.environment["CHINOLA_PLANSEG"] ?? "")
+        _seg = State(initialValue: seg ?? env ?? 0)
+    }
 
     private struct Cat { let nombre: String; let icono: String; let tinte: Color }
     private let cats: [Cat] = [
@@ -21,26 +25,32 @@ struct PlanView: View {
                 CabeceraFina()
                 Segmentos(items: ["Presupuesto", "Metas"], sel: $seg)
 
-                // Total presupuestado.
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("DOP 0").font(.system(size: 26, weight: .heavy)).foregroundColor(.pos)
-                        Spacer()
-                        Text("de DOP 0").font(.system(size: 14)).foregroundColor(.pmut)
-                    }
-                    Capsule().fill(Color.line).frame(height: 8)
-                }.tarjeta()
-
-                VStack(spacing: 12) {
-                    SeccionHeader(titulo: "Categorías", accion: "Categoría")
-                    VStack(spacing: 0) {
-                        ForEach(cats.indices, id: \.self) { i in
-                            fila(cats[i])
-                            if i < cats.count - 1 {
-                                Divider().overlay(Color.line).padding(.leading, 52)
-                            }
+                if seg == 0 {
+                    // Total presupuestado.
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("DOP 0").font(.system(size: 26, weight: .heavy)).foregroundColor(.pos)
+                            Spacer()
+                            Text("de DOP 0").font(.system(size: 14)).foregroundColor(.pmut)
                         }
+                        Capsule().fill(Color.line).frame(height: 8)
                     }.tarjeta()
+
+                    VStack(spacing: 12) {
+                        SeccionHeader(titulo: "Categorías", accion: "Categoría")
+                        VStack(spacing: 0) {
+                            ForEach(cats.indices, id: \.self) { i in
+                                fila(cats[i])
+                                if i < cats.count - 1 {
+                                    Divider().overlay(Color.line).padding(.leading, 52)
+                                }
+                            }
+                        }.tarjeta()
+                    }
+                } else {
+                    SeccionHeader(titulo: "Tus metas", accion: "Meta")
+                    VacioCard(titulo: "",
+                              detalle: "Ponte una meta de ahorro y ve cuánto te falta cada mes.")
                 }
 
                 Color.clear.frame(height: 108)

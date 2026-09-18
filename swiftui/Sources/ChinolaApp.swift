@@ -10,22 +10,35 @@ struct ChinolaApp: App {
     }
 }
 
-// La raíz: la pantalla de la pestaña activa, el «+» flotante y la barra inferior
-// flotante. Cada pestaña muestra su propia pantalla.
+// La raíz: rutea a la pestaña activa o a una pantalla especial (CHINOLA_SCREEN),
+// con el «+» flotante y la barra inferior flotante. Las variables de entorno
+// CHINOLA_TAB / CHINOLA_SCREEN dejan que el CI arranque la app en cada pantalla
+// y saque su captura.
 struct RootView: View {
-    // La pestaña inicial se puede fijar con la variable de entorno CHINOLA_TAB
-    // (0..4); así el CI arranca la app en cada pantalla y saca su captura.
     @State private var tab = Int(ProcessInfo.processInfo.environment["CHINOLA_TAB"] ?? "0") ?? 0
-    // Ajuste: mostrar u ocultar los títulos del menú (irá en Ajustes de la app).
     @State private var titulosMenu = true
+    @State private var tendencia = false
+    private let pantalla = ProcessInfo.processInfo.environment["CHINOLA_SCREEN"]
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             Color.scr.ignoresSafeArea()
+            switch pantalla {
+            case "nuevo": NuevoMovView()
+            case "acciones": AccionesMenu()
+            case "apariencia": AparienciaView()
+            case "header": HeaderAjusteView()
+            case "tendencia": TendenciaView()
+            default: appTabs
+            }
+        }
+    }
 
+    private var appTabs: some View {
+        ZStack(alignment: .bottom) {
             switch tab {
             case 1: MovsView()
-            case 2: CuentasView()
+            case 2: CuentasView(abrirTendencia: { tendencia = true })
             case 3: PlanView()
             case 4: PerfilView()
             default: DashboardView()
@@ -48,6 +61,13 @@ struct RootView: View {
             }
 
             BottomBar(tab: $tab, titulos: titulosMenu)
+        }
+        .overlay {
+            if tendencia {
+                TendenciaView(onClose: { tendencia = false })
+                    .background(Color.scr.ignoresSafeArea())
+                    .transition(.move(edge: .bottom))
+            }
         }
     }
 }

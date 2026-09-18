@@ -63,14 +63,30 @@ jobs:
           xcrun simctl bootstatus "$DEV" -b || true
           xcrun simctl install "$DEV" "$APP"
           mkdir -p capturas
-          # Arrancar la app en cada pestaña (CHINOLA_TAB) y capturar cada pantalla.
-          NOMBRES=(resumen movs cuentas plan perfil)
-          for i in 0 1 2 3 4; do
+          # Cada captura: "VARS|nombre". Las VARS se pasan a la app con el prefijo
+          # SIMCTL_CHILD_ (así simctl las inyecta al proceso).
+          CAPTURAS=(
+            "CHINOLA_TAB=0|0-resumen"
+            "CHINOLA_TAB=1|1-movs"
+            "CHINOLA_TAB=2|2-cuentas"
+            "CHINOLA_TAB=3|3-plan"
+            "CHINOLA_TAB=3 CHINOLA_PLANSEG=1|4-metas"
+            "CHINOLA_TAB=4|5-perfil"
+            "CHINOLA_SCREEN=nuevo|6-nuevo-movimiento"
+            "CHINOLA_SCREEN=acciones|7-acciones"
+            "CHINOLA_SCREEN=apariencia|8-apariencia"
+            "CHINOLA_SCREEN=header|9-header"
+            "CHINOLA_SCREEN=tendencia|10-tendencia"
+          )
+          for spec in "${CAPTURAS[@]}"; do
+            vars="${spec%%|*}"; name="${spec##*|}"
             xcrun simctl terminate "$DEV" "$APP_ID" 2>/dev/null || true
-            SIMCTL_CHILD_CHINOLA_TAB=$i xcrun simctl launch "$DEV" "$APP_ID"
+            pre=""
+            for kv in $vars; do pre="$pre SIMCTL_CHILD_$kv"; done
+            env $pre xcrun simctl launch "$DEV" "$APP_ID"
             sleep 4
-            xcrun simctl io "$DEV" screenshot "capturas/${i}-${NOMBRES[$i]}.png"
-            echo "Captura ${NOMBRES[$i]} tomada."
+            xcrun simctl io "$DEV" screenshot "capturas/${name}.png"
+            echo "Captura ${name} tomada."
           done
           ls -la capturas
 
