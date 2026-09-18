@@ -39,6 +39,14 @@ struct RootView: View {
             case "tarjeta": TarjetaView()
             case "pago-tarjeta": PagoTarjetaView()
             case "categoria": CategoriaView()
+            case "libretas": LibretasView()
+            case "libreta-detalle": LibretaDetalleView()
+            case "idioma": IdiomaView()
+            case "notificaciones": NotificacionesView()
+            case "editar-nombre": EditarNombreView()
+            case "correo": CorreoView()
+            case "clave": ClaveView()
+            case "eliminar-cuenta": EliminarCuentaView()
             default: appTabs
             }
         }
