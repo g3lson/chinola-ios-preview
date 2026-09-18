@@ -25,6 +25,10 @@ jobs:
 
       - name: Herramientas de Xcode
         run: |
+          # XcodeGen genera el proyecto en el formato de Xcode 16 (objectVersion 77),
+          # así que hay que seleccionar un Xcode 16 en el runner (el macos-14 usa 15 por defecto).
+          XC="$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$XC" ]; then sudo xcode-select -s "$XC/Contents/Developer"; fi
           xcodebuild -version
           brew install xcodegen
 
@@ -51,13 +55,16 @@ jobs:
           set -e
           APP="$(find dd/Build/Products -name '*.app' -type d | head -1)"
           echo "App: $APP"
-          # Arrancar el simulador (ya existe en el runner) y esperar a que esté listo.
-          xcrun simctl boot "$SIM" || true
-          xcrun simctl bootstatus "$SIM" -b || true
-          xcrun simctl install "$SIM" "$APP"
-          xcrun simctl launch "$SIM" "$APP_ID"
+          # Elegir un iPhone disponible (el nombre por defecto cambia entre versiones de Xcode).
+          DEV="$(xcrun simctl list devices available | grep -oE 'iPhone [0-9][^(]*' | head -1 | xargs)"
+          [ -z "$DEV" ] && DEV="$SIM"
+          echo "Simulador: $DEV"
+          xcrun simctl boot "$DEV" || true
+          xcrun simctl bootstatus "$DEV" -b || true
+          xcrun simctl install "$DEV" "$APP"
+          xcrun simctl launch "$DEV" "$APP_ID"
           sleep 7
-          xcrun simctl io "$SIM" screenshot dashboard.png
+          xcrun simctl io "$DEV" screenshot dashboard.png
           echo "Captura tomada."
 
       - name: Subir la captura
