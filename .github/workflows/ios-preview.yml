@@ -73,10 +73,12 @@ jobs:
             "CHINOLA_TAB=3 CHINOLA_PLANSEG=1|4-metas"
             "CHINOLA_TAB=4|5-perfil"
             "CHINOLA_SCREEN=nuevo|6-nuevo-movimiento"
-            "CHINOLA_SCREEN=acciones|7-acciones"
-            "CHINOLA_SCREEN=apariencia|8-apariencia"
-            "CHINOLA_SCREEN=header|9-header"
-            "CHINOLA_SCREEN=tendencia|10-tendencia"
+            "CHINOLA_SCREEN=acciones|7-agregar"
+            "CHINOLA_SCREEN=nueva-cuenta|8-nueva-cuenta"
+            "CHINOLA_SCREEN=filtro|9-filtro"
+            "CHINOLA_SCREEN=apariencia|10-apariencia"
+            "CHINOLA_SCREEN=header|11-header"
+            "CHINOLA_SCREEN=tendencia|12-tendencia"
           )
           for spec in "${CAPTURAS[@]}"; do
             vars="${spec%%|*}"; name="${spec##*|}"

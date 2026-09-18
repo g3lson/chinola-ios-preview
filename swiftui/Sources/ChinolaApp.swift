@@ -26,6 +26,8 @@ struct RootView: View {
             switch pantalla {
             case "nuevo": NuevoMovView()
             case "acciones": AccionesMenu()
+            case "nueva-cuenta": NuevaCuentaView()
+            case "filtro": FiltroSheet()
             case "apariencia": AparienciaView()
             case "header": HeaderAjusteView()
             case "tendencia": TendenciaView()
