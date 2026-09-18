@@ -94,15 +94,18 @@ struct NuevoMovView: View {
                         NotaPie(texto: "Para lo que siempre pagas: renta, luz, colegio.")
                     }
 
-                    Color.clear.frame(height: 8)
+                    // Aire al final para el indicador de inicio del iPhone.
+                    Color.clear.frame(height: 40)
                 }
                 .padding(.horizontal, 16)
             }
         }
-        .padding(.bottom, 20)
-        .frame(maxWidth: .infinity, maxHeight: 620)
-        .background(Color.scr)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(
+            Color.scr.clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous))
+        )
+        .ignoresSafeArea(edges: .bottom)
+        .padding(.top, 46)   // hoja grande: cubre casi toda la pantalla y llega hasta abajo
     }
 
     private func circulo(_ icono: String, _ fg: Color, _ bg: Color) -> some View {
