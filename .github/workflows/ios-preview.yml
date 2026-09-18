@@ -79,6 +79,14 @@ jobs:
             "CHINOLA_SCREEN=apariencia|10-apariencia"
             "CHINOLA_SCREEN=header|11-header"
             "CHINOLA_SCREEN=tendencia|12-tendencia"
+            "CHINOLA_SCREEN=transferencia|13-transferencia"
+            "CHINOLA_SCREEN=prestamo|14-prestamo"
+            "CHINOLA_SCREEN=abono|15-abono"
+            "CHINOLA_SCREEN=aporte|16-aporte"
+            "CHINOLA_SCREEN=meta|17-meta"
+            "CHINOLA_SCREEN=tarjeta|18-tarjeta"
+            "CHINOLA_SCREEN=pago-tarjeta|19-pago-tarjeta"
+            "CHINOLA_SCREEN=categoria|20-categoria"
           )
           for spec in "${CAPTURAS[@]}"; do
             vars="${spec%%|*}"; name="${spec##*|}"

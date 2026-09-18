@@ -31,6 +31,14 @@ struct RootView: View {
             case "apariencia": AparienciaView()
             case "header": HeaderAjusteView()
             case "tendencia": TendenciaView()
+            case "transferencia": TransferenciaView()
+            case "prestamo": PrestamoView()
+            case "abono": AbonoView()
+            case "aporte": AporteView()
+            case "meta": MetaView()
+            case "tarjeta": TarjetaView()
+            case "pago-tarjeta": PagoTarjetaView()
+            case "categoria": CategoriaView()
             default: appTabs
             }
         }
