@@ -31,18 +31,13 @@ struct CuentasView: View {
         .background(Color.scr)
     }
 
-    // Fila superior: filtro de libreta + «+».
+    // Fila superior: título + botones redondos (opciones/filtro y «+»), igual
+    // que Movimientos y Plan.
     private var topRow: some View {
-        HStack {
-            HStack(spacing: 5) {
-                Text("Todo").font(.system(size: 16, weight: .bold)).foregroundColor(.ink)
-                Image(systemName: "chevron.down").font(.system(size: 12, weight: .bold)).foregroundColor(.pmut)
-            }
-            Spacer()
-            Image(systemName: "plus").font(.system(size: 16, weight: .bold)).foregroundColor(.ink)
-                .frame(width: 38, height: 38).background(Color.soft).clipShape(Circle())
+        CabeceraTitulo(titulo: "Cuentas") {
+            BotonRedondo(icono: "line.3.horizontal.decrease")
+            BotonRedondo(icono: "plus", acento: true)
         }
-        .padding(.top, 4)
     }
 
     // Tarjeta de Patrimonio (con ocultar y tendencia).

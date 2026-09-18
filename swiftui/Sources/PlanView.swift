@@ -20,11 +20,12 @@ struct PlanView: View {
     ]
 
     var body: some View {
-        GeometryReader { geo in
         ScrollView(showsIndicators: false) {
             VStack(spacing: 16) {
-                CabeceraFina(topInset: geo.safeAreaInsets.top)
-                Group {
+                CabeceraTitulo(titulo: "Plan") {
+                    BotonRedondo(icono: "calendar")
+                    BotonRedondo(icono: "plus", acento: true)
+                }
                 Segmentos(items: ["Presupuesto", "Metas"], sel: $seg)
 
                 if seg == 0 {
@@ -54,15 +55,13 @@ struct PlanView: View {
                     VacioCard(titulo: "",
                               detalle: "Ponte una meta de ahorro y ve cuánto te falta cada mes.")
                 }
-                }
-                .padding(.horizontal, 8)
 
-                Color.clear.frame(height: 108)
+                Color.clear.frame(height: 100)
             }
+            .padding(.horizontal, 14)
+            .padding(.top, 8)
         }
         .background(Color.scr)
-        .ignoresSafeArea(.container, edges: .top)
-        }
     }
 
     private func fila(_ c: Cat) -> some View {

@@ -1,24 +1,24 @@
 import SwiftUI
 
-// Pantalla «Movimientos» (Movs.): cabecera fina, buscador con filtro y estado
-// vacío. Calcada de la app.
+// Pantalla «Movimientos»: sin cabecera; título grande, botones redondos
+// (calendario + «+») y buscador. Estilo homogéneo con Cuentas y Plan.
 struct MovsView: View {
     var body: some View {
-        GeometryReader { geo in
-            VStack(spacing: 12) {
-                CabeceraFina(topInset: geo.safeAreaInsets.top)
-                VStack(spacing: 12) {
-                    busqueda
-                    VacioCard(titulo: "Sin movimientos",
-                              detalle: "Lo que registres este mes aparecerá aquí.")
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 14) {
+                CabeceraTitulo(titulo: "Movimientos") {
+                    BotonRedondo(icono: "calendar")
+                    BotonRedondo(icono: "plus", acento: true)
                 }
-                .padding(.horizontal, 8)
-                Spacer(minLength: 0)
+                busqueda
+                VacioCard(titulo: "Sin movimientos",
+                          detalle: "Lo que registres este mes aparecerá aquí.")
+                Color.clear.frame(height: 100)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(Color.scr)
-            .ignoresSafeArea(.container, edges: .top)
+            .padding(.horizontal, 14)
+            .padding(.top, 8)
         }
+        .background(Color.scr)
     }
 
     private var busqueda: some View {
@@ -31,8 +31,8 @@ struct MovsView: View {
             }
             .padding(.horizontal, 15).padding(.vertical, 13)
             .background(Color.card)
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.line, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.line, lineWidth: 1))
 
             Image(systemName: "line.3.horizontal.decrease")
                 .font(.system(size: 17, weight: .semibold)).foregroundColor(.ink)

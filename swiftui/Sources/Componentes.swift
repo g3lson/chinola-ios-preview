@@ -39,6 +39,43 @@ struct CabeceraFina: View {
     }
 }
 
+// Botón redondo de acción, estilo iOS. Dos variantes: claro (contorno) y acento.
+struct BotonRedondo: View {
+    let icono: String
+    var acento: Bool = false
+    var accion: () -> Void = {}
+    var body: some View {
+        Button(action: accion) {
+            Image(systemName: icono)
+                .font(.system(size: acento ? 20 : 18, weight: .semibold))
+                .foregroundColor(acento ? Color(hex: 0x20180a) : .ink)
+                .frame(width: acento ? 46 : 44, height: acento ? 46 : 44)
+                .background(acento ? Color.acc : Color.card)
+                .clipShape(Circle())
+                .overlay(acento ? nil : Circle().stroke(Color.line, lineWidth: 1))
+                .shadow(color: acento ? Color.acc.opacity(0.4) : .clear, radius: 8, y: 3)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// Encabezado de pantalla: título grande a la izquierda y botones redondos a la
+// derecha. El mismo en Movs., Cuentas y Plan → todo se ve homogéneo.
+struct CabeceraTitulo<Botones: View>: View {
+    let titulo: String
+    @ViewBuilder var botones: Botones
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text(titulo)
+                .font(.system(size: 28, weight: .heavy)).tracking(-0.5)
+                .foregroundColor(.ink)
+            Spacer(minLength: 8)
+            HStack(spacing: 9) { botones }
+        }
+        .padding(.horizontal, 4).padding(.top, 4)
+    }
+}
+
 // Segmentos (All time / Accounts…): la opción activa es una pastilla verde.
 struct Segmentos: View {
     let items: [String]
