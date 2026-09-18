@@ -95,6 +95,11 @@ jobs:
             "CHINOLA_SCREEN=correo|26-correo"
             "CHINOLA_SCREEN=clave|27-clave"
             "CHINOLA_SCREEN=eliminar-cuenta|28-eliminar-cuenta"
+            "CHINOLA_SCREEN=det-cuenta|29-detalle-cuenta"
+            "CHINOLA_SCREEN=det-prestamo|30-detalle-prestamo"
+            "CHINOLA_SCREEN=det-tarjeta|31-detalle-tarjeta"
+            "CHINOLA_SCREEN=det-meta|32-detalle-meta"
+            "CHINOLA_SCREEN=det-movimiento|33-detalle-movimiento"
           )
           for spec in "${CAPTURAS[@]}"; do
             vars="${spec%%|*}"; name="${spec##*|}"

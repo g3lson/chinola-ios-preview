@@ -47,6 +47,11 @@ struct RootView: View {
             case "correo": CorreoView()
             case "clave": ClaveView()
             case "eliminar-cuenta": EliminarCuentaView()
+            case "det-cuenta": DetalleCuentaView()
+            case "det-prestamo": DetallePrestamoView()
+            case "det-tarjeta": DetalleTarjetaView()
+            case "det-meta": DetalleMetaView()
+            case "det-movimiento": DetalleMovimientoView()
             default: appTabs
             }
         }
