@@ -1,6 +1,8 @@
 import SwiftUI
 
-// Colores de Chinola (tema oscuro), a juego con la app web.
+// Tema «Chinola» (claro), calcado del que trae la app por defecto. Los valores
+// vienen de TEMAS.chinola en el diseño (oklch convertido a sRGB), para que el
+// nativo se vea igual que el web sin rediseñar nada.
 extension Color {
     init(hex: UInt) {
         self.init(.sRGB,
@@ -10,22 +12,16 @@ extension Color {
                   opacity: 1)
     }
 
-    static let scr   = Color(hex: 0x0c0e0c)  // fondo pantalla
-    static let card  = Color(hex: 0x181c18)  // tarjetas
-    static let line  = Color(hex: 0x262b25)  // bordes
-    static let ink   = Color(hex: 0xeef0e8)  // texto
-    static let pmut  = Color(hex: 0x8a9284)  // texto secundario
-    static let acc   = Color(hex: 0xe9c24a)  // acento chinola
-    static let pos   = Color(hex: 0x57b06e)  // ingreso
-    static let neg   = Color(hex: 0xdd6b50)  // gasto
-    static let sav   = Color(hex: 0x9d8ae6)  // ahorro
-    static let info  = Color(hex: 0x5f92db)  // categoría azul
-    static let navbg = Color(hex: 0x0f130f)  // barra inferior
-}
-
-// Degradado de la cabecera (el "Chinola").
-extension LinearGradient {
-    static let chinola = LinearGradient(
-        colors: [Color(hex: 0xf7c948), Color(hex: 0xec9a2e), Color(hex: 0x3f9d54)],
-        startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let scr   = Color(hex: 0xfaf7ec)  // fondo de pantalla (crema)
+    static let card  = Color(hex: 0xffffff)  // tarjetas
+    static let soft  = Color(hex: 0xf9f5e6)  // relleno suave (botón secundario)
+    static let line  = Color(hex: 0xe5e1d3)  // bordes
+    static let ink   = Color(hex: 0x132419)  // texto principal (verde tinta)
+    static let pmut  = Color(hex: 0x516356)  // texto secundario
+    static let side  = Color(hex: 0x093a20)  // banda de la cabecera (verde oscuro)
+    static let acc   = Color(hex: 0xefcb4c)  // acento chinola (amarillo)
+    static let pos   = Color(hex: 0x137d41)  // ingreso
+    static let neg   = Color(hex: 0xd55948)  // gasto
+    static let sav   = Color(hex: 0x825eb9)  // ahorro
+    static let info  = Color(hex: 0x398ad6)  // categoría azul
 }

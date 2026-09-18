@@ -1,150 +1,162 @@
 import SwiftUI
 
-// El Dashboard (Resumen) en SwiftUI. Datos de ejemplo por ahora.
+// Pantalla «Resumen», calcada de la que ya trae la app: cabecera verde con el
+// selector de libreta centrado, el balance grande, los chips de meses; y debajo
+// las tarjetas sobre el fondo crema. Misma disposición, hecha en nativo.
 struct DashboardView: View {
+    private let meses = ["Jul", "Ago", "Sep", "Oct", "Rango"]
+    @State private var mesSel = 2
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 13) {
-
-                // Título grande + avatar (patrón iOS).
-                HStack {
-                    Text("Personal")
-                        .font(.system(size: 30, weight: .heavy, design: .rounded))
-                        .foregroundColor(.ink)
-                    Spacer()
-                    Circle()
-                        .fill(LinearGradient(colors: [Color(hex: 0xf0c34a), Color(hex: 0xd98f1e)],
-                                             startPoint: .top, endPoint: .bottom))
-                        .frame(width: 34, height: 34)
-                        .overlay(Text("GR").font(.system(size: 12, weight: .bold))
-                            .foregroundColor(Color(hex: 0x3a2c12)))
-                }
-                .padding(.top, 8)
-
-                // Cabecera flotante con degradado.
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        capsule
-                        Spacer()
-                        HStack(spacing: 8) {
-                            arrow("chevron.left")
-                            Text("Septiembre").font(.system(size: 12, weight: .bold))
-                            arrow("chevron.right")
-                        }
-                    }
-                    Text("TE QUEDA ESTE MES")
-                        .font(.system(size: 10, weight: .heavy))
-                        .tracking(0.8)
-                        .foregroundColor(Color(hex: 0x2b2010).opacity(0.7))
-                    Text("RD$12,300")
-                        .font(.system(size: 34, weight: .heavy, design: .rounded))
-                        .foregroundColor(Color(hex: 0x1c3a12))
-                    HStack(spacing: 16) {
-                        miniStat("arrow.up", "RD$72,000", Color(hex: 0x1c3a12))
-                        miniStat("arrow.down", "RD$51,700", Color(hex: 0x5a2418))
-                    }
-                    .font(.system(size: 12, weight: .semibold))
-                }
-                .padding(14)
-                .background(LinearGradient.chinola)
-                .cornerRadius(24)
-                .shadow(color: Color(hex: 0x8a5a10).opacity(0.35), radius: 14, y: 6)
-
-                // KPIs.
-                HStack(spacing: 8) {
-                    kpi("Ingresos", "72k", .pos)
-                    kpi("Gastos", "51.7k", .neg)
-                    kpi("Ahorro", "8k", .sav)
-                }
-
-                // Gastos por categoría.
-                VStack(alignment: .leading, spacing: 11) {
-                    Text("Gastos por categoría")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.ink)
-                    catRow("house.fill", "Vivienda", "RD$18,000", 1.0, .info)
-                    catRow("fork.knife", "Alimentación", "RD$11,500", 0.64, .acc)
-                    catRow("graduationcap.fill", "Educación", "RD$6,500", 0.36, .sav)
-                    catRow("bolt.fill", "Servicios", "RD$3,700", 0.21, .pos)
-                }
-                .padding(13)
-                .background(Color.card)
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.line, lineWidth: 1))
-                .cornerRadius(16)
-
-                Color.clear.frame(height: 96)   // espacio para la barra
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 14) {
+                cabecera
+                cuerpo
+                Color.clear.frame(height: 96)   // aire para el «+» y la barra
             }
-            .padding(.horizontal, 14)
         }
         .background(Color.scr)
+        .ignoresSafeArea(edges: .top)
     }
 
-    // MARK: - piezas
-
-    private var capsule: some View {
-        HStack(spacing: 7) {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color(hex: 0x2c8f52))
-                .frame(width: 20, height: 20)
-                .overlay(Image(systemName: "house.fill").font(.system(size: 10)).foregroundColor(.white))
-            Text("Personal").font(.system(size: 12, weight: .bold))
-            Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).opacity(0.7)
-        }
-        .foregroundColor(Color(hex: 0x2b2010))
-        .padding(.vertical, 5).padding(.horizontal, 9)
-        .background(Color.black.opacity(0.12))
-        .clipShape(Capsule())
-    }
-
-    private func arrow(_ name: String) -> some View {
-        Image(systemName: name)
-            .font(.system(size: 12, weight: .bold))
-            .foregroundColor(Color(hex: 0x2b2010))
-            .frame(width: 26, height: 26)
-            .background(Color.black.opacity(0.12))
-            .clipShape(Circle())
-    }
-
-    private func miniStat(_ icon: String, _ text: String, _ color: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon).font(.system(size: 10, weight: .bold))
-            Text(text)
-        }
-        .foregroundColor(color)
-    }
-
-    private func kpi(_ label: String, _ value: String, _ color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label.uppercased())
-                .font(.system(size: 8, weight: .heavy)).tracking(0.5)
-                .foregroundColor(.pmut)
-            Text(value)
-                .font(.system(size: 15, weight: .heavy, design: .rounded))
-                .foregroundColor(color)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(9)
-        .background(Color.card)
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.line, lineWidth: 1))
-        .cornerRadius(12)
-    }
-
-    private func catRow(_ icon: String, _ name: String, _ amount: String, _ pct: CGFloat, _ color: Color) -> some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 9) {
-                RoundedRectangle(cornerRadius: 8).fill(color).frame(width: 24, height: 24)
-                    .overlay(Image(systemName: icon).font(.system(size: 12)).foregroundColor(.white))
-                Text(name).font(.system(size: 12, weight: .semibold)).foregroundColor(.ink)
-                Spacer()
-                Text(amount).font(.system(size: 11, weight: .heavy, design: .rounded)).foregroundColor(.ink)
+    // MARK: Cabecera (banda verde)
+    private var cabecera: some View {
+        VStack(spacing: 10) {
+            // Selector de libreta, centrado.
+            HStack(spacing: 7) {
+                Image(systemName: "house.fill").font(.system(size: 12, weight: .semibold))
+                Text("Personal").font(.system(size: 15, weight: .semibold))
+                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.line)
-                    Capsule().fill(color).frame(width: geo.size.width * pct)
+            .foregroundColor(.white)
+            .padding(.horizontal, 15).padding(.vertical, 8)
+            .background(Color.white.opacity(0.14))
+            .clipShape(Capsule())
+            .padding(.top, 8)
+
+            // Balance del mes.
+            Text("DOP 0")
+                .font(.system(size: 40, weight: .heavy))
+                .foregroundColor(.acc)
+            Text("te queda este mes")
+                .font(.system(size: 13))
+                .foregroundColor(.white.opacity(0.72))
+
+            // Chips de meses.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Array(meses.enumerated()), id: \.offset) { i, m in
+                        Text(m)
+                            .font(.system(size: 13.5, weight: .semibold))
+                            .foregroundColor(i == mesSel ? Color(hex: 0x20180a) : .white.opacity(0.9))
+                            .padding(.horizontal, 15).padding(.vertical, 8)
+                            .background(i == mesSel ? Color.acc : Color.white.opacity(0.12))
+                            .clipShape(Capsule())
+                            .onTapGesture { mesSel = i }
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 52)          // hueco de la barra de estado
+        .padding(.bottom, 18)
+        .background(Color.side)
+    }
+
+    // MARK: Cuerpo (tarjetas)
+    private var cuerpo: some View {
+        VStack(spacing: 14) {
+            // Empieza aquí.
+            tarjeta {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Empieza aquí").font(.system(size: 18, weight: .bold)).foregroundColor(.ink)
+                    Text("Dile cuánto tienes ahora mismo y la app empieza a sumar sola. No tiene que ser exacto.")
+                        .font(.system(size: 14)).foregroundColor(.pmut).fixedSize(horizontal: false, vertical: true)
+                    Button {} label: {
+                        Text("Ingresar lo que tengo")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(Color(hex: 0x20180a))
+                            .frame(maxWidth: .infinity).padding(.vertical, 14)
+                            .background(Color.acc).clipShape(RoundedRectangle(cornerRadius: 26))
+                    }
+                    .padding(.top, 2)
+                    Text("Lo hago luego")
+                        .font(.system(size: 14, weight: .semibold)).foregroundColor(.ink)
+                        .frame(maxWidth: .infinity).padding(.vertical, 4)
                 }
             }
-            .frame(height: 5)
+
+            // Balance del mes.
+            tarjeta {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Balance del mes").font(.system(size: 14, weight: .medium)).foregroundColor(.pmut)
+                    Text("DOP 0").font(.system(size: 30, weight: .heavy)).foregroundColor(.ink)
+                    Text("disponible este mes").font(.system(size: 13)).foregroundColor(.pmut)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Gastos por categoría.
+            tarjeta {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Gastos por categoría").font(.system(size: 15, weight: .semibold)).foregroundColor(.ink)
+                    Button {} label: {
+                        Text("Ver el presupuesto")
+                            .font(.system(size: 14, weight: .bold)).foregroundColor(.ink)
+                            .frame(maxWidth: .infinity).padding(.vertical, 13)
+                            .background(Color.soft).clipShape(RoundedRectangle(cornerRadius: 22))
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Ingresos y gastos (con mini gráfico).
+            tarjeta {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Ingresos y gastos").font(.system(size: 15, weight: .semibold)).foregroundColor(.ink)
+                        Spacer()
+                        Text("6 m").font(.system(size: 13)).foregroundColor(.pmut)
+                    }
+                    HStack(spacing: 16) {
+                        leyenda(.pos, "Ingresos")
+                        leyenda(.neg, "Gastos")
+                    }
+                    miniGrafico
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
+        .padding(.horizontal, 16)
+    }
+
+    // Un par de barras tenues, como el gráfico vacío del arranque.
+    private var miniGrafico: some View {
+        HStack(alignment: .bottom, spacing: 10) {
+            ForEach(0..<6, id: \.self) { _ in
+                HStack(alignment: .bottom, spacing: 3) {
+                    RoundedRectangle(cornerRadius: 3).fill(Color.pos.opacity(0.18)).frame(width: 10, height: 14)
+                    RoundedRectangle(cornerRadius: 3).fill(Color.neg.opacity(0.18)).frame(width: 10, height: 14)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(height: 56, alignment: .bottom)
+        .overlay(Rectangle().fill(Color.line).frame(height: 1), alignment: .bottom)
+    }
+
+    private func leyenda(_ c: Color, _ t: String) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(c).frame(width: 9, height: 9)
+            Text(t).font(.system(size: 13)).foregroundColor(.pmut)
+        }
+    }
+
+    private func tarjeta<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.card)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.line, lineWidth: 1))
     }
 }
