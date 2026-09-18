@@ -38,8 +38,8 @@ struct MovsView: View {
                 .font(.system(size: 17, weight: .semibold)).foregroundColor(.ink)
                 .frame(width: 48, height: 48)
                 .background(Color.card)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.line, lineWidth: 1))
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color.line, lineWidth: 1))
         }
     }
 }

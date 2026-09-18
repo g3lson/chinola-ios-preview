@@ -90,15 +90,15 @@ struct BottomBar: View {
             perfil(4)
         }
         .padding(.horizontal, 6)
-        .padding(.vertical, titulos ? 10 : 13)
+        .padding(.vertical, titulos ? 9 : 12)
         .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Color.card)
-                .shadow(color: .black.opacity(0.14), radius: 18, y: 6)
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(.ultraThinMaterial)   // material translúcido, nativo de iOS
+                .shadow(color: .black.opacity(0.12), radius: 20, y: 6)
         )
-        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(Color.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(Color.ink.opacity(0.08), lineWidth: 1))
         .padding(.horizontal, 14)
-        .padding(.bottom, 4)
+        .padding(.bottom, 2)
     }
 
     private func item(_ i: Int, _ d: String, _ label: String) -> some View {
