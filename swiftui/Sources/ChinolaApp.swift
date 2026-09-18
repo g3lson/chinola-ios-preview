@@ -10,10 +10,11 @@ struct ChinolaApp: App {
     }
 }
 
-// La raíz: el dashboard, el «+» flotante abajo a la derecha y la barra inferior
-// de 5 pestañas. Calca la disposición que ya trae la app; no la reinventa.
+// La raíz: el dashboard, el «+» flotante y la barra inferior flotante.
 struct RootView: View {
     @State private var tab = 0
+    // Ajuste: mostrar u ocultar los títulos del menú (irá en Ajustes de la app).
+    @State private var titulosMenu = true
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -21,10 +22,8 @@ struct RootView: View {
 
             DashboardView()
 
-            // «+» flotante, como el de la app (esquina inferior derecha,
-            // por encima de la barra), no un botón central de la barra.
-            Button {
-            } label: {
+            // «+» flotante, por encima de la barra, a la derecha.
+            Button {} label: {
                 Image(systemName: "plus")
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundColor(Color(hex: 0x20180a))
@@ -34,43 +33,47 @@ struct RootView: View {
                     .shadow(color: .black.opacity(0.22), radius: 10, y: 4)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            .padding(.trailing, 18)
-            .padding(.bottom, 78)
+            .padding(.trailing, 20)
+            .padding(.bottom, 104)
 
-            BottomBar(tab: $tab)
+            BottomBar(tab: $tab, titulos: titulosMenu)
         }
     }
 }
 
-// Barra inferior de 5 pestañas (iconos SF), tal cual la app: Resumen, Movs.,
-// Cuentas, Plan, Perfil. Perfil lleva el avatar de Chino, no un icono suelto.
+// Barra inferior FLOTANTE: tarjeta redondeada con márgenes y sombra. Iconos con
+// los paths exactos de la app; el título de cada pestaña se puede ocultar.
 struct BottomBar: View {
     @Binding var tab: Int
+    var titulos: Bool = true
 
     var body: some View {
         HStack(spacing: 0) {
-            item(0, "square.grid.2x2.fill", "Resumen")
-            item(1, "arrow.up.arrow.down", "Movs.")
-            item(2, "creditcard", "Cuentas")
-            item(3, "clock", "Plan")
+            item(0, TabIcono.resumen, "Resumen")
+            item(1, TabIcono.movs, "Movs.")
+            item(2, TabIcono.cuentas, "Cuentas")
+            item(3, TabIcono.plan, "Plan")
             perfil(4)
         }
-        .padding(.top, 9)
-        .padding(.bottom, 4)
+        .padding(.horizontal, 6)
+        .padding(.vertical, titulos ? 10 : 13)
         .background(
-            Color.card
-                .overlay(Rectangle().fill(Color.line).frame(height: 0.5), alignment: .top)
-                .ignoresSafeArea(edges: .bottom)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color.card)
+                .shadow(color: .black.opacity(0.14), radius: 18, y: 6)
         )
+        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(Color.line, lineWidth: 1))
+        .padding(.horizontal, 14)
+        .padding(.bottom, 4)
     }
 
-    private func item(_ i: Int, _ icon: String, _ label: String) -> some View {
+    private func item(_ i: Int, _ d: String, _ label: String) -> some View {
         Button { tab = i } label: {
             VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .medium))
-                Text(label)
-                    .font(.system(size: 10.5, weight: .medium))
+                IconoTab(d: d)
+                if titulos {
+                    Text(label).font(.system(size: 11, weight: .heavy)).tracking(-0.1)
+                }
             }
             .foregroundColor(tab == i ? .ink : .pmut)
             .frame(maxWidth: .infinity)
@@ -78,17 +81,18 @@ struct BottomBar: View {
         .buttonStyle(.plain)
     }
 
-    // Perfil: el carita de Chino en un círculo amarillo.
+    // Perfil: el avatar de Chino en un círculo (el mascota, como en la app).
     private func perfil(_ i: Int) -> some View {
         Button { tab = i } label: {
             VStack(spacing: 4) {
                 Text("🍊")
-                    .font(.system(size: 17))
-                    .frame(width: 24, height: 24)
+                    .font(.system(size: 19))
+                    .frame(width: 26, height: 26)
                     .background(Color.acc.opacity(tab == i ? 1 : 0.85))
                     .clipShape(Circle())
-                Text("Perfil")
-                    .font(.system(size: 10.5, weight: .medium))
+                if titulos {
+                    Text("Perfil").font(.system(size: 11, weight: .heavy)).tracking(-0.1)
+                }
             }
             .foregroundColor(tab == i ? .ink : .pmut)
             .frame(maxWidth: .infinity)

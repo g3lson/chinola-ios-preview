@@ -12,11 +12,10 @@ struct DashboardView: View {
             VStack(spacing: 14) {
                 cabecera
                 cuerpo
-                Color.clear.frame(height: 96)   // aire para el «+» y la barra
+                Color.clear.frame(height: 108)  // aire para el «+» y la barra flotante
             }
         }
         .background(Color.scr)
-        .ignoresSafeArea(edges: .top)
     }
 
     // MARK: Cabecera (banda verde)
@@ -42,27 +41,31 @@ struct DashboardView: View {
                 .font(.system(size: 13))
                 .foregroundColor(.white.opacity(0.72))
 
-            // Chips de meses.
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Array(meses.enumerated()), id: \.offset) { i, m in
-                        Text(m)
-                            .font(.system(size: 13.5, weight: .semibold))
-                            .foregroundColor(i == mesSel ? Color(hex: 0x20180a) : .white.opacity(0.9))
-                            .padding(.horizontal, 15).padding(.vertical, 8)
-                            .background(i == mesSel ? Color.acc : Color.white.opacity(0.12))
-                            .clipShape(Capsule())
-                            .onTapGesture { mesSel = i }
-                    }
+            // Chips de meses, centrados.
+            HStack(spacing: 7) {
+                ForEach(Array(meses.enumerated()), id: \.offset) { i, m in
+                    Text(m)
+                        .font(.system(size: 13.5, weight: .semibold))
+                        .foregroundColor(i == mesSel ? Color(hex: 0x20180a) : .white.opacity(0.9))
+                        .padding(.horizontal, 13).padding(.vertical, 8)
+                        .background(i == mesSel ? Color.acc : Color.white.opacity(0.12))
+                        .clipShape(Capsule())
+                        .onTapGesture { mesSel = i }
                 }
-                .padding(.horizontal, 16)
             }
+            .frame(maxWidth: .infinity)
             .padding(.top, 2)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 52)          // hueco de la barra de estado
+        .padding(.top, 18)
         .padding(.bottom, 18)
+        .padding(.horizontal, 12)
         .background(Color.side)
+        // Header como tarjeta flotante redondeada (opción «Esquinas redondeadas»).
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .shadow(color: Color.side.opacity(0.30), radius: 16, y: 8)
+        .padding(.horizontal, 8)
+        .padding(.top, 6)
     }
 
     // MARK: Cuerpo (tarjetas)
