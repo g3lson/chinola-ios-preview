@@ -4,16 +4,21 @@ import SwiftUI
 // vacío. Calcada de la app.
 struct MovsView: View {
     var body: some View {
-        VStack(spacing: 12) {
-            CabeceraFina()
-            busqueda
-            VacioCard(titulo: "Sin movimientos",
-                      detalle: "Lo que registres este mes aparecerá aquí.")
-            Spacer(minLength: 0)
+        GeometryReader { geo in
+            VStack(spacing: 12) {
+                CabeceraFina(topInset: geo.safeAreaInsets.top)
+                VStack(spacing: 12) {
+                    busqueda
+                    VacioCard(titulo: "Sin movimientos",
+                              detalle: "Lo que registres este mes aparecerá aquí.")
+                }
+                .padding(.horizontal, 8)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(Color.scr)
+            .ignoresSafeArea(.container, edges: .top)
         }
-        .padding(.horizontal, 8)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color.scr)
     }
 
     private var busqueda: some View {

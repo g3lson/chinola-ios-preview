@@ -8,18 +8,21 @@ struct DashboardView: View {
     @State private var mesSel = 2
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
-                cabecera
-                cuerpo
-                Color.clear.frame(height: 108)  // aire para el «+» y la barra flotante
+        GeometryReader { geo in
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    cabecera(top: geo.safeAreaInsets.top)
+                    cuerpo
+                    Color.clear.frame(height: 108)  // aire para el «+» y la barra flotante
+                }
             }
+            .background(Color.scr)
+            .ignoresSafeArea(.container, edges: .top)
         }
-        .background(Color.scr)
     }
 
-    // MARK: Cabecera (banda verde)
-    private var cabecera: some View {
+    // MARK: Cabecera (banda verde que cubre la isla dinámica)
+    private func cabecera(top: CGFloat) -> some View {
         VStack(spacing: 10) {
             // Selector de libreta, centrado.
             HStack(spacing: 7) {
@@ -31,7 +34,6 @@ struct DashboardView: View {
             .padding(.horizontal, 15).padding(.vertical, 8)
             .background(Color.white.opacity(0.14))
             .clipShape(Capsule())
-            .padding(.top, 8)
 
             // Balance del mes.
             Text("DOP 0")
@@ -57,15 +59,13 @@ struct DashboardView: View {
             .padding(.top, 2)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 18)
+        // Sube a cubrir la isla dinámica: el contenido baja por debajo de ella
+        // (top + 16) y solo se redondea por abajo, como una sola tarjeta.
+        .padding(.top, top + 16)
         .padding(.bottom, 18)
         .padding(.horizontal, 12)
         .background(Color.side)
-        // Header como tarjeta flotante redondeada (opción «Esquinas redondeadas»).
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: Color.side.opacity(0.30), radius: 16, y: 8)
-        .padding(.horizontal, 8)
-        .padding(.top, 6)
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 30, bottomTrailingRadius: 30, style: .continuous))
     }
 
     // MARK: Cuerpo (tarjetas)

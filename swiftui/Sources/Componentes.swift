@@ -3,9 +3,11 @@ import SwiftUI
 // Piezas compartidas por las pantallas, para que todas se vean iguales que la
 // app (mismos colores, mismas tarjetas, misma cabecera fina).
 
-// Cabecera fina (Movs./Cuentas/Plan): tarjeta verde flotante con el selector de
-// libreta a la izquierda y el balance + calendario a la derecha.
+// Cabecera fina (Movs./Plan): banda verde que cubre la isla dinámica, con el
+// selector de libreta a la izquierda y el balance + calendario a la derecha.
+// `topInset` es el alto de la isla, que se le pasa desde la pantalla.
 struct CabeceraFina: View {
+    var topInset: CGFloat = 0
     var body: some View {
         HStack(spacing: 10) {
             HStack(spacing: 7) {
@@ -28,11 +30,12 @@ struct CabeceraFina: View {
                 .font(.system(size: 17, weight: .medium))
                 .foregroundColor(.white.opacity(0.9))
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .padding(.top, topInset + 12)
+        .padding(.bottom, 14)
+        .frame(maxWidth: .infinity)
         .background(Color.side)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: Color.side.opacity(0.28), radius: 14, y: 6)
-        .padding(.top, 6)
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 26, bottomTrailingRadius: 26, style: .continuous))
     }
 }
 
