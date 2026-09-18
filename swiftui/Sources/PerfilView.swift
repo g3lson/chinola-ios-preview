@@ -1,11 +1,12 @@
 import SwiftUI
 
-// Pantalla «Perfil»: el logo Chinola, la tarjeta del usuario y las listas de
-// ajustes (cuenta, avisos y datos, sobre Chinola). Calcada de la app.
+// Pantalla «Perfil»: el logo Chinola, la tarjeta del usuario y los ajustes en
+// secciones nativas (Cuenta / Preferencias / Datos / Sobre Chinola), con iconos
+// en cuadros de color, como los Ajustes de iOS.
 struct PerfilView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 18) {
                 // Marca.
                 HStack(spacing: 10) {
                     Circle().fill(Color.side)
@@ -30,62 +31,63 @@ struct PerfilView: View {
                         .background(Color.soft).clipShape(Capsule())
                 }.tarjeta()
 
-                // Cuenta.
-                VStack(spacing: 0) {
-                    fila("person", "Mi nombre", valor: "Gelson")
-                    sep()
-                    fila("book.closed", "Libretas y permisos", valor: "1")
-                    sep()
-                    fila("paintpalette", "Apariencia", valor: "Chinola")
-                    sep()
-                    fila("character.bubble", "Idioma", valor: "Español")
-                }.tarjeta()
+                seccion("Cuenta")
+                Grupo {
+                    fila("person.fill", .pos, "Mi nombre", valor: "Gelson")
+                    Divisor()
+                    fila("book.closed.fill", .info, "Libretas y permisos", valor: "1")
+                }
 
-                seccion("Avisos y datos")
-                VStack(spacing: 0) {
-                    fila("play.circle", "Ver el tour otra vez", valor: "10 pasos")
-                    sep()
-                    fila("square.and.arrow.down", "Exportar esta libreta", valor: "0 movimientos")
-                    sep()
-                    fila("square.and.arrow.up", "Importar movimientos", valor: "CSV")
-                }.tarjeta()
+                seccion("Preferencias")
+                Grupo {
+                    fila("paintpalette.fill", .sav, "Personalización", valor: "Chinola")
+                    Divisor()
+                    fila("character.bubble.fill", .info, "Idioma", valor: "Español")
+                    Divisor()
+                    fila("bell.fill", .neg, "Notificaciones", valor: "Solo en la app")
+                }
+
+                seccion("Datos")
+                Grupo {
+                    fila("square.and.arrow.down.fill", Color(hex: 0x1fa9a0), "Exportar esta libreta", valor: "")
+                    Divisor()
+                    fila("square.and.arrow.up.fill", Color(hex: 0xe0a92e), "Importar movimientos", valor: "CSV")
+                }
 
                 seccion("Sobre Chinola")
-                VStack(spacing: 0) {
-                    fila("questionmark.circle", "Ayuda y guía", valor: nil)
-                    sep()
-                    fila("checkmark.shield", "Privacidad y términos", valor: nil)
-                }.tarjeta()
-
-                Text("Versión v1.0.60 · nativo")
+                Grupo {
+                    fila("play.circle.fill", .pos, "Ver el tour otra vez", valor: "10 pasos")
+                    Divisor()
+                    fila("questionmark.circle.fill", .info, "Ayuda y guía", valor: "")
+                    Divisor()
+                    fila("checkmark.shield.fill", .sav, "Privacidad y términos", valor: "")
+                }
+                Text("Versión v1.0.71 · nativo")
                     .font(.system(size: 12)).foregroundColor(.pmut)
-                    .padding(.leading, 4)
+                    .padding(.leading, 4).padding(.top, 2)
 
                 Color.clear.frame(height: 108)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 14)
         }
         .background(Color.scr)
     }
 
     private func seccion(_ t: String) -> some View {
-        Text(t.uppercased()).font(.system(size: 12, weight: .heavy)).tracking(0.4)
-            .foregroundColor(.pmut).padding(.leading, 4).padding(.top, 4)
+        Text(t.uppercased()).font(.system(size: 12.5, weight: .semibold)).tracking(0.3)
+            .foregroundColor(.pmut).padding(.leading, 16).padding(.bottom, -6)
     }
 
-    private func sep() -> some View { Divider().overlay(Color.line).padding(.leading, 42) }
-
-    private func fila(_ icono: String, _ titulo: String, valor: String?) -> some View {
+    private func fila(_ icono: String, _ tinte: Color, _ titulo: String, valor: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: icono).font(.system(size: 17, weight: .regular))
-                .foregroundColor(.ink).frame(width: 26)
-            Text(titulo).font(.system(size: 15.5, weight: .medium)).foregroundColor(.ink)
+            IconoCuadro(sistema: icono, tinte: tinte)
+            Text(titulo).font(.system(size: 16)).foregroundColor(.ink)
             Spacer(minLength: 8)
-            if let v = valor {
-                Text(v).font(.system(size: 14)).foregroundColor(.pmut)
+            if !valor.isEmpty {
+                Text(valor).font(.system(size: 14)).foregroundColor(.pmut)
             }
-            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundColor(.pmut)
+            Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundColor(Color.pmut.opacity(0.6))
         }
-        .padding(.vertical, 12)
+        .padding(.horizontal, 14).padding(.vertical, 11)
     }
 }
