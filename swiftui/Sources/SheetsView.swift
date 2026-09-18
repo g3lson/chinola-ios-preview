@@ -10,34 +10,74 @@ struct FondoAtenuado: View {
     }
 }
 
-// Botón circular de la cabecera (× / ✓).
+// Botón circular liquid glass de la cabecera (× cerrar): material translúcido
+// como los botones del sistema en iOS, con brillo arriba y sombrita suave.
 struct BotonCirculo: View {
     let icono: String
-    var fg: Color = .ink
-    var bg: Color = Color.soft
+    var fg: Color = .pmut
     var body: some View {
         Image(systemName: icono).font(.system(size: 15, weight: .bold)).foregroundColor(fg)
-            .frame(width: 34, height: 34).background(bg).clipShape(Circle())
+            .frame(width: 34, height: 34)
+            .background(.ultraThinMaterial, in: Circle())
+            .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.6))
+            .shadow(color: .black.opacity(0.10), radius: 6, y: 2)
     }
 }
 
-// Cabecera fija de una hoja: asa + (× / título / ✓). Queda fuera del scroll, así
-// que no se mueve ni se tapa al desplazar.
+// Botón «Guardar» liquid glass: cápsula de material con un tinte dorado (el
+// acento Chinola) y el check, como una acción destacada nativa de iOS 26.
+struct BotonGuardar: View {
+    var texto: String = "Guardar"
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "checkmark").font(.system(size: 12, weight: .heavy))
+            Text(texto).font(.system(size: 14, weight: .bold))
+        }
+        .foregroundColor(Color(hex: 0x3a2c00))
+        .padding(.horizontal, 15).padding(.vertical, 8)
+        .background(
+            Capsule().fill(.ultraThinMaterial)
+                .overlay(Capsule().fill(Color.acc.opacity(0.55)))
+        )
+        .overlay(Capsule().stroke(Color.white.opacity(0.45), lineWidth: 0.6))
+        .shadow(color: Color.acc.opacity(0.35), radius: 8, y: 2)
+    }
+}
+
+// Botón de acción a lo ancho, liquid glass (Guardar/Confirmar al pie de una hoja).
+struct BotonAncho: View {
+    let texto: String
+    var icono: String? = nil
+    var body: some View {
+        HStack(spacing: 6) {
+            if let ic = icono { Image(systemName: ic).font(.system(size: 15, weight: .heavy)) }
+            Text(texto).font(.system(size: 15.5, weight: .bold))
+        }
+        .foregroundColor(Color(hex: 0x3a2c00))
+        .frame(maxWidth: .infinity).padding(.vertical, 15)
+        .background(
+            Capsule().fill(.ultraThinMaterial)
+                .overlay(Capsule().fill(Color.acc.opacity(0.6)))
+        )
+        .overlay(Capsule().stroke(Color.white.opacity(0.5), lineWidth: 0.7))
+        .shadow(color: Color.acc.opacity(0.4), radius: 12, y: 4)
+    }
+}
+
+// Cabecera fija de una hoja: asa + (× / título / Guardar). El título va centrado
+// en un ZStack para que no se descuadre aunque el botón de la derecha sea ancho.
 struct CabeceraHoja: View {
     let titulo: String
     var conCheck: Bool = false
     var body: some View {
         VStack(spacing: 0) {
             Capsule().fill(Color.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 10)
-            HStack {
-                BotonCirculo(icono: "xmark")
-                Spacer()
+            ZStack {
                 Text(titulo).font(.system(size: 17, weight: .bold)).foregroundColor(.ink)
-                Spacer()
-                if conCheck {
-                    BotonCirculo(icono: "checkmark", fg: Color(hex: 0x20180a), bg: .acc)
-                } else {
-                    Color.clear.frame(width: 34, height: 34)
+                HStack {
+                    BotonCirculo(icono: "xmark")
+                    Spacer()
+                    if conCheck { BotonGuardar() }
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 14)
