@@ -46,8 +46,9 @@ struct RootView: View {
             default: DashboardView()
             }
 
-            // «+» flotante, salvo en Perfil (que no lo tiene en la app).
-            if tab != 4 {
+            // «+» flotante solo en Resumen: en Movs., Cuentas y Plan el «+» vive
+            // arriba (junto al título), y Perfil no lo tiene.
+            if tab == 0 {
                 Button {} label: {
                     Image(systemName: "plus")
                         .font(.system(size: 24, weight: .semibold))
