@@ -62,15 +62,22 @@ jobs:
           xcrun simctl boot "$DEV" || true
           xcrun simctl bootstatus "$DEV" -b || true
           xcrun simctl install "$DEV" "$APP"
-          xcrun simctl launch "$DEV" "$APP_ID"
-          sleep 7
-          xcrun simctl io "$DEV" screenshot dashboard.png
-          echo "Captura tomada."
+          mkdir -p capturas
+          # Arrancar la app en cada pestaña (CHINOLA_TAB) y capturar cada pantalla.
+          NOMBRES=(resumen movs cuentas plan perfil)
+          for i in 0 1 2 3 4; do
+            xcrun simctl terminate "$DEV" "$APP_ID" 2>/dev/null || true
+            SIMCTL_CHILD_CHINOLA_TAB=$i xcrun simctl launch "$DEV" "$APP_ID"
+            sleep 4
+            xcrun simctl io "$DEV" screenshot "capturas/${i}-${NOMBRES[$i]}.png"
+            echo "Captura ${NOMBRES[$i]} tomada."
+          done
+          ls -la capturas
 
       - name: Subir la captura
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dashboard-preview
-          path: swiftui/dashboard.png
+          path: swiftui/capturas/*.png
           if-no-files-found: warn

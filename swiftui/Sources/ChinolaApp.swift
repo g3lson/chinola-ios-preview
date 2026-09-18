@@ -10,9 +10,12 @@ struct ChinolaApp: App {
     }
 }
 
-// La raíz: el dashboard, el «+» flotante y la barra inferior flotante.
+// La raíz: la pantalla de la pestaña activa, el «+» flotante y la barra inferior
+// flotante. Cada pestaña muestra su propia pantalla.
 struct RootView: View {
-    @State private var tab = 0
+    // La pestaña inicial se puede fijar con la variable de entorno CHINOLA_TAB
+    // (0..4); así el CI arranca la app en cada pantalla y saca su captura.
+    @State private var tab = Int(ProcessInfo.processInfo.environment["CHINOLA_TAB"] ?? "0") ?? 0
     // Ajuste: mostrar u ocultar los títulos del menú (irá en Ajustes de la app).
     @State private var titulosMenu = true
 
@@ -20,21 +23,29 @@ struct RootView: View {
         ZStack(alignment: .bottom) {
             Color.scr.ignoresSafeArea()
 
-            DashboardView()
-
-            // «+» flotante, por encima de la barra, a la derecha.
-            Button {} label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundColor(Color(hex: 0x20180a))
-                    .frame(width: 58, height: 58)
-                    .background(Color.acc)
-                    .clipShape(Circle())
-                    .shadow(color: .black.opacity(0.22), radius: 10, y: 4)
+            switch tab {
+            case 1: MovsView()
+            case 2: CuentasView()
+            case 3: PlanView()
+            case 4: PerfilView()
+            default: DashboardView()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            .padding(.trailing, 20)
-            .padding(.bottom, 104)
+
+            // «+» flotante, salvo en Perfil (que no lo tiene en la app).
+            if tab != 4 {
+                Button {} label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(Color(hex: 0x20180a))
+                        .frame(width: 58, height: 58)
+                        .background(Color.acc)
+                        .clipShape(Circle())
+                        .shadow(color: .black.opacity(0.22), radius: 10, y: 4)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(.trailing, 20)
+                .padding(.bottom, 104)
+            }
 
             BottomBar(tab: $tab, titulos: titulosMenu)
         }
