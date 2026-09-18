@@ -52,6 +52,12 @@ struct RootView: View {
             case "det-tarjeta": DetalleTarjetaView()
             case "det-meta": DetalleMetaView()
             case "det-movimiento": DetalleMovimientoView()
+            case "bienvenida": BienvenidaView()
+            case "registro": AccesoView(registro: true)
+            case "login": AccesoView(registro: false)
+            case "selector": SelectorLibretaView()
+            case "agregar-libreta": AgregarLibretaView()
+            case "invitacion": InvitacionView()
             default: appTabs
             }
         }

@@ -100,6 +100,12 @@ jobs:
             "CHINOLA_SCREEN=det-tarjeta|31-detalle-tarjeta"
             "CHINOLA_SCREEN=det-meta|32-detalle-meta"
             "CHINOLA_SCREEN=det-movimiento|33-detalle-movimiento"
+            "CHINOLA_SCREEN=bienvenida|34-bienvenida"
+            "CHINOLA_SCREEN=registro|35-registro"
+            "CHINOLA_SCREEN=login|36-login"
+            "CHINOLA_SCREEN=selector|37-selector-libreta"
+            "CHINOLA_SCREEN=agregar-libreta|38-agregar-libreta"
+            "CHINOLA_SCREEN=invitacion|39-invitacion"
           )
           for spec in "${CAPTURAS[@]}"; do
             vars="${spec%%|*}"; name="${spec##*|}"
