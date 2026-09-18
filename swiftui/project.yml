@@ -1,0 +1,30 @@
+# Proyecto SwiftUI de Chinola (versión nativa, en construcción).
+# El .xcodeproj se genera con XcodeGen a partir de este archivo, así no hay que
+# mantener a mano el project.pbxproj (que sin Mac es un dolor). El CI corre
+# `xcodegen generate` antes de compilar.
+name: Chinola
+options:
+  bundleIdPrefix: do.com.fente
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+targets:
+  Chinola:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: do.com.fente.chinolaswift
+        PRODUCT_NAME: Chinola
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGN_IDENTITY: ""

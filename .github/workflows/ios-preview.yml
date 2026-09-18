@@ -1,0 +1,69 @@
+# Vista previa del Chinola nativo (SwiftUI) en el simulador de iOS.
+#
+# No firma ni sube a TestFlight: solo compila para el simulador, arranca un
+# iPhone, lanza la app y guarda una captura como artefacto. Así se puede ver
+# cómo va quedando la versión nativa sin un Mac y sin tocar la firma de Apple.
+name: iOS preview (SwiftUI)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "swiftui/**"
+      - ".github/workflows/ios-preview.yml"
+  workflow_dispatch:
+
+jobs:
+  preview:
+    runs-on: macos-14
+    timeout-minutes: 25
+    env:
+      SIM: iPhone 15
+      APP_ID: do.com.fente.chinolaswift
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Herramientas de Xcode
+        run: |
+          xcodebuild -version
+          brew install xcodegen
+
+      - name: Generar el proyecto de Xcode
+        working-directory: swiftui
+        run: xcodegen generate
+
+      - name: Compilar para el simulador
+        working-directory: swiftui
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Chinola.xcodeproj \
+            -scheme Chinola \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath dd \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Arrancar el iPhone simulado y capturar
+        working-directory: swiftui
+        run: |
+          set -e
+          APP="$(find dd/Build/Products -name '*.app' -type d | head -1)"
+          echo "App: $APP"
+          # Arrancar el simulador (ya existe en el runner) y esperar a que esté listo.
+          xcrun simctl boot "$SIM" || true
+          xcrun simctl bootstatus "$SIM" -b || true
+          xcrun simctl install "$SIM" "$APP"
+          xcrun simctl launch "$SIM" "$APP_ID"
+          sleep 7
+          xcrun simctl io "$SIM" screenshot dashboard.png
+          echo "Captura tomada."
+
+      - name: Subir la captura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-preview
+          path: swiftui/dashboard.png
+          if-no-files-found: warn
