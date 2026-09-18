@@ -10,13 +10,13 @@ struct FondoAtenuado: View {
     }
 }
 
-// Hoja «Nuevo movimiento» (la que abre el «+»), calcada de la app.
+// Hoja «Nuevo movimiento» (la que abre el «+»), con el look nativo de iOS:
+// cabecera limpia, secciones agrupadas en tarjetas, toggle nativo y filas
+// navegables. Fluida, nada se reajusta raro.
 struct NuevoMovView: View {
     @State private var tipo = 2
-    @State private var cat = 2
     @State private var repetir = false
     private let tipos = ["Ingreso", "Fijo", "Variable", "Ahorro"]
-    private let cats = ["Personal", "Ahorro", "Otros"]
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -26,114 +26,92 @@ struct NuevoMovView: View {
     }
 
     private var hoja: some View {
-        VStack(spacing: 16) {
-            Capsule().fill(Color.line).frame(width: 40, height: 5).padding(.top, 8)
-
+        VStack(spacing: 0) {
+            // Asa + cabecera.
+            Capsule().fill(Color.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 10)
             HStack {
-                circulo("xmark")
+                circulo("xmark", .ink, Color.soft)
                 Spacer()
                 Text("Nuevo movimiento").font(.system(size: 17, weight: .bold)).foregroundColor(.ink)
                 Spacer()
-                circulo("checkmark")
+                circulo("checkmark", Color(hex: 0x20180a), .acc)
             }
+            .padding(.horizontal, 16).padding(.bottom, 14)
 
-            // Tipo.
-            HStack(spacing: 4) {
-                ForEach(tipos.indices, id: \.self) { i in
-                    Text(tipos[i])
-                        .font(.system(size: 13.5, weight: i == tipo ? .bold : .semibold))
-                        .foregroundColor(i == tipo ? .white : .pmut)
-                        .frame(maxWidth: .infinity).padding(.vertical, 9)
-                        .background(i == tipo ? Color.side : Color.clear)
-                        .clipShape(Capsule())
-                        .onTapGesture { tipo = i }
-                }
-            }
-            .padding(4).background(Color.soft).clipShape(Capsule())
-
-            // Monto.
-            VStack(spacing: 10) {
-                Text("MONTO").font(.system(size: 12, weight: .heavy)).tracking(0.5).foregroundColor(.pmut)
-                HStack {
-                    paso("minus")
-                    Spacer()
-                    Text("0").font(.system(size: 34, weight: .heavy)).foregroundColor(.ink)
-                    Spacer()
-                    paso("plus")
-                }
-            }
-
-            campo(titulo: "DESCRIPCIÓN") {
-                Text("Descripción").font(.system(size: 15)).foregroundColor(.pmut)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 15).padding(.vertical, 13)
-                    .background(Color.soft).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-
-            campo(titulo: "CATEGORÍA") {
-                HStack(spacing: 8) {
-                    ForEach(cats.indices, id: \.self) { i in
-                        Text(cats[i]).font(.system(size: 13.5, weight: .semibold))
-                            .foregroundColor(i == cat ? .ink : .pmut)
-                            .padding(.horizontal, 14).padding(.vertical, 9)
-                            .background(Color.card)
-                            .clipShape(Capsule())
-                            .overlay(Capsule().stroke(i == cat ? Color.acc : Color.line, lineWidth: i == cat ? 2 : 1))
-                            .onTapGesture { cat = i }
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 18) {
+                    // Tipo.
+                    HStack(spacing: 4) {
+                        ForEach(tipos.indices, id: \.self) { i in
+                            Text(tipos[i])
+                                .font(.system(size: 13.5, weight: i == tipo ? .bold : .semibold))
+                                .foregroundColor(i == tipo ? .white : .pmut)
+                                .frame(maxWidth: .infinity).padding(.vertical, 9)
+                                .background(i == tipo ? Color.side : Color.clear)
+                                .clipShape(Capsule())
+                                .onTapGesture { tipo = i }
+                        }
                     }
-                    Spacer(minLength: 0)
-                }
-            }
+                    .padding(4).background(Color.soft).clipShape(Capsule())
 
-            campo(titulo: "CUÁNDO Y DE DÓNDE") {
-                VStack(spacing: 10) {
-                    fila("calendar", "18/09/2026")
-                    fila("creditcard", "Efectivo")
-                }
-            }
+                    // Monto.
+                    Grupo {
+                        HStack {
+                            boton("minus")
+                            Spacer()
+                            VStack(spacing: 1) {
+                                Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(.pmut)
+                                Text("DOP 0").font(.system(size: 30, weight: .heavy)).foregroundColor(.ink)
+                            }
+                            Spacer()
+                            boton("plus")
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 12)
+                    }
 
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Repetir cada mes").font(.system(size: 15, weight: .bold)).foregroundColor(.ink)
-                    Text("Para lo que siempre pagas: renta, luz, colegio.")
-                        .font(.system(size: 12.5)).foregroundColor(.pmut).fixedSize(horizontal: false, vertical: true)
+                    // Descripción.
+                    Grupo { FilaCampo(placeholder: "Descripción o concepto") }
+
+                    // Cuándo y de dónde.
+                    VStack(spacing: 6) {
+                        SeccionTitulo(texto: "Cuándo y de dónde")
+                        Grupo {
+                            FilaNav(icono: "calendar", tinte: .neg, titulo: "Fecha", valor: "18/09/2026")
+                            Divisor()
+                            FilaNav(icono: "creditcard.fill", tinte: .info, titulo: "Pagado con", valor: "Efectivo")
+                        }
+                    }
+
+                    // Categoría.
+                    VStack(spacing: 6) {
+                        SeccionTitulo(texto: "Categoría")
+                        Grupo { FilaNav(icono: "tag.fill", tinte: Color(hex: 0xe0a92e), titulo: "Categoría", valor: "Otros") }
+                    }
+
+                    // Repetir.
+                    VStack(spacing: 6) {
+                        Grupo { FilaToggle(icono: "repeat", tinte: .sav, titulo: "Repetir cada mes", on: $repetir) }
+                        NotaPie(texto: "Para lo que siempre pagas: renta, luz, colegio.")
+                    }
+
+                    Color.clear.frame(height: 8)
                 }
-                Spacer(minLength: 8)
-                ZStack(alignment: repetir ? .trailing : .leading) {
-                    Capsule().fill(repetir ? Color.acc : Color.line).frame(width: 46, height: 28)
-                    Circle().fill(.white).frame(width: 22, height: 22).padding(3)
-                }.onTapGesture { repetir.toggle() }
+                .padding(.horizontal, 16)
             }
         }
-        .padding(.horizontal, 16).padding(.bottom, 24)
-        .frame(maxWidth: .infinity)
-        .background(Color.card)
+        .padding(.bottom, 20)
+        .frame(maxWidth: .infinity, maxHeight: 620)
+        .background(Color.scr)
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
     }
 
-    private func circulo(_ icono: String) -> some View {
-        Image(systemName: icono).font(.system(size: 15, weight: .bold)).foregroundColor(.ink)
-            .frame(width: 34, height: 34).background(Color.soft).clipShape(Circle())
+    private func circulo(_ icono: String, _ fg: Color, _ bg: Color) -> some View {
+        Image(systemName: icono).font(.system(size: 15, weight: .bold)).foregroundColor(fg)
+            .frame(width: 34, height: 34).background(bg).clipShape(Circle())
     }
-    private func paso(_ icono: String) -> some View {
-        Image(systemName: icono).font(.system(size: 18, weight: .bold)).foregroundColor(.ink)
-            .frame(width: 44, height: 44).background(Color.soft).clipShape(Circle())
-    }
-    private func fila(_ icono: String, _ txt: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icono).font(.system(size: 15, weight: .medium)).foregroundColor(.pmut).frame(width: 22)
-            Text(txt).font(.system(size: 15)).foregroundColor(.ink)
-            Spacer()
-            Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold)).foregroundColor(.pmut)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 13)
-        .background(Color.soft).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-    }
-    private func campo<C: View>(titulo: String, @ViewBuilder _ c: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(titulo).font(.system(size: 12, weight: .heavy)).tracking(0.4).foregroundColor(.pmut)
-            c()
-        }.frame(maxWidth: .infinity, alignment: .leading)
+    private func boton(_ icono: String) -> some View {
+        Image(systemName: icono).font(.system(size: 17, weight: .bold)).foregroundColor(.ink)
+            .frame(width: 42, height: 42).background(Color.soft).clipShape(Circle())
     }
 }
 
