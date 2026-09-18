@@ -163,6 +163,28 @@ final class AppEstado: ObservableObject {
     }
     var presupuestoTotal: Double { libreta.categorias.filter { $0.tipo == "Gasto" }.reduce(0) { $0 + $1.limite } }
 
+    // Patrimonio mes a mes: parte del patrimonio de hoy y camina hacia atrás
+    // restando el neto (ingresos − gastos) de cada mes. Devuelve del más viejo
+    // al más nuevo.
+    struct PuntoTendencia: Identifiable { let id = UUID(); let label: String; let valor: Double; let cambio: Double }
+    func tendencia(_ n: Int = 12) -> [PuntoTendencia] {
+        let cal = Calendar.current
+        let ym = DateFormatter(); ym.dateFormat = "yyyy-MM"; ym.locale = Locale(identifier: "en_US_POSIX")
+        let etiqueta = DateFormatter(); etiqueta.dateFormat = "MMM yy"; etiqueta.locale = Locale(identifier: "es")
+        var res: [PuntoTendencia] = []
+        var running = patrimonio
+        for k in 0..<n {
+            guard let d = cal.date(byAdding: .month, value: -k, to: Date()) else { continue }
+            let mes = ym.string(from: d)
+            let ing = libreta.tx.filter { $0.tipo == .ingreso && String($0.fecha.prefix(7)) == mes }.reduce(0.0) { $0 + abs($1.monto) }
+            let gas = libreta.tx.filter { $0.tipo.esGasto && String($0.fecha.prefix(7)) == mes }.reduce(0.0) { $0 + abs($1.monto) }
+            let neto = ing - gas
+            res.append(PuntoTendencia(label: etiqueta.string(from: d).capitalized, valor: running, cambio: neto))
+            running -= neto
+        }
+        return res.reversed()
+    }
+
     func nombreMedio(_ medio: String) -> String {
         if let idc = Int(medio.replacingOccurrences(of: "cuenta:", with: "")), medio.hasPrefix("cuenta:"),
            let c = libreta.cuentas.first(where: { $0.id == idc }) { return c.nombre }

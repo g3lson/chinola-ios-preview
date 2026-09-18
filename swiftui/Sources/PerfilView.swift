@@ -4,6 +4,7 @@ import SwiftUI
 // secciones nativas (Cuenta / Preferencias / Datos / Sobre Chinola), con iconos
 // en cuadros de color, como los Ajustes de iOS.
 struct PerfilView: View {
+    @EnvironmentObject var estado: AppEstado
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 18) {
@@ -35,7 +36,7 @@ struct PerfilView: View {
                 Grupo {
                     fila("person.fill", .pos, "Mi nombre", valor: "Gelson")
                     Divisor()
-                    fila("book.closed.fill", .info, "Libretas y permisos", valor: "1")
+                    fila("book.closed.fill", .info, "Libretas y permisos", valor: "\(estado.datos.libretas.count)")
                 }
 
                 seccion("Preferencias")

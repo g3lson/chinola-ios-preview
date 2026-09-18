@@ -1,14 +1,14 @@
 import SwiftUI
 
-// Pantalla «Tendencia» (el botón de la tarjeta de Patrimonio): el rango de meses,
-// un gráfico de área y la lista mes a mes. Estilo Chinola.
+// Pantalla «Tendencia» (el botón de la tarjeta de Patrimonio): gráfico de área
+// del patrimonio mes a mes y la lista con el cambio de cada mes. Datos reales.
 struct TendenciaView: View {
+    @EnvironmentObject var estado: AppEstado
     var onClose: () -> Void = {}
-    private let meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Barra: × y título.
+        let puntos = estado.tendencia()
+        return VStack(spacing: 0) {
             ZStack {
                 Text("Tendencia").font(.system(size: 17, weight: .bold)).foregroundColor(.ink)
                 HStack {
@@ -21,40 +21,40 @@ struct TendenciaView: View {
             }
             .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 4)
 
-            // Rango.
             HStack(spacing: 16) {
                 Image(systemName: "chevron.left").font(.system(size: 13, weight: .bold)).foregroundColor(.pmut)
-                Text("2026.01 ~ 2026.12").font(.system(size: 15, weight: .semibold)).foregroundColor(.ink)
+                Text("Últimos 12 meses").font(.system(size: 15, weight: .semibold)).foregroundColor(.ink)
                 Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold)).foregroundColor(.pmut)
             }
             .padding(.vertical, 8)
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
-                    // Gráfico.
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            HStack(spacing: 5) {
-                                Text("Patrimonio").font(.system(size: 14, weight: .semibold)).foregroundColor(.info)
-                                Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold)).foregroundColor(.info)
-                            }
+                            Text("Patrimonio").font(.system(size: 14, weight: .semibold)).foregroundColor(.info)
                             Spacer()
-                            Text("DOP 0").font(.system(size: 14, weight: .heavy)).foregroundColor(.pos)
+                            Text(fmtDinero(estado.patrimonio)).font(.system(size: 14, weight: .heavy)).foregroundColor(.pos)
                         }
-                        GraficoArea().frame(height: 120)
+                        GraficoArea(valores: puntos.map { $0.valor }).frame(height: 130)
                     }
                     .tarjeta()
 
-                    // Lista mes a mes.
                     VStack(spacing: 0) {
-                        ForEach(meses.indices.reversed(), id: \.self) { i in
+                        let filas = Array(puntos.reversed())
+                        ForEach(filas.indices, id: \.self) { i in
                             HStack {
-                                Text("\(meses[i]) 2026").font(.system(size: 15, weight: .semibold)).foregroundColor(.ink)
+                                Text(filas[i].label).font(.system(size: 15, weight: .semibold)).foregroundColor(.ink)
                                 Spacer()
-                                Text("DOP 0").font(.system(size: 15, weight: .heavy)).foregroundColor(.ink)
+                                VStack(alignment: .trailing, spacing: 1) {
+                                    Text(fmtDinero(filas[i].valor)).font(.system(size: 15, weight: .heavy)).foregroundColor(.ink)
+                                    Text((filas[i].cambio >= 0 ? "+ " : "− ") + fmtDinero(filas[i].cambio))
+                                        .font(.system(size: 11.5, weight: .bold))
+                                        .foregroundColor(filas[i].cambio >= 0 ? .pos : .neg)
+                                }
                             }
-                            .padding(.vertical, 13)
-                            if i > 0 { Divider().overlay(Color.line) }
+                            .padding(.vertical, 12)
+                            if i < filas.count - 1 { Divider().overlay(Color.line) }
                         }
                     }
                     .tarjeta()
@@ -69,34 +69,42 @@ struct TendenciaView: View {
     }
 }
 
-// Un área tenue plana (datos en cero), como el gráfico vacío del arranque.
+// Área del patrimonio a partir de una serie de valores (viejo → nuevo).
 struct GraficoArea: View {
+    var valores: [Double] = []
     var body: some View {
         GeometryReader { g in
             let w = g.size.width, h = g.size.height
+            let vals = valores.isEmpty ? [0, 0] : valores
+            let maxV = max(vals.max() ?? 1, 1)
+            let minV = min(vals.min() ?? 0, 0)
+            let rango = max(maxV - minV, 1)
+            let puntos: [CGPoint] = vals.enumerated().map { i, v in
+                let x = vals.count > 1 ? w * CGFloat(i) / CGFloat(vals.count - 1) : 0
+                let y = h - (h - 8) * CGFloat((v - minV) / rango) - 4
+                return CGPoint(x: x, y: y)
+            }
             ZStack {
-                // Rejilla.
                 VStack(spacing: 0) {
                     ForEach(0..<4, id: \.self) { _ in
-                        Rectangle().fill(Color.line).frame(height: 1)
-                        Spacer()
+                        Rectangle().fill(Color.line).frame(height: 1); Spacer()
                     }
                 }
-                // Línea plana con relleno.
                 Path { p in
-                    p.move(to: CGPoint(x: 0, y: h * 0.5))
-                    p.addLine(to: CGPoint(x: w, y: h * 0.5))
-                    p.addLine(to: CGPoint(x: w, y: h))
-                    p.addLine(to: CGPoint(x: 0, y: h))
+                    guard let first = puntos.first else { return }
+                    p.move(to: CGPoint(x: first.x, y: h))
+                    p.addLine(to: first)
+                    for pt in puntos.dropFirst() { p.addLine(to: pt) }
+                    p.addLine(to: CGPoint(x: puntos.last!.x, y: h))
                     p.closeSubpath()
                 }
-                .fill(LinearGradient(colors: [Color.acc.opacity(0.28), Color.acc.opacity(0.02)],
-                                     startPoint: .top, endPoint: .bottom))
+                .fill(LinearGradient(colors: [Color.acc.opacity(0.30), Color.acc.opacity(0.02)], startPoint: .top, endPoint: .bottom))
                 Path { p in
-                    p.move(to: CGPoint(x: 0, y: h * 0.5))
-                    p.addLine(to: CGPoint(x: w, y: h * 0.5))
+                    guard let first = puntos.first else { return }
+                    p.move(to: first)
+                    for pt in puntos.dropFirst() { p.addLine(to: pt) }
                 }
-                .stroke(Color.acc, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .stroke(Color.acc, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
             }
         }
     }
