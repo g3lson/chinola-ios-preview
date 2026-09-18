@@ -49,16 +49,22 @@ struct SegmentoPildora: View {
     }
 }
 
-// Cuerpo de hoja reutilizable: cabecera fija + scroll + botón guardar abajo.
+// Cuerpo de hoja reutilizable: cabecera fija + scroll. Si se le pasan `onClose`
+// y `guardar`, los botones × y Guardar quedan cableados de verdad.
 struct HojaForm<Contenido: View>: View {
     let titulo: String
-    var guardar: String? = nil
+    var onClose: (() -> Void)? = nil
+    var guardar: (() -> Void)? = nil
     @ViewBuilder var contenido: Contenido
     var body: some View {
         ZStack(alignment: .bottom) {
             FondoAtenuado()
             VStack(spacing: 0) {
-                CabeceraHoja(titulo: titulo, conCheck: true)
+                if let onClose = onClose, let guardar = guardar {
+                    CabeceraHojaAcc(titulo: titulo, onClose: onClose, guardar: guardar)
+                } else {
+                    CabeceraHoja(titulo: titulo, conCheck: true)
+                }
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
                         contenido
@@ -74,56 +80,120 @@ struct HojaForm<Contenido: View>: View {
 
 // ── Transferencia entre cuentas ────────────────────────────────────────────
 struct TransferenciaView: View {
+    @EnvironmentObject var estado: AppEstado
+    var onClose: () -> Void = {}
+    @State private var monto = ""
+    @State private var desde = 0
+    @State private var hacia = 0
+    @State private var nota = ""
+
     var body: some View {
-        HojaForm(titulo: "Transferencia") {
-            MontoBloque()
+        HojaForm(titulo: "Transferencia", onClose: onClose, guardar: guardar) {
+            MontoEditable(monto: $monto)
             VStack(spacing: 6) {
                 SeccionTitulo(texto: "De dónde y hacia dónde")
                 Grupo {
-                    FilaNav(icono: "banknote.fill", tinte: .pos, titulo: "Desde", valor: "Efectivo")
+                    MenuCuenta(estado: estado, titulo: "Desde", icono: "banknote.fill", tinte: .pos, sel: $desde)
                     Divisor()
-                    FilaNav(icono: "building.columns.fill", tinte: .info, titulo: "Hacia", valor: "Banco Popular")
+                    MenuCuenta(estado: estado, titulo: "Hacia", icono: "building.columns.fill", tinte: .info, sel: $hacia)
                 }
             }
             VStack(spacing: 6) {
                 SeccionTitulo(texto: "Detalles")
-                Grupo {
-                    FilaNav(icono: "calendar", tinte: .neg, titulo: "Fecha", valor: "18/09/2026")
-                    Divisor(sangria: 16)
-                    FilaCampo(placeholder: "Nota (opcional)")
+                Grupo { CampoTexto(placeholder: "Nota (opcional)", texto: $nota) }
+            }
+        }
+        .onAppear {
+            let c = estado.libreta.cuentas
+            if desde == 0 { desde = c.first?.id ?? 0 }
+            if hacia == 0 { hacia = (c.count > 1 ? c[1].id : c.first?.id) ?? 0 }
+        }
+    }
+
+    private func guardar() {
+        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        guard n > 0, desde != hacia else { onClose(); return }
+        let mov = Movimiento(id: "tr\(Int(Date().timeIntervalSince1970 * 1000))",
+                             concepto: nota.isEmpty ? "Transferencia" : nota,
+                             categoria: "Otros", tipo: .transferencia, monto: n, fecha: Movimiento.hoy(),
+                             medio: "cuenta:\(desde)", destino: "cuenta:\(hacia)")
+        estado.agregar(mov)
+        onClose()
+    }
+}
+
+// Bloque de monto EDITABLE (— DOP [campo] +) para los formularios funcionales.
+struct MontoEditable: View {
+    @Binding var monto: String
+    var moneda: String = "DOP"
+    var body: some View {
+        Grupo {
+            VStack(spacing: 2) {
+                Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(.pmut)
+                HStack(spacing: 6) {
+                    Text(moneda).font(.system(size: 20, weight: .heavy)).foregroundColor(.pmut)
+                    TextField("0", text: $monto)
+                        .font(.system(size: 34, weight: .heavy)).foregroundColor(.ink)
+                        .keyboardType(.numberPad).multilineTextAlignment(.center).fixedSize()
                 }
             }
+            .frame(maxWidth: .infinity).padding(.vertical, 16)
         }
     }
 }
 
-// ── Préstamo / fiado (agregar y editar) ────────────────────────────────────
-struct PrestamoView: View {
-    var editar = false
-    @State private var lado = 0   // 0 = presté · 1 = me prestaron
+// Fila-menú para elegir una cuenta de la libreta.
+struct MenuCuenta: View {
+    let estado: AppEstado
+    let titulo: String
+    let icono: String
+    let tinte: Color
+    @Binding var sel: Int
     var body: some View {
-        HojaForm(titulo: editar ? "Editar el préstamo" : "Préstamo o fiado") {
+        Menu {
+            ForEach(estado.libreta.cuentas) { c in Button(c.nombre) { sel = c.id } }
+        } label: {
+            HStack(spacing: 12) {
+                IconoCuadro(sistema: icono, tinte: tinte)
+                Text(titulo).font(.system(size: 16)).foregroundColor(.ink)
+                Spacer(minLength: 8)
+                Text(estado.libreta.cuentas.first { $0.id == sel }?.nombre ?? "Efectivo")
+                    .font(.system(size: 15)).foregroundColor(.pmut)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold)).foregroundColor(Color.pmut.opacity(0.6))
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+        }
+    }
+}
+
+// ── Préstamo / fiado (agregar) ─────────────────────────────────────────────
+struct PrestamoView: View {
+    @EnvironmentObject var estado: AppEstado
+    var onClose: () -> Void = {}
+    @State private var lado = 0   // 0 = yo presté (meDeben) · 1 = me prestaron (debo)
+    @State private var monto = ""
+    @State private var nombre = ""
+
+    var body: some View {
+        HojaForm(titulo: "Préstamo o fiado", onClose: onClose, guardar: guardar) {
             SegmentoPildora(items: ["Yo presté", "Me prestaron"], sel: $lado)
-            MontoBloque()
+            MontoEditable(monto: $monto)
             VStack(spacing: 6) {
                 SeccionTitulo(texto: lado == 0 ? "¿A quién le prestaste?" : "¿Quién te prestó?")
-                Grupo {
-                    FilaCampo(placeholder: "Nombre de la persona")
-                    Divisor(sangria: 16)
-                    FilaCampo(placeholder: "Concepto (ej. fiado colmado)")
-                }
-            }
-            VStack(spacing: 6) {
-                SeccionTitulo(texto: "Fechas y cuenta")
-                Grupo {
-                    FilaNav(icono: "calendar", tinte: .neg, titulo: "Fecha", valor: "18/09/2026")
-                    Divisor()
-                    FilaNav(icono: "calendar.badge.clock", tinte: Color(hex: 0xe0a92e), titulo: "Fecha límite", valor: "Sin fecha")
-                    Divisor()
-                    FilaNav(icono: "banknote.fill", tinte: .info, titulo: "Cuenta", valor: "Efectivo")
-                }
+                Grupo { CampoTexto(placeholder: "Nombre de la persona", texto: $nombre) }
             }
         }
+    }
+
+    private func guardar() {
+        let n = nombre.trimmingCharacters(in: .whitespaces)
+        let total = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        guard !n.isEmpty, total > 0 else { onClose(); return }
+        var lb = estado.libreta
+        lb.prestamos.append(Prestamo(id: Int(Date().timeIntervalSince1970), nombre: n, total: total,
+                                     pagado: 0, color: "#825eb9", sentido: lado == 0 ? "meDeben" : "debo"))
+        estado.libreta = lb
+        onClose()
     }
 }
 
@@ -167,63 +237,80 @@ struct AporteView: View {
     }
 }
 
-// ── Meta de ahorro (agregar y editar) ──────────────────────────────────────
+// ── Meta de ahorro (agregar) ────────────────────────────────────────────────
 struct MetaView: View {
-    var editar = false
+    @EnvironmentObject var estado: AppEstado
+    var onClose: () -> Void = {}
+    @State private var nombre = ""
+    @State private var objetivo = ""
+    @State private var ahorrado = ""
+
     var body: some View {
-        HojaForm(titulo: editar ? "Editar la meta" : "Nueva meta") {
+        HojaForm(titulo: "Nueva meta", onClose: onClose, guardar: guardar) {
             VStack(spacing: 6) {
                 SeccionTitulo(texto: "¿Qué quieres lograr?")
                 Grupo {
-                    FilaCampo(placeholder: "Nombre (ej. Viaje a Punta Cana)")
+                    CampoTexto(placeholder: "Nombre (ej. Viaje a Punta Cana)", texto: $nombre)
                     Divisor(sangria: 16)
-                    FilaCampo(placeholder: "¿Cuánto necesitas?")
+                    CampoTexto(placeholder: "¿Cuánto necesitas?", texto: $objetivo, numero: true)
                     Divisor(sangria: 16)
-                    FilaCampo(placeholder: "Ya tienes ahorrado (opcional)")
-                }
-            }
-            VStack(spacing: 6) {
-                SeccionTitulo(texto: "Fecha e imagen")
-                Grupo {
-                    FilaNav(icono: "calendar.badge.clock", tinte: .neg, titulo: "Fecha límite", valor: "Sin fecha")
-                    Divisor()
-                    FilaNav(icono: "target", tinte: .sav, titulo: "Icono", valor: "Meta")
-                    Divisor()
-                    FilaNav(icono: "paintpalette.fill", tinte: Color(hex: 0xe0a92e), titulo: "Color", valor: "Morado")
+                    CampoTexto(placeholder: "Ya tienes ahorrado (opcional)", texto: $ahorrado, numero: true)
                 }
             }
         }
     }
+
+    private func guardar() {
+        let n = nombre.trimmingCharacters(in: .whitespaces)
+        let obj = Double(objetivo.replacingOccurrences(of: ",", with: "")) ?? 0
+        guard !n.isEmpty, obj > 0 else { onClose(); return }
+        var lb = estado.libreta
+        lb.metas.append(Meta(id: Int(Date().timeIntervalSince1970), nombre: n, meta: obj,
+                             ahorrado: Double(ahorrado.replacingOccurrences(of: ",", with: "")) ?? 0,
+                             color: "#825eb9", icono: "target"))
+        estado.libreta = lb
+        onClose()
+    }
 }
 
-// ── Tarjeta de crédito (agregar y editar) ──────────────────────────────────
+// ── Tarjeta de crédito (agregar) ────────────────────────────────────────────
 struct TarjetaView: View {
-    var editar = false
+    @EnvironmentObject var estado: AppEstado
+    var onClose: () -> Void = {}
+    @State private var nombre = ""
+    @State private var banco = ""
+    @State private var limite = ""
+    @State private var deuda = ""
+
     var body: some View {
-        HojaForm(titulo: editar ? "Editar la tarjeta" : "Nueva tarjeta") {
+        HojaForm(titulo: "Nueva tarjeta", onClose: onClose, guardar: guardar) {
             VStack(spacing: 6) {
                 SeccionTitulo(texto: "Datos de la tarjeta")
                 Grupo {
-                    FilaCampo(placeholder: "Nombre (ej. Visa Popular)")
+                    CampoTexto(placeholder: "Nombre (ej. Visa Popular)", texto: $nombre)
                     Divisor(sangria: 16)
-                    FilaCampo(placeholder: "Banco (opcional)")
+                    CampoTexto(placeholder: "Banco (opcional)", texto: $banco)
                     Divisor(sangria: 16)
-                    FilaCampo(placeholder: "Límite de crédito")
+                    CampoTexto(placeholder: "Límite de crédito", texto: $limite, numero: true)
                     Divisor(sangria: 16)
-                    FilaCampo(placeholder: "Deuda actual (opcional)")
-                }
-            }
-            VStack(spacing: 6) {
-                SeccionTitulo(texto: "Fechas y color")
-                Grupo {
-                    FilaNav(icono: "scissors", tinte: .neg, titulo: "Día de corte", valor: "25")
-                    Divisor()
-                    FilaNav(icono: "calendar.badge.exclamationmark", tinte: Color(hex: 0xe0a92e), titulo: "Día de pago", valor: "5")
-                    Divisor()
-                    FilaNav(icono: "paintpalette.fill", tinte: .sav, titulo: "Color", valor: "Rojo")
+                    CampoTexto(placeholder: "Deuda actual (opcional)", texto: $deuda, numero: true)
                 }
             }
         }
+    }
+
+    private func guardar() {
+        let n = nombre.trimmingCharacters(in: .whitespaces)
+        guard !n.isEmpty else { onClose(); return }
+        var lb = estado.libreta
+        lb.tarjetas.append(Tarjeta(id: Int(Date().timeIntervalSince1970), nombre: n,
+                                   banco: banco.trimmingCharacters(in: .whitespaces),
+                                   limite: Double(limite.replacingOccurrences(of: ",", with: "")) ?? 0,
+                                   saldo: Double(deuda.replacingOccurrences(of: ",", with: "")) ?? 0,
+                                   color: "#d55948",
+                                   last4: String(format: "%04d", Int.random(in: 1000...9999))))
+        estado.libreta = lb
+        onClose()
     }
 }
 
@@ -249,21 +336,26 @@ struct PagoTarjetaView: View {
 
 // ── Categoría (nombre, tipo, límite, color e icono) ────────────────────────
 struct CategoriaView: View {
+    @EnvironmentObject var estado: AppEstado
+    var onClose: () -> Void = {}
     @State private var tipo = 0
     @State private var color = 3
     @State private var icono = 0
+    @State private var nombre = ""
+    @State private var tope = ""
     private let colores: [Color] = [.pos, .neg, .info, .sav, Color(hex: 0xe0a92e), Color(hex: 0x1fa9a0), Color(hex: 0xd55948)]
+    private let coloresHex = ["#137d41", "#d55948", "#398ad6", "#825eb9", "#e0a92e", "#1fa9a0", "#d55948"]
     private let iconos = ["cart.fill", "fork.knife", "car.fill", "house.fill", "bolt.fill", "cross.case.fill",
                           "gamecontroller.fill", "gift.fill", "airplane", "book.fill", "tshirt.fill", "pawprint.fill"]
     var body: some View {
-        HojaForm(titulo: "Nueva categoría") {
+        HojaForm(titulo: "Nueva categoría", onClose: onClose, guardar: guardar) {
             SegmentoPildora(items: ["Gasto", "Ingreso"], sel: $tipo)
             VStack(spacing: 6) {
                 SeccionTitulo(texto: "Nombre y tope")
                 Grupo {
-                    FilaCampo(placeholder: "Nombre (ej. Supermercado)")
+                    CampoTexto(placeholder: "Nombre (ej. Supermercado)", texto: $nombre)
                     Divisor(sangria: 16)
-                    FilaCampo(placeholder: "Tope mensual (opcional)")
+                    CampoTexto(placeholder: "Tope mensual (opcional)", texto: $tope, numero: true)
                 }
             }
             VStack(spacing: 8) {
@@ -295,5 +387,17 @@ struct CategoriaView: View {
                 }
             }
         }
+    }
+
+    private func guardar() {
+        let n = nombre.trimmingCharacters(in: .whitespaces)
+        guard !n.isEmpty else { onClose(); return }
+        var lb = estado.libreta
+        lb.categorias.append(Categoria(id: Int(Date().timeIntervalSince1970), nombre: n,
+                                       tipo: tipo == 0 ? "Gasto" : "Ingreso",
+                                       limite: Double(tope.replacingOccurrences(of: ",", with: "")) ?? 0,
+                                       color: coloresHex[color], icono: iconos[icono]))
+        estado.libreta = lb
+        onClose()
     }
 }

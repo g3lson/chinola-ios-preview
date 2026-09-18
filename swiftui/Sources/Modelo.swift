@@ -155,6 +155,14 @@ final class AppEstado: ObservableObject {
     // Movimientos ordenados del más nuevo al más viejo.
     var movimientos: [Movimiento] { libreta.tx.sorted { $0.fecha > $1.fecha } }
 
+    // Gastado este mes en una categoría.
+    func gastadoCategoria(_ nombre: String) -> Double {
+        let m = mesActual()
+        return libreta.tx.filter { $0.categoria == nombre && $0.tipo.esGasto && String($0.fecha.prefix(7)) == m }
+            .reduce(0) { $0 + abs($1.monto) }
+    }
+    var presupuestoTotal: Double { libreta.categorias.filter { $0.tipo == "Gasto" }.reduce(0) { $0 + $1.limite } }
+
     func nombreMedio(_ medio: String) -> String {
         if let idc = Int(medio.replacingOccurrences(of: "cuenta:", with: "")), medio.hasPrefix("cuenta:"),
            let c = libreta.cuentas.first(where: { $0.id == idc }) { return c.nombre }

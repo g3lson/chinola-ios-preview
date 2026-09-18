@@ -10,6 +10,12 @@ struct ChinolaApp: App {
     }
 }
 
+// Qué hoja de «agregar» está abierta (formularios funcionales).
+enum HojaActiva: String, Identifiable {
+    case chooser, nuevo, cuenta, tarjeta, prestamo, meta, categoria, transferencia
+    var id: String { rawValue }
+}
+
 // La raíz: rutea a la pestaña activa o a una pantalla especial (CHINOLA_SCREEN),
 // con el «+» flotante y la barra inferior flotante. Las variables de entorno
 // CHINOLA_TAB / CHINOLA_SCREEN dejan que el CI arranque la app en cada pantalla
@@ -19,7 +25,8 @@ struct RootView: View {
     @State private var tab = Int(ProcessInfo.processInfo.environment["CHINOLA_TAB"] ?? "0") ?? 0
     @State private var titulosMenu = true
     @State private var tendencia = false
-    @State private var hojaNueva = false
+    @State private var hoja: HojaActiva?
+    @State private var pendiente: HojaActiva?
     private let pantalla = ProcessInfo.processInfo.environment["CHINOLA_SCREEN"]
 
     var body: some View {
@@ -68,17 +75,34 @@ struct RootView: View {
             }
         }
         .environmentObject(estado)
-        .fullScreenCover(isPresented: $hojaNueva) {
-            NuevoMovView(onClose: { hojaNueva = false }).environmentObject(estado)
+        .fullScreenCover(item: $hoja, onDismiss: {
+            if let p = pendiente { pendiente = nil; hoja = p }
+        }) { cual in
+            hojaVista(cual).environmentObject(estado)
+        }
+    }
+
+    // Cada hoja de agregar, con su cierre y navegación al chooser.
+    @ViewBuilder private func hojaVista(_ cual: HojaActiva) -> some View {
+        let cerrar = { hoja = nil }
+        switch cual {
+        case .chooser: AccionesMenu(onClose: cerrar, elegir: { sel in pendiente = sel; hoja = nil })
+        case .nuevo: NuevoMovView(onClose: cerrar)
+        case .cuenta: NuevaCuentaView(onClose: cerrar)
+        case .tarjeta: TarjetaView(onClose: cerrar)
+        case .prestamo: PrestamoView(onClose: cerrar)
+        case .meta: MetaView(onClose: cerrar)
+        case .categoria: CategoriaView(onClose: cerrar)
+        case .transferencia: TransferenciaView(onClose: cerrar)
         }
     }
 
     private var appTabs: some View {
         ZStack(alignment: .bottom) {
             switch tab {
-            case 1: MovsView(onNuevo: { hojaNueva = true })
-            case 2: CuentasView(abrirTendencia: { tendencia = true })
-            case 3: PlanView()
+            case 1: MovsView(onNuevo: { hoja = .nuevo })
+            case 2: CuentasView(abrirTendencia: { tendencia = true }, onNuevo: { hoja = .chooser })
+            case 3: PlanView(onNuevo: { s in hoja = s == 0 ? .categoria : .meta })
             case 4: PerfilView()
             default: DashboardView()
             }
@@ -86,7 +110,7 @@ struct RootView: View {
             // «+» flotante solo en Resumen: en Movs., Cuentas y Plan el «+» vive
             // arriba (junto al título), y Perfil no lo tiene.
             if tab == 0 {
-                Button { hojaNueva = true } label: {
+                Button { hoja = .chooser } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundColor(Color(hex: 0x20180a))

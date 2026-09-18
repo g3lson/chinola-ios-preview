@@ -85,6 +85,40 @@ struct CabeceraHoja: View {
     }
 }
 
+// Igual que CabeceraHoja pero con × y Guardar cableados de verdad.
+struct CabeceraHojaAcc: View {
+    let titulo: String
+    var onClose: () -> Void
+    var guardar: () -> Void
+    var body: some View {
+        VStack(spacing: 0) {
+            Capsule().fill(Color.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 10)
+            ZStack {
+                Text(titulo).font(.system(size: 17, weight: .bold)).foregroundColor(.ink)
+                HStack {
+                    Button(action: onClose) { BotonCirculo(icono: "xmark") }.buttonStyle(.plain)
+                    Spacer()
+                    Button(action: guardar) { BotonGuardar() }.buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 14)
+        }
+    }
+}
+
+// Campo de texto nativo dentro de un grupo (para los formularios funcionales).
+struct CampoTexto: View {
+    let placeholder: String
+    @Binding var texto: String
+    var numero: Bool = false
+    var body: some View {
+        TextField(placeholder, text: $texto)
+            .font(.system(size: 16)).foregroundColor(.ink)
+            .keyboardType(numero ? .numberPad : .default)
+            .padding(.horizontal, 15).padding(.vertical, 13)
+    }
+}
+
 // Contenedor de hoja: llega hasta el fondo, esquinas redondeadas solo arriba.
 // `grande` la hace casi de pantalla completa; si no, se ajusta a su contenido.
 extension View {
@@ -240,30 +274,37 @@ struct NuevoMovView: View {
     }
 }
 
-// Hoja «Agregar» (la del «+»): un chooser corto, hasta el fondo.
+// Hoja «Agregar» (la del «+»): un chooser corto que abre cada formulario.
 struct AccionesMenu: View {
-    private let items: [(String, String, Color)] = [
-        ("Un movimiento", "arrow.up.arrow.down", .pos),
-        ("Una cuenta", "banknote.fill", .info),
-        ("Una tarjeta", "creditcard.fill", .neg),
-        ("Una categoría", "tag.fill", Color(hex: 0xe0a92e)),
-        ("Una meta", "target", .sav)
+    var onClose: () -> Void = {}
+    var elegir: (HojaActiva) -> Void = { _ in }
+    private let items: [(String, String, Color, HojaActiva)] = [
+        ("Un movimiento", "arrow.up.arrow.down", .pos, .nuevo),
+        ("Una transferencia", "arrow.left.arrow.right", .info, .transferencia),
+        ("Una cuenta", "banknote.fill", .info, .cuenta),
+        ("Una tarjeta", "creditcard.fill", .neg, .tarjeta),
+        ("Un préstamo o fiado", "hand.raised.fill", Color(hex: 0x825eb9), .prestamo),
+        ("Una categoría", "tag.fill", Color(hex: 0xe0a92e), .categoria),
+        ("Una meta", "target", .sav, .meta)
     ]
     var body: some View {
         ZStack(alignment: .bottom) {
             FondoAtenuado()
             VStack(spacing: 0) {
-                CabeceraHoja(titulo: "Agregar")
+                cabecera
                 VStack(spacing: 0) {
                     Grupo {
                         ForEach(items.indices, id: \.self) { i in
-                            HStack(spacing: 12) {
-                                IconoCuadro(sistema: items[i].1, tinte: items[i].2)
-                                Text(items[i].0).font(.system(size: 16, weight: .medium)).foregroundColor(.ink)
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundColor(Color.pmut.opacity(0.6))
+                            Button { elegir(items[i].3) } label: {
+                                HStack(spacing: 12) {
+                                    IconoCuadro(sistema: items[i].1, tinte: items[i].2)
+                                    Text(items[i].0).font(.system(size: 16, weight: .medium)).foregroundColor(.ink)
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundColor(Color.pmut.opacity(0.6))
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 12)
                             }
-                            .padding(.horizontal, 14).padding(.vertical, 12)
+                            .buttonStyle(.plain)
                             if i < items.count - 1 { Divisor() }
                         }
                     }
@@ -274,39 +315,52 @@ struct AccionesMenu: View {
             .comoHoja(grande: false)
         }
     }
+    private var cabecera: some View {
+        VStack(spacing: 0) {
+            Capsule().fill(Color.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 10)
+            ZStack {
+                Text("Agregar").font(.system(size: 17, weight: .bold)).foregroundColor(.ink)
+                HStack { Button(action: onClose) { BotonCirculo(icono: "xmark") }.buttonStyle(.plain); Spacer() }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 14)
+        }
+    }
 }
 
-// Hoja «Nueva cuenta»: formulario con el look nativo agrupado.
+// Hoja «Nueva cuenta»: formulario funcional (guarda la cuenta al estado).
 struct NuevaCuentaView: View {
-    @State private var enTarjeta = false
+    @EnvironmentObject var estado: AppEstado
+    var onClose: () -> Void = {}
+    @State private var nombre = ""
+    @State private var banco = ""
+    @State private var saldo = ""
+    @State private var clase = 0
+    private let clases: [(String, String, String, String)] = [
+        ("Efectivo", "efectivo", "banknote.fill", "#137d41"),
+        ("Banco", "banco", "building.columns.fill", "#398ad6"),
+        ("Ahorro", "ahorro", "target", "#825eb9")
+    ]
+
     var body: some View {
         ZStack(alignment: .bottom) {
             FondoAtenuado()
             VStack(spacing: 0) {
-                CabeceraHoja(titulo: "Nueva cuenta", conCheck: true)
+                CabeceraHojaAcc(titulo: "Nueva cuenta", onClose: onClose, guardar: guardar)
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
                         VStack(spacing: 6) {
                             SeccionTitulo(texto: "Datos")
                             Grupo {
-                                FilaCampo(placeholder: "Nombre (ej. Ahorros)")
+                                CampoTexto(placeholder: "Nombre (ej. Ahorros)", texto: $nombre)
                                 Divisor(sangria: 16)
-                                FilaCampo(placeholder: "Banco (opcional)")
+                                CampoTexto(placeholder: "Banco (opcional)", texto: $banco)
                                 Divisor(sangria: 16)
-                                FilaCampo(placeholder: "Cuánto tienes ahora")
+                                CampoTexto(placeholder: "Cuánto tienes ahora", texto: $saldo, numero: true)
                             }
                         }
                         VStack(spacing: 6) {
-                            SeccionTitulo(texto: "Icono y color")
-                            Grupo {
-                                FilaNav(icono: "banknote.fill", tinte: .pos, titulo: "Icono", valor: "Efectivo")
-                                Divisor()
-                                FilaNav(icono: "paintpalette.fill", tinte: .sav, titulo: "Color", valor: "Verde")
-                            }
-                        }
-                        VStack(spacing: 6) {
-                            Grupo { FilaToggle(icono: "star.fill", tinte: Color(hex: 0xe0a92e), titulo: "Cuenta principal", on: $enTarjeta) }
-                            NotaPie(texto: "La principal es la que se usa por defecto al registrar.")
+                            SeccionTitulo(texto: "Tipo")
+                            SegmentoPildora(items: clases.map { $0.0 }, sel: $clase)
                         }
                         Color.clear.frame(height: 40)
                     }
@@ -315,6 +369,19 @@ struct NuevaCuentaView: View {
             }
             .comoHoja()
         }
+    }
+
+    private func guardar() {
+        let n = nombre.trimmingCharacters(in: .whitespaces)
+        guard !n.isEmpty else { onClose(); return }
+        let c = clases[clase]
+        var lb = estado.libreta
+        let id = Int(Date().timeIntervalSince1970)
+        lb.cuentas.append(Cuenta(id: id, nombre: n, banco: banco.trimmingCharacters(in: .whitespaces),
+                                 saldo: Double(saldo.replacingOccurrences(of: ",", with: "")) ?? 0,
+                                 color: c.3, clase: c.1, icono: c.2))
+        estado.libreta = lb
+        onClose()
     }
 }
 

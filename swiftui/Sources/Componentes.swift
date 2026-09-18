@@ -100,6 +100,7 @@ struct Segmentos: View {
 struct SeccionHeader: View {
     let titulo: String
     var accion: String? = nil
+    var go: () -> Void = {}
     var body: some View {
         HStack {
             Text(titulo.uppercased())
@@ -107,15 +108,18 @@ struct SeccionHeader: View {
                 .foregroundColor(.pmut)
             Spacer()
             if let a = accion {
-                HStack(spacing: 5) {
-                    Image(systemName: "plus").font(.system(size: 12, weight: .bold))
-                    Text(a).font(.system(size: 13, weight: .bold))
+                Button(action: go) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "plus").font(.system(size: 12, weight: .bold))
+                        Text(a).font(.system(size: 13, weight: .bold))
+                    }
+                    .foregroundColor(.ink)
+                    .padding(.horizontal, 13).padding(.vertical, 8)
+                    .background(Color.card)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.line, lineWidth: 1))
                 }
-                .foregroundColor(.ink)
-                .padding(.horizontal, 13).padding(.vertical, 8)
-                .background(Color.card)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(Color.line, lineWidth: 1))
+                .buttonStyle(.plain)
             }
         }
     }
