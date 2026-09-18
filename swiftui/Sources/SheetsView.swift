@@ -99,60 +99,81 @@ extension View {
     }
 }
 
-// Hoja «Nuevo movimiento»: grande, con el look nativo de iOS.
+// Hoja «Nuevo movimiento»: funcional de verdad — escribe el monto y concepto,
+// elige tipo, cuenta y categoría, y guarda al estado de la app.
 struct NuevoMovView: View {
+    @EnvironmentObject var estado: AppEstado
+    var onClose: () -> Void = {}
+
     @State private var tipo = 2
     @State private var repetir = false
+    @State private var monto = ""
+    @State private var concepto = ""
+    @State private var cuentaId = 0
+    @State private var categoria = ""
+    @State private var fecha = Date()
     private let tipos = ["Ingreso", "Fijo", "Variable", "Ahorro"]
+    private let mapa: [TipoMov] = [.ingreso, .gastoFijo, .gastoVariable, .ahorro]
 
     var body: some View {
         ZStack(alignment: .bottom) {
             FondoAtenuado()
             VStack(spacing: 0) {
-                CabeceraHoja(titulo: "Nuevo movimiento", conCheck: true)
+                cabecera
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
-                        HStack(spacing: 4) {
-                            ForEach(tipos.indices, id: \.self) { i in
-                                Text(tipos[i])
-                                    .font(.system(size: 13.5, weight: i == tipo ? .bold : .semibold))
-                                    .foregroundColor(i == tipo ? .white : .pmut)
-                                    .frame(maxWidth: .infinity).padding(.vertical, 9)
-                                    .background(i == tipo ? Color.side : Color.clear)
-                                    .clipShape(Capsule())
-                                    .onTapGesture { tipo = i }
-                            }
-                        }
-                        .padding(4).background(Color.soft).clipShape(Capsule())
+                        SegmentoPildora(items: tipos, sel: $tipo)
 
                         Grupo {
-                            HStack {
-                                boton("minus")
-                                Spacer()
-                                VStack(spacing: 1) {
-                                    Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(.pmut)
-                                    Text("DOP 0").font(.system(size: 30, weight: .heavy)).foregroundColor(.ink)
+                            VStack(spacing: 2) {
+                                Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(.pmut)
+                                HStack(spacing: 6) {
+                                    Text("DOP").font(.system(size: 20, weight: .heavy)).foregroundColor(.pmut)
+                                    TextField("0", text: $monto)
+                                        .font(.system(size: 34, weight: .heavy)).foregroundColor(.ink)
+                                        .keyboardType(.numberPad).multilineTextAlignment(.center)
+                                        .fixedSize()
                                 }
-                                Spacer()
-                                boton("plus")
                             }
-                            .padding(.horizontal, 12).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity).padding(.vertical, 16)
                         }
 
-                        Grupo { FilaCampo(placeholder: "Descripción o concepto") }
+                        Grupo {
+                            TextField("Descripción o concepto", text: $concepto)
+                                .font(.system(size: 16)).foregroundColor(.ink)
+                                .padding(.horizontal, 15).padding(.vertical, 13)
+                        }
 
                         VStack(spacing: 6) {
                             SeccionTitulo(texto: "Cuándo y de dónde")
                             Grupo {
-                                FilaNav(icono: "calendar", tinte: .neg, titulo: "Fecha", valor: "18/09/2026")
+                                HStack(spacing: 12) {
+                                    IconoCuadro(sistema: "calendar", tinte: .neg)
+                                    Text("Fecha").font(.system(size: 16)).foregroundColor(.ink)
+                                    Spacer()
+                                    DatePicker("", selection: $fecha, displayedComponents: .date)
+                                        .labelsHidden()
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 7)
                                 Divisor()
-                                FilaNav(icono: "creditcard.fill", tinte: .info, titulo: "Pagado con", valor: "Efectivo")
+                                menuFila(icono: "banknote.fill", tinte: .info, titulo: "Pagado con", valor: cuentaNombre) {
+                                    ForEach(estado.libreta.cuentas) { c in
+                                        Button(c.nombre) { cuentaId = c.id }
+                                    }
+                                }
                             }
                         }
 
                         VStack(spacing: 6) {
                             SeccionTitulo(texto: "Categoría")
-                            Grupo { FilaNav(icono: "tag.fill", tinte: Color(hex: 0xe0a92e), titulo: "Categoría", valor: "Otros") }
+                            Grupo {
+                                menuFila(icono: "tag.fill", tinte: Color(hex: 0xe0a92e), titulo: "Categoría", valor: categoria.isEmpty ? "Otros" : categoria) {
+                                    ForEach(estado.libreta.categorias) { c in
+                                        Button(c.nombre) { categoria = c.nombre }
+                                    }
+                                    Button("Otros") { categoria = "Otros" }
+                                }
+                            }
                         }
 
                         VStack(spacing: 6) {
@@ -167,11 +188,55 @@ struct NuevoMovView: View {
             }
             .comoHoja()
         }
+        .onAppear { if cuentaId == 0 { cuentaId = estado.libreta.cuentas.first?.id ?? 0 } }
     }
 
-    private func boton(_ icono: String) -> some View {
-        Image(systemName: icono).font(.system(size: 17, weight: .bold)).foregroundColor(.ink)
-            .frame(width: 42, height: 42).background(Color.soft).clipShape(Circle())
+    // Cabecera con × y Guardar cableados de verdad.
+    private var cabecera: some View {
+        VStack(spacing: 0) {
+            Capsule().fill(Color.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 10)
+            ZStack {
+                Text("Nuevo movimiento").font(.system(size: 17, weight: .bold)).foregroundColor(.ink)
+                HStack {
+                    Button(action: onClose) { BotonCirculo(icono: "xmark") }.buttonStyle(.plain)
+                    Spacer()
+                    Button(action: guardar) { BotonGuardar() }.buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 14)
+        }
+    }
+
+    private var cuentaNombre: String {
+        estado.libreta.cuentas.first { $0.id == cuentaId }?.nombre ?? "Efectivo"
+    }
+
+    private func menuFila<M: View>(icono: String, tinte: Color, titulo: String, valor: String, @ViewBuilder menu: () -> M) -> some View {
+        Menu {
+            menu()
+        } label: {
+            HStack(spacing: 12) {
+                IconoCuadro(sistema: icono, tinte: tinte)
+                Text(titulo).font(.system(size: 16)).foregroundColor(.ink)
+                Spacer(minLength: 8)
+                Text(valor).font(.system(size: 15)).foregroundColor(.pmut)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold)).foregroundColor(Color.pmut.opacity(0.6))
+            }
+            .padding(.horizontal, 14).padding(.vertical, 11)
+        }
+    }
+
+    private func guardar() {
+        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        guard n > 0 else { onClose(); return }
+        let mov = Movimiento(
+            id: "m\(Int(Date().timeIntervalSince1970 * 1000))",
+            concepto: concepto.isEmpty ? (categoria.isEmpty ? "Movimiento" : categoria) : concepto,
+            categoria: categoria.isEmpty ? "Otros" : categoria,
+            tipo: mapa[tipo], monto: n, fecha: Movimiento.hoy(),
+            recurrente: repetir, medio: "cuenta:\(cuentaId)")
+        estado.agregar(mov)
+        onClose()
     }
 }
 

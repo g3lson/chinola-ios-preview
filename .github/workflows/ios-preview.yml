@@ -106,6 +106,10 @@ jobs:
             "CHINOLA_SCREEN=selector|37-selector-libreta"
             "CHINOLA_SCREEN=agregar-libreta|38-agregar-libreta"
             "CHINOLA_SCREEN=invitacion|39-invitacion"
+            "CHINOLA_SCREEN=mi-cuenta|40-mi-cuenta"
+            "CHINOLA_SCREEN=seguridad|41-seguridad"
+            "CHINOLA_SCREEN=integraciones|42-integraciones"
+            "CHINOLA_SCREEN=tour|43-tour"
           )
           for spec in "${CAPTURAS[@]}"; do
             vars="${spec%%|*}"; name="${spec##*|}"

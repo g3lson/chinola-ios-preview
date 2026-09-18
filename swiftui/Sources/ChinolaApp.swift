@@ -15,9 +15,11 @@ struct ChinolaApp: App {
 // CHINOLA_TAB / CHINOLA_SCREEN dejan que el CI arranque la app en cada pantalla
 // y saque su captura.
 struct RootView: View {
+    @StateObject private var estado = AppEstado()
     @State private var tab = Int(ProcessInfo.processInfo.environment["CHINOLA_TAB"] ?? "0") ?? 0
     @State private var titulosMenu = true
     @State private var tendencia = false
+    @State private var hojaNueva = false
     private let pantalla = ProcessInfo.processInfo.environment["CHINOLA_SCREEN"]
 
     var body: some View {
@@ -58,15 +60,23 @@ struct RootView: View {
             case "selector": SelectorLibretaView()
             case "agregar-libreta": AgregarLibretaView()
             case "invitacion": InvitacionView()
+            case "mi-cuenta": MiCuentaView()
+            case "seguridad": SeguridadView()
+            case "integraciones": IntegracionesView()
+            case "tour": TourView()
             default: appTabs
             }
+        }
+        .environmentObject(estado)
+        .fullScreenCover(isPresented: $hojaNueva) {
+            NuevoMovView(onClose: { hojaNueva = false }).environmentObject(estado)
         }
     }
 
     private var appTabs: some View {
         ZStack(alignment: .bottom) {
             switch tab {
-            case 1: MovsView()
+            case 1: MovsView(onNuevo: { hojaNueva = true })
             case 2: CuentasView(abrirTendencia: { tendencia = true })
             case 3: PlanView()
             case 4: PerfilView()
@@ -76,7 +86,7 @@ struct RootView: View {
             // «+» flotante solo en Resumen: en Movs., Cuentas y Plan el «+» vive
             // arriba (junto al título), y Perfil no lo tiene.
             if tab == 0 {
-                Button {} label: {
+                Button { hojaNueva = true } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundColor(Color(hex: 0x20180a))

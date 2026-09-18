@@ -4,6 +4,7 @@ import SwiftUI
 // selector de libreta centrado, el balance grande, los chips de meses; y debajo
 // las tarjetas sobre el fondo crema. Misma disposición, hecha en nativo.
 struct DashboardView: View {
+    @EnvironmentObject var estado: AppEstado
     private let meses = ["Jul", "Ago", "Sep", "Oct", "Rango"]
     @State private var mesSel = 2
 
@@ -27,7 +28,7 @@ struct DashboardView: View {
             // Selector de libreta, centrado.
             HStack(spacing: 7) {
                 Image(systemName: "house.fill").font(.system(size: 12, weight: .semibold))
-                Text("Personal").font(.system(size: 15, weight: .semibold))
+                Text(estado.libreta.nombre).font(.system(size: 15, weight: .semibold))
                 Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
             }
             .foregroundColor(.white)
@@ -36,7 +37,7 @@ struct DashboardView: View {
             .clipShape(Capsule())
 
             // Balance del mes.
-            Text("DOP 0")
+            Text((estado.balanceMes >= 0 ? "" : "− ") + fmtDinero(estado.balanceMes))
                 .font(.system(size: 40, weight: .heavy))
                 .foregroundColor(.acc)
             Text("te queda este mes")
@@ -71,46 +72,12 @@ struct DashboardView: View {
     // MARK: Cuerpo (tarjetas)
     private var cuerpo: some View {
         VStack(spacing: 14) {
-            // Empieza aquí.
-            tarjeta {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Empieza aquí").font(.system(size: 18, weight: .bold)).foregroundColor(.ink)
-                    Text("Dile cuánto tienes ahora mismo y la app empieza a sumar sola. No tiene que ser exacto.")
-                        .font(.system(size: 14)).foregroundColor(.pmut).fixedSize(horizontal: false, vertical: true)
-                    Button {} label: {
-                        Text("Ingresar lo que tengo")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(Color(hex: 0x20180a))
-                            .frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .background(Color.acc).clipShape(RoundedRectangle(cornerRadius: 26))
-                    }
-                    .padding(.top, 2)
-                    Text("Lo hago luego")
-                        .font(.system(size: 14, weight: .semibold)).foregroundColor(.ink)
-                        .frame(maxWidth: .infinity).padding(.vertical, 4)
-                }
-            }
-
-            // Balance del mes.
-            tarjeta {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Balance del mes").font(.system(size: 14, weight: .medium)).foregroundColor(.pmut)
-                    Text("DOP 0").font(.system(size: 30, weight: .heavy)).foregroundColor(.ink)
-                    Text("disponible este mes").font(.system(size: 13)).foregroundColor(.pmut)
-                }.frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            // Gastos por categoría.
-            tarjeta {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Gastos por categoría").font(.system(size: 15, weight: .semibold)).foregroundColor(.ink)
-                    Button {} label: {
-                        Text("Ver el presupuesto")
-                            .font(.system(size: 14, weight: .bold)).foregroundColor(.ink)
-                            .frame(maxWidth: .infinity).padding(.vertical, 13)
-                            .background(Color.soft).clipShape(RoundedRectangle(cornerRadius: 22))
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading)
+            // Rejilla de KPIs del mes / patrimonio, como en el web.
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                kpi("Ingresos del mes", fmtDinero(estado.ingresosMes), .pos, "del mes")
+                kpi("Gastos del mes", fmtDinero(estado.gastosMes), .neg, pctGastos)
+                kpi("Deuda total", fmtDinero(estado.deudaTotal), Color(hex: 0xe0a92e), "tarjetas + préstamos")
+                kpi("Patrimonio", fmtDinero(estado.patrimonio), .ink, "cuentas − deudas")
             }
 
             // Ingresos y gastos (con mini gráfico).
@@ -152,6 +119,25 @@ struct DashboardView: View {
             Circle().fill(c).frame(width: 9, height: 9)
             Text(t).font(.system(size: 13)).foregroundColor(.pmut)
         }
+    }
+
+    private var pctGastos: String {
+        guard estado.ingresosMes > 0 else { return "de tus ingresos" }
+        return "\(Int((estado.gastosMes / estado.ingresosMes * 100).rounded()))% de tus ingresos"
+    }
+
+    // Tarjeta de KPI: rótulo, cifra grande de color y detalle.
+    private func kpi(_ titulo: String, _ valor: String, _ color: Color, _ detalle: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(titulo).font(.system(size: 14, weight: .medium)).foregroundColor(.pmut)
+            Text(valor).font(.system(size: 24, weight: .heavy)).foregroundColor(color).minimumScaleFactor(0.6).lineLimit(1)
+            Text(detalle).font(.system(size: 12)).foregroundColor(.pmut).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(15)
+        .background(Color.card)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.line, lineWidth: 1))
     }
 
     private func tarjeta<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
