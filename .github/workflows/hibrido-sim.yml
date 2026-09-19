@@ -31,13 +31,15 @@ jobs:
           npx cap add ios
           echo "=== swift generados ==="; ls ios/App/App/*.swift || true
 
-      - name: Superponer subclase + barra (patrón canónico, sin storyboard)
+      - name: Superponer arranque + UI nativa real (barra + Movimientos)
         run: |
-          # Reemplaza el SceneDelegate por el que crea a mano una SUBCLASE con
-          # barra nativa encima. NO se inyecta UISceneStoryboardFile (canónico).
+          # SceneDelegate de prueba (arranca en Movimientos nativo con datos de
+          # ejemplo) + se ANEXA ChinolaNativo.swift (tipos CN* reales) al mismo
+          # archivo, que ya está en el pbxproj (así no hay que tocar el proyecto).
           cp overlay/SceneDelegate.swift ios/App/App/SceneDelegate.swift
+          tail -n +3 overlay/ChinolaNativo.swift >> ios/App/App/SceneDelegate.swift
           /usr/libexec/PlistBuddy -c "Delete :UISceneStoryboardFile" ios/App/App/Info.plist 2>/dev/null || true
-          echo "=== SceneDelegate final ==="; head -5 ios/App/App/SceneDelegate.swift
+          echo "=== líneas del SceneDelegate combinado ==="; wc -l ios/App/App/SceneDelegate.swift
 
       - name: Compilar para simulador
         run: |
@@ -63,8 +65,8 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b || true
           xcrun simctl install "$UDID" "$APP"
           xcrun simctl launch "$UDID" do.com.fente.chinolasim || true
-          sleep 2;  xcrun simctl io "$UDID" screenshot cap-01-web.png || true
-          sleep 6;  xcrun simctl io "$UDID" screenshot cap-02-nativo.png || true
+          sleep 5;  xcrun simctl io "$UDID" screenshot cap-01-movs.png || true
+          sleep 3;  xcrun simctl io "$UDID" screenshot cap-02-movs.png || true
 
       - name: Subir capturas
         if: always()
