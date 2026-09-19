@@ -867,331 +867,6 @@ enum CNIconos {
     }
 }
 
-// ── Pantalla «Cuentas» NATIVA ───────────────────────────────────────────────
-struct CNCuentas: View {
-    @ObservedObject var datos: CNDatos
-    @State private var oculto = false
-    private func dinero(_ n: Double) -> String { oculto ? "RD$••••" : cnDinero(n) }
-
-    var body: some View {
-        let lb = datos.libreta
-        return ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center, spacing: 10) {
-                    Text("Cuentas").font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
-                    Spacer(minLength: 8)
-                    circuloGlass("line.3.horizontal.decrease") {}
-                    circuloAcc("plus") { datos.onAgregar() }
-                }
-                .padding(.horizontal, 4).padding(.top, 8)
-
-                patrimonio(lb)
-
-                seccion("Cuentas") {
-                    if lb.cuentas.isEmpty { vacio("Aquí saldrán tus cuentas: efectivo, banco, ahorros.") }
-                    else { tarjetaLista { ForEach(lb.cuentas.indices, id: \.self) { i in
-                        if i > 0 { div(62) }
-                        let c = lb.cuentas[i]
-                        fila(icono: c.icono, color: cnColor(hexString: c.color), nombre: c.nombre,
-                             sub: (c.clase == "efectivo" ? "En mano" : (c.banco.isEmpty ? "Sin banco" : c.banco)),
-                             monto: dinero(c.saldo), montoColor: CNC.ink) { datos.onAbrirCuenta(c.id) }
-                    } } }
-                }
-                seccion("Tarjetas de crédito") {
-                    if lb.tarjetas.isEmpty { vacio("Aquí saldrán tus tarjetas de crédito, con su deuda y sus fechas.") }
-                    else { tarjetaLista { ForEach(lb.tarjetas.indices, id: \.self) { i in
-                        if i > 0 { div(62) }
-                        let t = lb.tarjetas[i]
-                        fila(icono: "creditcard.fill", color: cnColor(hexString: t.color), nombre: t.nombre,
-                             sub: "Disp. \(dinero(t.disponible)) · corte \(t.corte)", monto: dinero(t.saldo), montoColor: CNC.neg) { datos.onAbrirTarjeta(t.id) }
-                    } } }
-                }
-                seccion("Préstamos y fiados") {
-                    if lb.prestamos.isEmpty { vacio("Aquí saldrán tus préstamos y lo que llevas pagado.") }
-                    else { tarjetaLista { ForEach(lb.prestamos.indices, id: \.self) { i in
-                        if i > 0 { div(62) }
-                        let p = lb.prestamos[i]
-                        fila(icono: "hand.raised.fill", color: cnColor(hexString: p.color), nombre: p.nombre,
-                             sub: p.sentido == "meDeben" ? "Te debe" : "Le debes", monto: dinero(p.pendiente),
-                             montoColor: p.sentido == "meDeben" ? CNC.pos : CNC.neg) { datos.onAbrirPrestamo(p.id) }
-                    } } }
-                }
-                Color.clear.frame(height: 120)
-            }
-            .padding(.horizontal, 14).padding(.top, 6)
-        }
-        .background(CNC.scr.ignoresSafeArea())
-    }
-
-    private func patrimonio(_ lb: CNLibreta) -> some View {
-        VStack(spacing: 14) {
-            HStack {
-                Button { oculto.toggle() } label: { chip(oculto ? "eye.slash" : "eye") }.buttonStyle(.plain)
-                Spacer()
-                Text("Patrimonio").font(.system(size: 15, weight: .semibold)).foregroundColor(.white.opacity(0.92))
-                Spacer()
-                Button { datos.onTendencia() } label: { chip("chart.line.uptrend.xyaxis") }.buttonStyle(.plain)
-            }
-            Text(dinero(lb.patrimonio)).font(.system(size: 34, weight: .heavy)).foregroundColor(.white)
-            HStack(spacing: 0) {
-                col("Activos", dinero(lb.totalCuentas + lb.porCobrar))
-                col("Pasivos", dinero(lb.deudaTotal))
-            }
-        }
-        .padding(.horizontal, 18).padding(.vertical, 18).frame(maxWidth: .infinity)
-        .background(LinearGradient(colors: [cnColor(0x0e4a29), cnColor(0x093a20)], startPoint: .top, endPoint: .bottom))
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: cnColor(0x093a20).opacity(0.28), radius: 16, y: 8)
-    }
-    private func chip(_ ic: String) -> some View {
-        Image(systemName: ic).font(.system(size: 15, weight: .semibold)).foregroundColor(.white)
-            .frame(width: 36, height: 36).background(Color.white.opacity(0.16)).clipShape(Circle())
-    }
-    private func col(_ t: String, _ v: String) -> some View {
-        VStack(spacing: 3) { Text(t).font(.system(size: 12.5)).foregroundColor(.white.opacity(0.72)); Text(v).font(.system(size: 15, weight: .bold)).foregroundColor(.white) }.frame(maxWidth: .infinity)
-    }
-    private func seccion<C: View>(_ t: String, @ViewBuilder _ c: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(t.uppercased()).font(.system(size: 12.5, weight: .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 4)
-            c()
-        }
-    }
-    private func tarjetaLista<C: View>(@ViewBuilder _ c: () -> C) -> some View {
-        VStack(spacing: 0) { c() }
-            .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
-    }
-    private func div(_ s: CGFloat) -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, s) }
-    private func vacio(_ t: String) -> some View {
-        Text(t).font(.system(size: 13.5)).foregroundColor(CNC.pmut).frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-            .padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
-    }
-    private func fila(icono: String, color: Color, nombre: String, sub: String, monto: String, montoColor: Color, tap: @escaping () -> Void) -> some View {
-        Button(action: tap) {
-            HStack(spacing: 12) {
-                cnGlifo(icono, tam: 20).foregroundColor(color)
-                    .frame(width: 40, height: 40).background(color.opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(nombre).font(.system(size: 15.5, weight: .semibold)).foregroundColor(CNC.ink)
-                    Text(sub).font(.system(size: 12.5)).foregroundColor(CNC.pmut)
-                }
-                Spacer(minLength: 8)
-                Text(monto).font(.system(size: 15, weight: .heavy)).foregroundColor(montoColor)
-                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6))
-            }.padding(.horizontal, 14).padding(.vertical, 11)
-        }.buttonStyle(.plain)
-    }
-    private func circuloGlass(_ ic: String, _ tap: @escaping () -> Void) -> some View {
-        Button(action: tap) { Image(systemName: ic).font(.system(size: 17, weight: .semibold)).foregroundColor(CNC.ink)
-            .frame(width: 44, height: 44).background(.ultraThinMaterial, in: Circle()).overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.8)) }.buttonStyle(.plain)
-    }
-    private func circuloAcc(_ ic: String, _ tap: @escaping () -> Void) -> some View {
-        Button(action: tap) { Image(systemName: ic).font(.system(size: 20, weight: .semibold)).foregroundColor(Color(cnHex: 0x20180a))
-            .frame(width: 46, height: 46).background(CNC.acc).clipShape(Circle()).shadow(color: CNC.acc.opacity(0.4), radius: 8, y: 3) }.buttonStyle(.plain)
-    }
-}
-
-// ── Pantalla «Plan» NATIVA ──────────────────────────────────────────────────
-struct CNPlan: View {
-    @ObservedObject var datos: CNDatos
-    @State private var seg = 0
-
-    var body: some View {
-        let lb = datos.libreta
-        return ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center, spacing: 10) {
-                    Text("Plan").font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
-                    Spacer(minLength: 8)
-                    circuloGlass("calendar") {}
-                    circuloAcc("plus") { seg == 0 ? datos.onNuevaCategoria() : datos.onNuevaMeta() }
-                }
-                .padding(.horizontal, 4).padding(.top, 8)
-
-                segmentos
-
-                if seg == 0 { presupuesto(lb) } else { metas(lb) }
-                Color.clear.frame(height: 120)
-            }
-            .padding(.horizontal, 14).padding(.top, 6)
-        }
-        .background(CNC.scr.ignoresSafeArea())
-    }
-
-    private var segmentos: some View {
-        HStack(spacing: 6) {
-            ForEach(["Presupuesto", "Metas"].indices, id: \.self) { i in
-                Text(["Presupuesto", "Metas"][i])
-                    .font(.system(size: 14, weight: i == seg ? .bold : .semibold)).foregroundColor(i == seg ? .white : CNC.pmut)
-                    .frame(maxWidth: .infinity).padding(.vertical, 10)
-                    .background(i == seg ? cnColor(0x093a20) : Color.clear).clipShape(Capsule())
-                    .onTapGesture { seg = i }
-            }
-        }.padding(4).background(CNC.soft).clipShape(Capsule())
-    }
-
-    private func presupuesto(_ lb: CNLibreta) -> some View {
-        let cats = lb.categorias.filter { $0.tipo == "Gasto" }
-        let gastado = cats.reduce(0.0) { $0 + lb.gastadoCategoria($1.nombre) }
-        return VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack { Text(cnDinero(gastado)).font(.system(size: 26, weight: .heavy)).foregroundColor(CNC.pos)
-                    Spacer(); Text("de \(cnDinero(lb.presupuestoTotal))").font(.system(size: 14)).foregroundColor(CNC.pmut) }
-                barra(gastado, lb.presupuestoTotal, CNC.pos)
-            }.padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
-            if cats.isEmpty { vacio("Crea categorías para organizar tus gastos.") }
-            else { VStack(spacing: 0) { ForEach(cats.indices, id: \.self) { i in
-                filaCat(cats[i], lb); if i < cats.count - 1 { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 52) }
-            } }.padding(.vertical, 4).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1)) }
-        }
-    }
-    private func filaCat(_ c: CNCategoria, _ lb: CNLibreta) -> some View {
-        let g = lb.gastadoCategoria(c.nombre); let pas = c.limite > 0 && g > c.limite
-        return HStack(spacing: 12) {
-            cnGlifo(c.icono, tam: 19).foregroundColor(cnColor(hexString: c.color))
-                .frame(width: 40, height: 40).background(cnColor(hexString: c.color).opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            VStack(alignment: .leading, spacing: 5) {
-                HStack { Text(c.nombre).font(.system(size: 15.5, weight: .semibold)).foregroundColor(CNC.ink)
-                    Spacer(); Text(cnDinero(g)).font(.system(size: 14.5, weight: .heavy)).foregroundColor(pas ? CNC.neg : CNC.pos) }
-                barra(g, c.limite, pas ? CNC.neg : CNC.pos)
-                Text(c.limite > 0 ? "\(cnDinero(g)) de \(cnDinero(c.limite))" : "\(cnDinero(g)) · sin tope").font(.system(size: 12)).foregroundColor(CNC.pmut)
-            }
-        }.padding(.horizontal, 12).padding(.vertical, 11)
-    }
-    private func metas(_ lb: CNLibreta) -> some View {
-        VStack(spacing: 12) {
-            if lb.metas.isEmpty { vacio("Ponte una meta de ahorro y ve cuánto te falta cada mes.") }
-            else { ForEach(lb.metas.indices, id: \.self) { i in filaMeta(lb.metas[i]) } }
-        }
-    }
-    private func filaMeta(_ m: CNMeta) -> some View {
-        Button { datos.onAbrirMeta(m.id) } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 12) {
-                    cnGlifo(m.icono, tam: 19).foregroundColor(cnColor(hexString: m.color))
-                        .frame(width: 40, height: 40).background(cnColor(hexString: m.color).opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(m.nombre).font(.system(size: 15.5, weight: .semibold)).foregroundColor(CNC.ink)
-                        Text("\(Int(m.progreso * 100))% · faltan \(cnDinero(max(0, m.meta - m.ahorrado)))").font(.system(size: 12)).foregroundColor(CNC.pmut)
-                    }
-                    Spacer(minLength: 6)
-                    Text(cnDinero(m.ahorrado)).font(.system(size: 15, weight: .heavy)).foregroundColor(cnColor(hexString: m.color))
-                }
-                barra(m.ahorrado, m.meta, cnColor(hexString: m.color))
-            }.padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
-        }.buttonStyle(.plain)
-    }
-    private func barra(_ v: Double, _ total: Double, _ color: Color) -> some View {
-        GeometryReader { g in ZStack(alignment: .leading) {
-            Capsule().fill(CNC.line)
-            Capsule().fill(color).frame(width: total > 0 ? min(g.size.width, g.size.width * CGFloat(v / total)) : 0)
-        } }.frame(height: 7)
-    }
-    private func vacio(_ t: String) -> some View {
-        Text(t).font(.system(size: 13.5)).foregroundColor(CNC.pmut).frame(maxWidth: .infinity).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-            .padding(.vertical, 24).padding(.horizontal, 16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
-    }
-    private func circuloGlass(_ ic: String, _ tap: @escaping () -> Void) -> some View {
-        Button(action: tap) { Image(systemName: ic).font(.system(size: 17, weight: .semibold)).foregroundColor(CNC.ink)
-            .frame(width: 44, height: 44).background(.ultraThinMaterial, in: Circle()).overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.8)) }.buttonStyle(.plain)
-    }
-    private func circuloAcc(_ ic: String, _ tap: @escaping () -> Void) -> some View {
-        Button(action: tap) { Image(systemName: ic).font(.system(size: 20, weight: .semibold)).foregroundColor(Color(cnHex: 0x20180a))
-            .frame(width: 46, height: 46).background(CNC.acc).clipShape(Circle()).shadow(color: CNC.acc.opacity(0.4), radius: 8, y: 3) }.buttonStyle(.plain)
-    }
-}
-
-// ── Pantalla «Perfil» NATIVA ────────────────────────────────────────────────
-struct CNPerfil: View {
-    @ObservedObject var datos: CNDatos
-
-    var body: some View {
-        let p = datos.perfil
-        return ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
-                // Marca.
-                HStack(spacing: 10) {
-                    Circle().fill(cnColor(0x093a20)).frame(width: 30, height: 30)
-                        .overlay(Circle().fill(CNC.acc).frame(width: 14, height: 14))
-                    Text("Chinola").font(.system(size: 22, weight: .heavy)).foregroundColor(CNC.ink)
-                }.padding(.top, 8)
-
-                // Tarjeta del usuario.
-                HStack(spacing: 13) {
-                    Text(String(p.nombre.prefix(1)).uppercased()).font(.system(size: 20, weight: .heavy)).foregroundColor(Color(cnHex: 0x20180a))
-                        .frame(width: 48, height: 48).background(CNC.acc).clipShape(Circle())
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(p.nombre).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
-                        Text(p.local ? "Los datos se quedan en este dispositivo" : (p.email.isEmpty ? "Cuenta" : p.email))
-                            .font(.system(size: 12.5)).foregroundColor(CNC.pmut).lineLimit(1)
-                    }
-                    Spacer(minLength: 6)
-                    Text(p.local ? "Local" : p.plan).font(.system(size: 12, weight: .bold)).foregroundColor(CNC.pmut)
-                        .padding(.horizontal, 10).padding(.vertical, 5).background(CNC.soft).clipShape(Capsule())
-                }.tarjetaCN()
-
-                seccion("Cuenta")
-                grupo {
-                    fila("person.fill", CNC.pos, "Mi nombre", p.nombre, "nombre")
-                    div()
-                    fila("book.closed.fill", CNC.info, "Libretas y permisos", "\(p.libretas)", "libretas")
-                }
-                seccion("Preferencias")
-                grupo {
-                    fila("paintpalette.fill", cnColor(0x825eb9), "Personalización", "Chinola", "personaliza")
-                    div()
-                    fila("character.bubble.fill", CNC.info, "Idioma", "Español", "idioma")
-                    div()
-                    fila("bell.fill", CNC.neg, "Notificaciones", "Solo en la app", "notis")
-                }
-                seccion("Datos")
-                grupo {
-                    fila("square.and.arrow.down.fill", cnColor(0x1fa9a0), "Exportar esta libreta", "", "exportar")
-                    div()
-                    fila("square.and.arrow.up.fill", cnColor(0xe0a92e), "Importar movimientos", "CSV", "importar")
-                }
-                seccion("Sobre Chinola")
-                grupo {
-                    fila("play.circle.fill", CNC.pos, "Ver el tour otra vez", "", "tour")
-                    div()
-                    fila("questionmark.circle.fill", CNC.info, "Ayuda y guía", "", "ayuda")
-                    div()
-                    fila("checkmark.shield.fill", cnColor(0x825eb9), "Privacidad y términos", "", "privacidad")
-                }
-                Text("Chinola · nativo").font(.system(size: 12)).foregroundColor(CNC.pmut).padding(.leading, 4)
-
-                Color.clear.frame(height: 120)
-            }
-            .padding(.horizontal, 14).padding(.top, 6)
-        }
-        .background(CNC.scr.ignoresSafeArea())
-    }
-
-    private func seccion(_ t: String) -> some View {
-        Text(t.uppercased()).font(.system(size: 12.5, weight: .semibold)).tracking(0.3).foregroundColor(CNC.pmut)
-            .padding(.leading, 16).padding(.bottom, -6).frame(maxWidth: .infinity, alignment: .leading)
-    }
-    private func grupo<C: View>(@ViewBuilder _ c: () -> C) -> some View {
-        VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
-    }
-    private func div() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 57) }
-    private func fila(_ icono: String, _ tinte: Color, _ titulo: String, _ valor: String, _ id: String) -> some View {
-        Button { datos.onPerfil(id) } label: {
-            HStack(spacing: 12) {
-                Image(systemName: icono).font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
-                    .frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink)
-                Spacer(minLength: 8)
-                if !valor.isEmpty { Text(valor).font(.system(size: 14)).foregroundColor(CNC.pmut) }
-                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6))
-            }.padding(.horizontal, 14).padding(.vertical, 11)
-        }.buttonStyle(.plain)
-    }
-}
-
 extension View { func tarjetaCN() -> some View {
     self.padding(14).frame(maxWidth: .infinity)
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -1485,91 +1160,112 @@ struct CNNuevoMov: View {
     }
 }
 
-// ── Pantalla «Resumen» NATIVA ───────────────────────────────────────────────
-struct CNResumen: View {
+// ── Formulario «Nuevo movimiento» NATIVO (guarda a la web) ──────────────────
+struct CNNuevoMov: View {
     @ObservedObject var datos: CNDatos
-    @State private var mesOffset = 0
-
-    private var nombreMes: String {
-        let d = Calendar.current.date(byAdding: .month, value: mesOffset, to: Date()) ?? Date()
-        let f = DateFormatter(); f.locale = Locale(identifier: "es"); f.dateFormat = "MMMM"
-        return f.string(from: d).capitalized
-    }
+    var onClose: () -> Void
+    var editar: CNMov? = nil
+    @State private var tipo = 2
+    @State private var monto = ""
+    @State private var concepto = ""
+    @State private var cuentaId = 0
+    @State private var categoria = ""
+    @State private var fecha = Date()
+    @State private var repetir = false
+    private let tipos = ["Ingreso", "Fijo", "Variable", "Ahorro"]
+    private let mapa = ["Ingreso", "Gasto Fijo", "Gasto Variable", "Ahorro"]
 
     var body: some View {
-        let lb = datos.libreta
-        return ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
-                cabecera(lb)
-                VStack(spacing: 14) {
-                    if lb.cuentas.isEmpty {
-                        tarjeta { VStack(alignment: .leading, spacing: 10) {
-                            Text("Empieza por aquí").font(.system(size: 18, weight: .bold)).foregroundColor(CNC.ink)
-                            Text("Dile cuánto tienes ahora mismo y la app empieza a cuadrar sola. No tiene que ser exacto.").font(.system(size: 14)).foregroundColor(CNC.pmut).fixedSize(horizontal: false, vertical: true)
-                            Button { datos.onAgregar() } label: { Text("Poner lo que tengo").font(.system(size: 15, weight: .bold)).foregroundColor(Color(cnHex: 0x20180a)).frame(maxWidth: .infinity).padding(.vertical, 14).background(CNC.acc).clipShape(RoundedRectangle(cornerRadius: 26)) }.buttonStyle(.plain).padding(.top, 2)
-                        } }
-                    }
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
-                        kpi("Ingresos del mes", cnDinero(lb.ingresosMes), CNC.pos, "del mes")
-                        kpi("Gastos del mes", cnDinero(lb.gastosMes), CNC.neg, lb.ingresosMes > 0 ? "\(Int((lb.gastosMes / lb.ingresosMes * 100).rounded()))% de tus ingresos" : "de tus ingresos")
-                        kpi("Deuda total", cnDinero(lb.deudaTotal), cnColor(0xe0a92e), "tarjetas + préstamos")
-                        kpi("Patrimonio", cnDinero(lb.patrimonio), CNC.ink, "cuentas − deudas")
-                    }
-                    tarjeta { VStack(alignment: .leading, spacing: 12) {
-                        Text("Evolución en el tiempo").font(.system(size: 15, weight: .semibold)).foregroundColor(CNC.ink)
-                        HStack(spacing: 16) { leyenda(CNC.pos, "Ingresos", cnDinero(lb.ingresosMes)); leyenda(CNC.neg, "Gastos", cnDinero(lb.gastosMes)) }
-                        CNArea(valores: lb.tendencia().map { $0.valor }).frame(height: 90)
-                    }.frame(maxWidth: .infinity, alignment: .leading) }
-                }.padding(.horizontal, 16)
-                Color.clear.frame(height: 120)
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.4).ignoresSafeArea()
+            VStack(spacing: 0) {
+                cabecera
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 18) {
+                        pildoras
+                        grupo { VStack(spacing: 2) {
+                            Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut)
+                            HStack(spacing: 6) { Text("RD$").font(.system(size: 20, weight: .heavy)).foregroundColor(CNC.pmut)
+                                TextField("0", text: $monto).font(.system(size: 34, weight: .heavy)).foregroundColor(CNC.ink).keyboardType(.numberPad).multilineTextAlignment(.center).fixedSize() }
+                        }.frame(maxWidth: .infinity).padding(.vertical, 16) }
+                        grupo { TextField("Descripción o concepto", text: $concepto).font(.system(size: 16)).foregroundColor(CNC.ink).padding(.horizontal, 15).padding(.vertical, 13) }
+                        VStack(spacing: 6) {
+                            titulo("Cuándo y de dónde")
+                            grupo {
+                                HStack(spacing: 12) { cuadro("calendar", CNC.neg); Text("Fecha").font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(); DatePicker("", selection: $fecha, displayedComponents: .date).labelsHidden() }.padding(.horizontal, 14).padding(.vertical, 7)
+                                divi()
+                                menuFila("banknote.fill", CNC.info, "Pagado con", cuentaNombre) { ForEach(datos.libreta.cuentas) { c in Button(c.nombre) { cuentaId = c.id } } }
+                            }
+                        }
+                        VStack(spacing: 6) {
+                            titulo("Categoría")
+                            grupo { menuFila("tag.fill", cnColor(0xe0a92e), "Categoría", categoria.isEmpty ? "Otros" : categoria) { ForEach(datos.libreta.categorias, id: \.nombre) { c in Button(c.nombre) { categoria = c.nombre } }; Button("Otros") { categoria = "Otros" } } }
+                        }
+                        grupo { HStack(spacing: 12) { cuadro("repeat", cnColor(0x825eb9)); Text("Repetir cada mes").font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(); Toggle("", isOn: $repetir).labelsHidden().tint(CNC.pos) }.padding(.horizontal, 14).padding(.vertical, 7) }
+                        Color.clear.frame(height: 40)
+                    }.padding(.horizontal, 16)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(CNC.scr.clipShape(CNRedondo(radio: 28, esquinas: [.topLeft, .topRight])))
+            .ignoresSafeArea(edges: .bottom).padding(.top, 46)
         }
-        .background(CNC.scr.ignoresSafeArea())
+        .onAppear {
+            if let m = editar {
+                tipo = mapa.firstIndex(of: m.tipo) ?? 2
+                monto = m.monto > 0 ? String(Int(m.monto.rounded())) : ""
+                concepto = m.concepto
+                categoria = m.categoria
+                repetir = m.recurrente
+                if m.medio.hasPrefix("cuenta:"), let id = Int(m.medio.dropFirst(7)) { cuentaId = id }
+                let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+                if let d = f.date(from: m.fecha) { fecha = d }
+            }
+            if cuentaId == 0 { cuentaId = datos.libreta.cuentas.first?.id ?? 0 }
+        }
     }
 
-    private func cabecera(_ lb: CNLibreta) -> some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Button { datos.onSelector() } label: {
-                    HStack(spacing: 6) { Image(systemName: "house.fill").font(.system(size: 12, weight: .semibold)); Text(lb.nombre).font(.system(size: 14, weight: .bold)).lineLimit(1); Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold)) }
-                        .foregroundColor(.white).padding(.horizontal, 13).padding(.vertical, 8).background(Color.black.opacity(0.16)).clipShape(Capsule())
-                }.buttonStyle(.plain)
-                Spacer(minLength: 6)
-                HStack(spacing: 6) {
-                    nav("chevron.left") { mesOffset -= 1 }
-                    Text(nombreMes).font(.system(size: 13, weight: .bold)).foregroundColor(.white).lineLimit(1)
-                    nav("chevron.right") { if mesOffset < 0 { mesOffset += 1 } }
+    private var cabecera: some View {
+        VStack(spacing: 0) {
+            Capsule().fill(CNC.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 10)
+            ZStack {
+                Text(editar == nil ? "Nuevo movimiento" : "Editar movimiento").font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
+                HStack {
+                    Button(action: onClose) { Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundColor(CNC.pmut).frame(width: 34, height: 34).cnVidrio(Circle()) }.buttonStyle(.plain)
+                    Spacer()
+                    Button(action: guardar) { HStack(spacing: 5) { Image(systemName: "checkmark").font(.system(size: 12, weight: .heavy)); Text("Guardar").font(.system(size: 14, weight: .bold)) }.foregroundColor(Color(cnHex: 0x3a2c00)).padding(.horizontal, 15).padding(.vertical, 8).cnVidrio(Capsule(), tinte: CNC.acc) }.buttonStyle(.plain)
                 }
-            }
-            VStack(spacing: 6) {
-                Text("TE QUEDA ESTE MES").font(.system(size: 11, weight: .heavy)).tracking(0.5).foregroundColor(cnColor(0x0f3d1e).opacity(0.65))
-                Text(cnDinero(lb.balanceMes)).font(.system(size: 42, weight: .heavy)).foregroundColor(cnColor(0x0d3a1c)).minimumScaleFactor(0.6).lineLimit(1)
-                HStack(spacing: 18) {
-                    HStack(spacing: 5) { Image(systemName: "arrow.up").font(.system(size: 12, weight: .heavy)).foregroundColor(cnColor(0x0d5a2b)); Text(cnDinero(lb.ingresosMes)).font(.system(size: 15, weight: .heavy)).foregroundColor(cnColor(0x0d3a1c)) }
-                    HStack(spacing: 5) { Image(systemName: "arrow.down").font(.system(size: 12, weight: .heavy)).foregroundColor(cnColor(0xb43a2a)); Text(cnDinero(lb.gastosMes)).font(.system(size: 15, weight: .heavy)).foregroundColor(cnColor(0x0d3a1c)) }
-                }
-            }
+            }.padding(.horizontal, 16).padding(.bottom, 14)
         }
-        .frame(maxWidth: .infinity).padding(.top, 58).padding(.bottom, 20).padding(.horizontal, 16)
-        .background(LinearGradient(colors: [cnColor(0xf0b638), cnColor(0xe0a92e), cnColor(0x2f8a44), cnColor(0x137d41)], startPoint: .topLeading, endPoint: .bottomTrailing))
-        .clipShape(CNRedondo(radio: 30, esquinas: [.bottomLeft, .bottomRight]))
-        .ignoresSafeArea(edges: .top)
     }
-    private func nav(_ ic: String, _ tap: @escaping () -> Void) -> some View {
-        Button(action: tap) { Image(systemName: ic).font(.system(size: 12, weight: .bold)).foregroundColor(.white).frame(width: 30, height: 30).background(Color.black.opacity(0.16)).clipShape(Circle()) }.buttonStyle(.plain)
+    private var pildoras: some View {
+        HStack(spacing: 4) { ForEach(tipos.indices, id: \.self) { i in
+            Text(tipos[i]).font(.system(size: 13.5, weight: i == tipo ? .bold : .semibold)).foregroundColor(i == tipo ? .white : CNC.pmut)
+                .frame(maxWidth: .infinity).padding(.vertical, 9).background(i == tipo ? cnColor(0x093a20) : Color.clear).clipShape(Capsule()).onTapGesture { tipo = i }
+        } }.padding(4).background(CNC.soft).clipShape(Capsule())
     }
-    private func kpi(_ t: String, _ v: String, _ color: Color, _ d: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(t).font(.system(size: 14, weight: .medium)).foregroundColor(CNC.pmut)
-            Text(v).font(.system(size: 24, weight: .heavy)).foregroundColor(color).minimumScaleFactor(0.6).lineLimit(1)
-            Text(d).font(.system(size: 12)).foregroundColor(CNC.pmut).lineLimit(1)
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(15).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
+    private var cuentaNombre: String { datos.libreta.cuentas.first { $0.id == cuentaId }?.nombre ?? "Efectivo" }
+    private func titulo(_ t: String) -> some View { Text(t.uppercased()).font(.system(size: 12.5, weight: .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading) }
+    private func grupo<C: View>(@ViewBuilder _ c: () -> C) -> some View { VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5)) }
+    private func divi() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 57) }
+    private func cuadro(_ ic: String, _ tinte: Color) -> some View { Image(systemName: ic).font(.system(size: 14, weight: .semibold)).foregroundColor(.white).frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous)) }
+    private func menuFila<M: View>(_ icono: String, _ tinte: Color, _ titulo: String, _ valor: String, @ViewBuilder _ menu: () -> M) -> some View {
+        Menu { menu() } label: {
+            HStack(spacing: 12) { cuadro(icono, tinte); Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(valor).font(.system(size: 15)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
+        }
     }
-    private func leyenda(_ c: Color, _ t: String, _ v: String) -> some View {
-        HStack(spacing: 6) { Circle().fill(c).frame(width: 9, height: 9); Text(t).font(.system(size: 13)).foregroundColor(CNC.pmut); Text(v).font(.system(size: 13, weight: .bold)).foregroundColor(CNC.ink) }
-    }
-    private func tarjeta<C: View>(@ViewBuilder _ c: () -> C) -> some View {
-        c().padding(16).frame(maxWidth: .infinity, alignment: .leading).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
+    private func guardar() {
+        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        guard n > 0 else { onClose(); return }
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+        var dict: [String: Any] = [
+            "concepto": concepto.isEmpty ? (categoria.isEmpty ? "Movimiento" : categoria) : concepto,
+            "categoria": categoria.isEmpty ? "Otros" : categoria,
+            "tipo": mapa[tipo], "monto": n, "fecha": f.string(from: fecha),
+            "medio": "cuenta:\(cuentaId)", "recurrente": repetir
+        ]
+        if let m = editar { dict["id"] = m.id; datos.onEditarMov(dict) } else { datos.onCrearMov(dict) }
+        onClose()
     }
 }
 

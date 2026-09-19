@@ -81,14 +81,11 @@ extension TestVC {
     /// Va cambiando de pantalla para capturar cada sección.
     func mostrar(_ i: Int) {
         contenido?.removeFromSuperview()
-        let vistas: [AnyView] = [
-            AnyView(CNResumen(datos: datos)), AnyView(CNMovs(datos: datos)),
-            AnyView(CNCuentas(datos: datos)), AnyView(CNPlan(datos: datos)),
-            AnyView(CNPerfil(datos: datos))
-        ]
-        let ids = ["resumen","movs","cuentas","plan","perfil"]
-        estado.activa = ids[i % 5]
-        let h = UIHostingController(rootView: vistas[i % 5])
+        // Solo Movimientos es nativa; las demás son la web de la app.
+        let vistas: [AnyView] = [AnyView(CNMovs(datos: datos))]
+        let ids = ["movs"]
+        estado.activa = ids[0]
+        let h = UIHostingController(rootView: vistas[0])
         h.view.backgroundColor = .systemGroupedBackground
         addChild(h); view.addSubview(h.view); h.didMove(toParent: self)
         h.view.translatesAutoresizingMaskIntoConstraints = false
@@ -100,9 +97,7 @@ extension TestVC {
         ])
         contenido = h.view
         if let p = barraView { view.bringSubviewToFront(p) }
-        if i < 4 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak self] in self?.mostrar(i + 1) }
-        }
+
     }
 }
 
