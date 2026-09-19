@@ -4,24 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Chinola Sim</title>
-  <style>
-    html, body { margin: 0; height: 100%; background: #f7f6ee; color: #132419;
-      font-family: -apple-system, system-ui, sans-serif;
-      display: flex; align-items: center; justify-content: center; flex-direction: column; }
-    h1 { font-size: 44px; margin: 0 0 8px; }
-    p { color: #516356; font-size: 16px; margin: 2px 0; }
-    .ok { color: #137d41; font-weight: 700; }
-  </style>
+  <style>html,body{margin:0;height:100%;background:#f7f6ee;font-family:-apple-system,system-ui,sans-serif}</style>
 </head>
 <body>
-  <h1 class="ok">WEB OK ✓</h1>
-  <p>El webview cargó — la pantalla NO está en negro.</p>
-  <p id="hora"></p>
   <script>
-    // Prueba del arranque: si esto se ve, el contenedor Capacitor montó el
-    // webview correctamente (mismo SceneDelegate/storyboard/manifest que la app).
-    document.getElementById('hora').textContent = 'Cargó a las ' + new Date().toLocaleTimeString();
-    console.log('[hibrido] webview cargado OK');
+    // Prueba del PUENTE de datos web→nativo EXACTO de la app: empuja el JSON de
+    // la libreta por el plugin Nativo.datos, igual que hace menuNativoDatos.
+    var LIBRETA = {
+      nombre: "Personal",
+      cuentas: [{ id: 1, nombre: "Cuenta principal", banco: "Banreservas", saldo: 48200, color: "#137d41", clase: "banco", icono: "banco" }],
+      categorias: [
+        { nombre: "Alimentación", tipo: "Gasto", color: "#e0a92e", icono: "comida" },
+        { nombre: "Transporte", tipo: "Gasto", color: "#2f6fd6", icono: "auto" },
+        { nombre: "Servicios", tipo: "Gasto", color: "#825eb9", icono: "rayo" }
+      ],
+      tx: [
+        { id: "m1", concepto: "Sueldo quincena", categoria: "Ingresos", tipo: "Ingreso", monto: 30000, fecha: "2026-09-18", medio: "cuenta:1" },
+        { id: "m2", concepto: "Supermercado Nacional", categoria: "Alimentación", tipo: "Gasto Variable", monto: 2400, fecha: "2026-09-18", medio: "cuenta:1" },
+        { id: "m3", concepto: "Uber al trabajo", categoria: "Transporte", tipo: "Gasto Variable", monto: 350, fecha: "2026-09-18", medio: "cuenta:1" },
+        { id: "m4", concepto: "Café con Ana", categoria: "Alimentación", tipo: "Gasto Variable", monto: 420, fecha: "2026-09-17", medio: "cuenta:1" },
+        { id: "m5", concepto: "Luz (EdeEste)", categoria: "Servicios", tipo: "Gasto Fijo", monto: 1850, fecha: "2026-09-17", medio: "cuenta:1" }
+      ]
+    };
+    function empuja() {
+      try {
+        var N = window.Capacitor.registerPlugin('Nativo');
+        N.datos({ json: JSON.stringify(LIBRETA), perfil: JSON.stringify({ nombre: "Gelson" }) });
+      } catch (e) { document.body.innerHTML = '<pre>error: ' + e + '</pre>'; }
+    }
+    // Empuja al cargar y otra vez por si el plugin monta un pelín después.
+    empuja();
+    setTimeout(empuja, 800);
   </script>
 </body>
 </html>
