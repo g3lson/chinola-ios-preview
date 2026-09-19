@@ -48,7 +48,7 @@ class TestVC: CAPBridgeViewController {
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         contenedorNativo = host.view
-        bridge?.webView?.isHidden = true
+        webView?.isHidden = true
         if let barra = barraView { view.bringSubviewToFront(barra) }
     }
 }
