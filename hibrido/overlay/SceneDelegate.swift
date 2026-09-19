@@ -48,7 +48,9 @@ class TestVC: CAPBridgeViewController {
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         contenedorNativo = host.view
-        webView?.isHidden = true
+        // NO se esconde el webView: en Capacitor el webView es la vista raíz del
+        // VC, y esconderlo apaga TODA la pantalla (negro). La vista nativa es
+        // opaca (crema) y va encima, así que tapa el web sin esconderlo.
         if let barra = barraView { view.bringSubviewToFront(barra) }
     }
 }
