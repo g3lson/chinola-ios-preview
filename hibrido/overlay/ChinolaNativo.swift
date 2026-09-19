@@ -207,6 +207,14 @@ func cnFechaCorta(_ iso: String) -> String {
     let o = DateFormatter(); o.locale = Locale(identifier: "es"); o.dateFormat = "d MMM"
     return o.string(from: d)
 }
+/// "7 SEPTIEMBRE" — el formato que usa la app en las cabeceras de día.
+func cnDiaCorto(_ iso: String) -> String {
+    let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+    guard let d = f.date(from: iso) else { return iso }
+    let o = DateFormatter(); o.locale = Locale(identifier: "es"); o.dateFormat = "d MMMM"
+    return o.string(from: d).uppercased()
+}
+
 func cnDiaLargo(_ iso: String) -> String {
     let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
     guard let d = f.date(from: iso) else { return iso }
@@ -282,33 +290,18 @@ struct CNMovs: View {
         for m in movimientos { if mapa[m.fecha] == nil { orden.append(m.fecha) }; mapa[m.fecha, default: []].append(m) }
         return orden.map { ($0, mapa[$0] ?? []) }
     }
-    private func medioNombre(_ medio: String) -> String { datos.libreta.nombreMedio(medio) }
 
     var body: some View {
         NavigationView {
             Group {
-                if porDia.isEmpty {
-                    vacio
-                } else {
-                    List {
-                        ForEach(porDia, id: \.0) { par in
-                            Section {
-                                ForEach(par.1) { m in
-                                    Button { datos.onDetalleMov(m.id) } label: { fila(m) }
-                                        .buttonStyle(.plain)
-                                }
-                            } header: {
-                                cabeceraDia(par.0, par.1)
-                            }
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                }
+                if porDia.isEmpty { vacio } else { lista }
             }
             .navigationTitle("Movimientos")
             .searchable(text: $q, prompt: "Buscar movimiento")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button { } label: { Image(systemName: "line.3.horizontal.decrease.circle") }
+                    Button { } label: { Image(systemName: "calendar") }
                     Button { datos.onNuevoMov() } label: {
                         Image(systemName: "plus").font(.system(size: 17, weight: .semibold))
                     }
@@ -318,33 +311,74 @@ struct CNMovs: View {
         .navigationViewStyle(.stack)
     }
 
-    private func cabeceraDia(_ fecha: String, _ items: [CNMov]) -> some View {
-        let total = items.reduce(0.0) { $0 + ($1.esIngreso ? abs($1.monto) : ($1.esTransfer ? 0 : -abs($1.monto))) }
-        return HStack {
-            Text(cnDiaLargo(fecha))
-            Spacer()
-            Text((total >= 0 ? "+" : "−") + cnDinero(total))
+    private var lista: some View {
+        List {
+            ForEach(porDia, id: \.0) { par in
+                Section {
+                    ForEach(par.1) { m in
+                        Button { datos.onDetalleMov(m.id) } label: { fila(m) }
+                            .buttonStyle(.plain)
+                    }
+                } header: {
+                    HStack {
+                        Text(cnDiaCorto(par.0))
+                        Spacer()
+                        Text(totalDia(par.1))
+                    }
+                }
+            }
         }
+        .listStyle(.insetGrouped)
+    }
+
+    private func totalDia(_ items: [CNMov]) -> String {
+        let t = items.reduce(0.0) { $0 + ($1.esIngreso ? abs($1.monto) : ($1.esTransfer ? 0 : -abs($1.monto))) }
+        return (t >= 0 ? "+" : "−") + cnDinero(t)
+    }
+
+    /// Color del movimiento: ingreso verde, gasto rojo, ahorro/transferencia con
+    /// el color de su categoría (como en la app).
+    private func tinte(_ m: CNMov) -> Color {
+        if m.esIngreso { return .green }
+        if let c = datos.libreta.categoria(m.categoria) { return cnColor(hexString: c.color) }
+        if m.esGasto { return .red }
+        return .secondary
+    }
+    private func colorMonto(_ m: CNMov) -> Color {
+        if m.esIngreso { return .green }
+        if m.esTransfer { return .secondary }
+        if m.esGasto { return .red }
+        return tinte(m)          // Ahorro: el color de la meta/categoría
     }
 
     private func fila(_ m: CNMov) -> some View {
-        let entra = m.esIngreso
+        let col = tinte(m)
         let cat = datos.libreta.categoria(m.categoria)
-        let tinte: Color = entra ? .green : (m.esTransfer ? .blue : (cat != nil ? cnColor(hexString: cat!.color) : .secondary))
-        let icono = entra ? "moneda" : (m.esTransfer ? "arrow.left.arrow.right" : (cat?.icono ?? "puntos"))
+        let icono = m.esIngreso ? "moneda" : (m.esTransfer ? "arrow.left.arrow.right" : (cat?.icono ?? "puntos"))
         return HStack(spacing: 12) {
-            cnGlifo(icono, tam: 22).foregroundColor(tinte).frame(width: 28)
+            // Icono en círculo tintado, como en la app.
+            cnGlifo(icono, tam: 20)
+                .foregroundColor(col)
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(col.opacity(0.16)))
             VStack(alignment: .leading, spacing: 2) {
-                Text(m.concepto.isEmpty ? m.categoria : m.concepto).lineLimit(1)
-                Text("\(m.categoria) · \(medioNombre(m.medio))")
+                HStack(spacing: 5) {
+                    Text(m.concepto.isEmpty ? m.categoria : m.concepto)
+                        .fixedSize(horizontal: false, vertical: true)   // deja 2 líneas
+                    if m.recurrente {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.caption2).foregroundColor(.secondary)
+                    }
+                }
+                Text("\(m.categoria) · \(datos.libreta.nombreMedio(m.medio))")
                     .font(.footnote).foregroundColor(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
-            Text((entra ? "+" : (m.esTransfer ? "" : "−")) + cnDinero(m.monto))
-                .fontWeight(.medium)
-                .foregroundColor(entra ? .green : .primary)
+            Text((m.esIngreso ? "+" : (m.esTransfer ? "" : "−")) + cnDinero(m.monto))
+                .fontWeight(.semibold)
+                .foregroundColor(colorMonto(m))
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 
     private var vacio: some View {

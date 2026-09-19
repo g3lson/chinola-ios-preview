@@ -11,8 +11,24 @@
   <h2>Diagnóstico del puente</h2>
   <pre id="s">arrancando…</pre>
   <script>
-    var LIBRETA = { nombre:"Personal", cuentas:[{id:1,nombre:"Cuenta",saldo:100,color:"#137d41",clase:"banco",icono:"banco"}],
-      tx:[{id:"m1",concepto:"Sueldo",categoria:"Ingresos",tipo:"Ingreso",monto:30000,fecha:"2026-09-18",medio:"cuenta:1"}] };
+    var LIBRETA = {
+      nombre:"Casa",
+      cuentas:[{id:1,nombre:"Cuenta de la casa",saldo:48200,color:"#137d41",clase:"banco",icono:"banco"}],
+      categorias:[
+        {nombre:"Salud",tipo:"Gasto",color:"#1fa9a0",icono:"salud"},
+        {nombre:"Servicios",tipo:"Gasto",color:"#1fa9a0",icono:"rayo"},
+        {nombre:"Educación",tipo:"Gasto",color:"#7a4fd0",icono:"birrete"},
+        {nombre:"Ahorro",tipo:"Gasto",color:"#7a4fd0",icono:"hucha"}
+      ],
+      tx:[
+        {id:"a",concepto:"Médico",categoria:"Salud",tipo:"Gasto Variable",monto:3700,fecha:"2026-09-07",medio:"cuenta:1"},
+        {id:"b",concepto:"Agua y basura",categoria:"Servicios",tipo:"Gasto Fijo",monto:1800,fecha:"2026-09-06",medio:"cuenta:1",recurrente:true},
+        {id:"c",concepto:"Aporte Remodelar la cocina",categoria:"Ahorro",tipo:"Ahorro",monto:8000,fecha:"2026-09-05",medio:"cuenta:1"},
+        {id:"d",concepto:"Colegio de los niños",categoria:"Educación",tipo:"Gasto Fijo",monto:9000,fecha:"2026-09-05",medio:"cuenta:1",recurrente:true},
+        {id:"e",concepto:"Aporte Remodelar la cocina",categoria:"Ahorro",tipo:"Ahorro",monto:8000,fecha:"2026-09-04",medio:"cuenta:1"},
+        {id:"f",concepto:"Sueldo quincena",categoria:"Ingresos",tipo:"Ingreso",monto:30000,fecha:"2026-09-03",medio:"cuenta:1"}
+      ]
+    };
     var log = [];
     function p(x){ log.push(x); document.getElementById('s').textContent = log.join('\n'); }
     p('Capacitor: ' + (typeof window.Capacitor));
