@@ -10,10 +10,32 @@ func cnColor(_ hex: UInt) -> Color {
     Color(.sRGB, red: Double((hex >> 16) & 0xff) / 255, green: Double((hex >> 8) & 0xff) / 255, blue: Double(hex & 0xff) / 255, opacity: 1)
 }
 func cnColor(hexString s: String) -> Color {
-    var h = s.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+    let t = s.trimmingCharacters(in: .whitespaces)
+    // El diseño guarda los colores en oklch(...) (CSS). Se convierten a sRGB para
+    // que las cuentas/categorías/metas se vean IGUAL que en la web y no en negro.
+    if t.hasPrefix("oklch") { return cnOklch(t) }
+    var h = t.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
     if h.count == 3 { h = h.map { "\($0)\($0)" }.joined() }
     let v = UInt64(h, radix: 16) ?? 0
     return Color(.sRGB, red: Double((v >> 16) & 0xff) / 255, green: Double((v >> 8) & 0xff) / 255, blue: Double(v & 0xff) / 255, opacity: 1)
+}
+// oklch(L C H) o oklch(L C H / a) → sRGB (fórmula de Björn Ottosson).
+func cnOklch(_ s: String) -> Color {
+    let dentro = s.drop(while: { $0 != "(" }).dropFirst().prefix(while: { $0 != ")" })
+    let n = dentro.split(whereSeparator: { " /,".contains($0) }).compactMap { Double($0) }
+    guard n.count >= 3 else { return CNC.ink }
+    let L = n[0], C = n[1], hr = n[2] * .pi / 180
+    let a = C * cos(hr), b = C * sin(hr)
+    let l_ = L + 0.3963377774 * a + 0.2158037573 * b
+    let m_ = L - 0.1055613458 * a - 0.0638541728 * b
+    let s_ = L - 0.0894841775 * a - 1.2914855480 * b
+    let l = l_ * l_ * l_, m = m_ * m_ * m_, q = s_ * s_ * s_
+    let r =  4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * q
+    let g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * q
+    let bl = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * q
+    func gam(_ c: Double) -> Double { let x = max(0, c); return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1 / 2.4) - 0.055 }
+    func cl(_ c: Double) -> Double { min(1, max(0, c)) }
+    return Color(.sRGB, red: cl(gam(r)), green: cl(gam(g)), blue: cl(gam(bl)), opacity: 1)
 }
 enum CNC {
     static let scr  = cnColor(0xfaf7ec)
@@ -226,6 +248,9 @@ final class CNDatos: ObservableObject {
     var onAbrirMeta: (Int) -> Void = { _ in }
     var onAccion: (String, String) -> Void = { _, _ in }   // (tipo, id) → flujo web
     var onCrearMov: ([String: Any]) -> Void = { _ in }     // guardar un movimiento nativo → web
+    // Guardar una "hoja" nativa (cuenta/tarjeta/préstamo/meta/abono/aporte/pago)
+    // reusando toda la lógica de la web: (tipo, form, extra?) → enviarHoja.
+    var onGuardarHoja: (String, [String: Any], [String: Any]?) -> Void = { _, _, _ in }
     var onSelector: () -> Void = {}
     var onVerPresupuesto: () -> Void = {}
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
@@ -331,7 +356,7 @@ struct CNMovs: View {
         let icono = entra ? "banknote.fill" : (m.esTransfer ? "arrow.left.arrow.right" : (cat?.icono ?? "tag.fill"))
         return Button { datos.onDetalleMov(m.id) } label: {
             HStack(spacing: 12) {
-                Image(systemName: icono).font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
+                cnGlifo(icono, tam: 17).foregroundColor(.white)
                     .frame(width: 34, height: 34).background(tinte).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(m.concepto.isEmpty ? m.categoria : m.concepto).font(.system(size: 15, weight: .semibold)).foregroundColor(CNC.ink)
@@ -623,6 +648,114 @@ struct CNIconoTab: View {
     }
 }
 
+// ── Catálogo de iconos (mismos paths que ICONOS del web) ────────────────────
+// Para que cuentas, categorías y metas usen EXACTAMENTE los mismos glifos que la
+// web, no aproximaciones de SF Symbols.
+enum CNIconos {
+    static let paths: [String: String] = [
+        "billete": "M2 6h20v12H2zM12 9.4a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2M5.5 9.5h0M18.5 14.5h0",
+        "casa": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+        "carrito": "M3 4h2l2 11h12M7 8h14l-2 7H8M8 19a1 1 0 1 0 2 0 1 1 0 1 0-2 0M16 19a1 1 0 1 0 2 0 1 1 0 1 0-2 0",
+        "comida": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+        "cafe": "M4 8h13v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM17 9h2a2 2 0 0 1 0 4h-2M4 21h13",
+        "rayo": "M13 2 4 14h6l-1 8 9-12h-6z",
+        "wifi": "M4 8a14 14 0 0 1 16 0M7 12a9 9 0 0 1 10 0M10 16a4 4 0 0 1 4 0M12 20h.01",
+        "auto": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+        "gasolina": "M5 21V5a2 2 0 0 1 2-2h5v18M5 12h7M14 8h3a2 2 0 0 1 2 2v7a2 2 0 0 0 2 2",
+        "birrete": "M2 9l10-4 10 4-10 4zM6 11v5c0 2 3 3 6 3s6-1 6-3v-5",
+        "libro": "M4 5h7v14H4zM13 5h7v14h-7z",
+        "salud": "M12 7v10M7 12h10M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18",
+        "iglesia": "M12 3v6M9 6h6M6 21V11l6-4 6 4v10z",
+        "regalo": "M3 9h18v3H3zM4 12v9h16v-9M12 9v12M8 9a2 2 0 1 1 4-2 2 2 0 1 1 4 2",
+        "cine": "M3 6h18v10H3zM8 20h8M8 6v10M16 6v10",
+        "musica": "M9 18V6l10-2v12M9 18a3 3 0 1 1-3-3 3 3 0 0 1 3 3M19 16a2 2 0 1 1-2-2 2 2 0 0 1 2 2",
+        "tarjeta": "M2 6h20v12H2zM2 10h20M6 15h4",
+        "usuario": "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0",
+        "familia": "M8 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M17 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5M2 20a6 6 0 0 1 12 0M15 20a5 5 0 0 1 7-4",
+        "hucha": "M4 13a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v3H4zM7 18v2M17 18v2M16 11h1",
+        "grafico": "M4 20V10M10 20V4M16 20v-7M22 20H2",
+        "maleta": "M4 8h16v12H4zM9 8V5h6v3M4 14h16",
+        "avion": "M2 13l20-6-8 14-2-5z",
+        "mascota": "M6 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4M18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4M9 20a3 3 0 0 1-3-3c0-2 2-3 3-5h6c1 2 3 3 3 5a3 3 0 0 1-3 3z",
+        "ropa": "M9 4l3 2 3-2 5 4-3 3v9H7v-9L4 8z",
+        "gym": "M4 9v6M20 9v6M7 7v10M17 7v10M7 12h10",
+        "herramienta": "M14 4a4 4 0 0 1 6 6l-9 9-4 1 1-4z",
+        "telefono": "M7 3h10v18H7zM10 19h4",
+        "puntos": "M6 12h.01M12 12h.01M18 12h.01",
+        "alquiler": "M4 21V9l8-6 8 6v12M9 21v-6h6v6M14 12h.01",
+        "llave": "M14 7a4 4 0 1 1-3.5 5.9L4 19v-3h3v-3h3l.5-1A4 4 0 0 1 14 7",
+        "sofa": "M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3M2 12a2 2 0 0 1 4 0v5h12v-5a2 2 0 0 1 4 0v7H2z",
+        "bombilla": "M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5V17H8v-3.5A6 6 0 0 1 12 3",
+        "agua": "M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11",
+        "basura": "M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6",
+        "bus": "M4 6h16v9H4zM4 15v3h2v-3M18 15v3h2v-3M7 9h10M6 19a1 1 0 1 0 2 0M16 19a1 1 0 1 0 2 0",
+        "taxi": "M5 16v-4l2-5h10l2 5v4M5 16h14M9 7V5h6v2M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+        "moto": "M5 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6M8 15h5l3-6h2M11 9h4",
+        "bici": "M6 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6M18 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6M9 16l3-8h3M8 8h4",
+        "parking": "M8 18V6h4a3 3 0 0 1 0 6H8M4 3h16v18H4z",
+        "taller": "M3 18h18M6 18V9l6-4 6 4v9M9 18v-4h6v4",
+        "peaje": "M5 20V8h6v12M13 20V4h6v16M8 12h.01M16 8h.01",
+        "supermercado": "M3 9l2-5h14l2 5M3 9h18v11H3zM9 13h6",
+        "panaderia": "M4 12a5 5 0 0 1 5-5h6a5 5 0 0 1 0 10H9a5 5 0 0 1-5-5M9 9v6M13 9v6",
+        "restaurante": "M4 4v6a3 3 0 0 0 6 0V4M7 10v10M14 4h5a1 1 0 0 1 1 1v6h-6z",
+        "pizza": "M12 3 4 20l16-5zM11 11h.01M13 15h.01",
+        "bebida": "M6 4h12l-2 6H8zM8 10l1 10h6l1-10M10 14h4",
+        "farmacia": "M12 6v12M6 12h12M6 6h12v12H6z",
+        "medico": "M8 3h8v4h4v10H4V7h4zM12 10v4M10 12h4",
+        "dentista": "M8 3c2 0 2 2 4 2s2-2 4-2 3 3 2 8c-1 4-2 8-3 8s-1-4-3-4-2 4-3 4-2-4-3-8C5 6 6 3 8 3",
+        "gafas": "M6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M18 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M9 12h6",
+        "peluqueria": "M6 4l12 12M18 4 6 16M6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4M18 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4",
+        "cuna": "M4 10v9M20 10v9M4 14h16M6 10a6 6 0 0 1 12 0",
+        "colegio": "M12 3l8 4v3H4V7zM6 10v11M18 10v11M10 21v-6h4v6",
+        "laptop": "M4 6h16v9H4zM2 18h20M9 18h6",
+        "suscripcion": "M4 6h16v12H4zM8 10h8M8 14h5M17 14h.01",
+        "juego": "M7 12h4M9 10v4M15 12h.01M17 14h.01M4 8h16v8H4z",
+        "deporte": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 3v18M3 12h18",
+        "playa": "M12 12a7 7 0 0 1 10-4c-2 5-6 5-10 4M12 12v9M4 21h16",
+        "hotel": "M4 20V6h16v14M8 10h.01M8 14h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01",
+        "concierto": "M4 20V10l7-5v15M11 12h9v8M15 16h.01",
+        "iglesia2": "M12 2v5M9 5h6M5 21V10l7-4 7 4v11M10 21v-6h4v6",
+        "mano": "M8 12V5a2 2 0 0 1 4 0v6M12 11V4a2 2 0 0 1 4 0v8M16 9a2 2 0 0 1 4 0v6a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6v-3a2 2 0 0 1 4 0",
+        "impuesto": "M6 3h12v18H6zM9 8h6M9 12h6M9 16h3",
+        "banco": "M3 10 12 4l9 6M5 10v10h14V10M9 20v-6h6v6",
+        "seguro": "M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z M9 12l2 2 4-4",
+        "nomina": "M4 5h16v14H4zM8 9h8M8 13h5M15 15a2 2 0 1 0 4 0 2 2 0 0 0-4 0",
+        "propina": "M12 3v18M8 7h6a3 3 0 0 1 0 6h-4a3 3 0 0 0 0 6h6",
+        "bolsa": "M6 8h12l-1 12H7zM9 8V5a3 3 0 0 1 6 0v3",
+        "camion": "M3 7h11v9H3zM14 11h4l3 3v2h-7M6 19a1 1 0 1 0 2 0M16 19a1 1 0 1 0 2 0",
+        "caja": "M4 8l8-4 8 4v9l-8 4-8-4zM4 8l8 4 8-4M12 12v9",
+        "factura": "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6",
+        "reloj": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7v5l4 2",
+        "estrella": "M12 3l3 6 6 1-4.5 4.5L18 21l-6-3-6 3 1.5-6.5L3 10l6-1z",
+        "corazon": "M12 20s-8-4.5-8-10a4.5 4.5 0 0 1 8-3 4.5 4.5 0 0 1 8 3c0 5.5-8 10-8 10",
+        "planta": "M12 21V9M12 9C9 9 7 7 7 4c3 0 5 2 5 5M12 9c3 0 5-2 5-5-3 0-5 2-5 5M6 21h12",
+        "limpieza": "M6 21h12l-1-9H7zM9 12V4h6v8M12 15v3",
+        "mudanza": "M3 17h18M5 17V9l7-5 7 5v8M10 17v-5h4v5",
+        "perro": "M5 11l2-5 3 2h4l3-2 2 5v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3zM9 13h.01M15 13h.01M11 16h2",
+        "gato": "M5 20V9l3-5 2 3h4l2-3 3 5v11zM9 13h.01M15 13h.01M10 16h4",
+        "libro2": "M4 6a4 4 0 0 1 8 0 4 4 0 0 1 8 0v12a4 4 0 0 0-8 0 4 4 0 0 0-8 0z",
+        "premio": "M8 3h8v6a4 4 0 0 1-8 0zM12 13v5M9 21h6M5 5H3v2a4 4 0 0 0 4 4M19 5h2v2a4 4 0 0 1-4 4",
+        "moneda": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7v10M9.5 9.5h5M9.5 14.5h5",
+        "cripto": "M9 4v16M7 8h5a2 2 0 0 1 0 4H7h5a2 2 0 0 1 0 4H7M12 4v2M12 18v2",
+        "candado": "M6 11h12v10H6zM9 11V8a3 3 0 0 1 6 0v3M12 15v3"
+    ]
+    static let cat: [String: String] = [
+        "Ingresos": "grafico", "Vivienda": "casa", "Alimentación": "comida", "Servicios": "rayo",
+        "Transporte": "auto", "Educación": "birrete", "Salud": "salud", "Donaciones": "iglesia",
+        "Entretenimiento": "cine", "Deudas": "tarjeta", "Personal": "usuario", "Ahorro": "hucha", "Otros": "puntos"
+    ]
+}
+
+// Dibuja un glifo por nombre: si está en el catálogo del diseño lo pinta con
+// CNSVGShape (idéntico a la web); si no, cae a un SF Symbol con ese nombre.
+@ViewBuilder func cnGlifo(_ nombre: String, tam: CGFloat = 20, grosor: CGFloat = 2) -> some View {
+    if let d = CNIconos.paths[nombre] {
+        CNSVGShape(d: d).stroke(style: StrokeStyle(lineWidth: grosor, lineCap: .round, lineJoin: .round)).frame(width: tam, height: tam)
+    } else {
+        Image(systemName: nombre).font(.system(size: tam * 0.82, weight: .semibold))
+    }
+}
+
 // ── Pantalla «Cuentas» NATIVA ───────────────────────────────────────────────
 struct CNCuentas: View {
     @ObservedObject var datos: CNDatos
@@ -726,7 +859,7 @@ struct CNCuentas: View {
     private func fila(icono: String, color: Color, nombre: String, sub: String, monto: String, montoColor: Color, tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
             HStack(spacing: 12) {
-                Image(systemName: icono).font(.system(size: 16, weight: .semibold)).foregroundColor(color)
+                cnGlifo(icono, tam: 20).foregroundColor(color)
                     .frame(width: 40, height: 40).background(color.opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(nombre).font(.system(size: 15.5, weight: .semibold)).foregroundColor(CNC.ink)
@@ -805,7 +938,7 @@ struct CNPlan: View {
     private func filaCat(_ c: CNCategoria, _ lb: CNLibreta) -> some View {
         let g = lb.gastadoCategoria(c.nombre); let pas = c.limite > 0 && g > c.limite
         return HStack(spacing: 12) {
-            Image(systemName: c.icono).font(.system(size: 15, weight: .semibold)).foregroundColor(cnColor(hexString: c.color))
+            cnGlifo(c.icono, tam: 19).foregroundColor(cnColor(hexString: c.color))
                 .frame(width: 40, height: 40).background(cnColor(hexString: c.color).opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 5) {
                 HStack { Text(c.nombre).font(.system(size: 15.5, weight: .semibold)).foregroundColor(CNC.ink)
@@ -825,7 +958,7 @@ struct CNPlan: View {
         Button { datos.onAbrirMeta(m.id) } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 12) {
-                    Image(systemName: m.icono).font(.system(size: 15, weight: .semibold)).foregroundColor(cnColor(hexString: m.color))
+                    cnGlifo(m.icono, tam: 19).foregroundColor(cnColor(hexString: m.color))
                         .frame(width: 40, height: 40).background(cnColor(hexString: m.color).opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     VStack(alignment: .leading, spacing: 1) {
                         Text(m.nombre).font(.system(size: 15.5, weight: .semibold)).foregroundColor(CNC.ink)
@@ -1023,7 +1156,7 @@ struct CNDetalleCuenta: View {
             CNDetCabecera(inicial: cnInicial(c?.nombre ?? "?"), nombre: c?.nombre ?? "Cuenta", sub: ((c?.banco.isEmpty ?? true) ? "Sin banco" : c!.banco) + " · \(movs.count) mov.", cuadro: cnColor(hexString: c?.color ?? "#137d41"), onClose: onClose)
             cnCuerpo {
                 CNDetCifra(rotulo: "Saldo disponible", valor: cnDinero(c?.saldo ?? 0), cols: [("Entró este mes", cnDinero(entra), CNC.pos), ("Salió este mes", cnDinero(sale), CNC.neg)])
-                CNBotonAncho(texto: "Nuevo movimiento", icono: "plus") { datos.onAccion("nuevo", ""); onClose() }
+                CNBotonAncho(texto: "Nuevo movimiento", icono: "plus") { datos.onAccion("nuevo", "") }
                 Text("MOVIMIENTOS DE ESTA CUENTA").font(.system(size: 12.5, weight: .semibold)).foregroundColor(CNC.pmut).padding(.leading, 4)
                 if movs.isEmpty { Text("Aquí saldrá lo que anotes con esta cuenta.").font(.system(size: 13.5)).foregroundColor(CNC.pmut).frame(maxWidth: .infinity, alignment: .leading).padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1)) }
                 else { VStack(spacing: 0) { ForEach(movs.indices, id: \.self) { i in filaMov(movs[i], medio); if i < movs.count - 1 { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 58) } } }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5)) }
@@ -1049,7 +1182,7 @@ struct CNDetallePrestamo: View {
             cnCuerpo {
                 CNDetCifra(rotulo: meDeben ? "Te deben" : "Debes", valor: cnDinero(p?.pendiente ?? 0), color: cnColor(0x825eb9),
                     cols: [(meDeben ? "Prestaste" : "Te prestaron", cnDinero(p?.total ?? 0), CNC.ink), ("Ya \(meDeben ? "abonó" : "abonaste")", cnDinero(p?.pagado ?? 0), CNC.pos)])
-                CNBotonAncho(texto: "Registrar un abono", icono: "plus") { datos.onAccion("abono", "\(prestamoId)"); onClose() }
+                CNBotonAncho(texto: "Registrar un abono", icono: "plus") { datos.onAccion("abono", "\(prestamoId)") }
             }
         }
     }
@@ -1063,7 +1196,7 @@ struct CNDetalleTarjeta: View {
             CNDetCabecera(inicial: cnInicial(t?.nombre ?? "?"), nombre: t?.nombre ?? "Tarjeta", sub: "Corte \(t?.corte ?? 0)", fondo: cnColor(0x9a3f3f), cuadro: CNC.neg, onClose: onClose)
             cnCuerpo {
                 CNDetCifra(rotulo: "Deuda actual", valor: cnDinero(t?.saldo ?? 0), color: CNC.neg, cols: [("Límite", cnDinero(t?.limite ?? 0), CNC.ink), ("Disponible", cnDinero(t?.disponible ?? 0), CNC.pos)])
-                CNBotonAncho(texto: "Pagar la tarjeta", icono: "creditcard") { datos.onAccion("pagoTarjeta", "\(tarjetaId)"); onClose() }
+                CNBotonAncho(texto: "Pagar la tarjeta", icono: "creditcard") { datos.onAccion("pagoTarjeta", "\(tarjetaId)") }
             }
         }
     }
@@ -1084,7 +1217,7 @@ struct CNDetalleMeta: View {
                     }.padding(.top, 4)
                     CNDetCifra(rotulo: "Ahorrado", valor: cnDinero(m?.ahorrado ?? 0), color: cnColor(0x825eb9), cols: [("Objetivo", cnDinero(m?.meta ?? 0), CNC.ink), ("Te falta", cnDinero(max(0, (m?.meta ?? 0) - (m?.ahorrado ?? 0))), CNC.neg)])
                 }
-                CNBotonAncho(texto: "Aportar a la meta", icono: "plus") { datos.onAccion("aporte", "\(metaId)"); onClose() }
+                CNBotonAncho(texto: "Aportar a la meta", icono: "plus") { datos.onAccion("aporte", "\(metaId)") }
             }
         }
     }
