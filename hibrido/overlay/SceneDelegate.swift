@@ -7,8 +7,8 @@ import Capacitor
 // datos: si Movimientos se llena, el PUENTE web→nativo funciona.
 
 class TestVC: CAPBridgeViewController {
-    let datos = CNDatos()
-    let estado = CNMenuEstado()
+    let datos = CNDatos.shared
+    let estado = CNMenuEstado.shared
     private let nativo = NativoPlugin()
     private var barraView: UIView?
 

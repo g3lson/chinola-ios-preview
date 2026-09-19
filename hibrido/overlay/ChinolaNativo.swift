@@ -233,6 +233,11 @@ struct CNPerfilInfo: Decodable {
 }
 
 final class CNDatos: ObservableObject {
+    // Store COMPARTIDO: Capacitor puede atender la llamada JS con una instancia
+    // del plugin distinta a la nuestra; si cada quien usa su propio CNDatos, los
+    // datos que empuja la web nunca llegan a la pantalla (salía "No hay
+    // movimientos"). Con un singleton, plugin y vista usan el MISMO store.
+    static let shared = CNDatos()
     @Published var libreta = CNLibreta()
     @Published var perfil = CNPerfilInfo()
     var onNuevoMov: () -> Void = {}
@@ -407,6 +412,7 @@ extension Color { init(cnHex: UInt) { self = cnColor(cnHex) } }
 // Vive encima del webview y cambia de pestaña llamando a la web. El material
 // translúcido deja pasar el contenido por detrás, como el menú de iOS 26.
 final class CNMenuEstado: ObservableObject {
+    static let shared = CNMenuEstado()
     @Published var activa: String = "resumen"
     @Published var titulos: Bool = true
     var alTocar: (String) -> Void = { _ in }

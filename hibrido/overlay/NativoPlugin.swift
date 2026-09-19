@@ -31,8 +31,9 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         let json = call.getString("json") ?? "{}"
         let perfil = call.getString("perfil")
         DispatchQueue.main.async {
-            self.store?.cargar(json: json)
-            if let p = perfil { self.store?.cargarPerfil(json: p) }
+            // Al store COMPARTIDO (esta instancia puede no ser la del VC).
+            CNDatos.shared.cargar(json: json)
+            if let p = perfil { CNDatos.shared.cargarPerfil(json: p) }
             call.resolve()
         }
     }
@@ -40,13 +41,13 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     // La web avisa qué pestaña quedó activa, para que la barra la resalte.
     @objc func menuActiva(_ call: CAPPluginCall) {
         let id = call.getString("id") ?? "resumen"
-        DispatchQueue.main.async { self.menuEstado?.activa = id; call.resolve() }
+        DispatchQueue.main.async { CNMenuEstado.shared.activa = id; call.resolve() }
     }
 
     // Mostrar u ocultar los títulos del menú (ajuste de la app).
     @objc func menuTitulos(_ call: CAPPluginCall) {
         let on = call.getBool("on") ?? true
-        DispatchQueue.main.async { self.menuEstado?.titulos = on; call.resolve() }
+        DispatchQueue.main.async { CNMenuEstado.shared.titulos = on; call.resolve() }
     }
 
     @objc func abrirTendencia(_ call: CAPPluginCall) {
