@@ -46,7 +46,14 @@ class TestVC: CAPBridgeViewController {
         // La cabecera y el panel del Resumen los calcula la web; en el banco de
         // pruebas no hay web, así que se carga un ejemplo con todas las clases
         // de tarjeta para poder mirarlas.
-        datos.cargarResumen(json: TestVC.resumenDeMuestra)
+        // La cabecera de la muestra cambia de diseño según la pantalla pedida,
+        // para poder mirarlos todos.
+        let disenoCab = ["cab-auto": "auto", "cab-clasica": "clasica", "cab-detallada": "detallada",
+                         "cab-fina": "fina", "cab-clara": "clara", "cab-minima": "minima"][cual] ?? "auto"
+        let grad = cual.hasPrefix("cab-") ? TestVC.fondoDegradado : TestVC.fondoLlano
+        datos.cargarResumen(json: TestVC.resumenDeMuestra
+            .replacingOccurrences(of: "\"diseno\":\"auto\"", with: "\"diseno\":\"\(disenoCab)\"")
+            .replacingOccurrences(of: "__FONDO__", with: grad))
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
         barra.pintar(activa: estado.activa, titulos: true)
@@ -123,7 +130,9 @@ extension TestVC {
         contenido?.removeFromSuperview()
         let vista: AnyView
         switch cual {
-        case "resumen": vista = AnyView(CNResumen(datos: datos)); estado.activa = "resumen"
+        case "vidrio": vista = AnyView(CNPruebaColores()); estado.activa = "resumen"
+        case "resumen", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
+            vista = AnyView(CNResumen(datos: datos)); estado.activa = "resumen"
         case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
         case "plan":    vista = AnyView(CNPlan(datos: datos));    estado.activa = "plan"
         default:        vista = AnyView(CNMovs(datos: datos));    estado.activa = "movs"
@@ -167,11 +176,30 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
 extension TestVC {
     /// Un panel de ejemplo con todas las clases de tarjeta.
+    static let fondoLlano = """
+    {"tipo":"color","color":"rgb(29,61,40)"}
+    """
+    static let fondoDegradado = """
+    {"tipo":"grad","angulo":150,"paradas":[{"color":"rgb(247,201,72)","pos":0},
+      {"color":"rgb(236,154,46)","pos":0.55},{"color":"rgb(63,157,84)","pos":1}]}
+    """
     static let resumenDeMuestra = """
     {"cabecera":{"inicial":"CP","nombre":"Casa · Personal","detalle":"6 movimientos · 1 cuenta",
       "color":"rgb(19,125,65)","mesCorto":"sept 2026","balanceRotulo":"Balance del mes",
       "balanceFmt":"RD$15,500","balColor":"rgb(255,255,255)","ingRotulo":"Ingresos","ingFmt":"RD$30,000",
-      "gasRotulo":"Gastos","gasFmt":"RD$14,500"},
+      "gasRotulo":"Gastos","gasFmt":"RD$14,500",
+      "diseno":"auto","tarjeta":false,"fondo":__FONDO__,
+      "tinta":"rgb(245,245,230)","gris":"rgb(214,222,205)",
+      "pastilla":"rgba(255,255,255,0.13)","pastillaFuerte":"rgba(255,255,255,0.22)",
+      "rotulo":"te queda este mes","mesLargo":"Septiembre","periodoCorto":"sept 2026",
+      "grande":true,"entraFmt":"RD$30,000","saleFmt":"RD$14,500",
+      "hayUso":true,"usado":48,"usadoLabel":"48% usado","usadoColor":"rgb(239,203,76)",
+      "abierta":true,"positivo":"rgb(19,125,65)","negativo":"rgb(213,89,72)",
+      "meses":[{"indice":0,"label":"jul","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"},
+               {"indice":1,"label":"ago","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"},
+               {"indice":2,"label":"septiembre","puesto":true,"bg":"rgb(239,203,76)","fg":"rgb(32,24,10)"},
+               {"indice":3,"label":"oct","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"},
+               {"indice":4,"label":"Rango…","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"}]},
      "vacio":false,
      "widgets":[
       {"indice":0,"titulo":"Ingresos del mes","clase":"cifra","chica":true,

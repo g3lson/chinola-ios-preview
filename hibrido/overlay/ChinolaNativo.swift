@@ -337,6 +337,9 @@ final class CNDatos: ObservableObject {
     var onMes: (Int) -> Void = { _ in }         // −1 / +1 desde la cabecera
     var onEmpezar: () -> Void = {}              // el «empieza aquí» del resumen vacío
     var onEditarPanel: () -> Void = {}          // organizar el panel (en la web)
+    var onCalendario: () -> Void = {}           // abrir el calendario / periodo
+    var onMesTira: (Int) -> Void = { _ in }     // saltar a un mes de la tira
+    var onPlegar: () -> Void = {}               // plegar la cabecera clásica
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
@@ -474,7 +477,10 @@ struct CNMovs: View {
     /// propio de esta pantalla: buscar, filtrar y anotar.
     private var cabecera: some View {
         CNCabeceraApp(c: datos.resumen?.cabecera ?? CNResumenModelo.Cabecera(),
-                      onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) })
+                      onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
+                      onCalendario: { datos.onCalendario() },
+                      onMesTira: { datos.onMesTira($0) },
+                      onPlegar: { datos.onPlegar() })
     }
 
     private var controles: some View {
@@ -1528,7 +1534,10 @@ struct CNCuentas: View {
         let lb = datos.libreta
         return VStack(spacing: 0) {
             CNCabeceraApp(c: datos.resumen?.cabecera ?? CNResumenModelo.Cabecera(),
-                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) })
+                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
+                          onCalendario: { datos.onCalendario() },
+                          onMesTira: { datos.onMesTira($0) },
+                          onPlegar: { datos.onPlegar() })
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 13) {
                     HStack(spacing: 10) {
@@ -1719,7 +1728,10 @@ struct CNPlan: View {
         let lb = datos.libreta
         return VStack(spacing: 0) {
             CNCabeceraApp(c: datos.resumen?.cabecera ?? CNResumenModelo.Cabecera(),
-                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) })
+                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
+                          onCalendario: { datos.onCalendario() },
+                          onMesTira: { datos.onMesTira($0) },
+                          onPlegar: { datos.onPlegar() })
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 10) {
@@ -1945,10 +1957,24 @@ struct CNLimiteHoja: View {
 // se DIBUJA, con las mismas medidas, colores y textos. Sin reimplementar nada.
 
 struct CNResumenModelo {
+    struct Parada { var color = ""; var pos: Double = 0 }
+    struct Fondo { var tipo = "color"; var color = ""; var angulo: Double = 180; var paradas: [Parada] = [] }
+    struct MesTira { var indice = 0; var label = ""; var puesto = false; var bg = ""; var fg = "" }
     struct Cabecera {
-        var inicial = ""; var nombre = ""; var detalle = ""; var color = ""
+        var inicial = ""; var nombre = ""; var detalle = ""; var color = ""; var icono = ""
         var mesCorto = ""; var balanceRotulo = ""; var balanceFmt = ""; var balColor = ""
         var ingRotulo = ""; var ingFmt = ""; var gasRotulo = ""; var gasFmt = ""
+        /// auto · fina · clara · minima · clasica · detallada
+        var diseno = "auto"
+        var tarjeta = false
+        var fondo = Fondo(); var tinta = ""; var gris = ""; var pastilla = ""; var pastillaFuerte = ""
+        var rotulo = ""; var mesLargo = ""; var periodoCorto = ""
+        var grande = false
+        var entraFmt = ""; var saleFmt = ""
+        var hayUso = false; var usado: Double = 0; var usadoLabel = ""; var usadoColor = ""
+        var abierta = true
+        var positivo = ""; var negativo = ""
+        var meses: [MesTira] = []
     }
     struct Punto { var x: Double = 0; var y: Double = 0; var color = "" }
     struct Barra { var x: Double = 0; var y: Double = 0; var w: Double = 0; var h: Double = 0; var color = "" }
@@ -1995,11 +2021,30 @@ struct CNResumenModelo {
 
         var m = CNResumenModelo()
         let c = raiz["cabecera"] as? [String: Any]
-        m.cabecera = Cabecera(inicial: s(c, "inicial"), nombre: s(c, "nombre"), detalle: s(c, "detalle"),
-                              color: s(c, "color"), mesCorto: s(c, "mesCorto"),
-                              balanceRotulo: s(c, "balanceRotulo"), balanceFmt: s(c, "balanceFmt"),
-                              balColor: s(c, "balColor"), ingRotulo: s(c, "ingRotulo"), ingFmt: s(c, "ingFmt"),
-                              gasRotulo: s(c, "gasRotulo"), gasFmt: s(c, "gasFmt"))
+        var cab = Cabecera()
+        cab.inicial = s(c, "inicial"); cab.nombre = s(c, "nombre"); cab.detalle = s(c, "detalle")
+        cab.color = s(c, "color"); cab.icono = s(c, "icono"); cab.mesCorto = s(c, "mesCorto")
+        cab.balanceRotulo = s(c, "balanceRotulo"); cab.balanceFmt = s(c, "balanceFmt"); cab.balColor = s(c, "balColor")
+        cab.ingRotulo = s(c, "ingRotulo"); cab.ingFmt = s(c, "ingFmt")
+        cab.gasRotulo = s(c, "gasRotulo"); cab.gasFmt = s(c, "gasFmt")
+        cab.diseno = s(c, "diseno").isEmpty ? "auto" : s(c, "diseno")
+        cab.tarjeta = b(c, "tarjeta"); cab.tinta = s(c, "tinta"); cab.gris = s(c, "gris")
+        cab.pastilla = s(c, "pastilla"); cab.pastillaFuerte = s(c, "pastillaFuerte")
+        cab.rotulo = s(c, "rotulo"); cab.mesLargo = s(c, "mesLargo"); cab.periodoCorto = s(c, "periodoCorto")
+        cab.grande = b(c, "grande"); cab.entraFmt = s(c, "entraFmt"); cab.saleFmt = s(c, "saleFmt")
+        cab.hayUso = b(c, "hayUso"); cab.usado = n(c, "usado"); cab.usadoLabel = s(c, "usadoLabel")
+        cab.usadoColor = s(c, "usadoColor"); cab.abierta = (c?["abierta"] as? Bool) ?? true
+        cab.positivo = s(c, "positivo"); cab.negativo = s(c, "negativo")
+        if let f = c?["fondo"] as? [String: Any] {
+            cab.fondo = Fondo(tipo: s(f, "tipo"), color: s(f, "color"), angulo: n(f, "angulo"),
+                              paradas: ((f["paradas"] as? [[String: Any]]) ?? []).map {
+                                  Parada(color: s($0, "color"), pos: n($0, "pos")) })
+        }
+        cab.meses = ((c?["meses"] as? [[String: Any]]) ?? []).map {
+            MesTira(indice: Int(n($0, "indice")), label: s($0, "label"), puesto: b($0, "puesto"),
+                    bg: s($0, "bg"), fg: s($0, "fg"))
+        }
+        m.cabecera = cab
         m.vacio = b(raiz, "vacio"); m.vacioTitulo = s(raiz, "vacioTitulo")
         m.vacioTexto = s(raiz, "vacioTexto"); m.vacioBoton = s(raiz, "vacioBoton")
 
@@ -2039,78 +2084,432 @@ struct CNResumenModelo {
     }
 }
 
-/// La cabecera de la app: libreta, mes y balance. La MISMA de la web, para que
-/// las pantallas nativas y las que siguen en web sean la misma app.
+/// La cabecera de la app. Es la MISMA de la web: sus seis diseños, su paleta
+/// (color o degradado), su modo tarjeta y, en la automática, el plegado al
+/// rodar. El modelo lo manda la web ya resuelto; lo único que se calcula aquí
+/// es lo que depende del scroll, porque el scroll es de esta pantalla.
 struct CNCabeceraApp: View {
     let c: CNResumenModelo.Cabecera
+    /// 0 = arriba del todo · 1 = plegada. Solo la automática lo usa.
+    var progreso: Double = 1
     var onLibreta: () -> Void
     var onMes: (Int) -> Void
-    private var sobre: Color { Color(.sRGB, red: 0.96, green: 0.96, blue: 0.90, opacity: 1) }
+    var onCalendario: () -> Void = {}
+    var onMesTira: (Int) -> Void = { _ in }
+    var onPlegar: () -> Void = {}
+
+    static let bloqueMeses: CGFloat = 114
+    private var tinta: Color { c.tinta.isEmpty ? .white : cnColor(hexString: c.tinta) }
+    private var gris: Color { c.gris.isEmpty ? tinta.opacity(0.8) : cnColor(hexString: c.gris) }
+    private var pastilla: Color { c.pastilla.isEmpty ? Color.white.opacity(0.13) : cnColor(hexString: c.pastilla) }
+    private var pastillaFuerte: Color { c.pastillaFuerte.isEmpty ? Color.white.opacity(0.22) : cnColor(hexString: c.pastillaFuerte) }
+    private var balColor: Color { c.balColor.isEmpty ? tinta : cnColor(hexString: c.balColor) }
+
     var body: some View {
+        contenido
+            .background(CNFondoCabecera(f: c.fondo, respaldo: CNC.side).ignoresSafeArea(edges: .top))
+            .clipShape(RoundedRectangle(cornerRadius: c.tarjeta ? 30 : 0, style: .continuous))
+            .padding(.horizontal, c.tarjeta ? 7 : 0)
+            .padding(.bottom, c.tarjeta ? 6 : 0)
+            .shadow(color: c.tarjeta ? Color.black.opacity(0.28) : .clear, radius: c.tarjeta ? 13 : 0, y: 6)
+    }
+
+    @ViewBuilder private var contenido: some View {
+        switch c.diseno {
+        case "detallada": detallada
+        case "clasica": clasica
+        case "fina": fina
+        case "clara": clara
+        case "minima": minima
+        default: automatica
+        }
+    }
+
+    // MARK: piezas comunes
+    private var cuadroLibreta: some View {
+        Group {
+            if !c.icono.isEmpty {
+                CNSVGShape(d: c.icono)
+                    .stroke(style: StrokeStyle(lineWidth: 2.1, lineCap: .round, lineJoin: .round))
+                    .foregroundColor(.white).padding(5)
+            } else {
+                Text(c.inicial).font(.system(size: 11, weight: .bold)).foregroundColor(.white)
+            }
+        }
+    }
+    private func capsula<C: View>(alto: CGFloat = 40, @ViewBuilder _ dentro: () -> C) -> some View {
+        dentro().padding(.horizontal, 12).frame(height: alto)
+            .background(pastilla, in: Capsule())
+    }
+    private var chevron: some View {
+        Image(systemName: "chevron.down").font(.system(size: 12, weight: .bold))
+            .foregroundColor(tinta.opacity(0.8))
+    }
+    private func flechaMes(_ ic: String, _ lado: CGFloat = 36, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) {
+            Image(systemName: ic).font(.system(size: 15, weight: .bold)).foregroundColor(tinta)
+                .frame(width: lado, height: lado)
+                .background(pastilla, in: Circle())
+        }.buttonStyle(CNPulsable())
+    }
+    private var iconoCalendario: some View {
+        Image(systemName: "calendar").font(.system(size: 17, weight: .medium))
+            .foregroundColor(tinta.opacity(0.85))
+    }
+
+    // MARK: automática (la que se pliega al rodar)
+    private var automatica: some View {
+        GeometryReader { g in
+            let p = max(0, min(1, progreso))
+            let anchoCap = min(240, 78 + CGFloat(c.nombre.count) * 8)
+            let capX = (g.size.width - anchoCap) / 2 + (14 - (g.size.width - anchoCap) / 2) * p
+            let capMax = max(110, (g.size.width - 28) + ((g.size.width - 164) - (g.size.width - 28)) * min(1, p * 2))
+            let blqAlto = CNCabeceraApp.bloqueMeses * (1 - p)
+            let blqOpaco = max(0, 1 - p * 1.5)
+            let blqEsc = 1 - 0.18 * p
+            let chicoOpaco = max(0, (p - 0.5) / 0.5)
+            VStack(spacing: 0) {
+                ZStack(alignment: .topLeading) {
+                    Color.clear.frame(height: 50)
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        Button(action: onCalendario) {
+                            HStack(spacing: 10) {
+                                VStack(alignment: .trailing, spacing: 0) {
+                                    Text(c.balanceFmt).font(.system(size: 16, weight: .bold)).foregroundColor(balColor)
+                                    Text(c.periodoCorto).font(.system(size: 10)).foregroundColor(tinta.opacity(0.75))
+                                }
+                                iconoCalendario
+                            }
+                        }
+                        .buttonStyle(CNPulsable())
+                        .opacity(chicoOpaco).allowsHitTesting(chicoOpaco > 0.6)
+                    }
+                    .padding(.trailing, 14).frame(height: 56)
+                    Button(action: onLibreta) {
+                        HStack(spacing: 8) {
+                            cuadroLibreta.frame(width: 24, height: 24)
+                                .background(pastillaFuerte, in: Circle())
+                            Text(c.nombre).font(.system(size: 14, weight: .semibold)).foregroundColor(tinta)
+                                .lineLimit(1)
+                            chevron
+                        }
+                        .padding(.leading, 6).padding(.trailing, 14).padding(.vertical, 8)
+                        .background(pastilla, in: Capsule())
+                    }
+                    .buttonStyle(CNPulsable())
+                    .frame(maxWidth: capMax, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .offset(x: capX, y: 5)
+                }
+                VStack(spacing: 8) {
+                    VStack(spacing: 2) {
+                        Text(c.balanceFmt).font(.system(size: 36, weight: .bold)).foregroundColor(balColor)
+                            .lineLimit(1).minimumScaleFactor(0.5)
+                        Text(c.rotulo).font(.system(size: 12)).foregroundColor(tinta.opacity(0.8))
+                    }
+                    .scaleEffect(blqEsc, anchor: .top)
+                    tiraMeses
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: max(0, blqAlto), alignment: .top)
+                .opacity(blqOpaco)
+                .clipped()
+            }
+            .padding(.bottom, 10).padding(.top, c.tarjeta ? 12 : 10)
+            .animation(.easeOut(duration: 0.2), value: progreso)
+        }
+        .frame(height: 50 + 10 + (c.tarjeta ? 12 : 10) + CNCabeceraApp.bloqueMeses * CGFloat(1 - max(0, min(1, progreso))))
+    }
+
+    private var tiraMeses: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(c.meses, id: \.indice) { m in
+                    Button { onMesTira(m.indice) } label: {
+                        Text(m.label).font(.system(size: 13, weight: m.puesto ? .bold : .semibold))
+                            .foregroundColor(m.fg.isEmpty ? tinta : cnColor(hexString: m.fg))
+                            .padding(.horizontal, 13).padding(.vertical, 8)
+                            .background(m.bg.isEmpty ? pastilla : cnColor(hexString: m.bg), in: Capsule())
+                    }.buttonStyle(CNPulsable())
+                }
+            }
+            .padding(.horizontal, 14).frame(maxWidth: .infinity)
+        }
+    }
+
+    // MARK: detallada (no se pliega; entera en el resumen, corta en el resto)
+    @ViewBuilder private var detallada: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if c.grande {
+                HStack(spacing: 10) {
+                    Button(action: onLibreta) {
+                        HStack(spacing: 7) {
+                            cuadroLibreta.frame(width: 26, height: 26)
+                                .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            Text(c.nombre).font(.system(size: 15, weight: .bold)).foregroundColor(tinta).lineLimit(1)
+                            chevron
+                        }
+                        .padding(.leading, 7).padding(.trailing, 11).padding(.vertical, 7)
+                        .background(pastilla, in: Capsule())
+                    }.buttonStyle(CNPulsable()).layoutPriority(0)
+                    flechaMes("chevron.left") { onMes(-1) }
+                    Button(action: onCalendario) {
+                        HStack(spacing: 6) {
+                            Text(c.mesLargo).font(.system(size: 14, weight: .semibold)).foregroundColor(tinta).lineLimit(1)
+                            chevron
+                        }
+                        .frame(maxWidth: .infinity).padding(.vertical, 8)
+                        .background(pastilla, in: Capsule())
+                    }.buttonStyle(CNPulsable())
+                    flechaMes("chevron.right") { onMes(1) }
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(c.rotulo.uppercased()).font(.system(size: 11, weight: .bold)).tracking(1.1)
+                        .foregroundColor(tinta.opacity(0.72))
+                    Text(c.balanceFmt).font(.system(size: 34, weight: .bold)).foregroundColor(balColor)
+                        .lineLimit(1).minimumScaleFactor(0.5)
+                }
+                if c.hayUso {
+                    HStack(spacing: 10) {
+                        GeometryReader { g in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(pastilla)
+                                Capsule().fill(c.usadoColor.isEmpty ? CNC.acc : cnColor(hexString: c.usadoColor))
+                                    .frame(width: g.size.width * CGFloat(min(100, c.usado) / 100))
+                            }
+                        }.frame(height: 7)
+                        Text(c.usadoLabel).font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(tinta.opacity(0.85)).lineLimit(1)
+                    }
+                }
+                HStack(spacing: 18) {
+                    flecha("arrow.up", c.positivo, c.entraFmt)
+                    flecha("arrow.down", c.negativo, c.saleFmt)
+                    Spacer(minLength: 0)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    Button(action: onLibreta) {
+                        HStack(spacing: 8) {
+                            cuadroLibreta.frame(width: 26, height: 26)
+                                .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            Text(c.nombre).font(.system(size: 15, weight: .bold)).foregroundColor(tinta).lineLimit(1)
+                        }
+                        .padding(.leading, 7).padding(.trailing, 13).padding(.vertical, 7)
+                        .background(pastilla, in: Capsule())
+                    }.buttonStyle(CNPulsable())
+                    Spacer(minLength: 6)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(c.balanceFmt).font(.system(size: 19, weight: .bold)).foregroundColor(balColor).lineLimit(1)
+                        Text(c.rotulo).font(.system(size: 11)).foregroundColor(tinta.opacity(0.72)).lineLimit(1)
+                    }
+                }
+                HStack(spacing: 8) {
+                    flechaMes("chevron.left") { onMes(-1) }
+                    Button(action: onCalendario) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "calendar").font(.system(size: 16, weight: .medium))
+                            Text(c.mesLargo).font(.system(size: 14, weight: .bold)).lineLimit(1)
+                        }
+                        .foregroundColor(tinta)
+                        .frame(maxWidth: .infinity).padding(.vertical, 9)
+                        .background(pastilla, in: Capsule())
+                    }.buttonStyle(CNPulsable())
+                    flechaMes("chevron.right") { onMes(1) }
+                }
+            }
+        }
+        .padding(.horizontal, 14).padding(.top, c.tarjeta ? 12 : 10).padding(.bottom, 14)
+    }
+    private func flecha(_ ic: String, _ color: String, _ texto: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: ic).font(.system(size: 13, weight: .heavy))
+                .foregroundColor(color.isEmpty ? tinta : cnColor(hexString: color))
+            Text(texto).font(.system(size: 13, weight: .semibold)).foregroundColor(tinta).lineLimit(1)
+        }
+    }
+
+    // MARK: clásica (se pliega con su flecha)
+    private var clasica: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Button(action: onLibreta) {
-                    HStack(spacing: 9) {
-                        Text(c.inicial).font(.system(size: 10, weight: .heavy)).foregroundColor(.white)
-                            .frame(width: 28, height: 28)
-                            .background(cnColor(hexString: c.color))
-                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(c.nombre).font(.system(size: 13, weight: .bold)).foregroundColor(sobre)
-                                .lineLimit(1)
-                            Text(c.detalle).font(.system(size: 10)).foregroundColor(sobre.opacity(0.82))
-                                .lineLimit(1)
-                        }
+                    HStack(spacing: 10) {
+                        cuadroLibreta.frame(width: 34, height: 34)
+                            .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                        Text(c.nombre).font(.system(size: 19, weight: .heavy)).foregroundColor(tinta).lineLimit(1)
+                        chevron
                         Spacer(minLength: 0)
-                        Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
-                            .foregroundColor(sobre.opacity(0.82))
                     }
-                    .padding(.leading, 8).padding(.trailing, 11).padding(.vertical, 8)
-                    .background(Color.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color.white.opacity(0.16), lineWidth: 1))
                 }.buttonStyle(CNPulsable())
                 HStack(spacing: 0) {
-                    flecha("chevron.left") { onMes(-1) }
-                    flecha("chevron.right") { onMes(1) }
+                    flechaMesPlano("chevron.left") { onMes(-1) }
+                    Button(action: onCalendario) {
+                        Text(c.periodoCorto).font(.system(size: 12, weight: .bold)).foregroundColor(tinta)
+                            .frame(minWidth: 66).padding(.vertical, 6)
+                    }.buttonStyle(CNPulsable())
+                    flechaMesPlano("chevron.right") { onMes(1) }
                 }
                 .padding(2)
-                .background(Color.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .background(pastilla, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
             }
-            HStack(alignment: .bottom, spacing: 12) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(c.balanceRotulo).font(.system(size: 11)).foregroundColor(sobre.opacity(0.82)).lineLimit(1)
-                    Text(c.balanceFmt).font(.system(size: 29, weight: .heavy))
-                        .foregroundColor(c.balColor.isEmpty ? sobre : cnColor(hexString: c.balColor))
-                        .lineLimit(1).minimumScaleFactor(0.6)
+            if c.abierta {
+                HStack(alignment: .bottom, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(c.balanceRotulo).font(.system(size: 11)).foregroundColor(gris).lineLimit(1)
+                        Text(c.balanceFmt).font(.system(size: 29, weight: .heavy)).foregroundColor(balColor)
+                            .lineLimit(1).minimumScaleFactor(0.6)
+                    }
+                    Spacer(minLength: 8)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(c.ingRotulo) \(c.ingFmt)").font(.system(size: 10))
+                        Text("\(c.gasRotulo) \(c.gasFmt)").font(.system(size: 10))
+                    }.foregroundColor(gris).lineLimit(1)
                 }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(c.ingRotulo) \(c.ingFmt)").font(.system(size: 10))
-                    Text("\(c.gasRotulo) \(c.gasFmt)").font(.system(size: 10))
-                }
-                .foregroundColor(sobre.opacity(0.86)).lineLimit(1)
+                .padding(.top, 14)
             }
-            .padding(.top, 14)
+            Button(action: onPlegar) {
+                Image(systemName: "chevron.down").font(.system(size: 14, weight: .bold))
+                    .foregroundColor(gris)
+                    .rotationEffect(.degrees(c.abierta ? 0 : 180))
+                    .frame(width: 64, height: 20)
+            }.buttonStyle(.plain).padding(.top, 2)
         }
-        .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 18)
-        .background(CNC.side.ignoresSafeArea(edges: .top))
+        .padding(.horizontal, 18).padding(.top, c.tarjeta ? 12 : 10).padding(.bottom, 4)
+        .animation(.easeOut(duration: 0.22), value: c.abierta)
     }
-    private func flecha(_ ic: String, _ tap: @escaping () -> Void) -> some View {
+    private func flechaMesPlano(_ ic: String, _ tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
-            Image(systemName: ic).font(.system(size: 13, weight: .semibold)).foregroundColor(sobre)
-                .frame(width: 32, height: 34)
+            Image(systemName: ic).font(.system(size: 13, weight: .bold)).foregroundColor(tinta)
+                .frame(width: 28, height: 34)
         }.buttonStyle(CNPulsable())
     }
+
+    // MARK: fina
+    private var fina: some View {
+        HStack(spacing: 10) {
+            Button(action: onLibreta) {
+                HStack(spacing: 9) {
+                    cuadroLibreta.frame(width: 26, height: 26)
+                        .background(pastillaFuerte, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    Text(c.nombre).font(.system(size: 17, weight: .bold)).foregroundColor(tinta).lineLimit(1)
+                    chevron
+                }
+            }.buttonStyle(CNPulsable())
+            Spacer(minLength: 8)
+            Button(action: onCalendario) {
+                HStack(spacing: 12) {
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text(c.balanceFmt).font(.system(size: 16, weight: .bold)).foregroundColor(balColor)
+                        Text(c.periodoCorto).font(.system(size: 10)).foregroundColor(tinta.opacity(0.75))
+                    }
+                    iconoCalendario
+                }
+            }.buttonStyle(CNPulsable())
+        }
+        .padding(.horizontal, 16).frame(height: 56).padding(.top, c.tarjeta ? 8 : 0)
+    }
+
+    // MARK: clara
+    private var clara: some View {
+        HStack(spacing: 10) {
+            Button(action: onLibreta) {
+                HStack(spacing: 10) {
+                    cuadroLibreta.frame(width: 30, height: 30)
+                        .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    Text(c.nombre).font(.system(size: 19, weight: .bold)).foregroundColor(tinta).lineLimit(1)
+                    chevron
+                    Spacer(minLength: 0)
+                }
+            }.buttonStyle(CNPulsable())
+            Button(action: onCalendario) {
+                Text("\(c.periodoCorto) ›").font(.system(size: 15, weight: .semibold)).foregroundColor(CNC.pos)
+            }.buttonStyle(CNPulsable())
+        }
+        .padding(.horizontal, 16).padding(.vertical, 10).frame(minHeight: 54)
+        .padding(.top, c.tarjeta ? 8 : 0)
+        .overlay(Rectangle().fill(CNC.line).frame(height: c.tarjeta ? 0 : 1), alignment: .bottom)
+    }
+
+    // MARK: mínima
+    private var minima: some View {
+        HStack(spacing: 10) {
+            Button(action: onLibreta) {
+                HStack(spacing: 9) {
+                    cuadroLibreta.frame(width: 26, height: 26)
+                        .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    Text(c.nombre).font(.system(size: 17, weight: .bold)).foregroundColor(tinta).lineLimit(1)
+                    chevron
+                    Spacer(minLength: 0)
+                }
+            }.buttonStyle(CNPulsable())
+            HStack(spacing: 2) {
+                Button { onMes(-1) } label: {
+                    Image(systemName: "chevron.left").font(.system(size: 12, weight: .bold)).frame(width: 26, height: 30)
+                }
+                Button(action: onCalendario) {
+                    Text(c.periodoCorto).font(.system(size: 13, weight: .semibold)).frame(minWidth: 66)
+                }
+                Button { onMes(1) } label: {
+                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).frame(width: 26, height: 30)
+                }
+            }
+            .foregroundColor(CNC.pos).buttonStyle(CNPulsable())
+        }
+        .padding(.horizontal, 16).frame(height: 50).padding(.top, c.tarjeta ? 8 : 0)
+        .overlay(Rectangle().fill(CNC.line).frame(height: c.tarjeta ? 0 : 1), alignment: .bottom)
+    }
+}
+
+/// El fondo de la cabecera: color plano o el MISMO degradado de la web (sus
+/// paradas vienen ya resueltas, no un color parecido).
+struct CNFondoCabecera: View {
+    let f: CNResumenModelo.Fondo
+    var respaldo: Color = CNC.side
+    var body: some View {
+        if f.tipo == "grad" && f.paradas.count > 1 {
+            // El ángulo de CSS se mide en el sentido del reloj desde «hacia
+            // arriba»; SwiftUI quiere los dos extremos.
+            let r = (f.angulo - 90) * .pi / 180
+            let dx = cos(r) / 2, dy = sin(r) / 2
+            LinearGradient(
+                stops: f.paradas.map { .init(color: cnColor(hexString: $0.color), location: CGFloat($0.pos)) },
+                startPoint: UnitPoint(x: 0.5 - dx, y: 0.5 - dy),
+                endPoint: UnitPoint(x: 0.5 + dx, y: 0.5 + dy))
+        } else if !f.color.isEmpty {
+            cnColor(hexString: f.color)
+        } else {
+            respaldo
+        }
+    }
+}
+
+/// Cuánto se ha rodado la lista: es lo que pliega la cabecera automática.
+struct CNScrollY: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 struct CNResumen: View {
     @ObservedObject var datos: CNDatos
+    /// El mismo recorrido que la web (RECORRIDO = 90 px).
+    @State private var rodado: CGFloat = 0
+    private var progreso: Double { Double(max(0, min(1, rodado / 90))) }
+
     var body: some View {
         let m = datos.resumen ?? CNResumenModelo()
         return VStack(spacing: 0) {
-            CNCabeceraApp(c: m.cabecera, onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) })
+            CNCabeceraApp(c: m.cabecera, progreso: m.cabecera.diseno == "auto" ? progreso : 1,
+                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
+                          onCalendario: { datos.onCalendario() },
+                          onMesTira: { datos.onMesTira($0) },
+                          onPlegar: { datos.onPlegar() })
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 13) {
+                    GeometryReader { g in
+                        Color.clear.preference(key: CNScrollY.self, value: -g.frame(in: .named("cnResumen")).minY)
+                    }.frame(height: 0)
                     if m.vacio { tarjetaVacia(m) }
                     CNRejilla(widgets: m.widgets.filter { !$0.oculta }) { w in
                         CNTarjetaWidget(w: w, datos: datos)
@@ -2126,6 +2525,11 @@ struct CNResumen: View {
                     Color.clear.frame(height: 104)
                 }
                 .padding(.horizontal, 16).padding(.top, 16)
+            }
+            .coordinateSpace(name: "cnResumen")
+            .onPreferenceChange(CNScrollY.self) { y in
+                // Como en la web: solo se repinta cuando el cambio se nota.
+                if abs(y - rodado) > 0.5 { rodado = y }
             }
         }
         .background(CNC.scr.ignoresSafeArea())
