@@ -46,14 +46,18 @@ class TestVC: CAPBridgeViewController {
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
         barra.pintar(activa: estado.activa, titulos: true)
-        if base == "detalle" || base == "nuevo" {
+        if ["detalle", "nuevo", "tarjeta", "agregar"].contains(base) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
                 guard let s = self else { return }
                 if base == "detalle" {
                     let id = s.datos.libreta.tx.first?.id ?? ""
                     s.presentar(AnyView(CNDetalleMov(datos: s.datos, movId: id, onClose: { s.cerrar() })))
-                } else {
+                } else if base == "nuevo" {
                     s.presentar(AnyView(CNNuevoMov(datos: s.datos, onClose: { s.cerrar() })))
+                } else if base == "tarjeta" {
+                    s.presentar(AnyView(CNFormTarjeta(datos: s.datos, onClose: { s.cerrar() })))
+                } else if base == "agregar" {
+                    s.presentar(AnyView(CNAgregar(datos: s.datos, onClose: { s.cerrar() })))
                 }
             }
         }

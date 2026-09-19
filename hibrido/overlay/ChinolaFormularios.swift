@@ -254,6 +254,49 @@ struct CNGrupoCampos: View {
     }
 }
 
+/// Un importe SECUNDARIO (deuda actual, ya pagado, aporte mensual) como una
+/// fila más del grupo: solo el principal se lleva la tarjeta grande, si no la
+/// hoja se vuelve una torre de cifras enormes.
+struct CNFilaMonto: View {
+    let icono: String
+    let tinte: Color
+    let titulo: String
+    @Binding var monto: String
+    var body: some View {
+        HStack(spacing: 12) {
+            cnCuadroHoja(icono, tinte)
+            Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink)
+            Spacer(minLength: 8)
+            Text("RD$").font(.system(size: 13, weight: .bold)).foregroundColor(CNC.pmut)
+            TextField("0", text: $monto)
+                .font(.system(size: 16, weight: .semibold)).foregroundColor(CNC.ink)
+                .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+                .frame(width: 104)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 11)
+    }
+}
+
+/// Un número corto (día del mes) como fila.
+struct CNFilaNumero: View {
+    let icono: String
+    let tinte: Color
+    let titulo: String
+    let marca: String
+    @Binding var texto: String
+    var body: some View {
+        HStack(spacing: 12) {
+            cnCuadroHoja(icono, tinte)
+            Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink)
+            Spacer(minLength: 8)
+            TextField(marca, text: $texto)
+                .font(.system(size: 16, weight: .semibold)).foregroundColor(CNC.ink)
+                .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 54)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 11)
+    }
+}
+
 /// Categorías como fichas, con su icono y su color: se elige de un vistazo,
 /// sin abrir un menú.
 struct CNChipsCategoria: View {
@@ -415,17 +458,19 @@ struct CNFormTarjeta: View {
     @State private var color = CNPaleta.colores[3]
 
     var body: some View {
-        CNHoja(titulo: "Nueva tarjeta", onClose: onClose, onGuardar: guardar) {
-            CNCampoTexto(placeholder: "Nombre (ej. Visa Popular)", texto: $nombre)
-            CNCampoTexto(placeholder: "Banco (opcional)", texto: $banco)
-            VStack(spacing: 6) { cnHojaTitulo("Límite"); CNMontoCampo(monto: $limite) }
-            VStack(spacing: 6) { cnHojaTitulo("Deuda actual"); CNMontoCampo(monto: $saldo) }
-            VStack(spacing: 6) {
-                cnHojaTitulo("Días de corte y de pago")
+        CNHoja(titulo: "Nueva tarjeta", guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+               onClose: onClose, onGuardar: guardar) {
+            CNGrupoCampos(campos: [("Nombre (ej. Visa Popular)", $nombre, .default),
+                                   ("Banco (opcional)", $banco, .default)])
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Límite"); CNMontoCampo(monto: $limite, paso: 5000) }
+            VStack(alignment: .leading, spacing: 8) {
+                cnHojaTitulo("Deuda y fechas")
                 cnGrupoHoja {
-                    HStack(spacing: 12) { cnCuadroHoja("calendar", CNC.neg); Text("Día de corte").font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(); TextField("20", text: $corte).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 54).foregroundColor(CNC.pmut) }.padding(.horizontal, 14).padding(.vertical, 9)
+                    CNFilaMonto(icono: "creditcard.fill", tinte: CNC.neg, titulo: "Deuda actual", monto: $saldo)
                     cnDiviHoja()
-                    HStack(spacing: 12) { cnCuadroHoja("creditcard.fill", CNC.info); Text("Día de pago").font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(); TextField("5", text: $pago).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 54).foregroundColor(CNC.pmut) }.padding(.horizontal, 14).padding(.vertical, 9)
+                    CNFilaNumero(icono: "calendar", tinte: CNC.info, titulo: "Día de corte", marca: "20", texto: $corte)
+                    cnDiviHoja()
+                    CNFilaNumero(icono: "calendar.badge.clock", tinte: cnColor(0x825eb9), titulo: "Día de pago", marca: "5", texto: $pago)
                 }
             }
             CNColorFila(color: $color)
@@ -451,17 +496,18 @@ struct CNFormPrestamo: View {
     @State private var color = CNPaleta.colores[2]
 
     var body: some View {
-        CNHoja(titulo: "Nuevo préstamo", onClose: onClose, onGuardar: guardar) {
+        CNHoja(titulo: "Nuevo préstamo", guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+               onClose: onClose, onGuardar: guardar) {
             VStack(alignment: .leading, spacing: 8) {
                 cnHojaTitulo("¿Cómo es?")
-                HStack(spacing: 6) { ForEach([("debo", "Yo debo"), ("meDeben", "Me deben")], id: \.0) { s in
-                    Text(s.1).font(.system(size: 14, weight: sentido == s.0 ? .bold : .semibold)).foregroundColor(sentido == s.0 ? CNC.sobreAcc : CNC.pmut).frame(maxWidth: .infinity).padding(.vertical, 10).background(sentido == s.0 ? AnyView(Capsule().fill(CNC.acc)) : AnyView(Color.clear)).onTapGesture { sentido = s.0 }
-                } }.padding(4).background(CNC.soft).clipShape(Capsule())
+                CNFichas(opciones: [("debo", "Yo debo", "mano"), ("meDeben", "Me deben", "billete")], elegida: $sentido)
             }
-            CNCampoTexto(placeholder: "Nombre (ej. Préstamo del carro)", texto: $nombre)
-            CNCampoTexto(placeholder: "Entidad o persona (opcional)", texto: $entidad)
-            VStack(spacing: 6) { cnHojaTitulo("Monto total"); CNMontoCampo(monto: $total) }
-            VStack(spacing: 6) { cnHojaTitulo("Ya pagado (opcional)"); CNMontoCampo(monto: $pagado) }
+            CNGrupoCampos(campos: [("Nombre (ej. Préstamo del carro)", $nombre, .default),
+                                   ("Entidad o persona (opcional)", $entidad, .default)])
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Monto total"); CNMontoCampo(monto: $total, paso: 1000) }
+            cnGrupoHoja {
+                CNFilaMonto(icono: "checkmark.circle.fill", tinte: CNC.pos, titulo: "Ya pagado", monto: $pagado)
+            }
             CNColorFila(color: $color)
         }
     }
@@ -485,16 +531,24 @@ struct CNFormMeta: View {
     private let iconos = ["hucha", "premio", "casa", "auto", "avion", "maleta", "birrete", "regalo", "corazon", "estrella"]
 
     var body: some View {
-        CNHoja(titulo: "Nueva meta", onClose: onClose, onGuardar: guardar) {
+        CNHoja(titulo: "Nueva meta", guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+               onClose: onClose, onGuardar: guardar) {
             CNCampoTexto(placeholder: "Nombre (ej. Fondo de emergencia)", texto: $nombre)
-            VStack(spacing: 6) { cnHojaTitulo("Objetivo"); CNMontoCampo(monto: $objetivo) }
-            VStack(spacing: 6) { cnHojaTitulo("Aporte mensual (opcional)"); CNMontoCampo(monto: $mensual) }
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Objetivo"); CNMontoCampo(monto: $objetivo, paso: 5000) }
+            cnGrupoHoja {
+                CNFilaMonto(icono: "arrow.down.circle.fill", tinte: cnColor(hexString: color), titulo: "Aporte mensual", monto: $mensual)
+            }
             VStack(alignment: .leading, spacing: 8) {
                 cnHojaTitulo("Icono")
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) { ForEach(iconos, id: \.self) { ic in
-                        cnGlifo(ic, tam: 18).foregroundColor(icono == ic ? .white : CNC.ink).frame(width: 42, height: 42).background(icono == ic ? cnColor(hexString: color) : CNC.card).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 12).stroke(CNC.line, lineWidth: icono == ic ? 0 : 0.5)).onTapGesture { icono = ic }
-                    } }.padding(.horizontal, 2)
+                        cnGlifo(ic, tam: 18).foregroundColor(icono == ic ? cnSobre(cnColor(hexString: color)) : CNC.ink)
+                            .frame(width: 42, height: 42)
+                            .background(icono == ic ? cnColor(hexString: color) : CNC.card)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(CNC.line, lineWidth: icono == ic ? 0 : 0.5))
+                            .onTapGesture { UISelectionFeedbackGenerator().selectionChanged(); icono = ic }
+                    } }.padding(.horizontal, 2).padding(.vertical, 2)
                 }
             }
             CNColorFila(color: $color)
@@ -576,24 +630,22 @@ struct CNAgregar: View {
         }
     }
 
+    /// Sin atenuado ni esquinas propias: ya vamos DENTRO de una hoja del
+    /// sistema, y ponerle otra encima se veía como dos hojas.
     private var chooser: some View {
-        ZStack(alignment: .bottom) {
-            Color.black.opacity(0.4).ignoresSafeArea().onTapGesture { onClose() }
-            VStack(spacing: 0) {
-                Capsule().fill(CNC.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 6)
-                Text("¿Qué quieres agregar?").font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink).padding(.vertical, 10)
+        VStack(spacing: 0) {
+            CNHojaCabecera(titulo: "¿Qué quieres agregar?", onClose: onClose)
+            ScrollView(showsIndicators: false) {
                 VStack(spacing: 10) {
                     opcion("banco", CNC.pos, "Una cuenta", "Efectivo, banco, ahorros") { cual = "cuenta" }
                     opcion("tarjeta", CNC.neg, "Una tarjeta de crédito", "Con su deuda y sus fechas") { cual = "tarjeta" }
                     opcion("mano", cnColor(0x825eb9), "Un préstamo o fiado", "Lo que debes o te deben") { cual = "prestamo" }
-                }.padding(.horizontal, 16)
-                Button(action: onClose) { Text("Cancelar").font(.system(size: 16, weight: .semibold)).foregroundColor(CNC.pmut).frame(maxWidth: .infinity).padding(.vertical, 14) }.buttonStyle(.plain).padding(.top, 6)
-                Color.clear.frame(height: 12)
+                }
+                .padding(.horizontal, 16).padding(.top, 4)
             }
-            .frame(maxWidth: .infinity)
-            .background(CNC.scr.clipShape(CNRedondo(radio: 28, esquinas: [.topLeft, .topRight])))
-            .ignoresSafeArea(edges: .bottom)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(CNC.scr.ignoresSafeArea())
     }
 
     private func opcion(_ ic: String, _ tinte: Color, _ t: String, _ s: String, _ tap: @escaping () -> Void) -> some View {
@@ -603,6 +655,6 @@ struct CNAgregar: View {
                 VStack(alignment: .leading, spacing: 2) { Text(t).font(.system(size: 16, weight: .semibold)).foregroundColor(CNC.ink); Text(s).font(.system(size: 12.5)).foregroundColor(CNC.pmut) }
                 Spacer(minLength: 6); Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6))
             }.padding(14).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
-        }.buttonStyle(.plain)
+        }.buttonStyle(CNPulsable())
     }
 }

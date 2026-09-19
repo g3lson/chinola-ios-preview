@@ -649,7 +649,8 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         var items: [UITabBarItem] = []
         ids = []
         for (i, t) in CNTabs.todas.enumerated() {
-            let img = cnIconoUIImage(t.path, lado: 26, grosor: 2).withRenderingMode(.alwaysTemplate)
+            // 20 pt: con rótulo debajo, un icono más alto se solapa con el texto.
+            let img = cnIconoUIImage(t.path, lado: 20, grosor: 1.8).withRenderingMode(.alwaysTemplate)
             let item = UITabBarItem(title: conTitulos ? t.titulo : nil, image: img, tag: i)
             item.accessibilityLabel = t.titulo
             items.append(item); ids.append(t.id)
@@ -1725,10 +1726,13 @@ struct CNPlan: View {
             HStack {
                 Text("Gastado este mes").font(.system(size: 12)).foregroundColor(CNC.pmut)
                 Spacer(minLength: 8)
-                Text("\(cnDinero(gastado)) de \(cnDinero(total))")
-                    .font(.system(size: 12, weight: .bold)).foregroundColor(color).lineLimit(1).minimumScaleFactor(0.7)
+                // Sin límites puestos, «de RD$0» no dice nada: se enseña solo lo
+                // gastado.
+                Text(total > 0 ? "\(cnDinero(gastado)) de \(cnDinero(total))" : cnDinero(gastado))
+                    .font(.system(size: 12, weight: .bold)).foregroundColor(total > 0 ? color : CNC.ink)
+                    .lineLimit(1).minimumScaleFactor(0.7)
             }
-            CNBarraProgreso(parte: parte, color: color, alto: 10)
+            if total > 0 { CNBarraProgreso(parte: parte, color: color, alto: 10) }
             Text(total <= 0 ? "Ponle un límite a tus categorías y aquí verás cómo vas."
                             : (gastado > total ? "Te pasaste por \(cnDinero(gastado - total))."
                                                : "Te quedan \(cnDinero(total - gastado)) para este mes."))
@@ -1768,7 +1772,7 @@ struct CNPlan: View {
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
             }
-            CNBarraProgreso(parte: parte, color: color, alto: 8)
+            if c.limite > 0 { CNBarraProgreso(parte: parte, color: color, alto: 8) }
             HStack {
                 Text("\(cnDinero(gastado)) gastado").font(.system(size: 11)).foregroundColor(CNC.pmut)
                 Spacer(minLength: 8)
