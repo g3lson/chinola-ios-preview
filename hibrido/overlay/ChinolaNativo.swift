@@ -620,12 +620,23 @@ struct CNVidrioForma<S: Shape>: ViewModifier {
     let forma: S
     var tinte: Color? = nil
     func body(content: Content) -> some View {
-        content
-            .background(
-                CNVidrioUIKit(tinte: tinte.map { UIColor($0) })
-                    .clipShape(forma)
-                    .overlay(forma.stroke(Color.white.opacity(0.22), lineWidth: 0.8))
-            )
+        content.background(fondo)
+    }
+    @ViewBuilder private var fondo: some View {
+        if let t = tinte {
+            // Con color de marca: el color va pintado y el vidrio encima le pone
+            // el brillo. Así el botón nunca sale gris, refracte o no el aparato.
+            ZStack {
+                forma.fill(t)
+                CNVidrioUIKit().clipShape(forma).opacity(0.35)
+            }
+            .overlay(forma.stroke(Color.white.opacity(0.35), lineWidth: 0.8))
+            .shadow(color: t.opacity(0.35), radius: 10, y: 4)
+        } else {
+            CNVidrioUIKit()
+                .clipShape(forma)
+                .overlay(forma.stroke(Color.white.opacity(0.22), lineWidth: 0.8))
+        }
     }
 }
 
@@ -1139,13 +1150,28 @@ struct CNDetalleMeta: View {
     }
 }
 
+/// Un color más oscuro del mismo tono, para el fondo de las cabeceras.
+func cnOscurecer(_ c: Color, _ cuanto: CGFloat = 0.5) -> Color {
+    var h: CGFloat = 0, sa: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+    guard UIColor(c).getHue(&h, saturation: &sa, brightness: &b, alpha: &a) else { return c }
+    return Color(UIColor(hue: h, saturation: min(1, sa * 1.05), brightness: max(0.12, b * (1 - cuanto)), alpha: 1))
+}
+
 struct CNDetalleMov: View {
     @ObservedObject var datos: CNDatos; let movId: String; var onClose: () -> Void
     @State private var confirmarBorrar = false
+    /// El color del movimiento: verde si entra, y si sale, el de su categoría.
+    private func colorMov(_ m: CNMov?) -> Color {
+        guard let m = m else { return CNC.info }
+        if m.esIngreso { return CNC.pos }
+        if m.esTransfer { return CNC.info }
+        if let c = datos.libreta.categoria(m.categoria) { return cnColor(hexString: c.color) }
+        return cnColor(0xe0a92e)
+    }
     var body: some View {
         let m = datos.libreta.tx.first { $0.id == movId }; let entra = m?.esIngreso ?? false
         return VStack(spacing: 0) {
-            CNDetCabecera(inicial: cnInicial(m?.concepto ?? "?"), nombre: m?.concepto ?? "Movimiento", sub: "\(m?.categoria ?? "") · \(cnFechaCorta(m?.fecha ?? ""))", fondo: cnColor(0x7a5f10), cuadro: cnColor(0xe0a92e), volverA: "Movimientos",
+            CNDetCabecera(inicial: cnInicial(m?.concepto ?? "?"), nombre: m?.concepto ?? "Movimiento", sub: "\(m?.categoria ?? "") · \(cnFechaCorta(m?.fecha ?? ""))", fondo: cnOscurecer(colorMov(m)), cuadro: colorMov(m), volverA: "Movimientos",
                           acciones: [CNAccion(texto: "Editar movimiento", icono: "pencil") { datos.onAccion("editarMov", movId) },
                                      CNAccion(texto: "Eliminar movimiento", icono: "trash", peligro: true) { confirmarBorrar = true }],
                           onClose: onClose)
