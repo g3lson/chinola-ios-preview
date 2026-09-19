@@ -44,9 +44,19 @@ func cnCerrarTeclado() {
 extension View {
     /// Teclado como en las apps de Apple: se va al arrastrar la lista y trae
     /// su botón «Listo» encima.
-    func cnTeclado() -> some View {
-        self
-            .scrollDismissesKeyboard(.interactively)
+    @ViewBuilder func cnTeclado() -> some View {
+        if #available(iOS 16.0, *) {
+            self.scrollDismissesKeyboard(.interactively).modifier(CNBarraTeclado())
+        } else {
+            self.modifier(CNBarraTeclado())
+        }
+    }
+}
+
+/// El botón «Listo» encima del teclado.
+struct CNBarraTeclado: ViewModifier {
+    func body(content: Content) -> some View {
+        content
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
