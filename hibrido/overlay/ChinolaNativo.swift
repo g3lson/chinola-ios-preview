@@ -419,6 +419,8 @@ final class CNMenuEstado: ObservableObject {
 
 struct CNBarraMenu: View {
     @ObservedObject var estado: CNMenuEstado
+    /// false = el vidrio lo pone UIKit (UIGlassEffect) por fuera.
+    var conFondo: Bool = true
     struct Item { let id: String; let label: String; let path: String }
     let items: [Item] = [
         .init(id: "resumen", label: "Resumen", path: CNTabIcono.resumen),
@@ -446,9 +448,9 @@ struct CNBarraMenu: View {
         .padding(.horizontal, 8)
         .padding(.top, estado.titulos ? 9 : 12)
         .padding(.bottom, 9)
-        .modifier(CNVidrio())
-        .padding(.horizontal, 16)
-        .padding(.bottom, 2)
+        .modifier(CNVidrio(activo: conFondo))
+        .padding(.horizontal, conFondo ? 16 : 0)
+        .padding(.bottom, conFondo ? 2 : 0)
     }
 }
 
@@ -457,8 +459,11 @@ struct CNBarraMenu: View {
 /// barra de Apple Music. En iOS anteriores no existe esa API, así que cae al
 /// material esmerilado (lo mejor disponible ahí).
 struct CNVidrio: ViewModifier {
+    var activo: Bool = true
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if !activo {
+            content
+        } else if #available(iOS 26.0, *) {
             content
                 .glassEffect(.regular.interactive(), in: Capsule())
                 .shadow(color: .black.opacity(0.18), radius: 26, y: 10)

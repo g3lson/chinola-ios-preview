@@ -34,19 +34,49 @@ class TestVC: CAPBridgeViewController {
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        // Barra de menú nativa REAL.
-        let barra = UIHostingController(rootView: CNBarraMenu(estado: estado))
+        // Barra con LIQUID GLASS de UIKit (UIGlassEffect) — el que sí refracta.
+        let contenedor: UIView
+        var dentro: UIView
+        if #available(iOS 26.0, *) {
+            let efecto = UIGlassEffect()
+            efecto.isInteractive = true
+            let vv = UIVisualEffectView(effect: efecto)
+            vv.clipsToBounds = true
+            contenedor = vv; dentro = vv.contentView
+        } else {
+            let vv = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+            vv.clipsToBounds = true
+            contenedor = vv; dentro = vv.contentView
+        }
+        contenedor.layer.cornerRadius = 30
+        contenedor.layer.cornerCurve = .continuous
+        contenedor.layer.shadowColor = UIColor.black.cgColor
+        contenedor.layer.shadowOpacity = 0.18
+        contenedor.layer.shadowRadius = 24
+        contenedor.layer.shadowOffset = CGSize(width: 0, height: 8)
+        contenedor.layer.masksToBounds = false
+
+        let barra = UIHostingController(rootView: CNBarraMenu(estado: estado, conFondo: false))
         barra.view.backgroundColor = .clear
-        addChild(barra); view.addSubview(barra.view); barra.didMove(toParent: self)
+        addChild(barra); barra.didMove(toParent: self)
         barra.view.translatesAutoresizingMaskIntoConstraints = false
+        dentro.addSubview(barra.view)
         NSLayoutConstraint.activate([
-            barra.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            barra.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            barra.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 8)
+            barra.view.topAnchor.constraint(equalTo: dentro.topAnchor),
+            barra.view.bottomAnchor.constraint(equalTo: dentro.bottomAnchor),
+            barra.view.leadingAnchor.constraint(equalTo: dentro.leadingAnchor),
+            barra.view.trailingAnchor.constraint(equalTo: dentro.trailingAnchor)
         ])
-        view.bringSubviewToFront(barra.view)
-        barra.view.layer.zPosition = 999
-        barraView = barra.view
+        view.addSubview(contenedor)
+        contenedor.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            contenedor.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            contenedor.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            contenedor.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 6)
+        ])
+        view.bringSubviewToFront(contenedor)
+        contenedor.layer.zPosition = 999
+        barraView = contenedor
 
     }
 }
