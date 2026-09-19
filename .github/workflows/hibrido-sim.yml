@@ -38,7 +38,7 @@ jobs:
           # miscompilaba @Published). Se añade al pbxproj con la gema xcodeproj.
           cp overlay/ChinolaNativo.swift ios/App/App/ChinolaNativo.swift
           gem install xcodeproj --no-document --quiet
-          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); g=(p.main_group['App']||p.main_group); f=g.new_file('App/ChinolaNativo.swift'); p.targets.first.add_file_references([f]); p.save"
+          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); g=(p.main_group['App']||p.main_group); f=g.new_file('ChinolaNativo.swift'); p.targets.first.add_file_references([f]); p.save"
           /usr/libexec/PlistBuddy -c "Delete :UISceneStoryboardFile" ios/App/App/Info.plist 2>/dev/null || true
           echo "=== ChinolaNativo en el proyecto? ==="; grep -c "ChinolaNativo.swift" ios/App/App.xcodeproj/project.pbxproj
 
