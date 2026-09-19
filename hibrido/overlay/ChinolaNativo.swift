@@ -342,6 +342,10 @@ final class CNDatos: ObservableObject {
     var onPlegar: () -> Void = {}               // plegar la cabecera clásica
     /// Editar el panel: (op, id, valor). op = quitar·ocultar·ancho·mover·agregar·grafico·rango·serie
     var onPanel: (String, String, String) -> Void = { _, _, _ in }
+    /// Perfil: disparar una fila de los ajustes (grupo, fila, valor de lista).
+    var onAjuste: (Int, Int, String?) -> Void = { _, _, _ in }
+    var onPlan: () -> Void = {}
+    @Published var ajustes: CNAjustes? = nil
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
@@ -349,6 +353,9 @@ final class CNDatos: ObservableObject {
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
     /// con los colores nuevos (los de CNC son calculados).
     @Published var selloTema = 0
+    func cargarAjustes(json: String) {
+        if let a = CNAjustes.desde(json: json) { ajustes = a }
+    }
     func cargarResumen(json: String) {
         if let m = CNResumenModelo.desde(json: json) { resumen = m }
     }
@@ -3008,5 +3015,203 @@ struct CNLienzoSerie: View {
         for q in pts.dropFirst() { p.addLine(to: CGPoint(x: q.x * ex, y: q.y * ey)) }
         if cerrada { p.closeSubpath() }
         return p
+    }
+}
+
+// ── Pantalla «Perfil» NATIVA ────────────────────────────────────────────────
+// Lista agrupada, como los Ajustes del teléfono: icono en su cuadro de color,
+// título, una línea que dice qué hay dentro y el valor a la derecha. Los grupos
+// y sus filas los arma la web (los mismos que ve la PWA); aquí solo se dibujan
+// y se disparan por su sitio en la lista.
+
+struct CNAjustes {
+    struct Opcion { var id = ""; var label = "" }
+    struct Fila {
+        var label = ""; var sub = ""; var valor = ""
+        var icono = ""; var bg = ""; var fg = ""; var tinta = ""
+        var entra = false
+        var lista: [Opcion] = []; var listaValor = ""
+    }
+    struct Grupo { var titulo = ""; var pie = ""; var filas: [Fila] = [] }
+    struct Usuario {
+        var inicial = ""; var nombre = ""; var correo = ""
+        var plan = ""; var planColor = ""
+        var modoLabel = ""; var modoBg = ""; var modoFg = ""; var modoPie = ""
+        var acento = ""; var sobreAcento = ""
+    }
+    var usuario = Usuario()
+    var grupos: [Grupo] = []
+
+    static func desde(json: String) -> CNAjustes? {
+        guard let d = json.data(using: .utf8),
+              let raiz = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
+        func b(_ o: [String: Any]?, _ k: String) -> Bool { (o?[k] as? Bool) ?? false }
+        func lista(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
+        var a = CNAjustes()
+        let u = raiz["usuario"] as? [String: Any]
+        a.usuario = Usuario(inicial: s(u, "inicial"), nombre: s(u, "nombre"), correo: s(u, "correo"),
+                            plan: s(u, "plan"), planColor: s(u, "planColor"),
+                            modoLabel: s(u, "modoLabel"), modoBg: s(u, "modoBg"), modoFg: s(u, "modoFg"),
+                            modoPie: s(u, "modoPie"), acento: s(u, "acento"), sobreAcento: s(u, "sobreAcento"))
+        a.grupos = lista(raiz, "grupos").map { g in
+            Grupo(titulo: s(g, "titulo"), pie: s(g, "pie"),
+                  filas: lista(g, "filas").map { f in
+                      Fila(label: s(f, "label"), sub: s(f, "sub"), valor: s(f, "valor"),
+                           icono: s(f, "icono"), bg: s(f, "bg"), fg: s(f, "fg"), tinta: s(f, "tinta"),
+                           entra: b(f, "entra"),
+                           lista: lista(f, "lista").map { Opcion(id: s($0, "id"), label: s($0, "label")) },
+                           listaValor: s(f, "listaValor"))
+                  })
+        }
+        return a
+    }
+}
+
+struct CNPerfil: View {
+    @ObservedObject var datos: CNDatos
+    var body: some View {
+        let a = datos.ajustes ?? CNAjustes()
+        return VStack(spacing: 0) {
+            cabecera
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 22) {
+                    tarjetaUsuario(a.usuario)
+                    ForEach(a.grupos.indices, id: \.self) { gi in
+                        grupo(a.grupos[gi], gi)
+                    }
+                    Color.clear.frame(height: 104)
+                }
+                .padding(.horizontal, 16).padding(.top, 14)
+            }
+        }
+        .background(CNC.scr.ignoresSafeArea())
+    }
+
+    /// Perfil no lleva la cabecera de la libreta: aquí no hay mes ni balance
+    /// que mirar. Lleva el nombre de la app, como en la web.
+    private var cabecera: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle().fill(CNC.side).frame(width: 29, height: 29)
+                Circle().fill(CNC.acc).frame(width: 11, height: 11)
+            }
+            Text("Chinola").font(.system(size: 20, weight: .heavy)).foregroundColor(CNC.ink)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 11).frame(minHeight: 54)
+        .background(CNC.scr.ignoresSafeArea(edges: .top))
+    }
+
+    private func tarjetaUsuario(_ u: CNAjustes.Usuario) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                Text(u.inicial).font(.system(size: 17, weight: .heavy))
+                    .foregroundColor(u.sobreAcento.isEmpty ? CNC.sobreAcc : cnColor(hexString: u.sobreAcento))
+                    .frame(width: 50, height: 50)
+                    .background(u.acento.isEmpty ? CNC.acc : cnColor(hexString: u.acento), in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(u.nombre).font(.system(size: 15, weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                    if !u.correo.isEmpty {
+                        Text(u.correo).font(.system(size: 12)).foregroundColor(CNC.pmut).lineLimit(1)
+                    }
+                    if !u.plan.isEmpty {
+                        Button { datos.onPlan() } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: "star.fill").font(.system(size: 10))
+                                Text(u.plan).font(.system(size: 11, weight: .heavy))
+                                Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).opacity(0.6)
+                            }
+                            .foregroundColor(u.planColor.isEmpty ? CNC.pos : cnColor(hexString: u.planColor))
+                        }.buttonStyle(CNPulsable()).padding(.top, 3)
+                    }
+                }
+                Spacer(minLength: 6)
+                if !u.modoLabel.isEmpty {
+                    Text(u.modoLabel).font(.system(size: 10, weight: .bold))
+                        .foregroundColor(u.modoFg.isEmpty ? CNC.pmut : cnColor(hexString: u.modoFg))
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(u.modoBg.isEmpty ? CNC.soft : cnColor(hexString: u.modoBg), in: Capsule())
+                }
+            }
+            .padding(15)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
+            if !u.modoPie.isEmpty {
+                Text(u.modoPie).font(.system(size: 12)).foregroundColor(CNC.pmut)
+                    .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
+            }
+        }
+    }
+
+    private func grupo(_ g: CNAjustes.Grupo, _ gi: Int) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            if !g.titulo.isEmpty {
+                Text(g.titulo).font(.system(size: 13)).foregroundColor(CNC.pmut)
+                    .padding(.horizontal, 6)
+            }
+            VStack(spacing: 0) {
+                ForEach(g.filas.indices, id: \.self) { fi in
+                    fila(g.filas[fi], gi, fi, ultima: fi == g.filas.count - 1)
+                }
+            }
+            .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+            if !g.pie.isEmpty {
+                Text(g.pie).font(.system(size: 12)).foregroundColor(CNC.pmut)
+                    .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 6)
+            }
+        }
+    }
+
+    @ViewBuilder private func fila(_ f: CNAjustes.Fila, _ gi: Int, _ fi: Int, ultima: Bool) -> some View {
+        if f.lista.isEmpty {
+            Button { datos.onAjuste(gi, fi, nil) } label: { cuerpoFila(f, ultima: ultima) }
+                .buttonStyle(CNPulsable())
+        } else {
+            // Una lista (el idioma) se elige en el menú del sistema, no en un
+            // desplegable escondido detrás de la fila.
+            Menu {
+                Picker("", selection: Binding(get: { f.listaValor },
+                                              set: { datos.onAjuste(gi, fi, $0) })) {
+                    ForEach(f.lista, id: \.id) { o in Text(o.label).tag(o.id) }
+                }
+            } label: { cuerpoFila(f, ultima: ultima) }
+        }
+    }
+
+    private func cuerpoFila(_ f: CNAjustes.Fila, ultima: Bool) -> some View {
+        let tinta = f.tinta.isEmpty ? CNC.ink : cnColor(hexString: f.tinta)
+        return HStack(spacing: 13) {
+            // El icono en su cuadro de color, como en los Ajustes del teléfono:
+            // la fila se encuentra por el color antes que por el texto.
+            cnGlifo(f.icono, tam: 17, grosor: 1.8)
+                .foregroundColor(f.fg.isEmpty ? tinta : cnColor(hexString: f.fg))
+                .frame(width: 30, height: 30)
+                .background(f.bg.isEmpty ? CNC.soft : cnColor(hexString: f.bg),
+                            in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(f.label).font(.system(size: 16)).foregroundColor(tinta).lineLimit(1)
+                if !f.sub.isEmpty {
+                    Text(f.sub).font(.system(size: 12)).foregroundColor(CNC.pmut)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 8)
+            if !f.valor.isEmpty {
+                Text(f.valor).font(.system(size: 14)).foregroundColor(CNC.pmut)
+                    .lineLimit(1).truncationMode(.tail)
+            }
+            if f.entra || !f.lista.isEmpty {
+                Image(systemName: f.lista.isEmpty ? "chevron.right" : "chevron.up.chevron.down")
+                    .font(.system(size: 12, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.5))
+            }
+        }
+        .padding(.horizontal, 14).padding(.vertical, 11)
+        .contentShape(Rectangle())
+        .overlay(alignment: .bottom) {
+            if !ultima { Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.leading, 57) }
+        }
     }
 }

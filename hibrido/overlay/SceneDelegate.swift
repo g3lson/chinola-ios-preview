@@ -55,6 +55,7 @@ class TestVC: CAPBridgeViewController {
         let grisCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.72)" : "rgb(214,222,205)"
         let pastCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.13)" : "rgba(255,255,255,0.13)"
         let pastF = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)"
+        datos.cargarAjustes(json: TestVC.ajustesDeMuestra)
         datos.cargarResumen(json: TestVC.resumenDeMuestra
             .replacingOccurrences(of: "\"diseno\":\"auto\"", with: "\"diseno\":\"\(disenoCab)\"")
             .replacingOccurrences(of: "__FONDO__", with: grad)
@@ -141,6 +142,7 @@ extension TestVC {
         let vista: AnyView
         switch cual {
         case "vidrio": vista = AnyView(CNPruebaColores()); estado.activa = "resumen"
+        case "perfil": vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
         case "resumen", "organiza", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
             vista = AnyView(CNResumen(datos: datos, organizaAlEmpezar: cual == "organiza"))
             estado.activa = "resumen"
@@ -259,6 +261,44 @@ extension TestVC {
                 {"tieneIcono":false,"sigla":"SQ","siglaColor":"rgb(255,255,255)","fondo":"rgb(19,125,65)","titulo":"Sueldo quincena","detalle":"Ingresos · 3 sept","monto":"+ RD$30,000","montoColor":"rgb(19,125,65)"}]},
       {"indice":7,"titulo":"Un consejo","clase":"texto",
        "texto":"Sin cuotas este mes: buen momento para aportar a tus metas."}
+     ]}
+    """
+}
+
+extension TestVC {
+    /// Los ajustes de ejemplo: los mismos grupos que arma la web.
+    static let ajustesDeMuestra = """
+    {"usuario":{"inicial":"GR","nombre":"Gelson Reynoso","correo":"gelson@fente.com.do",
+      "plan":"Plan Chinola","planColor":"rgb(112,84,24)","modoLabel":"En la nube",
+      "modoBg":"rgba(19,125,65,0.14)","modoFg":"rgb(19,125,65)",
+      "modoPie":"Tus libretas se guardan en tu cuenta y las ves igual en la web.",
+      "acento":"rgb(239,203,76)","sobreAcento":"rgb(32,24,10)"},
+     "grupos":[
+      {"titulo":"Cuenta","filas":[
+        {"label":"Mi cuenta","sub":"gelson@fente.com.do","valor":"","icono":"M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0","bg":"rgba(52,110,74,0.14)","fg":"rgb(52,110,74)","entra":true},
+        {"label":"Seguridad","sub":"Dos pasos y aparatos conectados","valor":"","icono":"M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6zM9 12l2 2 4-4","bg":"rgba(58,80,168,0.14)","fg":"rgb(58,80,168)","entra":true},
+        {"label":"Libretas y permisos","sub":"Quién ve y quién edita cada libreta","valor":"3","icono":"M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3zM18 7h2v13H7","bg":"rgba(52,94,178,0.14)","fg":"rgb(52,94,178)","entra":true}]},
+      {"titulo":"Apariencia","filas":[
+        {"label":"Panel del resumen","sub":"Qué tarjetas hay y en qué orden","valor":"","icono":"M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z","bg":"rgba(52,110,74,0.14)","fg":"rgb(52,110,74)","entra":true},
+        {"label":"Cabecera","sub":"Qué se ve arriba y de qué color","valor":"Automática","icono":"M4 5h16a1 1 0 0 1 1 1v3H3V6a1 1 0 0 1 1-1zM3 9v9a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9","bg":"rgba(58,80,168,0.14)","fg":"rgb(58,80,168)","entra":true},
+        {"label":"Letra","sub":"Tipografía y tamaño del texto","valor":"Del sistema","icono":"M5 20l6.2-16h1.6L19 20M8 14h8","bg":"rgba(122,66,168,0.14)","fg":"rgb(122,66,168)","entra":true},
+        {"label":"Colores","sub":"El tema de toda la app","valor":"Chinola","icono":"M12 21a9 9 0 1 1 0-18c4.9 0 9 3.4 9 7.5 0 2.5-2 4.5-4.5 4.5H15a2 2 0 0 0-1.6 3.2c.3.4.4.8.4 1.2 0 .9-.8 1.6-1.8 1.6M7.5 10.5h.01M11 7.5h.01M15.5 9h.01","bg":"rgba(196,71,60,0.14)","fg":"rgb(196,71,60)","entra":true},
+        {"label":"Dinero","sub":"Moneda y cómo se escriben las cifras","valor":"DOP","icono":"M12 2v20M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.8 5 3.4 5 1.5 5 3.6-2.2 3-5 3-5-1.1-5-3","bg":"rgba(140,106,26,0.14)","fg":"rgb(140,106,26)","entra":true},
+        {"label":"Tu personaje","sub":"La chinola que te acompaña","valor":"","icono":"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M9 10h.01M15 10h.01M8.5 14.5a4.5 4.5 0 0 0 7 0","bg":"rgba(86,110,32,0.14)","fg":"rgb(86,110,32)","entra":true}]},
+      {"titulo":"App","filas":[
+        {"label":"Idioma","sub":"","valor":"Español","icono":"M4 5h11M9 3v2c0 5-2.4 8.5-6 10M6 10c0 2.6 3 5.5 8 6M13 21l4.5-10 4.5 10M15 17.5h5","bg":"rgba(52,94,178,0.14)","fg":"rgb(52,94,178)","entra":false,
+         "lista":[{"id":"Español","label":"Español"},{"id":"English","label":"English"},{"id":"Français","label":"Français"}],"listaValor":"Español"},
+        {"label":"Notificaciones","sub":"Aviso antes de cada pago","valor":"Puestas","icono":"M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0","bg":"rgba(140,106,26,0.14)","fg":"rgb(140,106,26)","entra":false}]},
+      {"titulo":"Datos","filas":[
+        {"label":"Exportar","sub":"Todos tus movimientos en un CSV","valor":"","icono":"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3","bg":"rgb(249,245,230)","fg":"rgb(81,99,86)","entra":false},
+        {"label":"Importar movimientos","sub":"Traer movimientos de otra app o del banco","valor":"CSV","icono":"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 9l5-5 5 5M12 4v12","bg":"rgb(249,245,230)","fg":"rgb(81,99,86)","entra":false},
+        {"label":"Integraciones","sub":"Conectar Chinola con otras apps","valor":"","icono":"M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5","bg":"rgba(122,66,168,0.14)","fg":"rgb(122,66,168)","entra":true}]},
+      {"titulo":"Ayuda","pie":"Versión 1.1.24 · 19 sept 2026","filas":[
+        {"label":"Ver el tour","sub":"Repasar cómo funciona la app","valor":"","icono":"M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M10 8l6 4-6 4z","bg":"rgb(249,245,230)","fg":"rgb(81,99,86)","entra":false},
+        {"label":"Ayuda y guía","sub":"Preguntas frecuentes y cómo se usa","valor":"","icono":"M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01","bg":"rgb(249,245,230)","fg":"rgb(81,99,86)","entra":true},
+        {"label":"Privacidad y términos","sub":"Qué se guarda y qué no","valor":"","icono":"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z","bg":"rgb(249,245,230)","fg":"rgb(81,99,86)","entra":true}]},
+      {"filas":[
+        {"label":"Cerrar sesión","sub":"","valor":"","icono":"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9","bg":"rgba(213,89,72,0.14)","fg":"rgb(213,89,72)","tinta":"rgb(213,89,72)","entra":false}]}
      ]}
     """
 }
