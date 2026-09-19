@@ -25,7 +25,7 @@ struct AparienciaView: View {
         .init(icono: "rectangle.grid.1x2.fill", tinte: .info, titulo: "Cabecera", valor: "Automática"),
         .init(icono: "textformat", tinte: .sav, titulo: "Tipografía", valor: "Plus Jakarta"),
         .init(icono: "paintpalette.fill", tinte: .neg, titulo: "Colores", valor: "Chinola"),
-        .init(icono: "dollarsign.circle.fill", tinte: Color(hex: 0xe0a92e), titulo: "Moneda", valor: "DOP"),
+        .init(icono: "dollarsign.circle.fill", tinte: Color(hex: 0xe0a92e), titulo: "Moneda", valor: "RD$"),
         .init(icono: "face.smiling", tinte: .pos, titulo: "Tu personaje", valor: "")
     ]
 

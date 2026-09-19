@@ -58,7 +58,7 @@ struct BienvenidaView: View {
                     ForEach([0.85, 0.6, 0.45], id: \.self) { w in
                         Capsule().fill(Color.white.opacity(0.85)).frame(width: 220 * w, height: 13)
                     }
-                    Text("DOP 84,200").font(.system(size: 38, weight: .heavy)).foregroundColor(.white).padding(.top, 6)
+                    Text("RD$84,200").font(.system(size: 38, weight: .heavy)).foregroundColor(.white).padding(.top, 6)
                 }
                 .padding(24)
             }

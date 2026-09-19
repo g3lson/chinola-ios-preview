@@ -162,7 +162,7 @@ struct NuevoMovView: View {
                             VStack(spacing: 2) {
                                 Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(.pmut)
                                 HStack(spacing: 6) {
-                                    Text("DOP").font(.system(size: 20, weight: .heavy)).foregroundColor(.pmut)
+                                    Text("RD$").font(.system(size: 20, weight: .heavy)).foregroundColor(.pmut)
                                     TextField("0", text: $monto)
                                         .font(.system(size: 34, weight: .heavy)).foregroundColor(.ink)
                                         .keyboardType(.numberPad).multilineTextAlignment(.center)

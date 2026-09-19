@@ -17,8 +17,8 @@ struct MovsView: View {
                 busqueda
                 let movs = estado.movimientos
                 if movs.isEmpty {
-                    VacioCard(titulo: "Sin movimientos",
-                              detalle: "Lo que registres este mes aparecerá aquí.")
+                    VacioCard(titulo: "No hay movimientos",
+                              detalle: "Aquí saldrá lo que anotes este mes.")
                 } else {
                     Grupo {
                         ForEach(movs.indices, id: \.self) { i in

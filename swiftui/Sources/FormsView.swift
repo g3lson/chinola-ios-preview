@@ -4,9 +4,9 @@ import SwiftUI
 // la misma cabecera de hoja (asa + × / título / ✓), los grupos redondeados y el
 // bloque de monto grande. Iconos SF para que se sientan del sistema.
 
-// Bloque de monto grande (— DOP 0 +), como en «Nuevo movimiento».
+// Bloque de monto grande (— RD$0 +), como en «Nuevo movimiento».
 struct MontoBloque: View {
-    var moneda: String = "DOP"
+    var moneda: String = "RD$"
     var valor: String = "0"
     var body: some View {
         Grupo {
@@ -122,10 +122,10 @@ struct TransferenciaView: View {
     }
 }
 
-// Bloque de monto EDITABLE (— DOP [campo] +) para los formularios funcionales.
+// Bloque de monto EDITABLE (— RD$[campo] +) para los formularios funcionales.
 struct MontoEditable: View {
     @Binding var monto: String
-    var moneda: String = "DOP"
+    var moneda: String = "RD$"
     var body: some View {
         Grupo {
             VStack(spacing: 2) {

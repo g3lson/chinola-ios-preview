@@ -80,8 +80,8 @@ struct LibretasView: View {
 // ── Detalle de una libreta (miembros, roles, invitar) ──────────────────────
 struct LibretaDetalleView: View {
     private let kpis: [(String, String, Color)] = [
-        ("SALDO", "DOP 84,200", .pos),
-        ("ESTE MES", "+ DOP 12,400", .pos),
+        ("SALDO", "RD$84,200", .pos),
+        ("ESTE MES", "+ RD$12,400", .pos),
         ("MOVIMIENTOS", "148", .ink),
         ("MIEMBROS", "3", .ink)
     ]

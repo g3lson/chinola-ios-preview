@@ -312,11 +312,12 @@ extension Movimiento {
     }
 }
 
-// Formato de dinero (DOP, sin centavos, con separador de miles).
-func fmtDinero(_ n: Double, moneda: String = "DOP") -> String {
+// Formato de dinero (RD$, sin centavos, con separador de miles) — igual que la
+// app que ya tenías.
+func fmtDinero(_ n: Double, moneda: String = "RD$") -> String {
     let f = NumberFormatter(); f.numberStyle = .decimal; f.maximumFractionDigits = 0; f.groupingSeparator = ","
     let s = f.string(from: NSNumber(value: abs(n).rounded())) ?? "0"
-    return "\(moneda) \(s)"
+    return "\(moneda)\(s)"
 }
 
 // Color desde "#rrggbb".

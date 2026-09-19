@@ -23,7 +23,7 @@ struct CabeceraFina: View {
             Spacer(minLength: 0)
 
             VStack(alignment: .trailing, spacing: 1) {
-                Text("DOP 0").font(.system(size: 19, weight: .heavy)).foregroundColor(.acc)
+                Text("RD$0").font(.system(size: 19, weight: .heavy)).foregroundColor(.acc)
                 Text("Este mes").font(.system(size: 11)).foregroundColor(.white.opacity(0.72))
             }
             Image(systemName: "calendar")
