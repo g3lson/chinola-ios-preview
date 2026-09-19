@@ -289,6 +289,59 @@ struct CNFormMeta: View {
     }
 }
 
+// ── Transferencia entre cuentas/tarjetas ────────────────────────────────────
+struct CNFormTransferencia: View {
+    @ObservedObject var datos: CNDatos
+    var origen: String = "efectivo"
+    var onClose: () -> Void
+    @State private var monto = ""
+    @State private var medio = ""
+    @State private var destino = ""
+    @State private var concepto = ""
+
+    private func nombreDe(_ v: String) -> String {
+        if v == "efectivo" { return "Efectivo" }
+        if v.hasPrefix("cuenta:"), let id = Int(v.dropFirst(7)), let c = datos.libreta.cuentas.first(where: { $0.id == id }) { return c.nombre }
+        if v.hasPrefix("tarjeta:"), let id = Int(v.dropFirst(8)), let t = datos.libreta.tarjetas.first(where: { $0.id == id }) { return t.nombre }
+        return "—"
+    }
+
+    var body: some View {
+        CNHoja(titulo: "Transferencia", onClose: onClose, onGuardar: guardar) {
+            CNMontoCampo(monto: $monto)
+            cnGrupoHoja {
+                Menu {
+                    ForEach(datos.libreta.cuentas) { c in Button(c.nombre) { medio = "cuenta:\(c.id)" } }
+                    Button("Efectivo") { medio = "efectivo" }
+                } label: { fila("De dónde sale", "arrow.up.right", CNC.neg, nombreDe(medio)) }
+                cnDiviHoja()
+                Menu {
+                    ForEach(datos.libreta.cuentas) { c in Button(c.nombre) { destino = "cuenta:\(c.id)" } }
+                    ForEach(datos.libreta.tarjetas) { t in Button("Tarjeta · \(t.nombre)") { destino = "tarjeta:\(t.id)" } }
+                } label: { fila("A dónde va", "arrow.down.left", CNC.pos, destino.isEmpty ? "Elegir" : nombreDe(destino)) }
+            }
+            CNCampoTexto(placeholder: "Concepto (opcional)", texto: $concepto)
+        }
+        .onAppear {
+            if medio.isEmpty { medio = origen }
+            if destino.isEmpty {
+                destino = datos.libreta.cuentas.map { "cuenta:\($0.id)" }.first { $0 != medio }
+                    ?? datos.libreta.tarjetas.first.map { "tarjeta:\($0.id)" } ?? ""
+            }
+        }
+    }
+
+    private func fila(_ t: String, _ ic: String, _ tinte: Color, _ val: String) -> some View {
+        HStack(spacing: 12) { cnCuadroHoja(ic, tinte); Text(t).font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(val).font(.system(size: 15)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
+    }
+    private func guardar() {
+        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        guard n > 0, !destino.isEmpty, destino != medio else { onClose(); return }
+        datos.onGuardarHoja("transferencia", ["monto": n, "medio": medio, "destino": destino, "concepto": concepto], nil)
+        onClose()
+    }
+}
+
 // ── Chooser «Agregar» (cuenta / tarjeta / préstamo) ─────────────────────────
 struct CNAgregar: View {
     @ObservedObject var datos: CNDatos

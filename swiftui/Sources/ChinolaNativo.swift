@@ -248,6 +248,8 @@ final class CNDatos: ObservableObject {
     var onAbrirMeta: (Int) -> Void = { _ in }
     var onAccion: (String, String) -> Void = { _, _ in }   // (tipo, id) → flujo web
     var onCrearMov: ([String: Any]) -> Void = { _ in }     // guardar un movimiento nativo → web
+    var onEditarMov: ([String: Any]) -> Void = { _ in }    // editar un movimiento (incluye id) → web
+    var onBorrarMov: (String) -> Void = { _ in }           // borrar un movimiento por id → web
     // Guardar una "hoja" nativa (cuenta/tarjeta/préstamo/meta/abono/aporte/pago)
     // reusando toda la lógica de la web: (tipo, form, extra?) → enviarHoja.
     var onGuardarHoja: (String, [String: Any], [String: Any]?) -> Void = { _, _, _ in }
@@ -1157,6 +1159,11 @@ struct CNDetalleCuenta: View {
             cnCuerpo {
                 CNDetCifra(rotulo: "Saldo disponible", valor: cnDinero(c?.saldo ?? 0), cols: [("Entró este mes", cnDinero(entra), CNC.pos), ("Salió este mes", cnDinero(sale), CNC.neg)])
                 CNBotonAncho(texto: "Nuevo movimiento", icono: "plus") { datos.onAccion("nuevo", "") }
+                Button { datos.onAccion("transferir", "\(cuentaId)") } label: {
+                    HStack(spacing: 6) { Image(systemName: "arrow.left.arrow.right").font(.system(size: 14, weight: .bold)); Text("Transferir").font(.system(size: 15, weight: .semibold)) }
+                        .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 13)
+                        .background(.ultraThinMaterial, in: Capsule()).overlay(Capsule().stroke(Color.white.opacity(0.5), lineWidth: 0.7))
+                }.buttonStyle(.plain)
                 Text("MOVIMIENTOS DE ESTA CUENTA").font(.system(size: 12.5, weight: .semibold)).foregroundColor(CNC.pmut).padding(.leading, 4)
                 if movs.isEmpty { Text("Aquí saldrá lo que anotes con esta cuenta.").font(.system(size: 13.5)).foregroundColor(CNC.pmut).frame(maxWidth: .infinity, alignment: .leading).padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1)) }
                 else { VStack(spacing: 0) { ForEach(movs.indices, id: \.self) { i in filaMov(movs[i], medio); if i < movs.count - 1 { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 58) } } }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5)) }
@@ -1225,6 +1232,7 @@ struct CNDetalleMeta: View {
 
 struct CNDetalleMov: View {
     @ObservedObject var datos: CNDatos; let movId: String; var onClose: () -> Void
+    @State private var confirmarBorrar = false
     var body: some View {
         let m = datos.libreta.tx.first { $0.id == movId }; let entra = m?.esIngreso ?? false
         return VStack(spacing: 0) {
@@ -1238,11 +1246,15 @@ struct CNDetalleMov: View {
                     filaInfo("calendar", CNC.neg, "Fecha", cnFechaCorta(m?.fecha ?? "")); div()
                     filaInfo("repeat", cnColor(0x825eb9), "Se repite", (m?.recurrente ?? false) ? "Sí" : "No")
                 }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
-                CNBotonAncho(texto: "Editar movimiento", icono: "pencil") { datos.onAccion("editarMov", movId); onClose() }
-                Button { datos.onAccion("borrarMov", movId); onClose() } label: {
+                CNBotonAncho(texto: "Editar movimiento", icono: "pencil") { datos.onAccion("editarMov", movId) }
+                Button { confirmarBorrar = true } label: {
                     HStack(spacing: 6) { Image(systemName: "trash").font(.system(size: 14, weight: .bold)); Text("Eliminar movimiento").font(.system(size: 15, weight: .semibold)) }
                         .foregroundColor(CNC.neg).frame(maxWidth: .infinity).padding(.vertical, 14).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 13)).overlay(RoundedRectangle(cornerRadius: 13).stroke(CNC.neg.opacity(0.3), lineWidth: 1))
                 }.buttonStyle(.plain)
+                .alert("¿Eliminar movimiento?", isPresented: $confirmarBorrar) {
+                    Button("Cancelar", role: .cancel) {}
+                    Button("Eliminar", role: .destructive) { datos.onBorrarMov(movId); onClose() }
+                } message: { Text("Esto revierte su efecto en los saldos. No se puede deshacer.") }
             }
         }
     }
@@ -1259,6 +1271,7 @@ struct CNDetalleMov: View {
 struct CNNuevoMov: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
+    var editar: CNMov? = nil
     @State private var tipo = 2
     @State private var monto = ""
     @State private var concepto = ""
@@ -1304,14 +1317,26 @@ struct CNNuevoMov: View {
             .background(CNC.scr.clipShape(CNRedondo(radio: 28, esquinas: [.topLeft, .topRight])))
             .ignoresSafeArea(edges: .bottom).padding(.top, 46)
         }
-        .onAppear { if cuentaId == 0 { cuentaId = datos.libreta.cuentas.first?.id ?? 0 } }
+        .onAppear {
+            if let m = editar {
+                tipo = mapa.firstIndex(of: m.tipo) ?? 2
+                monto = m.monto > 0 ? String(Int(m.monto.rounded())) : ""
+                concepto = m.concepto
+                categoria = m.categoria
+                repetir = m.recurrente
+                if m.medio.hasPrefix("cuenta:"), let id = Int(m.medio.dropFirst(7)) { cuentaId = id }
+                let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+                if let d = f.date(from: m.fecha) { fecha = d }
+            }
+            if cuentaId == 0 { cuentaId = datos.libreta.cuentas.first?.id ?? 0 }
+        }
     }
 
     private var cabecera: some View {
         VStack(spacing: 0) {
             Capsule().fill(CNC.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 10)
             ZStack {
-                Text("Nuevo movimiento").font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
+                Text(editar == nil ? "Nuevo movimiento" : "Editar movimiento").font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
                 HStack {
                     Button(action: onClose) { Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundColor(CNC.pmut).frame(width: 34, height: 34).background(.ultraThinMaterial, in: Circle()).overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.6)) }.buttonStyle(.plain)
                     Spacer()
@@ -1340,12 +1365,13 @@ struct CNNuevoMov: View {
         let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
         guard n > 0 else { onClose(); return }
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
-        datos.onCrearMov([
+        var dict: [String: Any] = [
             "concepto": concepto.isEmpty ? (categoria.isEmpty ? "Movimiento" : categoria) : concepto,
             "categoria": categoria.isEmpty ? "Otros" : categoria,
             "tipo": mapa[tipo], "monto": n, "fecha": f.string(from: fecha),
             "medio": "cuenta:\(cuentaId)", "recurrente": repetir
-        ])
+        ]
+        if let m = editar { dict["id"] = m.id; datos.onEditarMov(dict) } else { datos.onCrearMov(dict) }
         onClose()
     }
 }
