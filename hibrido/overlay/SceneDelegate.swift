@@ -51,9 +51,19 @@ class TestVC: CAPBridgeViewController {
         let disenoCab = ["cab-auto": "auto", "cab-clasica": "clasica", "cab-detallada": "detallada",
                          "cab-fina": "fina", "cab-clara": "clara", "cab-minima": "minima"][cual] ?? "auto"
         let grad = cual.hasPrefix("cab-") ? TestVC.fondoDegradado : TestVC.fondoLlano
+        let tintaCab = cual.hasPrefix("cab-") ? "rgb(43,32,16)" : "rgb(245,245,230)"
+        let grisCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.72)" : "rgb(214,222,205)"
+        let pastCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.13)" : "rgba(255,255,255,0.13)"
+        let pastF = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)"
         datos.cargarResumen(json: TestVC.resumenDeMuestra
             .replacingOccurrences(of: "\"diseno\":\"auto\"", with: "\"diseno\":\"\(disenoCab)\"")
-            .replacingOccurrences(of: "__FONDO__", with: grad))
+            .replacingOccurrences(of: "__FONDO__", with: grad)
+            .replacingOccurrences(of: "\"tinta\":\"rgb(245,245,230)\"", with: "\"tinta\":\"\(tintaCab)\"")
+            .replacingOccurrences(of: "\"gris\":\"rgb(214,222,205)\"", with: "\"gris\":\"\(grisCab)\"")
+            .replacingOccurrences(of: "\"pastilla\":\"rgba(255,255,255,0.13)\",\"pastillaFuerte\":\"rgba(255,255,255,0.22)\"",
+                                  with: "\"pastilla\":\"\(pastCab)\",\"pastillaFuerte\":\"\(pastF)\"")
+            .replacingOccurrences(of: "\"balColor\":\"rgb(255,255,255)\"",
+                                  with: cual.hasPrefix("cab-") ? "\"balColor\":\"rgb(43,32,16)\"" : "\"balColor\":\"rgb(255,255,255)\""))
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
         barra.pintar(activa: estado.activa, titulos: true)
@@ -132,7 +142,8 @@ extension TestVC {
         switch cual {
         case "vidrio": vista = AnyView(CNPruebaColores()); estado.activa = "resumen"
         case "resumen", "organiza", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
-            vista = AnyView(CNResumen(datos: datos)); estado.activa = "resumen"
+            vista = AnyView(CNResumen(datos: datos, organizaAlEmpezar: cual == "organiza"))
+            estado.activa = "resumen"
         case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
         case "plan":    vista = AnyView(CNPlan(datos: datos));    estado.activa = "plan"
         default:        vista = AnyView(CNMovs(datos: datos));    estado.activa = "movs"

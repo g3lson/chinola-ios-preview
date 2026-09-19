@@ -2121,12 +2121,21 @@ struct CNCabeceraApp: View {
     private var balColor: Color { c.balColor.isEmpty ? tinta : cnColor(hexString: c.balColor) }
 
     var body: some View {
-        contenido
-            .background(CNFondoCabecera(f: c.fondo, respaldo: CNC.side).ignoresSafeArea(edges: .top))
-            .clipShape(RoundedRectangle(cornerRadius: c.tarjeta ? 30 : 0, style: .continuous))
-            .padding(.horizontal, c.tarjeta ? 7 : 0)
-            .padding(.bottom, c.tarjeta ? 6 : 0)
-            .shadow(color: c.tarjeta ? Color.black.opacity(0.28) : .clear, radius: c.tarjeta ? 13 : 0, y: 6)
+        if c.tarjeta {
+            // Modo tarjeta: flota con márgenes y esquinas muy redondeadas, y
+            // sube a cubrir la isla dinámica.
+            contenido
+                .background(CNFondoCabecera(f: c.fondo, respaldo: CNC.side))
+                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                .padding(.horizontal, 7).padding(.bottom, 6)
+                .shadow(color: Color.black.opacity(0.28), radius: 13, y: 6)
+        } else {
+            // Pegada: el fondo sube por debajo de la barra de estado. Recortarlo
+            // (aunque fuera con radio 0) le devolvía el margen seguro y dejaba
+            // una franja del color de la pantalla encima.
+            contenido
+                .background(CNFondoCabecera(f: c.fondo, respaldo: CNC.side).ignoresSafeArea(edges: .top))
+        }
     }
 
     @ViewBuilder private var contenido: some View {
@@ -2272,7 +2281,10 @@ struct CNCabeceraApp: View {
                         }
                         .padding(.leading, 7).padding(.trailing, 11).padding(.vertical, 7)
                         .background(pastilla, in: Capsule())
-                    }.buttonStyle(CNPulsable()).layoutPriority(0)
+                    }
+                    .buttonStyle(CNPulsable())
+                    .fixedSize(horizontal: true, vertical: false)
+                    .layoutPriority(1)
                     flechaMes("chevron.left") { onMes(-1) }
                     Button(action: onCalendario) {
                         HStack(spacing: 6) {
@@ -2517,6 +2529,8 @@ struct CNResumen: View {
     @State private var rodado: CGFloat = 0
     /// Modo «organizar»: cada tarjeta enseña su ⋯ y se puede agregar.
     @State private var organiza = false
+    /// Solo para el banco de pruebas: arrancar ya organizando.
+    var organizaAlEmpezar = false
     private var progreso: Double { Double(max(0, min(1, rodado / 90))) }
 
     var body: some View {
@@ -2573,6 +2587,7 @@ struct CNResumen: View {
                 .padding(.horizontal, 16).padding(.top, 16)
             }
             .coordinateSpace(name: "cnResumen")
+            .onAppear { if organizaAlEmpezar { organiza = true } }
             .onPreferenceChange(CNScrollY.self) { y in
                 // Como en la web: solo se repinta cuando el cambio se nota.
                 if abs(y - rodado) > 0.5 { rodado = y }
