@@ -156,67 +156,99 @@ struct AccesoView: View {
     }
 }
 
-// ── Selector de libreta (menú que baja del título) ─────────────────────────
+// ── Selector de libreta (hoja para cambiar de libreta o crear una) ─────────
 struct SelectorLibretaView: View {
-    private let libretas: [(String, String, String, String, Color, Bool)] = [
-        ("P", "Personal", "Solo yo", "Dueño", .side, true),
-        ("N", "Negocio", "3 miembros", "Dueño", .info, false),
-        ("F", "Familia", "2 miembros", "Editor", .sav, false)
-    ]
+    @EnvironmentObject var estado: AppEstado
+    var onClose: () -> Void = {}
+    @State private var nueva = false
+    private let colores = ["#093a20", "#398ad6", "#825eb9", "#137d41", "#d55948"]
+
     var body: some View {
-        ZStack(alignment: .top) {
-            DashboardView()
-            Color.black.opacity(0.15).ignoresSafeArea()
+        ZStack(alignment: .bottom) {
+            FondoAtenuado()
             VStack(spacing: 0) {
-                ForEach(libretas.indices, id: \.self) { i in
-                    HStack(spacing: 10) {
-                        Text(libretas[i].0).font(.system(size: 11, weight: .heavy)).foregroundColor(.white)
-                            .frame(width: 28, height: 28).background(libretas[i].4)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(libretas[i].1).font(.system(size: 14, weight: .bold)).foregroundColor(.ink)
-                            Text(libretas[i].2).font(.system(size: 11)).foregroundColor(.pmut)
-                        }
-                        Spacer(minLength: 6)
-                        if libretas[i].5 {
-                            Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)).foregroundColor(.acc)
-                        } else {
-                            Text(libretas[i].3).font(.system(size: 11, weight: .semibold)).foregroundColor(.pmut)
+                cabecera
+                VStack(spacing: 0) {
+                    Grupo {
+                        let libs = estado.datos.libretas
+                        ForEach(libs.indices, id: \.self) { i in
+                            Button {
+                                estado.cambiarLibreta(libs[i].id); onClose()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Text(String(libs[i].nombre.prefix(1)).uppercased())
+                                        .font(.system(size: 12, weight: .heavy)).foregroundColor(.white)
+                                        .frame(width: 30, height: 30).background(Color(hexString: colores[i % colores.count]))
+                                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(libs[i].nombre).font(.system(size: 16, weight: .semibold)).foregroundColor(.ink)
+                                        Text(libs[i].tipo).font(.system(size: 12)).foregroundColor(.pmut)
+                                    }
+                                    Spacer(minLength: 6)
+                                    if libs[i].id == estado.datos.activa {
+                                        Image(systemName: "checkmark").font(.system(size: 15, weight: .bold)).foregroundColor(.acc)
+                                    }
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 11)
+                            }
+                            .buttonStyle(.plain)
+                            if i < libs.count - 1 { Divisor(sangria: 56) }
                         }
                     }
-                    .padding(13)
-                    .background(libretas[i].5 ? Color.soft : Color.card)
-                    Divisor(sangria: 0)
+                    Button { nueva = true } label: { BotonAncho(texto: "Nueva libreta", icono: "plus") }
+                        .buttonStyle(.plain).padding(.top, 12)
+                    Color.clear.frame(height: 34)
                 }
-                HStack {
-                    Text("Libretas y permisos →").font(.system(size: 12, weight: .bold)).foregroundColor(.ink)
-                    Spacer()
-                }
-                .padding(13).background(Color.soft)
+                .padding(.horizontal, 16)
             }
-            .background(Color.card)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shadow(color: .black.opacity(0.25), radius: 22, y: 10)
-            .padding(.horizontal, 16)
-            .padding(.top, 150)
+            .comoHoja(grande: false)
+        }
+        .fullScreenCover(isPresented: $nueva) {
+            AgregarLibretaView(onClose: { nueva = false }).environmentObject(estado)
+        }
+    }
+    private var cabecera: some View {
+        VStack(spacing: 0) {
+            Capsule().fill(Color.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 10)
+            ZStack {
+                Text("Tus libretas").font(.system(size: 17, weight: .bold)).foregroundColor(.ink)
+                HStack { Button(action: onClose) { BotonCirculo(icono: "xmark") }.buttonStyle(.plain); Spacer() }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 14)
         }
     }
 }
 
 // ── Agregar libreta ─────────────────────────────────────────────────────────
 struct AgregarLibretaView: View {
+    @EnvironmentObject var estado: AppEstado
+    var onClose: () -> Void = {}
+    @State private var nombre = ""
+    @State private var tipo = 0
+    private let tipos = ["Personal", "Negocio", "Familia", "Otra"]
+
     var body: some View {
-        HojaCorta(titulo: "Nueva libreta") {
-            VStack(spacing: 6) {
-                SeccionTitulo(texto: "Nombre y tipo")
-                Grupo {
-                    FilaCampo(placeholder: "Negocio, Familia, Gelson…")
-                    Divisor(sangria: 16)
-                    FilaNav(icono: "folder.fill", tinte: .info, titulo: "Tipo", valor: "Personal")
+        ZStack(alignment: .bottom) {
+            FondoAtenuado()
+            VStack(spacing: 0) {
+                CabeceraHojaAcc(titulo: "Nueva libreta", onClose: onClose, guardar: guardar)
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(spacing: 6) {
+                        SeccionTitulo(texto: "Nombre y tipo")
+                        Grupo { CampoTexto(placeholder: "Negocio, Familia, Gelson…", texto: $nombre) }
+                        SegmentoPildora(items: tipos, sel: $tipo)
+                    }
+                    NotaPie(texto: "Cada libreta es una contabilidad aparte que puedes compartir.")
+                    Color.clear.frame(height: 24)
                 }
-                NotaPie(texto: "Cada libreta es una contabilidad aparte que puedes compartir.")
+                .padding(.horizontal, 16)
             }
+            .comoHoja(grande: false)
         }
+    }
+    private func guardar() {
+        estado.crearLibreta(nombre, tipo: tipos[tipo])
+        onClose()
     }
 }
 

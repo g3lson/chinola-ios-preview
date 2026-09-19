@@ -5,6 +5,7 @@ import SwiftUI
 // las tarjetas sobre el fondo crema. Misma disposición, hecha en nativo.
 struct DashboardView: View {
     @EnvironmentObject var estado: AppEstado
+    var onSelector: () -> Void = {}
     private let meses = ["Jul", "Ago", "Sep", "Oct", "Rango"]
     @State private var mesSel = 2
 
@@ -26,15 +27,18 @@ struct DashboardView: View {
     private func cabecera(top: CGFloat) -> some View {
         VStack(spacing: 10) {
             // Selector de libreta, centrado.
-            HStack(spacing: 7) {
-                Image(systemName: "house.fill").font(.system(size: 12, weight: .semibold))
-                Text(estado.libreta.nombre).font(.system(size: 15, weight: .semibold))
-                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+            Button(action: onSelector) {
+                HStack(spacing: 7) {
+                    Image(systemName: "house.fill").font(.system(size: 12, weight: .semibold))
+                    Text(estado.libreta.nombre).font(.system(size: 15, weight: .semibold))
+                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 15).padding(.vertical, 8)
+                .background(Color.white.opacity(0.14))
+                .clipShape(Capsule())
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 15).padding(.vertical, 8)
-            .background(Color.white.opacity(0.14))
-            .clipShape(Capsule())
+            .buttonStyle(.plain)
 
             // Balance del mes.
             Text((estado.balanceMes >= 0 ? "" : "− ") + fmtDinero(estado.balanceMes))

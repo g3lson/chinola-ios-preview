@@ -36,6 +36,7 @@ struct RootView: View {
     @State private var hoja: HojaActiva?
     @State private var pendiente: HojaActiva?
     @State private var detalle: DetalleRef?
+    @State private var mostrarSelector = false
     private let pantalla = ProcessInfo.processInfo.environment["CHINOLA_SCREEN"]
 
     var body: some View {
@@ -125,7 +126,7 @@ struct RootView: View {
             case 2: CuentasView(abrirTendencia: { tendencia = true }, onNuevo: { hoja = .chooser }, onDetalle: { detalle = $0 })
             case 3: PlanView(onNuevo: { s in hoja = s == 0 ? .categoria : .meta }, onMeta: { detalle = DetalleRef(tipo: .meta, ref: $0) })
             case 4: PerfilView()
-            default: DashboardView()
+            default: DashboardView(onSelector: { mostrarSelector = true })
             }
 
             // «+» flotante solo en Resumen: en Movs., Cuentas y Plan el «+» vive
@@ -156,6 +157,9 @@ struct RootView: View {
         }
         .fullScreenCover(item: $detalle) { d in
             detalleVista(d).environmentObject(estado)
+        }
+        .fullScreenCover(isPresented: $mostrarSelector) {
+            SelectorLibretaView(onClose: { mostrarSelector = false }).environmentObject(estado)
         }
     }
 }
