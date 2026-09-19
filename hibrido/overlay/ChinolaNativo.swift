@@ -956,7 +956,7 @@ struct CNDetCabecera: View {
     var onClose: () -> Void
     var body: some View {
         VStack(spacing: 0) {
-            Color.clear.frame(height: 52)
+            Color.clear.frame(height: 14)
             HStack(spacing: 12) {
                 // Atrás y ⋯ en vidrio, como el resto de botones de la app.
                 Button(action: onClose) {
@@ -1178,9 +1178,7 @@ struct CNNuevoMov: View {
     private let mapa = ["Ingreso", "Gasto Fijo", "Gasto Variable", "Ahorro"]
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Color.black.opacity(0.4).ignoresSafeArea()
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
                 CNHojaCabecera(titulo: editar == nil ? "Nuevo movimiento" : "Editar movimiento", onClose: onClose)
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
@@ -1213,11 +1211,10 @@ struct CNNuevoMov: View {
                     }.padding(.horizontal, 16)
                 }
                 CNBotonGuardar(texto: editar == nil ? "Guardar movimiento" : "Guardar cambios", accion: guardar)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(CNC.scr.clipShape(CNRedondo(radio: 28, esquinas: [.topLeft, .topRight])))
-            .ignoresSafeArea(edges: .bottom).padding(.top, 46)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(CNC.scr.ignoresSafeArea())
+        .environment(\.locale, Locale(identifier: "es_DO"))
         .onAppear {
             if let m = editar {
                 tipo = mapa.firstIndex(of: m.tipo) ?? 2
@@ -1236,7 +1233,8 @@ struct CNNuevoMov: View {
     private var pildoras: some View {
         HStack(spacing: 4) { ForEach(tipos.indices, id: \.self) { i in
             Text(tipos[i]).font(.system(size: 13.5, weight: i == tipo ? .bold : .semibold)).foregroundColor(i == tipo ? .white : CNC.pmut)
-                .frame(maxWidth: .infinity).padding(.vertical, 9).background(i == tipo ? cnColor(0x093a20) : Color.clear).clipShape(Capsule()).onTapGesture { tipo = i }
+                .frame(maxWidth: .infinity).padding(.vertical, 9).background(i == tipo ? cnColor(0x093a20) : Color.clear).clipShape(Capsule())
+                .onTapGesture { UISelectionFeedbackGenerator().selectionChanged(); tipo = i }
         } }.padding(4).background(CNC.soft).clipShape(Capsule())
     }
     private var cuentaNombre: String { datos.libreta.cuentas.first { $0.id == cuentaId }?.nombre ?? "Efectivo" }

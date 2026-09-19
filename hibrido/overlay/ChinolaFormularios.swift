@@ -14,9 +14,9 @@ struct CNHoja<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Color.black.opacity(0.4).ignoresSafeArea()
-            VStack(spacing: 0) {
+        // Sin fondo ni esquinas propias: la hoja es del sistema (detents,
+        // tirador, arrastre elástico y atenuado), como en cualquier app de Apple.
+        VStack(spacing: 0) {
                 cabecera
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) { content(); Color.clear.frame(height: 24) }
@@ -24,11 +24,10 @@ struct CNHoja<Content: View>: View {
                 }
                 // El botón principal, grande y abajo: donde llega el pulgar.
                 CNBotonGuardar(texto: guardarTexto, accion: onGuardar)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(CNC.scr.clipShape(CNRedondo(radio: 28, esquinas: [.topLeft, .topRight])))
-            .ignoresSafeArea(edges: .bottom).padding(.top, 46)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(CNC.scr.ignoresSafeArea())
+        .environment(\.locale, Locale(identifier: "es_DO"))
     }
 
     private var cabecera: some View { CNHojaCabecera(titulo: titulo, onClose: onClose) }
@@ -41,17 +40,19 @@ struct CNHojaCabecera: View {
     var onClose: () -> Void
     var body: some View {
         VStack(spacing: 0) {
-            Capsule().fill(CNC.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 12)
             ZStack {
                 Text(titulo).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
                 HStack {
-                    Button(action: onClose) {
+                    Button {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        onClose()
+                    } label: {
                         Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundColor(CNC.pmut)
                             .frame(width: 36, height: 36).cnVidrio(Circle())
                     }.buttonStyle(.plain)
                     Spacer()
                 }
-            }.padding(.horizontal, 16).padding(.bottom, 14)
+            }.padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 14)
         }
     }
 }
@@ -100,16 +101,20 @@ struct CNMontoCampo: View {
         cnGrupoHoja {
             VStack(spacing: 6) {
                 Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut)
-                HStack(spacing: 14) {
-                    CNPasoBoton(icono: "minus") { fijar(valor - paso) }
+                ZStack {
+                    // El número, centrado en la tarjeta pase lo que pase.
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text("RD$").font(.system(size: 18, weight: .heavy)).foregroundColor(CNC.pmut)
                         TextField("0", text: $monto)
                             .font(.system(size: 38, weight: .heavy)).foregroundColor(CNC.ink)
-                            .keyboardType(.decimalPad).multilineTextAlignment(.center).fixedSize()
+                            .keyboardType(.decimalPad).multilineTextAlignment(.center)
+                            .fixedSize()
                     }
-                    .frame(maxWidth: .infinity)
-                    CNPasoBoton(icono: "plus") { fijar(valor + paso) }
+                    HStack {
+                        CNPasoBoton(icono: "minus") { fijar(valor - paso) }
+                        Spacer()
+                        CNPasoBoton(icono: "plus") { fijar(valor + paso) }
+                    }
                 }
                 .padding(.horizontal, 14)
             }
@@ -123,7 +128,10 @@ struct CNPasoBoton: View {
     let icono: String
     var accion: () -> Void
     var body: some View {
-        Button(action: accion) {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            accion()
+        } label: {
             Image(systemName: icono).font(.system(size: 16, weight: .bold)).foregroundColor(CNC.ink)
                 .frame(width: 40, height: 40).cnVidrio(Circle())
         }.buttonStyle(.plain)
@@ -143,12 +151,15 @@ struct CNChipsCategoria: View {
                 }
                 ficha("Otros", cnColor(0x9a9a8e), "tag")
             }
-            .padding(.horizontal, 2).padding(.vertical, 2)
+            .padding(.leading, 2).padding(.trailing, 14).padding(.vertical, 2)
         }
     }
     private func ficha(_ nombre: String, _ color: Color, _ icono: String) -> some View {
         let puesta = categoria == nombre || (categoria.isEmpty && nombre == "Otros")
-        return Button { categoria = nombre } label: {
+        return Button {
+            UISelectionFeedbackGenerator().selectionChanged()
+            categoria = nombre
+        } label: {
             HStack(spacing: 7) {
                 cnGlifo(icono, tam: 14, grosor: 2.2)
                     .foregroundColor(puesta ? .white : color)

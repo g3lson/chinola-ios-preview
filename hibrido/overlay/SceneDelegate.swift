@@ -80,8 +80,12 @@ class TestVC: CAPBridgeViewController {
     private var hojaActual: UIViewController?
     func presentar(_ v: AnyView) {
         let host = UIHostingController(rootView: v)
-        host.modalPresentationStyle = .overFullScreen
-        host.view.backgroundColor = .clear
+        host.modalPresentationStyle = .pageSheet
+        if let hoja = host.sheetPresentationController {
+            hoja.detents = [.large()]
+            hoja.prefersGrabberVisible = true
+            hoja.preferredCornerRadius = 28
+        }
         hojaActual = host
         present(host, animated: true)
     }
