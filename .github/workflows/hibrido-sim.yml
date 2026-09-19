@@ -31,16 +31,13 @@ jobs:
           npx cap add ios
           echo "=== swift generados ==="; ls ios/App/App/*.swift || true
 
-      - name: Imprimir el arranque CANÓNICO de Capacitor (diagnóstico)
+      - name: Superponer subclase + barra (patrón canónico, sin storyboard)
         run: |
-          echo "########## SceneDelegate.swift (generado por Capacitor) ##########"
-          cat ios/App/App/SceneDelegate.swift 2>/dev/null || echo "(no hay SceneDelegate.swift)"
-          echo "########## AppDelegate.swift ##########"
-          cat ios/App/App/AppDelegate.swift 2>/dev/null || true
-          echo "########## Info.plist: UIApplicationSceneManifest ##########"
-          /usr/libexec/PlistBuddy -c "Print :UIApplicationSceneManifest" ios/App/App/Info.plist 2>/dev/null || echo "(sin UIApplicationSceneManifest)"
-          echo "########## Info.plist: UIMainStoryboardFile ##########"
-          /usr/libexec/PlistBuddy -c "Print :UIMainStoryboardFile" ios/App/App/Info.plist 2>/dev/null || echo "(sin UIMainStoryboardFile)"
+          # Reemplaza el SceneDelegate por el que crea a mano una SUBCLASE con
+          # barra nativa encima. NO se inyecta UISceneStoryboardFile (canónico).
+          cp overlay/SceneDelegate.swift ios/App/App/SceneDelegate.swift
+          /usr/libexec/PlistBuddy -c "Delete :UISceneStoryboardFile" ios/App/App/Info.plist 2>/dev/null || true
+          echo "=== SceneDelegate final ==="; head -5 ios/App/App/SceneDelegate.swift
 
       - name: Compilar para simulador
         run: |
