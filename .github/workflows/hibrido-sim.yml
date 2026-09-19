@@ -25,33 +25,22 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Instalar Capacitor y generar iOS
+      - name: Instalar Capacitor y generar iOS (por defecto)
         run: |
           npm install
           npx cap add ios
           echo "=== swift generados ==="; ls ios/App/App/*.swift || true
 
-      - name: Superponer arranque (scene-based) + manifest de escena
+      - name: Imprimir el arranque CANÓNICO de Capacitor (diagnóstico)
         run: |
-          # Un solo archivo con AppDelegate + SceneDelegate (así no toco pbxproj).
-          cp overlay/AppDelegate.swift ios/App/App/AppDelegate.swift
-          # Si cap generó su propio SceneDelegate.swift, lo dejamos vacío para no
-          # duplicar la clase (mantiene la referencia del pbxproj viva).
-          if [ -f ios/App/App/SceneDelegate.swift ]; then
-            printf 'import UIKit\n' > ios/App/App/SceneDelegate.swift
-          fi
-          P=ios/App/App/Info.plist
-          PB=/usr/libexec/PlistBuddy
-          "$PB" -c "Delete :UIApplicationSceneManifest" "$P" 2>/dev/null || true
-          "$PB" -c "Add :UIApplicationSceneManifest dict" "$P"
-          "$PB" -c "Add :UIApplicationSceneManifest:UIApplicationSupportsMultipleScenes bool false" "$P"
-          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations dict" "$P"
-          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication array" "$P"
-          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0 dict" "$P"
-          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0:UISceneConfigurationName string 'Default Configuration'" "$P"
-          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0:UISceneDelegateClassName string '\$(PRODUCT_MODULE_NAME).SceneDelegate'" "$P"
-          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0:UISceneStoryboardFile string Main" "$P"
-          echo "=== manifest de escena ==="; "$PB" -c "Print :UIApplicationSceneManifest" "$P"
+          echo "########## SceneDelegate.swift (generado por Capacitor) ##########"
+          cat ios/App/App/SceneDelegate.swift 2>/dev/null || echo "(no hay SceneDelegate.swift)"
+          echo "########## AppDelegate.swift ##########"
+          cat ios/App/App/AppDelegate.swift 2>/dev/null || true
+          echo "########## Info.plist: UIApplicationSceneManifest ##########"
+          /usr/libexec/PlistBuddy -c "Print :UIApplicationSceneManifest" ios/App/App/Info.plist 2>/dev/null || echo "(sin UIApplicationSceneManifest)"
+          echo "########## Info.plist: UIMainStoryboardFile ##########"
+          /usr/libexec/PlistBuddy -c "Print :UIMainStoryboardFile" ios/App/App/Info.plist 2>/dev/null || echo "(sin UIMainStoryboardFile)"
 
       - name: Compilar para simulador
         run: |
