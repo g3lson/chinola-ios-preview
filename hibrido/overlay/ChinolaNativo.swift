@@ -3068,6 +3068,8 @@ struct CNAjustes {
         var label = ""; var sub = ""; var valor = ""
         var icono = ""; var bg = ""; var fg = ""; var tinta = ""
         var entra = false
+        /// Si lleva id de sección, se abre NATIVA en vez de rebotar a la web.
+        var sec = ""
         var lista: [Opcion] = []; var listaValor = ""
     }
     struct Grupo { var titulo = ""; var pie = ""; var filas: [Fila] = [] }
