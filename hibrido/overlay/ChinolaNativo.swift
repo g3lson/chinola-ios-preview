@@ -346,6 +346,13 @@ final class CNDatos: ObservableObject {
     var onAjuste: (Int, Int, String?) -> Void = { _, _, _ in }
     var onPlan: () -> Void = {}
     @Published var ajustes: CNAjustes? = nil
+    /// Subpantalla del perfil abierta (nativa).
+    @Published var seccion: CNSeccion? = nil
+    /// Pide a la web el modelo de una sección; la respuesta llega por
+    /// `cargarSeccion`.
+    var onAbrirSeccion: (String) -> Void = { _ in }
+    /// Dispara una acción de la sección (su número) y vuelve a pedir el modelo.
+    var onSeccionAccion: (Int, String?) -> Void = { _, _ in }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
@@ -353,6 +360,9 @@ final class CNDatos: ObservableObject {
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
     /// con los colores nuevos (los de CNC son calculados).
     @Published var selloTema = 0
+    func cargarSeccion(json: String) {
+        if let x = CNSeccion.desde(json: json) { seccion = x }
+    }
     func cargarAjustes(json: String) {
         if let a = CNAjustes.desde(json: json) { ajustes = a }
     }
@@ -3087,7 +3097,7 @@ struct CNAjustes {
                   filas: lista(g, "filas").map { f in
                       Fila(label: s(f, "label"), sub: s(f, "sub"), valor: s(f, "valor"),
                            icono: s(f, "icono"), bg: s(f, "bg"), fg: s(f, "fg"), tinta: s(f, "tinta"),
-                           entra: b(f, "entra"),
+                           entra: b(f, "entra"), sec: s(f, "sec"),
                            lista: lista(f, "lista").map { Opcion(id: s($0, "id"), label: s($0, "label")) },
                            listaValor: s(f, "listaValor"))
                   })
@@ -3099,6 +3109,24 @@ struct CNAjustes {
 struct CNPerfil: View {
     @ObservedObject var datos: CNDatos
     var body: some View {
+        ZStack {
+            raiz
+            // La subpantalla entra desde la derecha, como en el teléfono.
+            if let sec = datos.seccion {
+                CNSeccionVista(sec: sec, datos: datos, onVolver: { cerrar() })
+                    .transition(.move(edge: .trailing))
+                    .zIndex(1)
+            }
+        }
+        .animation(.easeOut(duration: 0.26), value: datos.seccion?.id)
+    }
+
+    private func cerrar() {
+        UISelectionFeedbackGenerator().selectionChanged()
+        datos.seccion = nil
+    }
+
+    private var raiz: some View {
         let a = datos.ajustes ?? CNAjustes()
         return VStack(spacing: 0) {
             cabecera
@@ -3195,7 +3223,11 @@ struct CNPerfil: View {
 
     @ViewBuilder private func fila(_ f: CNAjustes.Fila, _ gi: Int, _ fi: Int, ultima: Bool) -> some View {
         if f.lista.isEmpty {
-            Button { datos.onAjuste(gi, fi, nil) } label: { cuerpoFila(f, ultima: ultima) }
+            Button {
+                // Si la fila tiene su pantalla nativa, se abre aquí; si no, se
+                // deja que la web haga lo suyo.
+                if f.sec.isEmpty { datos.onAjuste(gi, fi, nil) } else { datos.onAbrirSeccion(f.sec) }
+            } label: { cuerpoFila(f, ultima: ultima) }
                 .buttonStyle(CNPulsable())
         } else {
             // Una lista (el idioma) se elige en el menú del sistema, no en un
@@ -3246,4 +3278,379 @@ struct CNPerfil: View {
             if !ultima { Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.leading, 57) }
         }
     }
+}
+
+// ── Subpantallas del Perfil, NATIVAS ────────────────────────────────────────
+// Cada sección (Mi cuenta, Seguridad, Libretas, Integraciones y los seis
+// apartados de Apariencia) llega como una lista de BLOQUES que esta pantalla
+// sabe dibujar. Las acciones se disparan por su número: son las mismas
+// funciones que ejecuta la web.
+
+struct CNSeccion {
+    struct Fila {
+        var label = ""; var sub = ""; var valor = ""
+        var icono = ""; var bg = ""; var fg = ""; var tinta = ""
+        var entra = false; var accion = -1
+    }
+    struct Opcion {
+        var label = ""; var sub = ""; var puesta = false
+        var color = ""; var fondo = ""; var muestra = ""; var imagen = ""
+        var accion = -1
+    }
+    struct Muestra { var nombre = ""; var css = ""; var puesta = false; var accion = -1 }
+    struct AccionItem { var label = ""; var peligro = false; var accion = -1 }
+    struct Item {
+        var titulo = ""; var detalle = ""; var icono = ""; var color = ""; var fondo = ""
+        var chip = ""; var chipFondo = ""; var accion = -1
+        var acciones: [AccionItem] = []
+    }
+    struct Bloque {
+        var tipo = "grupo"
+        var titulo = ""; var pie = ""; var texto = ""; var label = ""; var estilo = "suave"
+        var columnas = 2
+        var puesto = false; var accion = -1
+        var filas: [Fila] = []; var opciones: [Opcion] = []
+        var colores: [Muestra] = []; var items: [Item] = []
+    }
+    var id = ""; var titulo = ""; var bloques: [Bloque] = []
+
+    static func desde(json: String) -> CNSeccion? {
+        guard let d = json.data(using: .utf8),
+              let raiz = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
+        func n(_ o: [String: Any]?, _ k: String) -> Int { ((o?[k] as? NSNumber)?.intValue) ?? -1 }
+        func b(_ o: [String: Any]?, _ k: String) -> Bool { (o?[k] as? Bool) ?? false }
+        func l(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
+        var x = CNSeccion()
+        x.id = s(raiz, "id"); x.titulo = s(raiz, "titulo")
+        x.bloques = l(raiz, "bloques").map { bq in
+            var q = Bloque()
+            q.tipo = s(bq, "tipo"); q.titulo = s(bq, "titulo"); q.pie = s(bq, "pie")
+            q.texto = s(bq, "texto"); q.label = s(bq, "label"); q.estilo = s(bq, "estilo")
+            q.columnas = max(1, n(bq, "columnas")); q.puesto = b(bq, "puesto"); q.accion = n(bq, "accion")
+            q.filas = l(bq, "filas").map {
+                Fila(label: s($0, "label"), sub: s($0, "sub"), valor: s($0, "valor"), icono: s($0, "icono"),
+                     bg: s($0, "bg"), fg: s($0, "fg"), tinta: s($0, "tinta"), entra: b($0, "entra"),
+                     accion: n($0, "accion"))
+            }
+            q.opciones = l(bq, "opciones").map {
+                Opcion(label: s($0, "label"), sub: s($0, "sub"), puesta: b($0, "puesta"),
+                       color: s($0, "color"), fondo: s($0, "fondo"), muestra: s($0, "muestra"),
+                       imagen: s($0, "imagen"), accion: n($0, "accion"))
+            }
+            q.colores = l(bq, "colores").map {
+                Muestra(nombre: s($0, "nombre"), css: s($0, "css"), puesta: b($0, "puesta"), accion: n($0, "accion"))
+            }
+            q.items = l(bq, "items").map { it in
+                Item(titulo: s(it, "titulo"), detalle: s(it, "detalle"), icono: s(it, "icono"),
+                     color: s(it, "color"), fondo: s(it, "fondo"), chip: s(it, "chip"),
+                     chipFondo: s(it, "chipFondo"), accion: n(it, "accion"),
+                     acciones: l(it, "acciones").map {
+                         AccionItem(label: s($0, "label"), peligro: b($0, "peligro"), accion: n($0, "accion"))
+                     })
+            }
+            return q
+        }
+        return x
+    }
+}
+
+struct CNSeccionVista: View {
+    let sec: CNSeccion
+    @ObservedObject var datos: CNDatos
+    var onVolver: () -> Void
+    var body: some View {
+        VStack(spacing: 0) {
+            cabecera
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    ForEach(sec.bloques.indices, id: \.self) { i in bloque(sec.bloques[i]) }
+                    Color.clear.frame(height: 104)
+                }
+                .padding(.horizontal, 16).padding(.top, 14)
+            }
+        }
+        .background(CNC.scr.ignoresSafeArea())
+    }
+
+    private var cabecera: some View {
+        HStack(spacing: 6) {
+            Button(action: onVolver) {
+                Image(systemName: "chevron.left").font(.system(size: 17, weight: .bold))
+                    .foregroundColor(CNC.ink).frame(width: 40, height: 40)
+                    .background(CNC.soft, in: Circle())
+            }.buttonStyle(CNPulsable())
+            Spacer(minLength: 0)
+            Text(sec.titulo).font(.system(size: 17, weight: .heavy)).foregroundColor(CNC.ink).lineLimit(1)
+            Spacer(minLength: 0)
+            Color.clear.frame(width: 40, height: 40)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 7).frame(minHeight: 54)
+        .background(CNC.scr.ignoresSafeArea(edges: .top))
+    }
+
+    @ViewBuilder private func bloque(_ q: CNSeccion.Bloque) -> some View {
+        switch q.tipo {
+        case "texto":
+            Text(q.texto).font(.system(size: 14)).foregroundColor(CNC.pmut)
+                .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
+        case "boton":
+            Button { datos.onSeccionAccion(q.accion, nil) } label: {
+                Text(q.label).font(.system(size: 15, weight: .bold))
+                    .foregroundColor(q.estilo == "acento" ? CNC.sobreAcc : CNC.ink)
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(q.estilo == "acento" ? CNC.acc : CNC.soft,
+                                in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            }.buttonStyle(CNPulsable())
+        case "codigo":
+            VStack(alignment: .leading, spacing: 9) {
+                if !q.titulo.isEmpty { rotulo(q.titulo) }
+                Text(q.texto).font(.system(size: 13, design: .monospaced)).foregroundColor(CNC.ink)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(13)
+                    .background(CNC.soft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                Button { datos.onSeccionAccion(q.accion, nil) } label: {
+                    Label(q.label, systemImage: "doc.on.doc").font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(CNC.ink)
+                }.buttonStyle(CNPulsable())
+            }
+        case "interruptor":
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(q.label).font(.system(size: 16)).foregroundColor(CNC.ink)
+                    if !q.titulo.isEmpty || !q.texto.isEmpty || !q.pie.isEmpty {
+                        Text(q.pie.isEmpty ? q.texto : q.pie).font(.system(size: 12)).foregroundColor(CNC.pmut)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 8)
+                Toggle("", isOn: Binding(get: { q.puesto },
+                                         set: { _ in datos.onSeccionAccion(q.accion, nil) }))
+                    .labelsHidden().tint(CNC.acc)
+            }
+            .padding(14).tarjetaCN()
+        case "opciones": opcionesVista(q)
+        case "muestras": muestrasVista(q)
+        case "lista": listaVista(q)
+        default: grupoVista(q)
+        }
+    }
+
+    private func rotulo(_ t: String) -> some View {
+        Text(t).font(.system(size: 13)).foregroundColor(CNC.pmut).padding(.horizontal, 6)
+    }
+
+    private func grupoVista(_ q: CNSeccion.Bloque) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            if !q.titulo.isEmpty { rotulo(q.titulo) }
+            VStack(spacing: 0) {
+                ForEach(q.filas.indices, id: \.self) { i in
+                    let f = q.filas[i]
+                    Button { datos.onSeccionAccion(f.accion, nil) } label: {
+                        HStack(spacing: 13) {
+                            if !f.icono.isEmpty {
+                                CNSVGShape(d: f.icono)
+                                    .stroke(style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                                    .foregroundColor(f.fg.isEmpty ? CNC.ink : cnColor(hexString: f.fg))
+                                    .frame(width: 18, height: 18).frame(width: 30, height: 30)
+                                    .background(f.bg.isEmpty ? CNC.soft : cnColor(hexString: f.bg),
+                                                in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(f.label).font(.system(size: 16)).foregroundColor(CNC.ink).lineLimit(1)
+                                if !f.sub.isEmpty {
+                                    Text(f.sub).font(.system(size: 12)).foregroundColor(CNC.pmut).lineLimit(1)
+                                }
+                            }.layoutPriority(1)
+                            Spacer(minLength: 8)
+                            if !f.valor.isEmpty {
+                                Text(f.valor).font(.system(size: 14))
+                                    .foregroundColor(f.tinta.isEmpty ? CNC.pmut : cnColor(hexString: f.tinta))
+                                    .lineLimit(1)
+                            }
+                            if f.entra {
+                                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(CNC.pmut.opacity(0.5))
+                            }
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 11).contentShape(Rectangle())
+                        .overlay(alignment: .bottom) {
+                            if i < q.filas.count - 1 {
+                                Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.leading, 57)
+                            }
+                        }
+                    }.buttonStyle(CNPulsable())
+                }
+            }
+            .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+            if !q.pie.isEmpty { rotulo(q.pie) }
+        }
+    }
+
+    /// Elegir entre varias: tarjetas en rejilla, con la puesta marcada en el
+    /// color de la marca. Es lo que hace la web, no un menú desplegable.
+    private func opcionesVista(_ q: CNSeccion.Bloque) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !q.titulo.isEmpty { rotulo(q.titulo) }
+            CNRejillaFija(columnas: q.columnas, total: q.opciones.count) { i in
+                let o = q.opciones[i]
+                Button { datos.onSeccionAccion(o.accion, nil) } label: {
+                    VStack(spacing: 6) {
+                        if !o.imagen.isEmpty, let img = cnImagenBase64(o.imagen) {
+                            Image(uiImage: img).resizable().scaledToFit().frame(height: 52)
+                        } else if !o.muestra.isEmpty {
+                            Text(o.muestra).font(.system(size: 22, weight: .bold)).foregroundColor(CNC.ink)
+                        } else if !o.color.isEmpty {
+                            Circle().fill(cnColor(hexString: o.color)).frame(width: 22, height: 22)
+                        }
+                        Text(o.label).font(.system(size: 13.5, weight: .semibold)).foregroundColor(CNC.ink)
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                        if !o.sub.isEmpty {
+                            Text(o.sub).font(.system(size: 11)).foregroundColor(CNC.pmut).lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 13).padding(.horizontal, 8)
+                    .background(o.puesta ? CNC.soft : CNC.card,
+                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 14)
+                        .stroke(o.puesta ? CNC.acc : CNC.line, lineWidth: o.puesta ? 2 : 1))
+                }.buttonStyle(CNPulsable())
+            }
+        }
+    }
+
+    private func muestrasVista(_ q: CNSeccion.Bloque) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !q.titulo.isEmpty { rotulo(q.titulo) }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(q.colores.indices, id: \.self) { i in
+                        let c = q.colores[i]
+                        Button { datos.onSeccionAccion(c.accion, nil) } label: {
+                            CNFondoCabecera(f: cnFondoDeCss(c.css), respaldo: CNC.side)
+                                .frame(width: 44, height: 44)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(CNC.acc, lineWidth: c.puesta ? 3 : 0))
+                                .overlay(Circle().stroke(CNC.line, lineWidth: 0.5))
+                        }.buttonStyle(CNPulsable())
+                    }
+                }
+                .padding(.horizontal, 4).padding(.vertical, 3)
+            }
+        }
+    }
+
+    private func listaVista(_ q: CNSeccion.Bloque) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            if !q.titulo.isEmpty { rotulo(q.titulo) }
+            VStack(spacing: 0) {
+                ForEach(q.items.indices, id: \.self) { i in
+                    let it = q.items[i]
+                    HStack(spacing: 12) {
+                        if !it.icono.isEmpty {
+                            CNSVGShape(d: it.icono)
+                                .stroke(style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
+                                .foregroundColor(it.color.isEmpty ? CNC.ink : cnColor(hexString: it.color))
+                                .frame(width: 18, height: 18).frame(width: 32, height: 32)
+                                .background(it.fondo.isEmpty ? CNC.soft : cnColor(hexString: it.fondo),
+                                            in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        } else if !it.fondo.isEmpty {
+                            Text(String(it.titulo.prefix(1)).uppercased())
+                                .font(.system(size: 12, weight: .heavy)).foregroundColor(.white)
+                                .frame(width: 32, height: 32)
+                                .background(cnColor(hexString: it.fondo),
+                                            in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(it.titulo).font(.system(size: 15, weight: .semibold)).foregroundColor(CNC.ink).lineLimit(1)
+                            if !it.detalle.isEmpty {
+                                Text(it.detalle).font(.system(size: 12)).foregroundColor(CNC.pmut).lineLimit(2)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                        if !it.chip.isEmpty {
+                            Text(it.chip).font(.system(size: 10.5, weight: .bold)).foregroundColor(CNC.pmut)
+                                .padding(.horizontal, 9).padding(.vertical, 5)
+                                .background(it.chipFondo.isEmpty ? CNC.soft : cnColor(hexString: it.chipFondo), in: Capsule())
+                        }
+                        if !it.acciones.isEmpty {
+                            Menu {
+                                ForEach(it.acciones.indices, id: \.self) { k in
+                                    let a = it.acciones[k]
+                                    Button(role: a.peligro ? .destructive : nil) {
+                                        datos.onSeccionAccion(a.accion, nil)
+                                    } label: { Text(a.label) }
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis").font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(CNC.pmut).frame(width: 30, height: 30)
+                                    .background(CNC.soft, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 11).contentShape(Rectangle())
+                    .onTapGesture { if it.accion >= 0 { datos.onSeccionAccion(it.accion, nil) } }
+                    .overlay(alignment: .bottom) {
+                        if i < q.items.count - 1 {
+                            Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.leading, 58)
+                        }
+                    }
+                }
+            }
+            .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+            if !q.pie.isEmpty { rotulo(q.pie) }
+        }
+    }
+}
+
+/// Rejilla de N columnas sin LazyVGrid (que en iOS 15 no reparte igual las
+/// alturas cuando las celdas crecen).
+struct CNRejillaFija<C: View>: View {
+    let columnas: Int
+    let total: Int
+    @ViewBuilder var celda: (Int) -> C
+    var body: some View {
+        let cols = max(1, columnas)
+        let filas = (total + cols - 1) / cols
+        VStack(spacing: 10) {
+            ForEach(0..<max(0, filas), id: \.self) { f in
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(0..<cols, id: \.self) { c in
+                        let i = f * cols + c
+                        if i < total { celda(i).frame(maxWidth: .infinity) }
+                        else { Color.clear.frame(maxWidth: .infinity) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Un PNG en base64 (los dibujos del personaje, que la web rinde por nosotros).
+func cnImagenBase64(_ b64: String) -> UIImage? {
+    guard let d = Data(base64Encoded: b64, options: .ignoreUnknownCharacters) else { return nil }
+    return UIImage(data: d)
+}
+
+/// Un color CSS suelto (o un degradado) convertido al fondo que pinta la app.
+func cnFondoDeCss(_ css: String) -> CNResumenModelo.Fondo {
+    let t = css.trimmingCharacters(in: .whitespaces)
+    guard t.contains("gradient") else { return CNResumenModelo.Fondo(tipo: "color", color: t) }
+    let dentro = t.drop(while: { $0 != "(" }).dropFirst().prefix(while: { $0 != ")" })
+    var trozos = dentro.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+    var angulo: Double = 180
+    if let primero = trozos.first, primero.hasSuffix("deg") {
+        angulo = Double(primero.replacingOccurrences(of: "deg", with: "")) ?? 180
+        trozos.removeFirst()
+    }
+    let paradas = trozos.enumerated().map { (i, x) -> CNResumenModelo.Parada in
+        let partes = x.split(separator: " ")
+        let color = String(partes.first ?? "")
+        var pos = trozos.count > 1 ? Double(i) / Double(trozos.count - 1) : 0
+        if partes.count > 1, let p = Double(partes[1].replacingOccurrences(of: "%", with: "")) { pos = p / 100 }
+        return CNResumenModelo.Parada(color: color, pos: pos)
+    }
+    return CNResumenModelo.Fondo(tipo: "grad", color: "", angulo: angulo, paradas: paradas)
 }

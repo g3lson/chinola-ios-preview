@@ -143,6 +143,9 @@ extension TestVC {
         switch cual {
         case "vidrio": vista = AnyView(CNPruebaColores()); estado.activa = "resumen"
         case "perfil": vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
+        case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas":
+            datos.cargarSeccion(json: TestVC.seccionDeMuestra(String(cual.dropFirst(4))))
+            vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
         case "resumen", "organiza", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
             vista = AnyView(CNResumen(datos: datos, organizaAlEmpezar: cual == "organiza"))
             estado.activa = "resumen"
@@ -301,4 +304,69 @@ extension TestVC {
         {"label":"Cerrar sesión","sub":"","valor":"","icono":"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9","bg":"rgba(213,89,72,0.14)","fg":"rgb(213,89,72)","tinta":"rgb(213,89,72)","entra":false}]}
      ]}
     """
+}
+
+extension TestVC {
+    /// Secciones de ejemplo para mirarlas sin la web detrás.
+    static func seccionDeMuestra(_ id: String) -> String {
+        switch id {
+        case "colores":
+            var ops = ""
+            let temas = [("Chinola", "rgb(239,203,76)"), ("Hoja", "rgb(63,157,84)"), ("Semillas", "rgb(140,106,26)"),
+                         ("Tinta", "rgb(40,40,40)"), ("Niebla", "rgb(120,140,165)"), ("Flor de chinola", "rgb(170,110,190)"),
+                         ("Pulpa", "rgb(230,150,60)"), ("Cáscara", "rgb(120,160,60)"), ("Coral", "rgb(224,120,100)"),
+                         ("Índigo", "rgb(90,100,200)"), ("Noche", "rgb(60,70,80)"), ("Carbón", "rgb(45,45,45)")]
+            for (i, t) in temas.enumerated() {
+                ops += (i > 0 ? "," : "") + "{\"label\":\"\(t.0)\",\"color\":\"\(t.1)\",\"puesta\":\(i == 0),\"accion\":\(i)}"
+            }
+            return "{\"id\":\"colores\",\"titulo\":\"Colores\",\"bloques\":[{\"tipo\":\"opciones\",\"titulo\":\"El tema de toda la app\",\"columnas\":2,\"opciones\":[\(ops)]}]}"
+        case "cabecera":
+            return """
+            {"id":"cabecera","titulo":"Cabecera","bloques":[
+              {"tipo":"opciones","titulo":"Qué se ve arriba","columnas":2,"opciones":[
+                {"label":"Automática","sub":"Se pliega al bajar","puesta":true,"accion":0},
+                {"label":"Clásica","sub":"Con balance plegable","puesta":false,"accion":1},
+                {"label":"Detallada","sub":"Todo a la vista","puesta":false,"accion":2},
+                {"label":"Fina","sub":"Una sola línea","puesta":false,"accion":3},
+                {"label":"Clara","sub":"Del color de la pantalla","puesta":false,"accion":4},
+                {"label":"Mínima","sub":"Lo justo","puesta":false,"accion":5}]},
+              {"tipo":"muestras","titulo":"Color de la cabecera","colores":[
+                {"nombre":"Del tema","css":"rgb(29,61,40)","puesta":true,"accion":6},
+                {"nombre":"Chinola","css":"linear-gradient(150deg, #f7c948, #ec9a2e 55%, #3f9d54)","accion":7},
+                {"nombre":"Mango","css":"linear-gradient(150deg, #f9c04b, #ef8a2c)","accion":8},
+                {"nombre":"Lima","css":"linear-gradient(150deg, #cfe95f, #85bb3e)","accion":9},
+                {"nombre":"Océano","css":"linear-gradient(150deg, #3f8ad0, #1f4f89)","accion":10},
+                {"nombre":"Ciruela","css":"linear-gradient(150deg, #834fa6, #47256e)","accion":11},
+                {"nombre":"Coral","css":"linear-gradient(150deg, #ea6a52, #c0343c)","accion":12},
+                {"nombre":"Carbón","css":"linear-gradient(150deg, #2a2e2b, #141714)","accion":13}]},
+              {"tipo":"interruptor","label":"Esquinas redondeadas","pie":"La cabecera con las esquinas de abajo redondeadas, como una tarjeta","puesto":false,"accion":14},
+              {"tipo":"interruptor","label":"Nombres en el menú","pie":"El rótulo debajo de cada icono de abajo","puesto":true,"accion":15}]}
+            """
+        case "seguridad":
+            return """
+            {"id":"seguridad","titulo":"Seguridad","bloques":[
+              {"tipo":"grupo","filas":[
+                {"label":"Cambiar mi contraseña","valor":"","icono":"M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4","bg":"rgba(196,124,44,0.14)","fg":"rgb(196,124,44)","entra":true,"accion":0},
+                {"label":"Verificación en dos pasos","valor":"Activada","tinta":"rgb(19,125,65)","icono":"M3 6h18v12H3zM3 8l9 6 9-6M12 20v2","bg":"rgba(58,80,168,0.14)","fg":"rgb(58,80,168)","entra":true,"accion":1}]},
+              {"tipo":"lista","titulo":"Aparatos conectados","items":[
+                {"titulo":"iPhone de Gelson","detalle":"Esta sesión · Santo Domingo","icono":"M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2M10 19h4","color":"rgb(19,36,25)","fondo":"rgb(249,245,230)"},
+                {"titulo":"Chrome en Windows","detalle":"Hace 2 días","icono":"M3 4h18v12H3zM8 20h8M12 16v4","color":"rgb(19,36,25)","fondo":"rgb(249,245,230)","acciones":[{"label":"Cerrar","peligro":true,"accion":2}]}]},
+              {"tipo":"lista","titulo":"Actividad reciente","items":[
+                {"titulo":"Entraste desde iPhone","detalle":"Hoy, 9:12"},
+                {"titulo":"Cambiaste la contraseña","detalle":"12 sept"}]}]}
+            """
+        default:
+            return """
+            {"id":"libretas","titulo":"Libretas y permisos","bloques":[
+              {"tipo":"lista","items":[
+                {"titulo":"Casa · Personal","detalle":"6 movimientos · 1 cuenta","fondo":"rgb(19,125,65)","chip":"Dueño","chipFondo":"rgb(249,245,230)","accion":0,
+                 "acciones":[{"label":"Editar","accion":1}]},
+                {"titulo":"Negocio","detalle":"Compartida con 2 personas","fondo":"rgb(63,138,214)","chip":"Dueño","chipFondo":"rgb(249,245,230)","accion":2,
+                 "acciones":[{"label":"Editar","accion":3},{"label":"Salir de la libreta","peligro":true,"accion":4}]},
+                {"titulo":"Familia","detalle":"Te invitó Ana","fondo":"rgb(130,94,185)","chip":"Invitación","chipFondo":"rgb(249,245,230)",
+                 "acciones":[{"label":"Aceptar","accion":5},{"label":"Rechazar","peligro":true,"accion":6}]}]},
+              {"tipo":"boton","label":"Nueva libreta","estilo":"acento","accion":7}]}
+            """
+        }
+    }
 }
