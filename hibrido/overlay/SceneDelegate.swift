@@ -23,7 +23,7 @@ class TestVC: CAPBridgeViewController {
 
         // Movimientos nativa (real) encima del webview, opaca. Se llena por el
         // puente (la web empuja Nativo.datos al store compartido).
-        let host = UIHostingController(rootView: AnyView(CNMovs(datos: datos)))
+        let host = UIHostingController(rootView: AnyView(CNPruebaColores()))
         host.view.backgroundColor = UIColor(CNC.scr)
         addChild(host); view.addSubview(host.view); host.didMove(toParent: self)
         host.view.translatesAutoresizingMaskIntoConstraints = false
@@ -48,13 +48,25 @@ class TestVC: CAPBridgeViewController {
         barra.view.layer.zPosition = 999
         barraView = barra.view
 
-        // A los 3s abre el formulario nativo para ver los botones Liquid Glass.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-            guard let s = self else { return }
-            let h = UIHostingController(rootView: AnyView(CNNuevoMov(datos: s.datos, onClose: {})))
-            h.modalPresentationStyle = .overFullScreen
-            h.view.backgroundColor = .clear
-            s.present(h, animated: true)
+    }
+}
+
+/// Fondo de COLORES para comprobar el Liquid Glass de la barra: si es vidrio de
+/// verdad, los colores se ven a través con refracción en los bordes.
+struct CNPruebaColores: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [.red, .orange, .yellow, .green, .blue, .purple],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+            VStack(spacing: 18) {
+                ForEach(0..<9, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color.white.opacity(0.85))
+                        .frame(height: 46)
+                        .overlay(Text("Fila \(i + 1)").font(.system(size: 18, weight: .bold)).foregroundColor(.black))
+                }
+            }.padding(.horizontal, 20)
         }
     }
 }
