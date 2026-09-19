@@ -2175,14 +2175,18 @@ struct CNCabeceraApp: View {
     // MARK: automática (la que se pliega al rodar)
     private var automatica: some View {
         GeometryReader { g in
-            let p = max(0, min(1, progreso))
-            let anchoCap = min(240, 78 + CGFloat(c.nombre.count) * 8)
-            let capX = (g.size.width - anchoCap) / 2 + (14 - (g.size.width - anchoCap) / 2) * p
-            let capMax = max(110, (g.size.width - 28) + ((g.size.width - 164) - (g.size.width - 28)) * min(1, p * 2))
-            let blqAlto = CNCabeceraApp.bloqueMeses * (1 - p)
-            let blqOpaco = max(0, 1 - p * 1.5)
-            let blqEsc = 1 - 0.18 * p
-            let chicoOpaco = max(0, (p - 0.5) / 0.5)
+            // Todo en CGFloat: mezclar Double y CGFloat aquí deja al compilador
+            // sin saber qué operador usar.
+            let p: CGFloat = CGFloat(max(0.0, min(1.0, progreso)))
+            let ancho: CGFloat = g.size.width
+            let anchoCap: CGFloat = min(240, 78 + CGFloat(c.nombre.count) * 8)
+            let centro: CGFloat = (ancho - anchoCap) / 2
+            let capX: CGFloat = centro + (14 - centro) * p
+            let capMax: CGFloat = max(110, (ancho - 28) + ((ancho - 164) - (ancho - 28)) * min(1, p * 2))
+            let blqAlto: CGFloat = CNCabeceraApp.bloqueMeses * (1 - p)
+            let blqOpaco: Double = Double(max(0, 1 - p * 1.5))
+            let blqEsc: CGFloat = 1 - 0.18 * p
+            let chicoOpaco: Double = Double(max(0, (p - 0.5) / 0.5))
             VStack(spacing: 0) {
                 ZStack(alignment: .topLeading) {
                     Color.clear.frame(height: 50)
@@ -2234,7 +2238,8 @@ struct CNCabeceraApp: View {
             .padding(.bottom, 10).padding(.top, c.tarjeta ? 12 : 10)
             .animation(.easeOut(duration: 0.2), value: progreso)
         }
-        .frame(height: 50 + 10 + (c.tarjeta ? 12 : 10) + CNCabeceraApp.bloqueMeses * CGFloat(1 - max(0, min(1, progreso))))
+        .frame(height: 50 + 10 + (c.tarjeta ? 12 : 10)
+               + CNCabeceraApp.bloqueMeses * CGFloat(1 - max(0.0, min(1.0, progreso))))
     }
 
     private var tiraMeses: some View {
