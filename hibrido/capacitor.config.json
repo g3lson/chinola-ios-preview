@@ -1,0 +1,12 @@
+{
+  "appId": "do.com.fente.chinolasim",
+  "appName": "ChinolaSim",
+  "webDir": "www",
+  "server": {
+    "iosScheme": "capacitor"
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#f7f6ee"
+  }
+}

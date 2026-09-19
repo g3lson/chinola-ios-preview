@@ -1,0 +1,11 @@
+{
+  "name": "hibrido-sim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cascara Capacitor minima (boilerplate) para reproducir el arranque de la app en el simulador. Sin codigo propietario.",
+  "dependencies": {
+    "@capacitor/cli": "8.5.1",
+    "@capacitor/core": "8.5.1",
+    "@capacitor/ios": "8.5.1"
+  }
+}

@@ -1,0 +1,89 @@
+name: Híbrido simulador (captura)
+
+# Reproduce el ARRANQUE de la app real (contenedor Capacitor: SceneDelegate +
+# storyboard + manifest de escena) en un simulador y saca capturas. Repo público
+# = Actions gratis. Solo boilerplate: NADA de código propietario.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'hibrido/**'
+      - '.github/workflows/hibrido-sim.yml'
+
+jobs:
+  sim:
+    runs-on: macos-14
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: hibrido
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar Capacitor y generar iOS
+        run: |
+          npm install
+          npx cap add ios
+          echo "=== swift generados ==="; ls ios/App/App/*.swift || true
+
+      - name: Superponer arranque (scene-based) + manifest de escena
+        run: |
+          # Un solo archivo con AppDelegate + SceneDelegate (así no toco pbxproj).
+          cp overlay/AppDelegate.swift ios/App/App/AppDelegate.swift
+          # Si cap generó su propio SceneDelegate.swift, lo dejamos vacío para no
+          # duplicar la clase (mantiene la referencia del pbxproj viva).
+          if [ -f ios/App/App/SceneDelegate.swift ]; then
+            printf 'import UIKit\n' > ios/App/App/SceneDelegate.swift
+          fi
+          P=ios/App/App/Info.plist
+          PB=/usr/libexec/PlistBuddy
+          "$PB" -c "Delete :UIApplicationSceneManifest" "$P" 2>/dev/null || true
+          "$PB" -c "Add :UIApplicationSceneManifest dict" "$P"
+          "$PB" -c "Add :UIApplicationSceneManifest:UIApplicationSupportsMultipleScenes bool false" "$P"
+          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations dict" "$P"
+          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication array" "$P"
+          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0 dict" "$P"
+          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0:UISceneConfigurationName string 'Default Configuration'" "$P"
+          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0:UISceneDelegateClassName string '\$(PRODUCT_MODULE_NAME).SceneDelegate'" "$P"
+          "$PB" -c "Add :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0:UISceneStoryboardFile string Main" "$P"
+          echo "=== manifest de escena ==="; "$PB" -c "Print :UIApplicationSceneManifest" "$P"
+
+      - name: Compilar para simulador
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Lanzar en el simulador + capturas
+        run: |
+          set -e
+          APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          echo "APP=$APP"
+          UDID=$(xcrun simctl list devices available | grep -E "iPhone 1[5-9]" | head -1 | grep -oE "[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}")
+          echo "UDID=$UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" do.com.fente.chinolasim || true
+          sleep 5;  xcrun simctl io "$UDID" screenshot cap-01.png || true
+          sleep 6;  xcrun simctl io "$UDID" screenshot cap-02.png || true
+
+      - name: Subir capturas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-hibrido
+          path: hibrido/cap-*.png
+          if-no-files-found: warn

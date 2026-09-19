@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Chinola Sim</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #f7f6ee; color: #132419;
+      font-family: -apple-system, system-ui, sans-serif;
+      display: flex; align-items: center; justify-content: center; flex-direction: column; }
+    h1 { font-size: 44px; margin: 0 0 8px; }
+    p { color: #516356; font-size: 16px; margin: 2px 0; }
+    .ok { color: #137d41; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1 class="ok">WEB OK ✓</h1>
+  <p>El webview cargó — la pantalla NO está en negro.</p>
+  <p id="hora"></p>
+  <script>
+    // Prueba del arranque: si esto se ve, el contenedor Capacitor montó el
+    // webview correctamente (mismo SceneDelegate/storyboard/manifest que la app).
+    document.getElementById('hora').textContent = 'Cargó a las ' + new Date().toLocaleTimeString();
+    console.log('[hibrido] webview cargado OK');
+  </script>
+</body>
+</html>
