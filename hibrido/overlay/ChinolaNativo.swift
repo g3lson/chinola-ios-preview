@@ -307,135 +307,124 @@ struct CNMovs: View {
         for m in movimientos { if mapa[m.fecha] == nil { orden.append(m.fecha) }; mapa[m.fecha, default: []].append(m) }
         return orden.map { ($0, mapa[$0] ?? []) }
     }
+    private func medioNombre(_ medio: String) -> String {
+        if medio.hasPrefix("cuenta:"), let id = Int(medio.dropFirst(7)),
+           let c = datos.libreta.cuentas.first(where: { $0.id == id }) { return c.nombre }
+        if medio.hasPrefix("tarjeta:"), let id = Int(medio.dropFirst(8)),
+           let t = datos.libreta.tarjetas.first(where: { $0.id == id }) { return t.nombre }
+        return "Efectivo"
+    }
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                buscador
-                Group { if porDia.isEmpty { vacio } else { lista } }
-            }
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
-            .navigationTitle("Movimientos")
-            .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    CNBotonVidrio(icono: "calendar") { }
-                    CNBotonVidrio(icono: "plus", acento: true) { datos.onNuevoMov() }
+        ScrollView(showsIndicators: false) {
+            LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
+                // Título + calendario + «+» (se van con el scroll).
+                HStack(alignment: .center, spacing: 10) {
+                    Text("Movimientos").font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
+                    Spacer(minLength: 8)
+                    circulo("calendar", acento: false) {}
+                    circulo("plus", acento: true) { datos.onNuevoMov() }
+                }
+                .padding(.horizontal, 16).padding(.top, 0)
+
+                Section(header: busqueda) {
+                    if porDia.isEmpty {
+                        vacio.padding(.horizontal, 14)
+                    } else {
+                        ForEach(porDia.indices, id: \.self) { i in
+                            grupoDia(porDia[i].0, porDia[i].1).padding(.horizontal, 14)
+                        }
+                    }
+                    Color.clear.frame(height: 110)
                 }
             }
         }
-        .navigationViewStyle(.stack)
+        .background(CNC.scr.ignoresSafeArea())
     }
 
-    /// Buscador en Liquid Glass con el botón de filtro al lado, como en la app.
-    private var buscador: some View {
-        HStack(spacing: 10) {
+    private var busqueda: some View {
+        HStack(spacing: 9) {
             HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.secondary)
-                TextField("Buscar movimiento…", text: $q)
-                    .font(.system(size: 16))
-                    .textFieldStyle(.plain)
-                if !q.isEmpty {
-                    Button { q = "" } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
-                    }.buttonStyle(.plain)
-                }
+                Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .semibold)).foregroundColor(CNC.pmut)
+                TextField("Buscar movimiento…", text: $q).font(.system(size: 15)).foregroundColor(CNC.ink)
             }
-            .padding(.horizontal, 14)
-            .frame(height: 44)                      // alto por defecto de iOS
+            .padding(.horizontal, 14).frame(height: 44)
             .cnVidrio(Capsule())
-
-            Button { } label: {
-                Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(width: 44, height: 44)
-                    .cnVidrio(Circle())
-            }.buttonStyle(.plain)
+            Image(systemName: "line.3.horizontal.decrease").font(.system(size: 17, weight: .semibold)).foregroundColor(CNC.ink)
+                .frame(width: 46, height: 46)
+                .cnVidrio(Circle())
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 10)
+        .padding(.horizontal, 14).padding(.top, 2).padding(.bottom, 8)
+        .background(.ultraThinMaterial)   // el contenido pasa por detrás al hacer scroll
     }
 
-    private var lista: some View {
-        List {
-            ForEach(porDia, id: \.0) { par in
-                Section {
-                    ForEach(par.1) { m in
-                        Button { datos.onDetalleMov(m.id) } label: { fila(m) }
-                            .buttonStyle(.plain)
-                    }
-                } header: {
-                    HStack {
-                        Text(cnDiaCorto(par.0))
-                        Spacer()
-                        Text(totalDia(par.1))
-                    }
+    private func grupoDia(_ fecha: String, _ items: [CNMov]) -> some View {
+        let total = items.reduce(0.0) { $0 + ($1.esIngreso ? abs($1.monto) : ($1.esTransfer ? 0 : -abs($1.monto))) }
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(cnDiaLargo(fecha).uppercased()).font(.system(size: 11, weight: .heavy)).tracking(0.4).foregroundColor(CNC.pmut)
+                Spacer()
+                Text((total >= 0 ? "+" : "−") + cnDinero(total)).font(.system(size: 11.5, weight: .heavy)).foregroundColor(CNC.pmut)
+            }.padding(.horizontal, 6)
+            VStack(spacing: 0) {
+                ForEach(items.indices, id: \.self) { i in
+                    fila(items[i])
+                    if i < items.count - 1 { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 58) }
                 }
             }
+            .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
         }
-        .listStyle(.insetGrouped)
-    }
-
-    private func totalDia(_ items: [CNMov]) -> String {
-        let t = items.reduce(0.0) { $0 + ($1.esIngreso ? abs($1.monto) : ($1.esTransfer ? 0 : -abs($1.monto))) }
-        return (t >= 0 ? "+" : "−") + cnDinero(t)
-    }
-
-    /// Color del movimiento: ingreso verde, gasto rojo, ahorro/transferencia con
-    /// el color de su categoría (como en la app).
-    private func tinte(_ m: CNMov) -> Color {
-        if m.esIngreso { return .green }
-        if let c = datos.libreta.categoria(m.categoria) { return cnColor(hexString: c.color) }
-        if m.esGasto { return .red }
-        return .secondary
-    }
-    private func colorMonto(_ m: CNMov) -> Color {
-        if m.esIngreso { return .green }
-        if m.esTransfer { return .secondary }
-        if m.esGasto { return .red }
-        return tinte(m)          // Ahorro: el color de la meta/categoría
     }
 
     private func fila(_ m: CNMov) -> some View {
-        let col = tinte(m)
+        let entra = m.esIngreso
+        let color: Color = entra ? CNC.pos : (m.esTransfer ? CNC.ink : CNC.neg)
         let cat = datos.libreta.categoria(m.categoria)
-        let icono = m.esIngreso ? "moneda" : (m.esTransfer ? "arrow.left.arrow.right" : (cat?.icono ?? "puntos"))
-        return HStack(spacing: 12) {
-            // Icono en círculo tintado, como en la app.
-            cnGlifo(icono, tam: 20)
-                .foregroundColor(col)
-                .frame(width: 38, height: 38)
-                .background(Circle().fill(col.opacity(0.16)))
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 5) {
-                    Text(m.concepto.isEmpty ? m.categoria : m.concepto)
-                        .fixedSize(horizontal: false, vertical: true)   // deja 2 líneas
-                    if m.recurrente {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.caption2).foregroundColor(.secondary)
-                    }
+        let tinte = entra ? CNC.pos : (m.esTransfer ? CNC.info : (cat != nil ? cnColor(hexString: cat!.color) : cnColor(0xe0a92e)))
+        let icono = entra ? "banknote.fill" : (m.esTransfer ? "arrow.left.arrow.right" : (cat?.icono ?? "tag.fill"))
+        return Button { datos.onDetalleMov(m.id) } label: {
+            HStack(spacing: 12) {
+                cnGlifo(icono, tam: 17).foregroundColor(.white)
+                    .frame(width: 34, height: 34).background(tinte).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(m.concepto.isEmpty ? m.categoria : m.concepto).font(.system(size: 15, weight: .semibold)).foregroundColor(CNC.ink)
+                        .lineLimit(1)
+                    Text("\(m.categoria) · \(medioNombre(m.medio))").font(.system(size: 11.5)).foregroundColor(CNC.pmut).lineLimit(1)
                 }
-                Text("\(m.categoria) · \(datos.libreta.nombreMedio(m.medio))")
-                    .font(.footnote).foregroundColor(.secondary).lineLimit(1)
+                Spacer(minLength: 6)
+                Text((entra ? "+ " : (m.esTransfer ? "" : "− ")) + cnDinero(m.monto)).font(.system(size: 15, weight: .heavy)).foregroundColor(color)
             }
-            Spacer(minLength: 8)
-            Text((m.esIngreso ? "+" : (m.esTransfer ? "" : "−")) + cnDinero(m.monto))
-                .fontWeight(.semibold)
-                .foregroundColor(colorMonto(m))
+            .padding(.horizontal, 14).padding(.vertical, 11)
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
     }
 
     private var vacio: some View {
         VStack(spacing: 6) {
-            Image(systemName: "tray").font(.system(size: 38)).foregroundColor(.secondary)
-            Text("No hay movimientos").font(.headline)
-            Text("Aquí saldrá lo que anotes este mes.").font(.subheadline).foregroundColor(.secondary)
+            Text("No hay movimientos").font(.system(size: 15, weight: .bold)).foregroundColor(CNC.ink)
+            Text("Aquí saldrá lo que anotes este mes.").font(.system(size: 13.5)).foregroundColor(CNC.pmut)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .frame(maxWidth: .infinity).padding(.vertical, 26)
+        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
+    }
+
+    @ViewBuilder private func circulo(_ icono: String, acento: Bool, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) {
+            if acento {
+                // El «+» en Liquid Glass tintado del color de la marca.
+                Image(systemName: icono).font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(Color(cnHex: 0x20180a))
+                    .frame(width: 46, height: 46)
+                    .cnVidrio(Circle(), tinte: CNC.acc)
+                    .shadow(color: CNC.acc.opacity(0.35), radius: 10, y: 4)
+            } else {
+                Image(systemName: icono).font(.system(size: 18, weight: .semibold)).foregroundColor(CNC.ink)
+                    .frame(width: 44, height: 44)
+                    .cnVidrio(Circle())
+            }
+        }.buttonStyle(.plain)
     }
 }
 
