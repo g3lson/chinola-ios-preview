@@ -43,6 +43,10 @@ class TestVC: CAPBridgeViewController {
         // Claro u oscuro de sistema según el tema, para que el vidrio y las
         // hojas acompañen a la paleta.
         view.window?.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
+        // La cabecera y el panel del Resumen los calcula la web; en el banco de
+        // pruebas no hay web, así que se carga un ejemplo con todas las clases
+        // de tarjeta para poder mirarlas.
+        datos.cargarResumen(json: TestVC.resumenDeMuestra)
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
         barra.pintar(activa: estado.activa, titulos: true)
@@ -119,6 +123,7 @@ extension TestVC {
         contenido?.removeFromSuperview()
         let vista: AnyView
         switch cual {
+        case "resumen": vista = AnyView(CNResumen(datos: datos)); estado.activa = "resumen"
         case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
         case "plan":    vista = AnyView(CNPlan(datos: datos));    estado.activa = "plan"
         default:        vista = AnyView(CNMovs(datos: datos));    estado.activa = "movs"
@@ -158,4 +163,57 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         SceneDelegateProxy.shared.scene(scene, continue: userActivity)
     }
+}
+
+extension TestVC {
+    /// Un panel de ejemplo con todas las clases de tarjeta.
+    static let resumenDeMuestra = """
+    {"cabecera":{"inicial":"CP","nombre":"Casa · Personal","detalle":"6 movimientos · 1 cuenta",
+      "color":"rgb(19,125,65)","mesCorto":"sept 2026","balanceRotulo":"Balance del mes",
+      "balanceFmt":"RD$15,500","balColor":"rgb(255,255,255)","ingRotulo":"Ingresos","ingFmt":"RD$30,000",
+      "gasRotulo":"Gastos","gasFmt":"RD$14,500"},
+     "vacio":false,
+     "widgets":[
+      {"indice":0,"titulo":"Ingresos del mes","clase":"cifra","chica":true,
+       "valor":"RD$30,000","nota":"del mes","color":"rgb(19,125,65)"},
+      {"indice":1,"titulo":"Gastos del mes","clase":"cifra","chica":true,
+       "valor":"RD$14,500","nota":"48% de tus ingresos","color":"rgb(213,89,72)"},
+      {"indice":2,"titulo":"Cómo va el dinero","clase":"serie","periodo":"6 meses",
+       "leyenda":[{"label":"Ingresos","color":"rgb(19,125,65)","ultimo":"RD$30,000"},
+                  {"label":"Gastos","color":"rgb(213,89,72)","ultimo":"RD$14,500"}],
+       "guias":[{"y":11,"color":"rgb(229,225,211)"},{"y":21,"color":"rgb(229,225,211)"},{"y":31,"color":"rgb(229,225,211)"}],
+       "areas":[],
+       "lineas":[{"puntos":"0,28 20,22 40,25 60,14 80,18 100,6","color":"rgb(19,125,65)"},
+                 {"puntos":"0,34 20,31 40,33 60,29 80,32 100,26","color":"rgb(213,89,72)"}],
+       "barras":[],"puntos":[],
+       "etiquetas":["abr 26","may 26","jun 26","jul 26","ago 26","sept 26"]},
+      {"indice":3,"titulo":"En qué se va el dinero","clase":"barras",
+       "filas":[{"label":"Educación","valor":"RD$9,000","pct":100,"color":"rgb(130,94,185)","iconoPath":"M12 3 2 8l10 5 10-5zM6 11v5c0 1 3 2 6 2s6-1 6-2v-5","iconoBg":"rgba(130,94,185,0.15)"},
+                {"label":"Salud","valor":"RD$3,700","pct":41,"color":"rgb(20,158,140)","iconoPath":"M12 7v10M7 12h10","iconoBg":"rgba(20,158,140,0.15)"},
+                {"label":"Servicios","valor":"RD$1,800","pct":20,"color":"rgb(20,158,140)","iconoPath":"M13 3 5 14h6l-1 7 8-11h-6z","iconoBg":"rgba(20,158,140,0.15)"}],
+       "rotuloPresupuesto":"Ver el presupuesto","vaAlPresupuesto":true},
+      {"indice":4,"titulo":"Tendencia","clase":"columnas","periodo":"6 meses",
+       "rotuloEntra":"Ingresos","rotuloSale":"Gastos","hayMedia":true,"media":58,
+       "entraColor":"rgb(19,125,65)","saleColor":"rgb(213,89,72)",
+       "columnas":[{"label":"abr","a":70,"b":52,"peso":500,"color":"rgb(81,99,86)"},
+                   {"label":"may","a":64,"b":60,"peso":500,"color":"rgb(81,99,86)"},
+                   {"label":"jun","a":82,"b":44,"peso":500,"color":"rgb(81,99,86)"},
+                   {"label":"jul","a":58,"b":70,"peso":500,"color":"rgb(81,99,86)"},
+                   {"label":"ago","a":76,"b":48,"peso":500,"color":"rgb(81,99,86)"},
+                   {"label":"sept","a":100,"b":48,"peso":700,"color":"rgb(19,36,25)"}]},
+      {"indice":5,"titulo":"Mezcla del mes","clase":"dona","total":"RD$22,500",
+       "tramos":[{"color":"rgb(29,61,40)","desde":0,"hasta":40},
+                 {"color":"rgb(213,89,72)","desde":40,"hasta":75},
+                 {"color":"rgb(130,94,185)","desde":75,"hasta":100}],
+       "filas":[{"label":"Fijos","valor":"RD$9,000","color":"rgb(29,61,40)"},
+                {"label":"Variables","valor":"RD$5,500","color":"rgb(213,89,72)"},
+                {"label":"Ahorro","valor":"RD$8,000","color":"rgb(130,94,185)"}]},
+      {"indice":6,"titulo":"Últimos movimientos","clase":"lista",
+       "items":[{"tieneIcono":true,"iconoPath":"M12 7v10M7 12h10","color":"rgb(20,158,140)","fondo":"rgba(20,158,140,0.15)","titulo":"Médico","detalle":"Salud · 7 sept","monto":"− RD$3,700","montoColor":"rgb(213,89,72)"},
+                {"tieneIcono":true,"iconoPath":"M13 3 5 14h6l-1 7 8-11h-6z","color":"rgb(20,158,140)","fondo":"rgba(20,158,140,0.15)","titulo":"Agua y basura","detalle":"Servicios · 6 sept","monto":"− RD$1,800","montoColor":"rgb(213,89,72)"},
+                {"tieneIcono":false,"sigla":"SQ","siglaColor":"rgb(255,255,255)","fondo":"rgb(19,125,65)","titulo":"Sueldo quincena","detalle":"Ingresos · 3 sept","monto":"+ RD$30,000","montoColor":"rgb(19,125,65)"}]},
+      {"indice":7,"titulo":"Un consejo","clase":"texto",
+       "texto":"Sin cuotas este mes: buen momento para aportar a tus metas."}
+     ]}
+    """
 }

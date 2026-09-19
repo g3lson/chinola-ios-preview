@@ -157,6 +157,8 @@ func cnCuadroHoja(_ ic: String, _ tinte: Color) -> some View {
 struct CNMontoCampo: View {
     @Binding var monto: String
     var paso: Double = 100
+    /// Si el grupo ya lleva su título encima, poner «MONTO» otra vez sobra.
+    var rotulo: String? = "MONTO"
     private var valor: Double { Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0 }
     private func fijar(_ n: Double) {
         let v = max(0, n)
@@ -165,7 +167,9 @@ struct CNMontoCampo: View {
     var body: some View {
         cnGrupoHoja {
             VStack(spacing: 6) {
-                Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut)
+                if let r = rotulo {
+                    Text(r).font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut)
+                }
                 ZStack {
                     // El número, centrado en la tarjeta pase lo que pase.
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
@@ -267,11 +271,14 @@ struct CNFilaMonto: View {
             cnCuadroHoja(icono, tinte)
             Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink)
             Spacer(minLength: 8)
-            Text("RD$").font(.system(size: 13, weight: .bold)).foregroundColor(CNC.pmut)
-            TextField("0", text: $monto)
-                .font(.system(size: 16, weight: .semibold)).foregroundColor(CNC.ink)
-                .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-                .frame(width: 104)
+            HStack(spacing: 4) {
+                Spacer(minLength: 0)
+                Text("RD$").font(.system(size: 13, weight: .bold)).foregroundColor(CNC.pmut)
+                TextField("0", text: $monto)
+                    .font(.system(size: 16, weight: .semibold)).foregroundColor(CNC.ink)
+                    .keyboardType(.decimalPad).fixedSize()
+            }
+            .frame(width: 130)
         }
         .padding(.horizontal, 14).padding(.vertical, 11)
     }
@@ -431,7 +438,7 @@ struct CNFormCuenta: View {
                onClose: onClose, onGuardar: guardar) {
             CNGrupoCampos(campos: [("Nombre (ej. Cuenta principal)", $nombre, .default),
                                    ("Banco (opcional)", $banco, .default)])
-            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Saldo actual"); CNMontoCampo(monto: $saldo) }
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Saldo actual"); CNMontoCampo(monto: $saldo, rotulo: nil) }
             VStack(alignment: .leading, spacing: 8) { cnHojaTitulo("Tipo"); CNFichas(opciones: clases, elegida: $clase) }
             CNColorFila(color: $color)
         }
@@ -462,7 +469,7 @@ struct CNFormTarjeta: View {
                onClose: onClose, onGuardar: guardar) {
             CNGrupoCampos(campos: [("Nombre (ej. Visa Popular)", $nombre, .default),
                                    ("Banco (opcional)", $banco, .default)])
-            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Límite"); CNMontoCampo(monto: $limite, paso: 5000) }
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Límite"); CNMontoCampo(monto: $limite, paso: 5000, rotulo: nil) }
             VStack(alignment: .leading, spacing: 8) {
                 cnHojaTitulo("Deuda y fechas")
                 cnGrupoHoja {
@@ -504,7 +511,7 @@ struct CNFormPrestamo: View {
             }
             CNGrupoCampos(campos: [("Nombre (ej. Préstamo del carro)", $nombre, .default),
                                    ("Entidad o persona (opcional)", $entidad, .default)])
-            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Monto total"); CNMontoCampo(monto: $total, paso: 1000) }
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Monto total"); CNMontoCampo(monto: $total, paso: 1000, rotulo: nil) }
             cnGrupoHoja {
                 CNFilaMonto(icono: "checkmark.circle.fill", tinte: CNC.pos, titulo: "Ya pagado", monto: $pagado)
             }
@@ -534,7 +541,7 @@ struct CNFormMeta: View {
         CNHoja(titulo: "Nueva meta", guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
             CNCampoTexto(placeholder: "Nombre (ej. Fondo de emergencia)", texto: $nombre)
-            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Objetivo"); CNMontoCampo(monto: $objetivo, paso: 5000) }
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Objetivo"); CNMontoCampo(monto: $objetivo, paso: 5000, rotulo: nil) }
             cnGrupoHoja {
                 CNFilaMonto(icono: "arrow.down.circle.fill", tinte: cnColor(hexString: color), titulo: "Aporte mensual", monto: $mensual)
             }

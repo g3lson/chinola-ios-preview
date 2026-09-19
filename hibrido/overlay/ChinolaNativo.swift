@@ -11,6 +11,17 @@ func cnColor(_ hex: UInt) -> Color {
 }
 func cnColor(hexString s: String) -> Color {
     let t = s.trimmingCharacters(in: .whitespaces)
+    // La web resuelve sus colores (var(), color-mix(), oklch()) a rgb()/rgba()
+    // antes de mandarlos, así que aquí solo hay que leer los números.
+    if t.hasPrefix("rgb") {
+        let dentro = t.drop(while: { $0 != "(" }).dropFirst().prefix(while: { $0 != ")" })
+        let n = dentro.split(whereSeparator: { " ,/".contains($0) }).compactMap { Double($0) }
+        if n.count >= 3 {
+            return Color(.sRGB, red: n[0] / 255, green: n[1] / 255, blue: n[2] / 255,
+                         opacity: n.count > 3 ? n[3] : 1)
+        }
+        return .clear
+    }
     // El diseño guarda los colores en oklch(...) (CSS). Se convierten a sRGB para
     // que las cuentas/categorías/metas se vean IGUAL que en la web y no en negro.
     if t.hasPrefix("oklch") { return cnOklch(t) }
@@ -323,11 +334,19 @@ final class CNDatos: ObservableObject {
     var onSelector: () -> Void = {}
     var onVerPresupuesto: () -> Void = {}
     var onLimiteCategoria: (String, Double) -> Void = { _, _ in }   // (categoría, límite) → web
+    var onMes: (Int) -> Void = { _ in }         // −1 / +1 desde la cabecera
+    var onEmpezar: () -> Void = {}              // el «empieza aquí» del resumen vacío
+    var onEditarPanel: () -> Void = {}          // organizar el panel (en la web)
+    /// El panel del resumen, YA calculado por la web.
+    @Published var resumen: CNResumenModelo? = nil
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
     func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p } }
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
     /// con los colores nuevos (los de CNC son calculados).
     @Published var selloTema = 0
+    func cargarResumen(json: String) {
+        if let m = CNResumenModelo.desde(json: json) { resumen = m }
+    }
     func cargarTema(json: String) {
         guard let p = CNPaletaTema.desde(json: json) else { return }
         CNC.tema = p
@@ -435,6 +454,7 @@ struct CNMovs: View {
             cabecera
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 12) {
+                    controles.padding(.horizontal, 14)
                     if porDia.isEmpty {
                         vacio.padding(.horizontal, 14)
                     } else {
@@ -450,49 +470,40 @@ struct CNMovs: View {
         .background(CNC.scr.ignoresSafeArea())
     }
 
-    /// La MISMA franja de color que la cabecera del resto de la app (el `side`
-    /// del tema), para que Movimientos no parezca otra app: título, acciones y
-    /// buscador van dentro, en vidrio.
+    /// La cabecera es la MISMA de la app (libreta, mes y balance); debajo, lo
+    /// propio de esta pantalla: buscar, filtrar y anotar.
     private var cabecera: some View {
-        CNFranja(titulo: "Movimientos") {
-            CNMenuVidrio(icono: "calendar", activo: periodo > 0, color: .white) {
+        CNCabeceraApp(c: datos.resumen?.cabecera ?? CNResumenModelo.Cabecera(),
+                      onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) })
+    }
+
+    private var controles: some View {
+        HStack(spacing: 9) {
+            HStack(spacing: 9) {
+                Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(CNC.pmut)
+                TextField("Buscar movimiento…", text: $q).font(.system(size: 15)).foregroundColor(CNC.ink)
+                    .submitLabel(.search)
+                if !q.isEmpty {
+                    Button { q = "" } label: {
+                        Image(systemName: "xmark.circle.fill").font(.system(size: 15)).foregroundColor(CNC.pmut)
+                    }.buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14).frame(height: 44)
+            .background(CNC.card, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 13).stroke(CNC.line, lineWidth: 1))
+            CNMenuVidrio(icono: "calendar", activo: periodo > 0, lado: 44) {
                 Picker("", selection: $periodo) {
                     ForEach(CNMovs.periodos.indices, id: \.self) { i in Text(CNMovs.periodos[i]).tag(i) }
                 }
             }
-            CNCirculoAcento(icono: "plus") { datos.onNuevoMov() }
-        } debajo: {
-            HStack(spacing: 9) {
-                ZStack(alignment: .leading) {
-                    HStack(spacing: 9) {
-                        Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.75))
-                        // El marcador de agua a mano: el del sistema saldría gris
-                        // oscuro y aquí el fondo es de color.
-                        ZStack(alignment: .leading) {
-                            if q.isEmpty {
-                                Text("Buscar movimiento…").font(.system(size: 15)).foregroundColor(.white.opacity(0.7))
-                            }
-                            TextField("", text: $q).font(.system(size: 15)).foregroundColor(.white)
-                                .tint(.white).submitLabel(.search)
-                        }
-                        if !q.isEmpty {
-                            Button { q = "" } label: {
-                                Image(systemName: "xmark.circle.fill").font(.system(size: 15))
-                                    .foregroundColor(.white.opacity(0.75))
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 14)
-                }
-                .frame(height: 44)
-                .cnVidrio(Capsule())
-                CNMenuVidrio(icono: "line.3.horizontal.decrease", activo: filtro > 0, lado: 44, color: .white) {
-                    Picker("", selection: $filtro) {
-                        ForEach(CNMovs.filtros.indices, id: \.self) { i in Text(CNMovs.filtros[i]).tag(i) }
-                    }
+            CNMenuVidrio(icono: "line.3.horizontal.decrease", activo: filtro > 0, lado: 44) {
+                Picker("", selection: $filtro) {
+                    ForEach(CNMovs.filtros.indices, id: \.self) { i in Text(CNMovs.filtros[i]).tag(i) }
                 }
             }
+            CNCirculoAcento(icono: "plus") { datos.onNuevoMov() }
         }
     }
 
@@ -1516,17 +1527,18 @@ struct CNCuentas: View {
     var body: some View {
         let lb = datos.libreta
         return VStack(spacing: 0) {
-            CNFranja(titulo: "Cuentas") {
-                CNMenuVidrio(icono: "ellipsis", color: .white) {
-                    Button { datos.onTendencia() } label: { Label("Ver la tendencia", systemImage: "chart.line.uptrend.xyaxis") }
-                    Button { datos.onAgregar() } label: { Label("Agregar…", systemImage: "plus") }
-                }
-                CNCirculoAcento(icono: "plus") { datos.onAgregar() }
-            } debajo: {
-                resumen(lb)
-            }
+            CNCabeceraApp(c: datos.resumen?.cabecera ?? CNResumenModelo.Cabecera(),
+                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) })
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 13) {
+                    HStack(spacing: 10) {
+                        resumen(lb)
+                        CNMenuVidrio(icono: "ellipsis", lado: 44) {
+                            Button { datos.onTendencia() } label: { Label("Ver la tendencia", systemImage: "chart.line.uptrend.xyaxis") }
+                            Button { datos.onAgregar() } label: { Label("Agregar…", systemImage: "plus") }
+                        }
+                        CNCirculoAcento(icono: "plus") { datos.onAgregar() }
+                    }
                     rotulo("Mis cuentas")
                     if lb.cuentas.isEmpty { cnVacioCard("Aún no hay cuentas", "Toca + para agregar la primera.") }
                     ForEach(lb.cuentas) { c in filaCuenta(c, lb) }
@@ -1558,12 +1570,13 @@ struct CNCuentas: View {
     private func cifra(_ rotulo: String, _ valor: String) -> some View {
         VStack(spacing: 3) {
             Text(rotulo.uppercased()).font(.system(size: 9.5, weight: .heavy)).tracking(0.5)
-                .foregroundColor(.white.opacity(0.7))
-            Text(valor).font(.system(size: 15, weight: .heavy)).foregroundColor(.white)
+                .foregroundColor(CNC.pmut)
+            Text(valor).font(.system(size: 15, weight: .heavy)).foregroundColor(CNC.ink)
                 .lineLimit(1).minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 10)
-        .cnVidrio(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
     }
 
     private func rotulo(_ t: String) -> some View {
@@ -1705,19 +1718,16 @@ struct CNPlan: View {
     var body: some View {
         let lb = datos.libreta
         return VStack(spacing: 0) {
-            CNFranja(titulo: "Plan") {
-                CNMenuVidrio(icono: "ellipsis", color: .white) {
-                    Button { datos.onNuevaCategoria() } label: { Label("Nueva categoría", systemImage: "tag") }
-                    Button { datos.onNuevaMeta() } label: { Label("Nueva meta", systemImage: "target") }
-                }
-                CNCirculoAcento(icono: "plus") {
-                    if pestana == 0 { datos.onNuevaCategoria() } else { datos.onNuevaMeta() }
-                }
-            } debajo: {
-                CNSegmentado(opciones: ["Presupuesto", "Metas"], elegida: $pestana)
-            }
+            CNCabeceraApp(c: datos.resumen?.cabecera ?? CNResumenModelo.Cabecera(),
+                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) })
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        CNSegmentado(opciones: ["Presupuesto", "Metas"], elegida: $pestana)
+                        CNCirculoAcento(icono: "plus") {
+                            if pestana == 0 { datos.onNuevaCategoria() } else { datos.onNuevaMeta() }
+                        }
+                    }
                     if pestana == 0 { presupuesto(lb) } else { metas(lb) }
                     Color.clear.frame(height: 110)
                 }
@@ -1873,13 +1883,15 @@ struct CNSegmentado: View {
                     withAnimation(.easeOut(duration: 0.18)) { elegida = i }
                 } label: {
                     Text(opciones[i]).font(.system(size: 13.5, weight: .bold))
-                        .foregroundColor(puesta ? CNC.sobreAcc : .white)
+                        .foregroundColor(puesta ? CNC.sobreAcc : CNC.pmut)
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
                         .background(puesta ? AnyView(Capsule().fill(CNC.acc)) : AnyView(Color.clear))
                 }.buttonStyle(.plain)
             }
         }
-        .padding(4).cnVidrio(Capsule())
+        .padding(4)
+        .background(CNC.soft, in: Capsule())
+        .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
     }
 }
 
@@ -1924,5 +1936,549 @@ struct CNLimiteHoja: View {
                 .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
         }
         .onAppear { if limite > 0 { texto = String(Int(limite)) } }
+    }
+}
+
+// ── Pantalla «Resumen» NATIVA ───────────────────────────────────────────────
+// El panel es configurable (tipos de tarjeta, tamaños, orden), así que el
+// modelo lo calcula la WEB —la misma lógica de dinero de siempre— y aquí solo
+// se DIBUJA, con las mismas medidas, colores y textos. Sin reimplementar nada.
+
+struct CNResumenModelo {
+    struct Cabecera {
+        var inicial = ""; var nombre = ""; var detalle = ""; var color = ""
+        var mesCorto = ""; var balanceRotulo = ""; var balanceFmt = ""; var balColor = ""
+        var ingRotulo = ""; var ingFmt = ""; var gasRotulo = ""; var gasFmt = ""
+    }
+    struct Punto { var x: Double = 0; var y: Double = 0; var color = "" }
+    struct Barra { var x: Double = 0; var y: Double = 0; var w: Double = 0; var h: Double = 0; var color = "" }
+    struct Guia { var y: Double = 0; var color = "" }
+    struct Traza { var puntos = ""; var color = "" }
+    struct Serie { var label = ""; var color = ""; var ultimo = "" }
+    struct FilaBarra { var label = ""; var valor = ""; var pct: Double = 0; var color = ""; var iconoPath = ""; var iconoBg = "" }
+    struct Columna { var label = ""; var a: Double = 0; var b: Double = 0; var peso: Double = 500; var color = "" }
+    struct Tramo { var color = ""; var desde: Double = 0; var hasta: Double = 0 }
+    struct FilaDona { var label = ""; var valor = ""; var color = "" }
+    struct Item {
+        var tieneIcono = false; var iconoPath = ""; var color = ""; var fondo = ""
+        var sigla = ""; var siglaColor = ""; var titulo = ""; var detalle = ""
+        var monto = ""; var montoColor = ""
+    }
+    struct Widget: Identifiable {
+        var id: Int { indice }
+        var indice = 0; var titulo = ""; var periodo = ""; var chica = false; var oculta = false
+        var clase = "texto"
+        var valor = ""; var nota = ""; var color = ""
+        var texto = ""
+        var leyenda: [Serie] = []; var guias: [Guia] = []; var areas: [Traza] = []
+        var lineas: [Traza] = []; var barras: [Barra] = []; var puntos: [Punto] = []
+        var etiquetas: [String] = []
+        var filas: [FilaBarra] = []; var rotuloPresupuesto = ""; var vaAlPresupuesto = false
+        var rotuloEntra = ""; var rotuloSale = ""; var hayMedia = false; var media: Double = 0
+        var entraColor = ""; var saleColor = ""; var columnas: [Columna] = []
+        var total = ""; var tramos: [Tramo] = []; var filasDona: [FilaDona] = []
+        var items: [Item] = []
+    }
+    var cabecera = Cabecera()
+    var vacio = false; var vacioTitulo = ""; var vacioTexto = ""; var vacioBoton = ""
+    var widgets: [Widget] = []
+
+    // Se lee a mano (no con Decodable): así un campo que falte o que cambie de
+    // forma —la dona reusa «filas» con otra— no tira toda la pantalla abajo.
+    static func desde(json: String) -> CNResumenModelo? {
+        guard let d = json.data(using: .utf8),
+              let raiz = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
+        func n(_ o: [String: Any]?, _ k: String) -> Double { ((o?[k] as? NSNumber)?.doubleValue) ?? 0 }
+        func b(_ o: [String: Any]?, _ k: String) -> Bool { (o?[k] as? Bool) ?? false }
+        func lista(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
+
+        var m = CNResumenModelo()
+        let c = raiz["cabecera"] as? [String: Any]
+        m.cabecera = Cabecera(inicial: s(c, "inicial"), nombre: s(c, "nombre"), detalle: s(c, "detalle"),
+                              color: s(c, "color"), mesCorto: s(c, "mesCorto"),
+                              balanceRotulo: s(c, "balanceRotulo"), balanceFmt: s(c, "balanceFmt"),
+                              balColor: s(c, "balColor"), ingRotulo: s(c, "ingRotulo"), ingFmt: s(c, "ingFmt"),
+                              gasRotulo: s(c, "gasRotulo"), gasFmt: s(c, "gasFmt"))
+        m.vacio = b(raiz, "vacio"); m.vacioTitulo = s(raiz, "vacioTitulo")
+        m.vacioTexto = s(raiz, "vacioTexto"); m.vacioBoton = s(raiz, "vacioBoton")
+
+        m.widgets = lista(raiz, "widgets").map { w in
+            var x = Widget()
+            x.indice = Int(n(w, "indice")); x.titulo = s(w, "titulo"); x.periodo = s(w, "periodo")
+            x.chica = b(w, "chica"); x.oculta = b(w, "oculta"); x.clase = s(w, "clase")
+            x.valor = s(w, "valor"); x.nota = s(w, "nota"); x.color = s(w, "color"); x.texto = s(w, "texto")
+            x.leyenda = lista(w, "leyenda").map { Serie(label: s($0, "label"), color: s($0, "color"), ultimo: s($0, "ultimo")) }
+            x.guias = lista(w, "guias").map { Guia(y: n($0, "y"), color: s($0, "color")) }
+            x.areas = lista(w, "areas").map { Traza(puntos: s($0, "puntos"), color: s($0, "color")) }
+            x.lineas = lista(w, "lineas").map { Traza(puntos: s($0, "puntos"), color: s($0, "color")) }
+            x.barras = lista(w, "barras").map { Barra(x: n($0, "x"), y: n($0, "y"), w: n($0, "w"), h: n($0, "h"), color: s($0, "color")) }
+            x.puntos = lista(w, "puntos").map { Punto(x: n($0, "x"), y: n($0, "y"), color: s($0, "color")) }
+            x.etiquetas = (w["etiquetas"] as? [String]) ?? []
+            x.rotuloPresupuesto = s(w, "rotuloPresupuesto"); x.vaAlPresupuesto = b(w, "vaAlPresupuesto")
+            x.rotuloEntra = s(w, "rotuloEntra"); x.rotuloSale = s(w, "rotuloSale")
+            x.hayMedia = b(w, "hayMedia"); x.media = n(w, "media")
+            x.entraColor = s(w, "entraColor"); x.saleColor = s(w, "saleColor")
+            x.columnas = lista(w, "columnas").map { Columna(label: s($0, "label"), a: n($0, "a"), b: n($0, "b"), peso: n($0, "peso"), color: s($0, "color")) }
+            x.total = s(w, "total")
+            x.tramos = lista(w, "tramos").map { Tramo(color: s($0, "color"), desde: n($0, "desde"), hasta: n($0, "hasta")) }
+            if x.clase == "dona" {
+                x.filasDona = lista(w, "filas").map { FilaDona(label: s($0, "label"), valor: s($0, "valor"), color: s($0, "color")) }
+            } else {
+                x.filas = lista(w, "filas").map { FilaBarra(label: s($0, "label"), valor: s($0, "valor"), pct: n($0, "pct"), color: s($0, "color"), iconoPath: s($0, "iconoPath"), iconoBg: s($0, "iconoBg")) }
+            }
+            x.items = lista(w, "items").map {
+                Item(tieneIcono: b($0, "tieneIcono"), iconoPath: s($0, "iconoPath"), color: s($0, "color"),
+                     fondo: s($0, "fondo"), sigla: s($0, "sigla"), siglaColor: s($0, "siglaColor"),
+                     titulo: s($0, "titulo"), detalle: s($0, "detalle"), monto: s($0, "monto"),
+                     montoColor: s($0, "montoColor"))
+            }
+            return x
+        }
+        return m
+    }
+}
+
+/// La cabecera de la app: libreta, mes y balance. La MISMA de la web, para que
+/// las pantallas nativas y las que siguen en web sean la misma app.
+struct CNCabeceraApp: View {
+    let c: CNResumenModelo.Cabecera
+    var onLibreta: () -> Void
+    var onMes: (Int) -> Void
+    private var sobre: Color { Color(.sRGB, red: 0.96, green: 0.96, blue: 0.90, opacity: 1) }
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Button(action: onLibreta) {
+                    HStack(spacing: 9) {
+                        Text(c.inicial).font(.system(size: 10, weight: .heavy)).foregroundColor(.white)
+                            .frame(width: 28, height: 28)
+                            .background(cnColor(hexString: c.color))
+                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(c.nombre).font(.system(size: 13, weight: .bold)).foregroundColor(sobre)
+                                .lineLimit(1)
+                            Text(c.detalle).font(.system(size: 10)).foregroundColor(sobre.opacity(0.82))
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
+                            .foregroundColor(sobre.opacity(0.82))
+                    }
+                    .padding(.leading, 8).padding(.trailing, 11).padding(.vertical, 8)
+                    .background(Color.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                }.buttonStyle(CNPulsable())
+                HStack(spacing: 0) {
+                    flecha("chevron.left") { onMes(-1) }
+                    flecha("chevron.right") { onMes(1) }
+                }
+                .padding(2)
+                .background(Color.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            }
+            HStack(alignment: .bottom, spacing: 12) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(c.balanceRotulo).font(.system(size: 11)).foregroundColor(sobre.opacity(0.82)).lineLimit(1)
+                    Text(c.balanceFmt).font(.system(size: 29, weight: .heavy))
+                        .foregroundColor(c.balColor.isEmpty ? sobre : cnColor(hexString: c.balColor))
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(c.ingRotulo) \(c.ingFmt)").font(.system(size: 10))
+                    Text("\(c.gasRotulo) \(c.gasFmt)").font(.system(size: 10))
+                }
+                .foregroundColor(sobre.opacity(0.86)).lineLimit(1)
+            }
+            .padding(.top, 14)
+        }
+        .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 18)
+        .background(CNC.side.ignoresSafeArea(edges: .top))
+    }
+    private func flecha(_ ic: String, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) {
+            Image(systemName: ic).font(.system(size: 13, weight: .semibold)).foregroundColor(sobre)
+                .frame(width: 32, height: 34)
+        }.buttonStyle(CNPulsable())
+    }
+}
+
+struct CNResumen: View {
+    @ObservedObject var datos: CNDatos
+    var body: some View {
+        let m = datos.resumen ?? CNResumenModelo()
+        return VStack(spacing: 0) {
+            CNCabeceraApp(c: m.cabecera, onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) })
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 13) {
+                    if m.vacio { tarjetaVacia(m) }
+                    CNRejilla(widgets: m.widgets.filter { !$0.oculta }) { w in
+                        CNTarjetaWidget(w: w, datos: datos)
+                    }
+                    Button { datos.onEditarPanel() } label: {
+                        HStack(spacing: 7) {
+                            Image(systemName: "square.grid.2x2").font(.system(size: 13, weight: .bold))
+                            Text("Organizar el panel").font(.system(size: 13.5, weight: .bold))
+                        }
+                        .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(CNC.soft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    }.buttonStyle(CNPulsable())
+                    Color.clear.frame(height: 104)
+                }
+                .padding(.horizontal, 16).padding(.top, 16)
+            }
+        }
+        .background(CNC.scr.ignoresSafeArea())
+    }
+
+    private func tarjetaVacia(_ m: CNResumenModelo) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(m.vacioTitulo).font(.system(size: 17, weight: .heavy)).foregroundColor(CNC.ink)
+            Text(m.vacioTexto).font(.system(size: 13)).foregroundColor(CNC.pmut)
+                .fixedSize(horizontal: false, vertical: true)
+            Button { datos.onEmpezar() } label: {
+                Text(m.vacioBoton).font(.system(size: 15, weight: .heavy)).foregroundColor(CNC.sobreAcc)
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(CNC.acc, in: Capsule())
+            }.buttonStyle(CNPulsable()).padding(.top, 12)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+    }
+}
+
+/// Coloca las tarjetas como la web: las anchas ocupan la fila entera y las
+/// chicas van de dos en dos, en el orden en que vienen.
+struct CNRejilla<C: View>: View {
+    let widgets: [CNResumenModelo.Widget]
+    @ViewBuilder var celda: (CNResumenModelo.Widget) -> C
+    private var filas: [[CNResumenModelo.Widget]] {
+        var out: [[CNResumenModelo.Widget]] = []
+        for w in widgets {
+            if w.chica, var ultima = out.last, ultima.count == 1, ultima[0].chica {
+                ultima.append(w); out[out.count - 1] = ultima
+            } else {
+                out.append([w])
+            }
+        }
+        return out
+    }
+    var body: some View {
+        VStack(spacing: 13) {
+            ForEach(filas.indices, id: \.self) { i in
+                HStack(alignment: .top, spacing: 13) {
+                    ForEach(filas[i]) { w in celda(w).frame(maxWidth: .infinity) }
+                    if filas[i].count == 1 && filas[i][0].chica { Color.clear.frame(maxWidth: .infinity) }
+                }
+            }
+        }
+    }
+}
+
+/// Una tarjeta del panel. Cada clase se dibuja con las medidas de la web.
+struct CNTarjetaWidget: View {
+    let w: CNResumenModelo.Widget
+    @ObservedObject var datos: CNDatos
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(w.titulo).font(.system(size: 13)).foregroundColor(CNC.pmut).lineLimit(1)
+                Spacer(minLength: 0)
+                if !w.periodo.isEmpty {
+                    Text(w.periodo).font(.system(size: 12, weight: .semibold)).foregroundColor(CNC.pmut)
+                }
+            }
+            .padding(.bottom, 8)
+            cuerpo
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+    }
+
+    @ViewBuilder private var cuerpo: some View {
+        switch w.clase {
+        case "cifra":
+            VStack(alignment: .leading, spacing: 3) {
+                Text(w.valor).font(.system(size: w.chica ? 21 : 26, weight: .heavy))
+                    .foregroundColor(w.color.isEmpty ? CNC.ink : cnColor(hexString: w.color))
+                    .lineLimit(1).minimumScaleFactor(0.5)
+                Text(w.nota).font(.system(size: 11)).foregroundColor(CNC.pmut)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        case "texto":
+            Text(w.texto).font(.system(size: 13)).foregroundColor(CNC.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        case "serie": serie
+        case "barras": barras
+        case "columnas": columnas
+        case "dona": dona
+        default: lista
+        }
+    }
+
+    // MARK: gráfica de series (mismo lienzo 100×42 de la web)
+    private var serie: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if !w.leyenda.isEmpty {
+                HStack(spacing: 14) {
+                    ForEach(w.leyenda.indices, id: \.self) { i in
+                        let s = w.leyenda[i]
+                        HStack(spacing: 7) {
+                            RoundedRectangle(cornerRadius: 4).fill(cnColor(hexString: s.color))
+                                .frame(width: 10, height: 10)
+                            Text(s.label).font(.system(size: 12)).foregroundColor(CNC.pmut)
+                            Text(s.ultimo).font(.system(size: 12, weight: .bold)).foregroundColor(CNC.ink)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            CNLienzoSerie(w: w).frame(height: 170)
+            if !w.etiquetas.isEmpty {
+                HStack(spacing: 0) {
+                    ForEach(w.etiquetas.indices, id: \.self) { i in
+                        Text(w.etiquetas[i]).font(.system(size: 10)).foregroundColor(CNC.pmut)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: barras por categoría
+    private var barras: some View {
+        VStack(spacing: 10) {
+            ForEach(w.filas.indices, id: \.self) { i in
+                let r = w.filas[i]
+                HStack(spacing: 11) {
+                    if !r.iconoPath.isEmpty {
+                        CNSVGShape(d: r.iconoPath)
+                            .stroke(style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                            .foregroundColor(cnColor(hexString: r.color))
+                            .frame(width: 19, height: 19)
+                            .frame(width: 34, height: 34)
+                            .background(cnColor(hexString: r.iconoBg))
+                            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    }
+                    VStack(spacing: 5) {
+                        HStack {
+                            Text(r.label).font(.system(size: 12, weight: .semibold)).foregroundColor(CNC.ink).lineLimit(1)
+                            Spacer(minLength: 8)
+                            Text(r.valor).font(.system(size: 12)).foregroundColor(CNC.pmut)
+                        }
+                        CNBarraProgreso(parte: r.pct / 100, color: cnColor(hexString: r.color), alto: 8)
+                    }
+                }
+            }
+            if w.vaAlPresupuesto {
+                Button { datos.onVerPresupuesto() } label: {
+                    Text(w.rotuloPresupuesto).font(.system(size: 13, weight: .bold)).foregroundColor(CNC.ink)
+                        .frame(maxWidth: .infinity).padding(.vertical, 11)
+                        .background(CNC.soft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                }.buttonStyle(CNPulsable()).padding(.top, 4)
+            }
+        }
+    }
+
+    // MARK: columnas de tendencia
+    private var columnas: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 14) {
+                punto(w.rotuloEntra, w.entraColor)
+                punto(w.rotuloSale, w.saleColor)
+                Spacer(minLength: 0)
+            }
+            .padding(.bottom, 12)
+            ZStack(alignment: .bottom) {
+                HStack(alignment: .bottom, spacing: 9) {
+                    ForEach(w.columnas.indices, id: \.self) { i in
+                        let t = w.columnas[i]
+                        VStack(spacing: 6) {
+                            HStack(alignment: .bottom, spacing: 2) {
+                                columna(t.a, w.entraColor)
+                                columna(t.b, w.saleColor)
+                            }
+                            .frame(maxHeight: .infinity, alignment: .bottom)
+                            Text(t.label).font(.system(size: 10, weight: t.peso >= 700 ? .bold : .regular))
+                                .foregroundColor(cnColor(hexString: t.color)).lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .frame(height: 118)
+                if w.hayMedia {
+                    GeometryReader { g in
+                        let alto = max(0, g.size.height - 22)
+                        Path { p in
+                            let y = g.size.height - 22 - alto * CGFloat(w.media / 100)
+                            p.move(to: CGPoint(x: 0, y: y)); p.addLine(to: CGPoint(x: g.size.width, y: y))
+                        }
+                        .stroke(style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                        .foregroundColor(CNC.pmut.opacity(0.5))
+                    }
+                    .frame(height: 118)
+                    .allowsHitTesting(false)
+                }
+            }
+        }
+    }
+    private func columna(_ pct: Double, _ color: String) -> some View {
+        GeometryReader { g in
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                CNColumnaForma(radio: 4)
+                    .fill(cnColor(hexString: color))
+                    .frame(height: max(3, g.size.height * CGFloat(pct / 100)))
+            }
+        }
+    }
+    private func punto(_ t: String, _ c: String) -> some View {
+        HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 4).fill(cnColor(hexString: c)).frame(width: 9, height: 9)
+            Text(t).font(.system(size: 12, weight: .semibold)).foregroundColor(CNC.pmut)
+        }
+    }
+
+    // MARK: dona
+    private var dona: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                ForEach(w.tramos.indices, id: \.self) { i in
+                    let t = w.tramos[i]
+                    Circle().trim(from: t.desde / 100, to: max(t.desde, t.hasta) / 100)
+                        .stroke(cnColor(hexString: t.color), lineWidth: 20)
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 84, height: 84)
+                }
+                VStack(spacing: 0) {
+                    Text("Total").font(.system(size: 9)).foregroundColor(CNC.pmut)
+                    Text(w.total).font(.system(size: 12, weight: .heavy)).foregroundColor(CNC.ink)
+                        .lineLimit(1).minimumScaleFactor(0.6).padding(.horizontal, 4)
+                }
+                .frame(width: 64, height: 64)
+            }
+            .frame(width: 104, height: 104)
+            VStack(spacing: 7) {
+                ForEach(w.filasDona.indices, id: \.self) { i in
+                    let r = w.filasDona[i]
+                    HStack(spacing: 8) {
+                        RoundedRectangle(cornerRadius: 3).fill(cnColor(hexString: r.color)).frame(width: 9, height: 9)
+                        Text(r.label).font(.system(size: 12)).foregroundColor(CNC.ink)
+                        Spacer(minLength: 6)
+                        Text(r.valor).font(.system(size: 12, weight: .bold)).foregroundColor(CNC.ink)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: listas (recientes, recordatorios, metas)
+    private var lista: some View {
+        VStack(spacing: 0) {
+            ForEach(w.items.indices, id: \.self) { i in
+                let it = w.items[i]
+                HStack(spacing: 10) {
+                    if it.tieneIcono && !it.iconoPath.isEmpty {
+                        CNSVGShape(d: it.iconoPath)
+                            .stroke(style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                            .foregroundColor(cnColor(hexString: it.color))
+                            .frame(width: 18, height: 18)
+                            .frame(width: 34, height: 34)
+                            .background(cnColor(hexString: it.fondo))
+                            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    } else {
+                        Text(it.sigla).font(.system(size: 11, weight: .heavy))
+                            .foregroundColor(cnColor(hexString: it.siglaColor))
+                            .frame(width: 34, height: 34)
+                            .background(cnColor(hexString: it.fondo))
+                            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(it.titulo).font(.system(size: 13, weight: .semibold)).foregroundColor(CNC.ink).lineLimit(1)
+                        Text(it.detalle).font(.system(size: 11)).foregroundColor(CNC.pmut).lineLimit(1)
+                    }
+                    Spacer(minLength: 6)
+                    Text(it.monto).font(.system(size: 13, weight: .bold))
+                        .foregroundColor(cnColor(hexString: it.montoColor))
+                }
+                .padding(.vertical, 11)
+                if i < w.items.count - 1 { Rectangle().fill(CNC.soft).frame(height: 1) }
+            }
+        }
+    }
+}
+
+/// Esquinas superiores redondeadas (las columnas de la tendencia).
+struct CNColumnaForma: Shape {
+    var radio: CGFloat = 4
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let rr = min(radio, r.height / 2, r.width / 2)
+        p.move(to: CGPoint(x: r.minX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.minY + rr))
+        p.addQuadCurve(to: CGPoint(x: r.minX + rr, y: r.minY), control: CGPoint(x: r.minX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX - rr, y: r.minY))
+        p.addQuadCurve(to: CGPoint(x: r.maxX, y: r.minY + rr), control: CGPoint(x: r.maxX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// El lienzo de la gráfica de series: el mismo viewBox 0 0 100 42 de la web,
+/// con sus guías, áreas, líneas, barras y puntos ya calculados allí.
+struct CNLienzoSerie: View {
+    let w: CNResumenModelo.Widget
+    private func pares(_ s: String) -> [CGPoint] {
+        s.split(separator: " ").compactMap { par in
+            let xy = par.split(separator: ",")
+            guard xy.count == 2, let x = Double(xy[0]), let y = Double(xy[1]) else { return nil }
+            return CGPoint(x: x, y: y)
+        }
+    }
+    var body: some View {
+        GeometryReader { g in
+            let ex = g.size.width / 100, ey = g.size.height / 42
+            ZStack {
+                ForEach(w.guias.indices, id: \.self) { i in
+                    Path { p in
+                        let y = w.guias[i].y * ey
+                        p.move(to: CGPoint(x: 0, y: y)); p.addLine(to: CGPoint(x: g.size.width, y: y))
+                    }.stroke(cnColor(hexString: w.guias[i].color), lineWidth: 1)
+                }
+                ForEach(w.areas.indices, id: \.self) { i in
+                    forma(pares(w.areas[i].puntos), ex, ey, cerrada: true)
+                        .fill(cnColor(hexString: w.areas[i].color).opacity(0.18))
+                }
+                ForEach(w.barras.indices, id: \.self) { i in
+                    let b = w.barras[i]
+                    RoundedRectangle(cornerRadius: 1, style: .continuous)
+                        .fill(cnColor(hexString: b.color))
+                        .frame(width: max(1, b.w * ex), height: max(1, b.h * ey))
+                        .position(x: (b.x + b.w / 2) * ex, y: (b.y + b.h / 2) * ey)
+                }
+                ForEach(w.lineas.indices, id: \.self) { i in
+                    forma(pares(w.lineas[i].puntos), ex, ey, cerrada: false)
+                        .stroke(cnColor(hexString: w.lineas[i].color),
+                                style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                }
+                ForEach(w.puntos.indices, id: \.self) { i in
+                    let p = w.puntos[i]
+                    Circle().fill(cnColor(hexString: p.color)).frame(width: 4.8, height: 4.8)
+                        .position(x: p.x * ex, y: p.y * ey)
+                }
+            }
+        }
+    }
+    private func forma(_ pts: [CGPoint], _ ex: CGFloat, _ ey: CGFloat, cerrada: Bool) -> Path {
+        var p = Path()
+        guard let primero = pts.first else { return p }
+        p.move(to: CGPoint(x: primero.x * ex, y: primero.y * ey))
+        for q in pts.dropFirst() { p.addLine(to: CGPoint(x: q.x * ex, y: q.y * ey)) }
+        if cerrada { p.closeSubpath() }
+        return p
     }
 }
