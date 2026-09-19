@@ -131,7 +131,7 @@ extension TestVC {
         let vista: AnyView
         switch cual {
         case "vidrio": vista = AnyView(CNPruebaColores()); estado.activa = "resumen"
-        case "resumen", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
+        case "resumen", "organiza", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
             vista = AnyView(CNResumen(datos: datos)); estado.activa = "resumen"
         case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
         case "plan":    vista = AnyView(CNPlan(datos: datos));    estado.activa = "plan"
@@ -201,12 +201,18 @@ extension TestVC {
                {"indice":3,"label":"oct","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"},
                {"indice":4,"label":"Rango…","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"}]},
      "vacio":false,
+     "tiposGrafico":[{"id":"linea","label":"Línea"},{"id":"area","label":"Área"},
+       {"id":"columnas","label":"Columnas"},{"id":"barras","label":"Barras apiladas"},{"id":"puntos","label":"Puntos"}],
+     "rangosGrafico":[{"id":"3","label":"3 meses"},{"id":"6","label":"6 meses"},
+       {"id":"12","label":"12 meses"},{"id":"24","label":"24 meses"}],
+     "catalogo":[{"id":"kpi-patrimonio","label":"Patrimonio"},{"id":"dona-mezcla","label":"Mezcla de gastos"},
+       {"id":"lista-metas","label":"Avance de metas"}],
      "widgets":[
-      {"indice":0,"titulo":"Ingresos del mes","clase":"cifra","chica":true,
+      {"indice":0,"titulo":"Ingresos del mes","clase":"cifra","chica":true,"wid":"w1","ancho":1,"puedeChica":true,
        "valor":"RD$30,000","nota":"del mes","color":"rgb(19,125,65)"},
-      {"indice":1,"titulo":"Gastos del mes","clase":"cifra","chica":true,
+      {"indice":1,"titulo":"Gastos del mes","clase":"cifra","chica":true,"wid":"w2","ancho":1,"puedeChica":true,
        "valor":"RD$14,500","nota":"48% de tus ingresos","color":"rgb(213,89,72)"},
-      {"indice":2,"titulo":"Cómo va el dinero","clase":"serie","periodo":"6 meses",
+      {"indice":2,"titulo":"Cómo va el dinero","clase":"serie","periodo":"6 meses","wid":"w3","ancho":2,"cfgGrafico":"linea","cfgRango":"6","series":[{"id":"ingresos","label":"Ingresos","color":"rgb(19,125,65)","puesta":true},{"id":"gastos","label":"Gastos","color":"rgb(213,89,72)","puesta":true},{"id":"balance","label":"Balance","color":"rgb(63,138,214)","puesta":false}],
        "leyenda":[{"label":"Ingresos","color":"rgb(19,125,65)","ultimo":"RD$30,000"},
                   {"label":"Gastos","color":"rgb(213,89,72)","ultimo":"RD$14,500"}],
        "guias":[{"y":11,"color":"rgb(229,225,211)"},{"y":21,"color":"rgb(229,225,211)"},{"y":31,"color":"rgb(229,225,211)"}],

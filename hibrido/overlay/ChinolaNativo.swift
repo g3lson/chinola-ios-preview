@@ -340,6 +340,8 @@ final class CNDatos: ObservableObject {
     var onCalendario: () -> Void = {}           // abrir el calendario / periodo
     var onMesTira: (Int) -> Void = { _ in }     // saltar a un mes de la tira
     var onPlegar: () -> Void = {}               // plegar la cabecera clásica
+    /// Editar el panel: (op, id, valor). op = quitar·ocultar·ancho·mover·agregar·grafico·rango·serie
+    var onPanel: (String, String, String) -> Void = { _, _, _ in }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
@@ -1990,9 +1992,14 @@ struct CNResumenModelo {
         var sigla = ""; var siglaColor = ""; var titulo = ""; var detalle = ""
         var monto = ""; var montoColor = ""
     }
+    struct Opcion { var id = ""; var label = "" }
+    struct SerieCfg { var id = ""; var label = ""; var color = ""; var puesta = false }
     struct Widget: Identifiable {
         var id: Int { indice }
         var indice = 0; var titulo = ""; var periodo = ""; var chica = false; var oculta = false
+        /// La entrada del panel a la que corresponde (para poder editarla).
+        var wid = ""; var ancho = 2; var puedeChica = false
+        var cfgGrafico = "linea"; var cfgRango = "12"; var series: [SerieCfg] = []
         var clase = "texto"
         var valor = ""; var nota = ""; var color = ""
         var texto = ""
@@ -2008,6 +2015,7 @@ struct CNResumenModelo {
     var cabecera = Cabecera()
     var vacio = false; var vacioTitulo = ""; var vacioTexto = ""; var vacioBoton = ""
     var widgets: [Widget] = []
+    var tiposGrafico: [Opcion] = []; var rangosGrafico: [Opcion] = []; var catalogo: [Opcion] = []
 
     // Se lee a mano (no con Decodable): así un campo que falte o que cambie de
     // forma —la dona reusa «filas» con otra— no tira toda la pantalla abajo.
@@ -2048,10 +2056,17 @@ struct CNResumenModelo {
         m.vacio = b(raiz, "vacio"); m.vacioTitulo = s(raiz, "vacioTitulo")
         m.vacioTexto = s(raiz, "vacioTexto"); m.vacioBoton = s(raiz, "vacioBoton")
 
+        m.tiposGrafico = lista(raiz, "tiposGrafico").map { Opcion(id: s($0, "id"), label: s($0, "label")) }
+        m.rangosGrafico = lista(raiz, "rangosGrafico").map { Opcion(id: s($0, "id"), label: s($0, "label")) }
+        m.catalogo = lista(raiz, "catalogo").map { Opcion(id: s($0, "id"), label: s($0, "label")) }
         m.widgets = lista(raiz, "widgets").map { w in
             var x = Widget()
             x.indice = Int(n(w, "indice")); x.titulo = s(w, "titulo"); x.periodo = s(w, "periodo")
             x.chica = b(w, "chica"); x.oculta = b(w, "oculta"); x.clase = s(w, "clase")
+            x.wid = s(w, "wid"); x.ancho = Int(n(w, "ancho")); x.puedeChica = b(w, "puedeChica")
+            x.cfgGrafico = s(w, "cfgGrafico"); x.cfgRango = s(w, "cfgRango")
+            x.series = lista(w, "series").map { SerieCfg(id: s($0, "id"), label: s($0, "label"),
+                                                        color: s($0, "color"), puesta: b($0, "puesta")) }
             x.valor = s(w, "valor"); x.nota = s(w, "nota"); x.color = s(w, "color"); x.texto = s(w, "texto")
             x.leyenda = lista(w, "leyenda").map { Serie(label: s($0, "label"), color: s($0, "color"), ultimo: s($0, "ultimo")) }
             x.guias = lista(w, "guias").map { Guia(y: n($0, "y"), color: s($0, "color")) }
@@ -2495,6 +2510,8 @@ struct CNResumen: View {
     @ObservedObject var datos: CNDatos
     /// El mismo recorrido que la web (RECORRIDO = 90 px).
     @State private var rodado: CGFloat = 0
+    /// Modo «organizar»: cada tarjeta enseña su ⋯ y se puede agregar.
+    @State private var organiza = false
     private var progreso: Double { Double(max(0, min(1, rodado / 90))) }
 
     var body: some View {
@@ -2511,13 +2528,37 @@ struct CNResumen: View {
                         Color.clear.preference(key: CNScrollY.self, value: -g.frame(in: .named("cnResumen")).minY)
                     }.frame(height: 0)
                     if m.vacio { tarjetaVacia(m) }
-                    CNRejilla(widgets: m.widgets.filter { !$0.oculta }) { w in
-                        CNTarjetaWidget(w: w, datos: datos)
+                    // Organizando se ven TODAS (las ocultas atenuadas), para
+                    // poder traerlas de vuelta; fuera de ahí, solo las visibles.
+                    let vistas = organiza ? m.widgets : m.widgets.filter { !$0.oculta }
+                    CNRejilla(widgets: vistas) { w in
+                        CNTarjetaWidget(w: w, modelo: m, organiza: organiza,
+                                        primera: w.indice == 0,
+                                        ultima: w.indice == m.widgets.count - 1,
+                                        datos: datos)
                     }
-                    Button { datos.onEditarPanel() } label: {
+                    if organiza && !m.catalogo.isEmpty {
+                        Menu {
+                            ForEach(m.catalogo, id: \.id) { o in
+                                Button(o.label) { datos.onPanel("agregar", o.id, "") }
+                            }
+                        } label: {
+                            HStack(spacing: 7) {
+                                Image(systemName: "plus").font(.system(size: 14, weight: .bold))
+                                Text("Agregar tarjeta").font(.system(size: 13.5, weight: .bold))
+                            }
+                            .foregroundColor(CNC.sobreAcc).frame(maxWidth: .infinity).padding(.vertical, 13)
+                            .background(CNC.acc, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                        }
+                    }
+                    Button {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        withAnimation(.easeOut(duration: 0.2)) { organiza.toggle() }
+                    } label: {
                         HStack(spacing: 7) {
-                            Image(systemName: "square.grid.2x2").font(.system(size: 13, weight: .bold))
-                            Text("Organizar el panel").font(.system(size: 13.5, weight: .bold))
+                            Image(systemName: organiza ? "checkmark" : "square.grid.2x2")
+                                .font(.system(size: 13, weight: .bold))
+                            Text(organiza ? "Listo" : "Organizar el panel").font(.system(size: 13.5, weight: .bold))
                         }
                         .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 12)
                         .background(CNC.soft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
@@ -2584,6 +2625,10 @@ struct CNRejilla<C: View>: View {
 /// Una tarjeta del panel. Cada clase se dibuja con las medidas de la web.
 struct CNTarjetaWidget: View {
     let w: CNResumenModelo.Widget
+    let modelo: CNResumenModelo
+    var organiza: Bool = false
+    var primera: Bool = false
+    var ultima: Bool = false
     @ObservedObject var datos: CNDatos
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -2593,6 +2638,13 @@ struct CNTarjetaWidget: View {
                 if !w.periodo.isEmpty {
                     Text(w.periodo).font(.system(size: 12, weight: .semibold)).foregroundColor(CNC.pmut)
                 }
+                if organiza {
+                    Menu { acciones } label: {
+                        Image(systemName: "ellipsis").font(.system(size: 13, weight: .bold))
+                            .foregroundColor(CNC.pmut).frame(width: 28, height: 24)
+                            .background(CNC.soft, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    }
+                }
             }
             .padding(.bottom, 8)
             cuerpo
@@ -2600,6 +2652,58 @@ struct CNTarjetaWidget: View {
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+        .opacity(w.oculta ? 0.42 : 1)
+        // Mantener pulsado: lo mismo, sin tener que entrar en «organizar».
+        .contextMenu { acciones }
+    }
+
+    /// Todo lo que se puede hacer con una tarjeta, en el menú del sistema: lo
+    /// mismo que la web deja hacer arrastrando y estirando.
+    @ViewBuilder private var acciones: some View {
+        if w.clase == "serie" {
+            Menu("Tipo de gráfica") {
+                Picker("", selection: Binding(get: { w.cfgGrafico },
+                                              set: { datos.onPanel("grafico", w.wid, $0) })) {
+                    ForEach(modelo.tiposGrafico, id: \.id) { g in Text(g.label).tag(g.id) }
+                }
+            }
+            Menu("Cuánto tiempo") {
+                Picker("", selection: Binding(get: { w.cfgRango },
+                                              set: { datos.onPanel("rango", w.wid, $0) })) {
+                    ForEach(modelo.rangosGrafico, id: \.id) { r in Text(r.label).tag(r.id) }
+                }
+            }
+            Menu("Qué se compara") {
+                ForEach(w.series, id: \.id) { sr in
+                    Button { datos.onPanel("serie", w.wid, sr.id) } label: {
+                        Label(sr.label, systemImage: sr.puesta ? "checkmark.circle.fill" : "circle")
+                    }
+                }
+            }
+            Divider()
+        }
+        if w.puedeChica {
+            Button { datos.onPanel("ancho", w.wid, w.ancho == 1 ? "2" : "1") } label: {
+                Label(w.ancho == 1 ? "Hacerla ancha" : "Hacerla media",
+                      systemImage: w.ancho == 1 ? "rectangle" : "rectangle.split.2x1")
+            }
+        }
+        if !primera {
+            Button { datos.onPanel("mover", w.wid, String(w.indice - 1)) } label: {
+                Label("Subir", systemImage: "arrow.up")
+            }
+        }
+        if !ultima {
+            Button { datos.onPanel("mover", w.wid, String(w.indice + 1)) } label: {
+                Label("Bajar", systemImage: "arrow.down")
+            }
+        }
+        Button { datos.onPanel("ocultar", w.wid, "") } label: {
+            Label(w.oculta ? "Mostrar aquí" : "Ocultar aquí", systemImage: w.oculta ? "eye" : "eye.slash")
+        }
+        Button(role: .destructive) { datos.onPanel("quitar", w.wid, "") } label: {
+            Label("Quitar del panel", systemImage: "trash")
+        }
     }
 
     @ViewBuilder private var cuerpo: some View {
