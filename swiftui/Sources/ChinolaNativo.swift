@@ -220,6 +220,7 @@ final class CNDatos: ObservableObject {
     var onAbrirPrestamo: (Int) -> Void = { _ in }
     var onAbrirMeta: (Int) -> Void = { _ in }
     var onAccion: (String, String) -> Void = { _, _ in }   // (tipo, id) → flujo web
+    var onCrearMov: ([String: Any]) -> Void = { _ in }     // guardar un movimiento nativo → web
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
     func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p } }
 }
@@ -1112,4 +1113,99 @@ struct CNDetalleMov: View {
         }.padding(.horizontal, 14).padding(.vertical, 11)
     }
     private func div() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 57) }
+}
+
+// ── Formulario «Nuevo movimiento» NATIVO (guarda a la web) ──────────────────
+struct CNNuevoMov: View {
+    @ObservedObject var datos: CNDatos
+    var onClose: () -> Void
+    @State private var tipo = 2
+    @State private var monto = ""
+    @State private var concepto = ""
+    @State private var cuentaId = 0
+    @State private var categoria = ""
+    @State private var fecha = Date()
+    @State private var repetir = false
+    private let tipos = ["Ingreso", "Fijo", "Variable", "Ahorro"]
+    private let mapa = ["Ingreso", "Gasto Fijo", "Gasto Variable", "Ahorro"]
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.4).ignoresSafeArea()
+            VStack(spacing: 0) {
+                cabecera
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 18) {
+                        pildoras
+                        grupo { VStack(spacing: 2) {
+                            Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut)
+                            HStack(spacing: 6) { Text("RD$").font(.system(size: 20, weight: .heavy)).foregroundColor(CNC.pmut)
+                                TextField("0", text: $monto).font(.system(size: 34, weight: .heavy)).foregroundColor(CNC.ink).keyboardType(.numberPad).multilineTextAlignment(.center).fixedSize() }
+                        }.frame(maxWidth: .infinity).padding(.vertical, 16) }
+                        grupo { TextField("Descripción o concepto", text: $concepto).font(.system(size: 16)).foregroundColor(CNC.ink).padding(.horizontal, 15).padding(.vertical, 13) }
+                        VStack(spacing: 6) {
+                            titulo("Cuándo y de dónde")
+                            grupo {
+                                HStack(spacing: 12) { cuadro("calendar", CNC.neg); Text("Fecha").font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(); DatePicker("", selection: $fecha, displayedComponents: .date).labelsHidden() }.padding(.horizontal, 14).padding(.vertical, 7)
+                                divi()
+                                menuFila("banknote.fill", CNC.info, "Pagado con", cuentaNombre) { ForEach(datos.libreta.cuentas) { c in Button(c.nombre) { cuentaId = c.id } } }
+                            }
+                        }
+                        VStack(spacing: 6) {
+                            titulo("Categoría")
+                            grupo { menuFila("tag.fill", cnColor(0xe0a92e), "Categoría", categoria.isEmpty ? "Otros" : categoria) { ForEach(datos.libreta.categorias, id: \.nombre) { c in Button(c.nombre) { categoria = c.nombre } }; Button("Otros") { categoria = "Otros" } } }
+                        }
+                        grupo { HStack(spacing: 12) { cuadro("repeat", cnColor(0x825eb9)); Text("Repetir cada mes").font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(); Toggle("", isOn: $repetir).labelsHidden().tint(CNC.pos) }.padding(.horizontal, 14).padding(.vertical, 7) }
+                        Color.clear.frame(height: 40)
+                    }.padding(.horizontal, 16)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(CNC.scr.clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)))
+            .ignoresSafeArea(edges: .bottom).padding(.top, 46)
+        }
+        .onAppear { if cuentaId == 0 { cuentaId = datos.libreta.cuentas.first?.id ?? 0 } }
+    }
+
+    private var cabecera: some View {
+        VStack(spacing: 0) {
+            Capsule().fill(CNC.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 10)
+            ZStack {
+                Text("Nuevo movimiento").font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
+                HStack {
+                    Button(action: onClose) { Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundColor(CNC.pmut).frame(width: 34, height: 34).background(.ultraThinMaterial, in: Circle()).overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.6)) }.buttonStyle(.plain)
+                    Spacer()
+                    Button(action: guardar) { HStack(spacing: 5) { Image(systemName: "checkmark").font(.system(size: 12, weight: .heavy)); Text("Guardar").font(.system(size: 14, weight: .bold)) }.foregroundColor(Color(cnHex: 0x3a2c00)).padding(.horizontal, 15).padding(.vertical, 8).background(Capsule().fill(.ultraThinMaterial).overlay(Capsule().fill(CNC.acc.opacity(0.55)))).overlay(Capsule().stroke(Color.white.opacity(0.45), lineWidth: 0.6)) }.buttonStyle(.plain)
+                }
+            }.padding(.horizontal, 16).padding(.bottom, 14)
+        }
+    }
+    private var pildoras: some View {
+        HStack(spacing: 4) { ForEach(tipos.indices, id: \.self) { i in
+            Text(tipos[i]).font(.system(size: 13.5, weight: i == tipo ? .bold : .semibold)).foregroundColor(i == tipo ? .white : CNC.pmut)
+                .frame(maxWidth: .infinity).padding(.vertical, 9).background(i == tipo ? cnColor(0x093a20) : Color.clear).clipShape(Capsule()).onTapGesture { tipo = i }
+        } }.padding(4).background(CNC.soft).clipShape(Capsule())
+    }
+    private var cuentaNombre: String { datos.libreta.cuentas.first { $0.id == cuentaId }?.nombre ?? "Efectivo" }
+    private func titulo(_ t: String) -> some View { Text(t.uppercased()).font(.system(size: 12.5, weight: .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading) }
+    private func grupo<C: View>(@ViewBuilder _ c: () -> C) -> some View { VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5)) }
+    private func divi() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 57) }
+    private func cuadro(_ ic: String, _ tinte: Color) -> some View { Image(systemName: ic).font(.system(size: 14, weight: .semibold)).foregroundColor(.white).frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous)) }
+    private func menuFila<M: View>(_ icono: String, _ tinte: Color, _ titulo: String, _ valor: String, @ViewBuilder _ menu: () -> M) -> some View {
+        Menu { menu() } label: {
+            HStack(spacing: 12) { cuadro(icono, tinte); Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(valor).font(.system(size: 15)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
+        }
+    }
+    private func guardar() {
+        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        guard n > 0 else { onClose(); return }
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+        datos.onCrearMov([
+            "concepto": concepto.isEmpty ? (categoria.isEmpty ? "Movimiento" : categoria) : concepto,
+            "categoria": categoria.isEmpty ? "Otros" : categoria,
+            "tipo": mapa[tipo], "monto": n, "fecha": f.string(from: fecha),
+            "medio": "cuenta:\(cuentaId)", "recurrente": repetir
+        ])
+        onClose()
+    }
 }
