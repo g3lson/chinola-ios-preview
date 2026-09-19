@@ -88,8 +88,11 @@ enum CNC {
     static var info: Color { tema.info }
     /// Lo que se escribe ENCIMA del acento (el amarillo de la marca pide tinta
     /// oscura; un acento oscuro pide tinta clara).
-    static var sobreAcc: Color { cnClaro(tema.acc) ? cnColor(0x20180a) : .white }
+    static var sobreAcc: Color { cnSobre(tema.acc) }
 }
+
+/// La tinta que se lee encima de un color: oscura sobre claro y al revés.
+func cnSobre(_ c: Color) -> Color { cnClaro(c) ? cnColor(0x20180a) : .white }
 
 /// ¿Este color es claro? (luminancia relativa, como hace la web en color.js)
 func cnClaro(_ c: Color) -> Bool {
@@ -119,15 +122,17 @@ struct CNCategoria: Decodable { var nombre: String = ""; var tipo: String = "Gas
         icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "tag.fill" }
     enum K: String, CodingKey { case nombre, tipo, limite, color, icono } }
 
-struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var saldo: Double = 0; var limite: Double = 0; var corte: Int = 0; var color: String = "#d55948"
+struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var limite: Double = 0; var corte: Int = 0; var pago: Int = 0; var color: String = "#d55948"
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         saldo = (try? c.decodeIfPresent(Double.self, forKey: .saldo)) ?? 0
         limite = (try? c.decodeIfPresent(Double.self, forKey: .limite)) ?? 0
         corte = (try? c.decodeIfPresent(Int.self, forKey: .corte)) ?? 0
+        pago = (try? c.decodeIfPresent(Int.self, forKey: .pago)) ?? 0
+        banco = (try? c.decodeIfPresent(String.self, forKey: .banco)) ?? ""
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#d55948" }
-    enum K: String, CodingKey { case id, nombre, saldo, limite, corte, color }
+    enum K: String, CodingKey { case id, nombre, banco, saldo, limite, corte, pago, color }
     var disponible: Double { max(0, limite - saldo) } }
 
 struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var total: Double = 0; var pagado: Double = 0; var sentido: String = "meDeben"; var color: String = "#825eb9"
@@ -141,15 +146,16 @@ struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String
     enum K: String, CodingKey { case id, nombre, total, pagado, sentido, color }
     var pendiente: Double { max(0, total - pagado) } }
 
-struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var color: String = "#825eb9"; var icono: String = "target"
+struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var mensual: Double = 0; var color: String = "#825eb9"; var icono: String = "target"
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         meta = (try? c.decodeIfPresent(Double.self, forKey: .meta)) ?? 0
         ahorrado = (try? c.decodeIfPresent(Double.self, forKey: .ahorrado)) ?? 0
+        mensual = (try? c.decodeIfPresent(Double.self, forKey: .mensual)) ?? 0
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#825eb9"
         icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "target" }
-    enum K: String, CodingKey { case id, nombre, meta, ahorrado, color, icono }
+    enum K: String, CodingKey { case id, nombre, meta, ahorrado, mensual, color, icono }
     var progreso: Double { meta > 0 ? min(1, ahorrado / meta) : 0 } }
 
 struct CNMov: Decodable, Identifiable {
@@ -316,6 +322,7 @@ final class CNDatos: ObservableObject {
     var onGuardarHoja: (String, [String: Any], [String: Any]?) -> Void = { _, _, _ in }
     var onSelector: () -> Void = {}
     var onVerPresupuesto: () -> Void = {}
+    var onLimiteCategoria: (String, Double) -> Void = { _, _ in }   // (categoría, límite) → web
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
     func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p } }
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
@@ -340,7 +347,7 @@ struct CNBotonVidrio: View {
         Button(action: accion) {
             Image(systemName: icono)
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(acento ? Color(cnHex: 0x20180a) : .primary)
+                .foregroundColor(acento ? CNC.sobreAcc : .primary)
                 .frame(width: 44, height: 44)
                 .cnVidrio(Circle(), tinte: acento ? CNC.acc : nil)
         }
@@ -447,17 +454,14 @@ struct CNMovs: View {
     /// del tema), para que Movimientos no parezca otra app: título, acciones y
     /// buscador van dentro, en vidrio.
     private var cabecera: some View {
-        VStack(spacing: 11) {
-            HStack(alignment: .center, spacing: 10) {
-                Text("Movimientos").font(.system(size: 26, weight: .heavy)).foregroundColor(.white)
-                Spacer(minLength: 8)
-                CNMenuVidrio(icono: "calendar", activo: periodo > 0, color: .white) {
-                    Picker("", selection: $periodo) {
-                        ForEach(CNMovs.periodos.indices, id: \.self) { i in Text(CNMovs.periodos[i]).tag(i) }
-                    }
+        CNFranja(titulo: "Movimientos") {
+            CNMenuVidrio(icono: "calendar", activo: periodo > 0, color: .white) {
+                Picker("", selection: $periodo) {
+                    ForEach(CNMovs.periodos.indices, id: \.self) { i in Text(CNMovs.periodos[i]).tag(i) }
                 }
-                circulo("plus", acento: true) { datos.onNuevoMov() }
             }
+            CNCirculoAcento(icono: "plus") { datos.onNuevoMov() }
+        } debajo: {
             HStack(spacing: 9) {
                 ZStack(alignment: .leading) {
                     HStack(spacing: 9) {
@@ -490,8 +494,6 @@ struct CNMovs: View {
                 }
             }
         }
-        .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 14)
-        .background(CNC.side.ignoresSafeArea(edges: .top))
     }
 
     private func grupoDia(_ fecha: String, _ items: [CNMov]) -> some View {
@@ -552,20 +554,40 @@ struct CNMovs: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
     }
 
-    @ViewBuilder private func circulo(_ icono: String, acento: Bool, _ tap: @escaping () -> Void) -> some View {
-        Button(action: tap) {
-            if acento {
-                // El «+» en Liquid Glass tintado del color de la marca.
-                Image(systemName: icono).font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(CNC.sobreAcc)
-                    .frame(width: 46, height: 46)
-                    .cnVidrio(Circle(), tinte: CNC.acc)
-                    .shadow(color: CNC.acc.opacity(0.35), radius: 10, y: 4)
-            } else {
-                Image(systemName: icono).font(.system(size: 18, weight: .semibold)).foregroundColor(CNC.ink)
-                    .frame(width: 44, height: 44)
-                    .cnVidrio(Circle())
+}
+
+/// La franja de color de la cabecera: la misma en Movimientos, Cuentas y Plan,
+/// para que las pantallas nativas y las de la web se lean como una sola app.
+struct CNFranja<Acciones: View, Debajo: View>: View {
+    let titulo: String
+    @ViewBuilder var acciones: () -> Acciones
+    @ViewBuilder var debajo: () -> Debajo
+    var body: some View {
+        VStack(spacing: 11) {
+            HStack(alignment: .center, spacing: 10) {
+                Text(titulo).font(.system(size: 26, weight: .heavy)).foregroundColor(.white)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 8)
+                acciones()
             }
+            debajo()
+        }
+        .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 14)
+        .background(CNC.side.ignoresSafeArea(edges: .top))
+    }
+}
+
+/// El botón redondo de acción principal («+»), en vidrio tintado con el acento.
+struct CNCirculoAcento: View {
+    let icono: String
+    var accion: () -> Void
+    var body: some View {
+        Button(action: accion) {
+            Image(systemName: icono).font(.system(size: 20, weight: .semibold))
+                .foregroundColor(CNC.sobreAcc)
+                .frame(width: 46, height: 46)
+                .cnVidrio(Circle(), tinte: CNC.acc)
+                .shadow(color: CNC.acc.opacity(0.35), radius: 10, y: 4)
         }.buttonStyle(.plain)
     }
 }
@@ -1120,7 +1142,7 @@ struct CNAccion: Identifiable {
 
 struct CNDetCabecera: View {
     let inicial: String; let nombre: String; let sub: String
-    var fondo: Color = cnColor(0x093a20); var cuadro: Color = CNC.info; var volverA: String = "Cuentas"
+    var fondo: Color = CNC.side; var cuadro: Color = CNC.info; var volverA: String = "Cuentas"
     /// Acciones de la pantalla (editar, eliminar…): salen en el menú ⋯.
     var acciones: [CNAccion] = []
     var onClose: () -> Void
@@ -1185,7 +1207,7 @@ struct CNBotonAncho: View {
     var body: some View {
         Button(action: tap) {
             HStack(spacing: 6) { if let ic = icono { Image(systemName: ic).font(.system(size: 15, weight: .heavy)) }; Text(texto).font(.system(size: 15.5, weight: .bold)) }
-                .foregroundColor(Color(cnHex: 0x3a2c00)).frame(maxWidth: .infinity).padding(.vertical, 15)
+                .foregroundColor(CNC.sobreAcc).frame(maxWidth: .infinity).padding(.vertical, 15)
                 .cnVidrio(Capsule(), tinte: CNC.acc)
                 .shadow(color: CNC.acc.opacity(0.35), radius: 12, y: 4)
         }.buttonStyle(.plain)
@@ -1424,8 +1446,10 @@ struct CNNuevoMov: View {
 
     private var pildoras: some View {
         HStack(spacing: 4) { ForEach(tipos.indices, id: \.self) { i in
-            Text(tipos[i]).font(.system(size: 13.5, weight: i == tipo ? .bold : .semibold)).foregroundColor(i == tipo ? .white : CNC.pmut)
-                .frame(maxWidth: .infinity).padding(.vertical, 9).background(i == tipo ? cnColor(0x093a20) : Color.clear).clipShape(Capsule())
+            Text(tipos[i]).font(.system(size: 13.5, weight: i == tipo ? .bold : .semibold))
+                .foregroundColor(i == tipo ? CNC.sobreAcc : CNC.pmut)
+                .frame(maxWidth: .infinity).padding(.vertical, 9)
+                .background(i == tipo ? AnyView(Capsule().fill(CNC.acc)) : AnyView(Color.clear))
                 .onTapGesture { UISelectionFeedbackGenerator().selectionChanged(); tipo = i }
         } }.padding(4).background(CNC.soft).clipShape(Capsule())
     }
@@ -1460,5 +1484,423 @@ struct CNRedondo: Shape {
     var esquinas: UIRectCorner
     func path(in rect: CGRect) -> Path {
         Path(UIBezierPath(roundedRect: rect, byRoundingCorners: esquinas, cornerRadii: CGSize(width: radio, height: radio)).cgPath)
+    }
+}
+
+// ── Pantalla «Cuentas» NATIVA ───────────────────────────────────────────────
+// El mismo contenido y el mismo orden que la web: cuentas, tarjetas (con su
+// plástico) y préstamos. Lo que cambia es que la navegación, las acciones y los
+// menús son de iOS.
+struct CNCuentas: View {
+    @ObservedObject var datos: CNDatos
+
+    var body: some View {
+        let lb = datos.libreta
+        return VStack(spacing: 0) {
+            CNFranja(titulo: "Cuentas") {
+                CNMenuVidrio(icono: "ellipsis", color: .white) {
+                    Button { datos.onTendencia() } label: { Label("Ver la tendencia", systemImage: "chart.line.uptrend.xyaxis") }
+                    Button { datos.onAgregar() } label: { Label("Agregar…", systemImage: "plus") }
+                }
+                CNCirculoAcento(icono: "plus") { datos.onAgregar() }
+            } debajo: {
+                resumen(lb)
+            }
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 13) {
+                    rotulo("Mis cuentas")
+                    if lb.cuentas.isEmpty { cnVacioCard("Aún no hay cuentas", "Toca + para agregar la primera.") }
+                    ForEach(lb.cuentas) { c in filaCuenta(c, lb) }
+
+                    rotulo("Mis tarjetas").padding(.top, 4)
+                    if lb.tarjetas.isEmpty { cnVacioCard("Sin tarjetas", "Agrega una para seguir su deuda y sus fechas.") }
+                    ForEach(lb.tarjetas) { t in tarjeta(t) }
+
+                    if !lb.prestamos.isEmpty {
+                        rotulo("Préstamos").padding(.top, 4)
+                        prestamos(lb)
+                    }
+                    Color.clear.frame(height: 110)
+                }
+                .padding(.horizontal, 16).padding(.top, 14)
+            }
+        }
+        .background(CNC.scr.ignoresSafeArea())
+    }
+
+    /// Patrimonio y deuda, dentro de la franja: lo primero que se quiere saber.
+    private func resumen(_ lb: CNLibreta) -> some View {
+        HStack(spacing: 10) {
+            cifra("En cuentas", cnDinero(lb.totalCuentas))
+            cifra("Deuda", cnDinero(lb.deudaTotal))
+            cifra("Patrimonio", cnDinero(lb.patrimonio))
+        }
+    }
+    private func cifra(_ rotulo: String, _ valor: String) -> some View {
+        VStack(spacing: 3) {
+            Text(rotulo.uppercased()).font(.system(size: 9.5, weight: .heavy)).tracking(0.5)
+                .foregroundColor(.white.opacity(0.7))
+            Text(valor).font(.system(size: 15, weight: .heavy)).foregroundColor(.white)
+                .lineLimit(1).minimumScaleFactor(0.6)
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 10)
+        .cnVidrio(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func rotulo(_ t: String) -> some View {
+        Text(t).font(.system(size: 14, weight: .bold)).foregroundColor(CNC.ink)
+            .padding(.leading, 2)
+    }
+
+    private func filaCuenta(_ c: CNCuenta, _ lb: CNLibreta) -> some View {
+        let movs = lb.movimientosDe("cuenta:\(c.id)").count
+        return Button { datos.onAbrirCuenta(c.id) } label: {
+            HStack(spacing: 12) {
+                Text(cnIniciales(c.nombre)).font(.system(size: 12.5, weight: .heavy)).foregroundColor(.white)
+                    .frame(width: 42, height: 42).background(cnColor(hexString: c.color))
+                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(c.nombre).font(.system(size: 14.5, weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                    Text([c.banco.isEmpty ? nil : c.banco, "\(movs) movs"].compactMap { $0 }.joined(separator: " · "))
+                        .font(.system(size: 11.5)).foregroundColor(CNC.pmut).lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Text(cnDinero(c.saldo)).font(.system(size: 15, weight: .heavy)).foregroundColor(CNC.ink)
+            }
+            .tarjetaCN()
+        }
+        .buttonStyle(CNPulsable())
+        .contextMenu {
+            Button { datos.onAbrirCuenta(c.id) } label: { Label("Ver detalle", systemImage: "doc.text.magnifyingglass") }
+            Button { datos.onAccion("transferir", "\(c.id)") } label: { Label("Transferir", systemImage: "arrow.left.arrow.right") }
+        }
+    }
+
+    /// El «plástico» de la tarjeta y, debajo, el uso del límite.
+    private func tarjeta(_ t: CNTarjeta) -> some View {
+        let uso = t.limite > 0 ? min(1, t.saldo / t.limite) : 0
+        let color = cnColor(hexString: t.color)
+        let usoColor: Color = uso > 0.9 ? CNC.neg : (uso > 0.7 ? CNC.acc : CNC.pos)
+        return VStack(spacing: 10) {
+            Button { datos.onAbrirTarjeta(t.id) } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(t.nombre).font(.system(size: 15, weight: .heavy)).foregroundColor(.white).lineLimit(1)
+                            if !t.banco.isEmpty {
+                                Text(t.banco.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(1.2)
+                                    .foregroundColor(.white.opacity(0.78)).lineLimit(1)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                        if t.corte > 0 {
+                            Text("Corte \(t.corte)").font(.system(size: 10, weight: .semibold)).foregroundColor(.white)
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(Color.white.opacity(0.2), in: Capsule())
+                        }
+                    }
+                    Spacer(minLength: 14)
+                    HStack(spacing: 12) {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.white.opacity(0.34))
+                            .frame(width: 36, height: 26)
+                        Text("•••• \(String(format: "%04d", t.id % 10000))")
+                            .font(.system(size: 15, weight: .semibold)).tracking(2)
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    Spacer(minLength: 14)
+                    HStack(alignment: .bottom) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("DEUDA").font(.system(size: 10, weight: .heavy)).tracking(1)
+                                .foregroundColor(.white.opacity(0.72))
+                            Text(cnDinero(t.saldo)).font(.system(size: 23, weight: .heavy)).foregroundColor(.white)
+                                .lineLimit(1).minimumScaleFactor(0.7)
+                        }
+                        Spacer(minLength: 8)
+                        if t.pago > 0 {
+                            Text("Pago \(t.pago)").font(.system(size: 10.5)).foregroundColor(.white.opacity(0.85))
+                        }
+                    }
+                }
+                .padding(17).frame(height: 196)
+                .background(
+                    LinearGradient(colors: [color, cnOscurecer(color, 0.35)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: color.opacity(0.32), radius: 16, y: 8)
+            }
+            .buttonStyle(CNPulsable())
+
+            VStack(spacing: 9) {
+                HStack {
+                    Text("Uso del límite").font(.system(size: 11.5)).foregroundColor(CNC.pmut)
+                    Spacer()
+                    Text("\(Int(uso * 100))% de \(cnDinero(t.limite))")
+                        .font(.system(size: 11.5, weight: .bold)).foregroundColor(usoColor)
+                }
+                CNBarraProgreso(parte: uso, color: usoColor, alto: 8)
+                if t.saldo > 0 {
+                    Button { datos.onAccion("pagoTarjeta", "\(t.id)") } label: {
+                        Text("Pagar \(cnDinero(t.saldo))").font(.system(size: 13.5, weight: .bold))
+                            .foregroundColor(CNC.sobreAcc).frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .cnVidrio(RoundedRectangle(cornerRadius: 12, style: .continuous), tinte: CNC.acc)
+                    }.buttonStyle(CNPulsable())
+                }
+            }
+            .tarjetaCN()
+        }
+    }
+
+    private func prestamos(_ lb: CNLibreta) -> some View {
+        VStack(spacing: 14) {
+            ForEach(lb.prestamos) { d in
+                Button { datos.onAbrirPrestamo(d.id) } label: {
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack {
+                            Text(d.nombre).font(.system(size: 13, weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                            Spacer(minLength: 8)
+                            Text(cnDinero(d.pendiente)).font(.system(size: 12.5)).foregroundColor(CNC.pmut)
+                        }
+                        CNBarraProgreso(parte: d.total > 0 ? min(1, d.pagado / d.total) : 0,
+                                        color: cnColor(hexString: d.color), alto: 8)
+                        Text(d.sentido == "debo" ? "Yo debo · pagado \(cnDinero(d.pagado))" : "Me deben · abonado \(cnDinero(d.pagado))")
+                            .font(.system(size: 11)).foregroundColor(CNC.pmut)
+                    }
+                }
+                .buttonStyle(CNPulsable())
+                .contextMenu {
+                    Button { datos.onAbrirPrestamo(d.id) } label: { Label("Ver detalle", systemImage: "doc.text.magnifyingglass") }
+                    Button { datos.onAccion("abono", "\(d.id)") } label: { Label("Registrar abono", systemImage: "plus.circle") }
+                }
+            }
+        }
+        .tarjetaCN()
+    }
+}
+
+// ── Pantalla «Plan» NATIVA (presupuesto y metas) ────────────────────────────
+struct CNPlan: View {
+    @ObservedObject var datos: CNDatos
+    @State private var pestana = 0
+    @State private var editando: CNCatEnEdicion? = nil
+
+    var body: some View {
+        let lb = datos.libreta
+        return VStack(spacing: 0) {
+            CNFranja(titulo: "Plan") {
+                CNMenuVidrio(icono: "ellipsis", color: .white) {
+                    Button { datos.onNuevaCategoria() } label: { Label("Nueva categoría", systemImage: "tag") }
+                    Button { datos.onNuevaMeta() } label: { Label("Nueva meta", systemImage: "target") }
+                }
+                CNCirculoAcento(icono: "plus") {
+                    if pestana == 0 { datos.onNuevaCategoria() } else { datos.onNuevaMeta() }
+                }
+            } debajo: {
+                CNSegmentado(opciones: ["Presupuesto", "Metas"], elegida: $pestana)
+            }
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    if pestana == 0 { presupuesto(lb) } else { metas(lb) }
+                    Color.clear.frame(height: 110)
+                }
+                .padding(.horizontal, 16).padding(.top, 14)
+            }
+        }
+        .background(CNC.scr.ignoresSafeArea())
+        // Cambiar el límite de una categoría, en una hoja pequeña del sistema.
+        .sheet(item: $editando) { cat in
+            CNLimiteHoja(nombre: cat.nombre, limite: cat.limite, onClose: { editando = nil }) { nuevo in
+                datos.onLimiteCategoria(cat.nombre, nuevo)
+                editando = nil
+            }
+        }
+    }
+
+    // MARK: presupuesto
+    @ViewBuilder private func presupuesto(_ lb: CNLibreta) -> some View {
+        let total = lb.presupuestoTotal
+        let gastado = lb.gastosMes
+        let parte = total > 0 ? min(1, gastado / total) : 0
+        let color: Color = parte > 1 ? CNC.neg : (parte > 0.85 ? CNC.acc : CNC.pos)
+        VStack(alignment: .leading, spacing: 9) {
+            HStack {
+                Text("Gastado este mes").font(.system(size: 12)).foregroundColor(CNC.pmut)
+                Spacer(minLength: 8)
+                Text("\(cnDinero(gastado)) de \(cnDinero(total))")
+                    .font(.system(size: 12, weight: .bold)).foregroundColor(color).lineLimit(1).minimumScaleFactor(0.7)
+            }
+            CNBarraProgreso(parte: parte, color: color, alto: 10)
+            Text(total <= 0 ? "Ponle un límite a tus categorías y aquí verás cómo vas."
+                            : (gastado > total ? "Te pasaste por \(cnDinero(gastado - total))."
+                                               : "Te quedan \(cnDinero(total - gastado)) para este mes."))
+                .font(.system(size: 11.5)).foregroundColor(CNC.pmut).fixedSize(horizontal: false, vertical: true)
+        }
+        .tarjetaCN()
+
+        let gastos = lb.categorias.filter { $0.tipo == "Gasto" }
+        if gastos.isEmpty {
+            cnVacioCard("Sin categorías", "Crea la primera para empezar a repartir el mes.")
+        }
+        ForEach(gastos, id: \.nombre) { c in filaCategoria(c, lb) }
+    }
+
+    private func filaCategoria(_ c: CNCategoria, _ lb: CNLibreta) -> some View {
+        let gastado = lb.gastadoCategoria(c.nombre)
+        let parte = c.limite > 0 ? min(1, gastado / c.limite) : 0
+        let cc = cnColor(hexString: c.color)
+        let color: Color = c.limite > 0 && gastado > c.limite ? CNC.neg : (parte > 0.85 ? CNC.acc : cc)
+        return VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 10) {
+                cnGlifo(c.icono, tam: 17, grosor: 1.9).foregroundColor(cc)
+                    .frame(width: 32, height: 32).background(cc.opacity(0.14))
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                Text(c.nombre).font(.system(size: 13.5, weight: .semibold)).foregroundColor(CNC.ink).lineLimit(1)
+                Spacer(minLength: 8)
+                Text(c.limite > 0 ? cnDinero(c.limite) : "Sin límite")
+                    .font(.system(size: 13, weight: .bold)).foregroundColor(c.limite > 0 ? CNC.ink : CNC.pmut)
+                Menu {
+                    Button { editando = CNCatEnEdicion(nombre: c.nombre, limite: c.limite) } label: {
+                        Label("Cambiar límite", systemImage: "slider.horizontal.3")
+                    }
+                    Button { datos.onAccion("categoria", c.nombre) } label: { Label("Ver la categoría", systemImage: "chart.bar") }
+                } label: {
+                    Image(systemName: "ellipsis").font(.system(size: 14, weight: .bold)).foregroundColor(CNC.pmut)
+                        .frame(width: 30, height: 30).background(CNC.soft)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+            }
+            CNBarraProgreso(parte: parte, color: color, alto: 8)
+            HStack {
+                Text("\(cnDinero(gastado)) gastado").font(.system(size: 11)).foregroundColor(CNC.pmut)
+                Spacer(minLength: 8)
+                if c.limite > 0 {
+                    Text(gastado > c.limite ? "Te pasaste \(cnDinero(gastado - c.limite))" : "Quedan \(cnDinero(c.limite - gastado))")
+                        .font(.system(size: 11, weight: .bold)).foregroundColor(color)
+                }
+            }
+        }
+        .tarjetaCN()
+    }
+
+    // MARK: metas
+    @ViewBuilder private func metas(_ lb: CNLibreta) -> some View {
+        if lb.metas.isEmpty {
+            cnVacioCard("Sin metas", "Una meta es un ahorro con nombre y fecha. Toca + para crear la primera.")
+        }
+        ForEach(lb.metas) { g in
+            let color = cnColor(hexString: g.color)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 11) {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous).fill(color).frame(width: 7, height: 34)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(g.nombre).font(.system(size: 14, weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                        Text("Meta \(cnDinero(g.meta))" + (g.mensual > 0 ? " · \(cnDinero(g.mensual))/mes" : ""))
+                            .font(.system(size: 11)).foregroundColor(CNC.pmut)
+                    }
+                    Spacer(minLength: 6)
+                    Text("\(Int(g.progreso * 100))%").font(.system(size: 13, weight: .heavy)).foregroundColor(color)
+                }
+                CNBarraProgreso(parte: g.progreso, color: color, alto: 9)
+                HStack {
+                    Text("Ahorrado \(cnDinero(g.ahorrado))").font(.system(size: 11)).foregroundColor(CNC.pmut)
+                    Spacer(minLength: 8)
+                    Text("Falta \(cnDinero(max(0, g.meta - g.ahorrado)))").font(.system(size: 11)).foregroundColor(CNC.pmut)
+                }
+                Button { datos.onAccion("aporte", "\(g.id)") } label: {
+                    Text(g.mensual > 0 ? "Aportar \(cnDinero(g.mensual))" : "Aportar")
+                        .font(.system(size: 13.5, weight: .bold)).foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(color, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }.buttonStyle(CNPulsable())
+            }
+            .tarjetaCN()
+            .contextMenu {
+                Button { datos.onAbrirMeta(g.id) } label: { Label("Ver detalle", systemImage: "doc.text.magnifyingglass") }
+                Button { datos.onAccion("aporte", "\(g.id)") } label: { Label("Aportar", systemImage: "plus.circle") }
+            }
+        }
+    }
+}
+
+// ── Piezas compartidas de Cuentas y Plan ────────────────────────────────────
+/// Barra de progreso con las esquinas del sistema y sin dependencias.
+struct CNBarraProgreso: View {
+    let parte: Double
+    var color: Color = CNC.pos
+    var alto: CGFloat = 8
+    var body: some View {
+        GeometryReader { g in
+            ZStack(alignment: .leading) {
+                Capsule().fill(CNC.soft)
+                Capsule().fill(color).frame(width: max(0, min(1, parte)) * g.size.width)
+            }
+        }
+        .frame(height: alto)
+    }
+}
+
+/// Segmentado propio (no el de UIKit) para que viva sobre la franja de color.
+struct CNSegmentado: View {
+    let opciones: [String]
+    @Binding var elegida: Int
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(opciones.indices, id: \.self) { i in
+                let puesta = elegida == i
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    withAnimation(.easeOut(duration: 0.18)) { elegida = i }
+                } label: {
+                    Text(opciones[i]).font(.system(size: 13.5, weight: .bold))
+                        .foregroundColor(puesta ? CNC.sobreAcc : .white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                        .background(puesta ? AnyView(Capsule().fill(CNC.acc)) : AnyView(Color.clear))
+                }.buttonStyle(.plain)
+            }
+        }
+        .padding(4).cnVidrio(Capsule())
+    }
+}
+
+/// Dos iniciales, como en la web («Cuenta de la casa» → CD).
+func cnIniciales(_ s: String) -> String {
+    let p = s.split(separator: " ").prefix(2).compactMap { $0.first }
+    return String(p).uppercased()
+}
+
+/// Tarjeta de «aquí no hay nada todavía», con su porqué.
+func cnVacioCard(_ titulo: String, _ texto: String) -> some View {
+    VStack(spacing: 5) {
+        Text(titulo).font(.system(size: 14.5, weight: .bold)).foregroundColor(CNC.ink)
+        Text(texto).font(.system(size: 12.5)).foregroundColor(CNC.pmut)
+            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+    }
+    .frame(maxWidth: .infinity).padding(.vertical, 22).padding(.horizontal, 16)
+    .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+}
+
+/// La categoría cuyo límite se está cambiando.
+struct CNCatEnEdicion: Identifiable {
+    var id: String { nombre }
+    let nombre: String
+    let limite: Double
+}
+
+/// Hoja pequeña para poner el límite mensual de una categoría.
+struct CNLimiteHoja: View {
+    let nombre: String
+    let limite: Double
+    var onClose: () -> Void
+    var onGuardar: (Double) -> Void
+    @State private var texto = ""
+    var body: some View {
+        CNHoja(titulo: "Límite de \(nombre)", onClose: onClose,
+               onGuardar: { onGuardar(Double(texto.replacingOccurrences(of: ",", with: "")) ?? 0) }) {
+            CNMontoCampo(monto: $texto, paso: 500)
+            Text("Cuánto quieres gastar al mes en esta categoría. Déjalo en 0 para no ponerle tope.")
+                .font(.system(size: 12.5)).foregroundColor(CNC.pmut)
+                .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
+        }
+        .onAppear { if limite > 0 { texto = String(Int(limite)) } }
     }
 }

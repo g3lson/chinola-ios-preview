@@ -76,12 +76,17 @@ jobs:
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b || true
           xcrun simctl install "$UDID" "$APP"
-          xcrun simctl ui "$UDID" appearance dark || true
-          xcrun simctl launch "$UDID" do.com.fente.chinolasim || true
-          sleep 6;   xcrun simctl io "$UDID" screenshot cap-1-movs.png || true
-          sleep 6;   xcrun simctl io "$UDID" screenshot cap-2-movs-tema.png || true
-          sleep 8;   xcrun simctl io "$UDID" screenshot cap-3-detalle.png || true
-          sleep 14;  xcrun simctl io "$UDID" screenshot cap-4-nuevo.png || true
+          xcrun simctl ui "$UDID" appearance light || true
+          # Una pantalla por lanzamiento: la app lee CNPANTALLA y monta esa. Así
+          # cada captura es la que se pidió, sin depender de tiempos.
+          n=0
+          for P in movs cuentas plan detalle nuevo movs-oscuro cuentas-oscuro nuevo-oscuro; do
+            n=$((n+1))
+            xcrun simctl terminate "$UDID" do.com.fente.chinolasim 2>/dev/null || true
+            SIMCTL_CHILD_CNPANTALLA="$P" xcrun simctl launch "$UDID" do.com.fente.chinolasim || true
+            sleep 6
+            xcrun simctl io "$UDID" screenshot "cap-$n-$P.png" || true
+          done
           echo "=== ¿sigue vivo el proceso? ==="
           xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolasim || echo "(el proceso NO está vivo → crasheó)"
           echo "=== crash reports ==="

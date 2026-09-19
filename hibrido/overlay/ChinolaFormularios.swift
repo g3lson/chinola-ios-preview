@@ -93,7 +93,7 @@ struct CNHojaCabecera: View {
                             guardar()
                         } label: {
                             Text(guardarTexto).font(.system(size: 15, weight: .bold))
-                                .foregroundColor(Color(cnHex: 0x20180a))
+                                .foregroundColor(CNC.sobreAcc)
                                 .padding(.horizontal, 16).frame(height: 36)
                                 .cnVidrio(Capsule(), tinte: guardarActivo ? CNC.acc : CNC.line)
                         }
@@ -119,7 +119,7 @@ struct CNBotonGuardar: View {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 accion()
             } label: {
-                Text(texto).font(.system(size: 17, weight: .bold)).foregroundColor(Color(cnHex: 0x20180a))
+                Text(texto).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.sobreAcc)
                     .frame(maxWidth: .infinity).padding(.vertical, 16)
                     .background(CNC.acc, in: Capsule())
             }
@@ -208,7 +208,7 @@ struct CNPasoBoton: View {
 struct CNFichas: View {
     let opciones: [(String, String, String)]     // (id, texto, icono)
     @Binding var elegida: String
-    var color: Color = cnColor(0x093a20)
+    var color: Color = CNC.pos
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -219,8 +219,8 @@ struct CNFichas: View {
                         elegida = o.0
                     } label: {
                         HStack(spacing: 7) {
-                            cnGlifo(o.2, tam: 14, grosor: 2.2).foregroundColor(puesta ? .white : color)
-                            Text(o.1).font(.system(size: 14, weight: .semibold)).foregroundColor(puesta ? .white : CNC.ink)
+                            cnGlifo(o.2, tam: 14, grosor: 2.2).foregroundColor(puesta ? cnSobre(color) : color)
+                            Text(o.1).font(.system(size: 14, weight: .semibold)).foregroundColor(puesta ? cnSobre(color) : CNC.ink)
                         }
                         .padding(.horizontal, 13).padding(.vertical, 9)
                         .background(
@@ -284,9 +284,9 @@ struct CNChipsCategoria: View {
         } label: {
             HStack(spacing: 7) {
                 cnGlifo(icono, tam: 14, grosor: 2.2)
-                    .foregroundColor(puesta ? .white : color)
+                    .foregroundColor(puesta ? cnSobre(color) : color)
                 Text(nombre).font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(puesta ? .white : CNC.ink)
+                    .foregroundColor(puesta ? cnSobre(color) : CNC.ink)
             }
             .padding(.horizontal, 13).padding(.vertical, 9)
             .background(
@@ -455,7 +455,7 @@ struct CNFormPrestamo: View {
             VStack(alignment: .leading, spacing: 8) {
                 cnHojaTitulo("¿Cómo es?")
                 HStack(spacing: 6) { ForEach([("debo", "Yo debo"), ("meDeben", "Me deben")], id: \.0) { s in
-                    Text(s.1).font(.system(size: 14, weight: sentido == s.0 ? .bold : .semibold)).foregroundColor(sentido == s.0 ? .white : CNC.pmut).frame(maxWidth: .infinity).padding(.vertical, 10).background(sentido == s.0 ? cnColor(0x093a20) : Color.clear).clipShape(Capsule()).onTapGesture { sentido = s.0 }
+                    Text(s.1).font(.system(size: 14, weight: sentido == s.0 ? .bold : .semibold)).foregroundColor(sentido == s.0 ? CNC.sobreAcc : CNC.pmut).frame(maxWidth: .infinity).padding(.vertical, 10).background(sentido == s.0 ? AnyView(Capsule().fill(CNC.acc)) : AnyView(Color.clear)).onTapGesture { sentido = s.0 }
                 } }.padding(4).background(CNC.soft).clipShape(Capsule())
             }
             CNCampoTexto(placeholder: "Nombre (ej. Préstamo del carro)", texto: $nombre)

@@ -22,35 +22,39 @@ class TestVC: CAPBridgeViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        mostrar(0)
-
         // El MENÚ: un UITabBar de verdad (Liquid Glass del sistema en iOS 26).
         barra.alTocar = { [weak self] id in self?.estado.activa = id; self?.barra.pintar(activa: id, titulos: true) }
         barra.montar(en: view)
         barra.pintar(activa: estado.activa, titulos: true)
 
-        // Guion de la prueba, acompasado con las capturas del workflow:
-        //  6 s Movimientos · 12 s Movimientos con OTRO TEMA · 20 s detalle · 34 s nuevo.
+        // El guion lo manda el entorno (SIMCTL_CHILD_CNPANTALLA): una pantalla
+        // por lanzamiento, así cada captura es la que se pidió y no depende de
+        // cuánto tarde el simulador en arrancar.
         conectarAcciones()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak self] in
-            // Cambio de tema (como si el usuario lo cambiara en la web): todo
-            // lo nativo tiene que repintarse.
-            self?.datos.cargarTema(json: """
+        let cual = ProcessInfo.processInfo.environment["CNPANTALLA"] ?? "movs"
+        if cual.hasSuffix("-oscuro") {
+            // Como si el usuario cambiara de tema en la web: todo lo nativo
+            // tiene que repintarse con la paleta nueva.
+            datos.cargarTema(json: """
             {"bg":"#101713","card":"#18211b","suave":"#1d2820","borde":"#2c3a31","tinta":"#eef3ee",
              "gris":"#9bb0a1","side":"#0b120e","acento":"#8fd6a0","pos":"#5fcf8a","neg":"#e08a7a","oscuro":true}
             """)
-            self?.barra.pintar(activa: self?.estado.activa ?? "movs", titulos: true)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 17) { [weak self] in
-            guard let s = self else { return }
-            let id = s.datos.libreta.tx.first?.id ?? ""
-            s.presentar(AnyView(CNDetalleMov(datos: s.datos, movId: id, onClose: { s.cerrar() })))
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
-            guard let s = self else { return }
-            s.cerrar()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                s.presentar(AnyView(CNNuevoMov(datos: s.datos, onClose: { s.cerrar() })))
+        // Claro u oscuro de sistema según el tema, para que el vidrio y las
+        // hojas acompañen a la paleta.
+        view.window?.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
+        let base = cual.replacingOccurrences(of: "-oscuro", with: "")
+        mostrar(base)
+        barra.pintar(activa: estado.activa, titulos: true)
+        if base == "detalle" || base == "nuevo" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                guard let s = self else { return }
+                if base == "detalle" {
+                    let id = s.datos.libreta.tx.first?.id ?? ""
+                    s.presentar(AnyView(CNDetalleMov(datos: s.datos, movId: id, onClose: { s.cerrar() })))
+                } else {
+                    s.presentar(AnyView(CNNuevoMov(datos: s.datos, onClose: { s.cerrar() })))
+                }
             }
         }
     }
@@ -101,14 +105,16 @@ struct CNPruebaColores: View {
 }
 
 extension TestVC {
-    /// Va cambiando de pantalla para capturar cada sección.
-    func mostrar(_ i: Int) {
+    /// Monta la pantalla nativa que toca capturar.
+    func mostrar(_ cual: String) {
         contenido?.removeFromSuperview()
-        // Solo Movimientos es nativa; las demás son la web de la app.
-        let vistas: [AnyView] = [AnyView(CNMovs(datos: datos))]
-        let ids = ["movs"]
-        estado.activa = ids[0]
-        let h = UIHostingController(rootView: vistas[0])
+        let vista: AnyView
+        switch cual {
+        case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
+        case "plan":    vista = AnyView(CNPlan(datos: datos));    estado.activa = "plan"
+        default:        vista = AnyView(CNMovs(datos: datos));    estado.activa = "movs"
+        }
+        let h = UIHostingController(rootView: vista)
         h.view.backgroundColor = UIColor(CNC.scr)
         addChild(h); view.addSubview(h.view); h.didMove(toParent: self)
         h.view.translatesAutoresizingMaskIntoConstraints = false
@@ -122,7 +128,6 @@ extension TestVC {
         view.bringSubviewToFront(barra.barra)
         view.layoutIfNeeded()
         h.additionalSafeAreaInsets.bottom = max(0, max(barra.alto, 56) - view.safeAreaInsets.bottom)
-
     }
 }
 
