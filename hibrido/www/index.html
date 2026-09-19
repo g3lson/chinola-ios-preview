@@ -23,7 +23,7 @@
     }
     (async function(){
       try {
-        var N = window.Capacitor.registerPlugin('Nativo');
+        var N = window.Capacitor.Plugins.Nativo;   // el plugin YA está registrado
         p('llamando Nativo.datos…');
         var r = await N.datos({ json: JSON.stringify(LIBRETA), perfil: '{}' });
         p('OK datos() resolvió: ' + JSON.stringify(r));
