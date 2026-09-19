@@ -25,6 +25,15 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Usar el Xcode más nuevo (para el SDK de iOS 26 / Liquid Glass)
+        run: |
+          ls /Applications | grep -i "^Xcode" || true
+          NUEVO=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          echo "seleccionando: $NUEVO"
+          sudo xcode-select -s "$NUEVO/Contents/Developer"
+          xcodebuild -version
+          echo "=== SDKs iOS ==="; xcodebuild -showsdks | grep -i "iphoneos\|simulator" || true
+
       - name: Instalar Capacitor y generar iOS (por defecto)
         run: |
           npm install

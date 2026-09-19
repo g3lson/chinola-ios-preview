@@ -447,19 +447,30 @@ struct CNBarraMenu: View {
         .padding(.horizontal, 8)
         .padding(.top, estado.titulos ? 9 : 12)
         .padding(.bottom, 9)
-        // Liquid glass de verdad: material translúcido (deja ver los movimientos
-        // pasar por detrás al hacer scroll), píldora flotante con brillo y sombra.
-        .background(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.16), radius: 24, y: 8)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .stroke(Color.white.opacity(0.6), lineWidth: 1)
-        )
+        .modifier(CNVidrio())
         .padding(.horizontal, 16)
         .padding(.bottom, 2)
+    }
+}
+
+/// El vidrio de la barra. En iOS 26 usa **Liquid Glass de verdad**
+/// (`.glassEffect`): transparente, con refracción en los bordes y brillo, como la
+/// barra de Apple Music. En iOS anteriores no existe esa API, así que cae al
+/// material esmerilado (lo mejor disponible ahí).
+struct CNVidrio: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular.interactive(), in: Capsule())
+                .shadow(color: .black.opacity(0.18), radius: 26, y: 10)
+        } else {
+            content
+                .background(
+                    Capsule().fill(.ultraThinMaterial)
+                        .shadow(color: .black.opacity(0.16), radius: 24, y: 8)
+                )
+                .overlay(Capsule().stroke(Color.white.opacity(0.6), lineWidth: 1))
+        }
     }
 }
 
