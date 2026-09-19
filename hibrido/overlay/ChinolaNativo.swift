@@ -963,6 +963,9 @@ struct CNSVGShape: Shape {
         let ox = rect.minX + (rect.width - viewBox * s) / 2
         let oy = rect.minY + (rect.height - viewBox * s) / 2
         var p = Path(); var cur = CGPoint.zero; var start = CGPoint.zero
+        // El último control de una curva: lo necesitan S/s y T/t, que lo
+        // reflejan en vez de repetirlo.
+        var ctrl = CGPoint.zero
         let pt = { (x: CGFloat, y: CGFloat) in CGPoint(x: ox + x * s, y: oy + y * s) }
         let toks = tokenize(d); var i = 0
         func num() -> CGFloat { let v = toks[i].num; i += 1; return v }
@@ -972,14 +975,14 @@ struct CNSVGShape: Shape {
             switch c {
             case "M", "m":
                 var x = num(); var y = num(); if c == "m" { x += cur.x; y += cur.y }
-                cur = CGPoint(x: x, y: y); start = cur; p.move(to: pt(cur.x, cur.y))
+                cur = CGPoint(x: x, y: y); start = cur; ctrl = cur; p.move(to: pt(cur.x, cur.y))
                 while i < toks.count, !toks[i].isCmd {
                     var lx = num(); var ly = num(); if c == "m" { lx += cur.x; ly += cur.y }
-                    cur = CGPoint(x: lx, y: ly); p.addLine(to: pt(cur.x, cur.y)) }
+                    cur = CGPoint(x: lx, y: ly); ctrl = cur; p.addLine(to: pt(cur.x, cur.y)) }
             case "L", "l":
                 while i < toks.count, !toks[i].isCmd {
                     var x = num(); var y = num(); if c == "l" { x += cur.x; y += cur.y }
-                    cur = CGPoint(x: x, y: y); p.addLine(to: pt(cur.x, cur.y)) }
+                    cur = CGPoint(x: x, y: y); ctrl = cur; p.addLine(to: pt(cur.x, cur.y)) }
             case "H", "h":
                 while i < toks.count, !toks[i].isCmd { var x = num(); if c == "h" { x += cur.x }; cur.x = x; p.addLine(to: pt(cur.x, cur.y)) }
             case "V", "v":
@@ -989,8 +992,33 @@ struct CNSVGShape: Shape {
                     let rx = num(); _ = num(); _ = num(); let large = num() != 0; let sweep = num() != 0
                     var x = num(); var y = num(); if c == "a" { x += cur.x; y += cur.y }
                     arco(&p, from: cur, to: CGPoint(x: x, y: y), r: rx, large: large, sweep: sweep, pt: pt)
-                    cur = CGPoint(x: x, y: y) }
-            case "Z", "z": p.addLine(to: pt(start.x, start.y)); cur = start
+                    cur = CGPoint(x: x, y: y); ctrl = cur }
+            case "C", "c":
+                while i < toks.count, !toks[i].isCmd {
+                    var x1 = num(); var y1 = num(); var x2 = num(); var y2 = num(); var x = num(); var y = num()
+                    if c == "c" { x1 += cur.x; y1 += cur.y; x2 += cur.x; y2 += cur.y; x += cur.x; y += cur.y }
+                    p.addCurve(to: pt(x, y), control1: pt(x1, y1), control2: pt(x2, y2))
+                    ctrl = CGPoint(x: x2, y: y2); cur = CGPoint(x: x, y: y) }
+            case "S", "s":
+                while i < toks.count, !toks[i].isCmd {
+                    var x2 = num(); var y2 = num(); var x = num(); var y = num()
+                    if c == "s" { x2 += cur.x; y2 += cur.y; x += cur.x; y += cur.y }
+                    let r1 = CGPoint(x: 2 * cur.x - ctrl.x, y: 2 * cur.y - ctrl.y)
+                    p.addCurve(to: pt(x, y), control1: pt(r1.x, r1.y), control2: pt(x2, y2))
+                    ctrl = CGPoint(x: x2, y: y2); cur = CGPoint(x: x, y: y) }
+            case "Q", "q":
+                while i < toks.count, !toks[i].isCmd {
+                    var x1 = num(); var y1 = num(); var x = num(); var y = num()
+                    if c == "q" { x1 += cur.x; y1 += cur.y; x += cur.x; y += cur.y }
+                    p.addQuadCurve(to: pt(x, y), control: pt(x1, y1))
+                    ctrl = CGPoint(x: x1, y: y1); cur = CGPoint(x: x, y: y) }
+            case "T", "t":
+                while i < toks.count, !toks[i].isCmd {
+                    var x = num(); var y = num(); if c == "t" { x += cur.x; y += cur.y }
+                    let r1 = CGPoint(x: 2 * cur.x - ctrl.x, y: 2 * cur.y - ctrl.y)
+                    p.addQuadCurve(to: pt(x, y), control: pt(r1.x, r1.y))
+                    ctrl = r1; cur = CGPoint(x: x, y: y) }
+            case "Z", "z": p.closeSubpath(); cur = start
             default: break
             }
         }
