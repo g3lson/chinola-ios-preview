@@ -1,10 +1,10 @@
 import SwiftUI
 
-// Pantallas de detalle (al tocar una cuenta, préstamo, tarjeta, meta o
-// movimiento). Todas comparten la cabecera de color con la inicial, la tarjeta
-// grande de cifras y, cuando aplica, el extracto por mes. Look nativo de iOS.
+// Pantallas de detalle (al tocar una cuenta, tarjeta, préstamo, meta o
+// movimiento): cabecera de color, tarjeta de cifras reales, acciones y el
+// extracto. Leen el item real del estado por su id.
 
-// Cabecera de color: ‹ volver + inicial en cuadro + nombre y subtítulo.
+// Cabecera de color: ‹ volver + inicial + nombre y subtítulo.
 struct CabeceraDetalle: View {
     let inicial: String
     let nombre: String
@@ -12,15 +12,19 @@ struct CabeceraDetalle: View {
     var fondo: Color = .side
     var cuadro: Color = .info
     var volverA: String = "Cuentas"
+    var onClose: () -> Void = {}
     var body: some View {
         VStack(spacing: 0) {
             Color.clear.frame(height: 44)
             HStack(spacing: 12) {
-                HStack(spacing: 2) {
-                    Image(systemName: "chevron.left").font(.system(size: 16, weight: .bold))
-                    Text(volverA).font(.system(size: 15, weight: .semibold))
+                Button(action: onClose) {
+                    HStack(spacing: 2) {
+                        Image(systemName: "chevron.left").font(.system(size: 16, weight: .bold))
+                        Text(volverA).font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundColor(.white).opacity(0.9)
                 }
-                .foregroundColor(.white).opacity(0.9)
+                .buttonStyle(.plain)
                 Spacer(minLength: 0)
             }
             HStack(spacing: 12) {
@@ -40,7 +44,7 @@ struct CabeceraDetalle: View {
     }
 }
 
-// Tarjeta de cifra principal + dos columnas (entró / salió, etc.).
+// Tarjeta de cifra principal + columnas.
 struct TarjetaCifra: View {
     let rotulo: String
     let valor: String
@@ -70,52 +74,6 @@ struct TarjetaCifra: View {
     }
 }
 
-// Fila de un movimiento en el extracto.
-struct FilaExtracto: View {
-    let icono: String
-    let tinte: Color
-    let concepto: String
-    let sub: String
-    let monto: String
-    let color: Color
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icono).font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
-                .frame(width: 34, height: 34).background(tinte).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(concepto).font(.system(size: 15, weight: .semibold)).foregroundColor(.ink)
-                Text(sub).font(.system(size: 11.5)).foregroundColor(.pmut)
-            }
-            Spacer(minLength: 6)
-            Text(monto).font(.system(size: 15, weight: .heavy)).foregroundColor(color)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 10)
-    }
-}
-
-// Grupo de extracto de un mes con su subtotal.
-struct MesExtracto: View {
-    let mes: String
-    let total: String
-    let filas: [(String, Color, String, String, String, Color)]
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(mes).font(.system(size: 12.5, weight: .heavy)).foregroundColor(.pmut)
-                Spacer()
-                Text(total).font(.system(size: 12.5, weight: .heavy)).foregroundColor(.pmut)
-            }
-            .padding(.horizontal, 4)
-            Grupo {
-                ForEach(filas.indices, id: \.self) { i in
-                    FilaExtracto(icono: filas[i].0, tinte: filas[i].1, concepto: filas[i].2, sub: filas[i].3, monto: filas[i].4, color: filas[i].5)
-                    if i < filas.count - 1 { Divisor(sangria: 60) }
-                }
-            }
-        }
-    }
-}
-
 private func cuerpoDetalle<C: View>(@ViewBuilder _ c: () -> C) -> some View {
     ScrollView(showsIndicators: false) {
         VStack(alignment: .leading, spacing: 14) { c(); Color.clear.frame(height: 40) }
@@ -124,28 +82,65 @@ private func cuerpoDetalle<C: View>(@ViewBuilder _ c: () -> C) -> some View {
     .background(Color.scr.ignoresSafeArea())
 }
 
+private func inicialDe(_ s: String) -> String {
+    let p = s.split(separator: " ").prefix(2).compactMap { $0.first }
+    return String(p).uppercased()
+}
+
+// Fila de un movimiento en el extracto.
+private struct FilaMovDet: View {
+    let m: Movimiento
+    let esta: String   // medio de esta cuenta, para saber si entra o sale
+    var body: some View {
+        let entra = m.tipo == .ingreso || (m.tipo == .transferencia && m.destino == esta)
+        let color: Color = entra ? .pos : .neg
+        return HStack(spacing: 12) {
+            Image(systemName: m.tipo == .transferencia ? "arrow.left.arrow.right" : (entra ? "arrow.down" : "arrow.up"))
+                .font(.system(size: 13, weight: .bold)).foregroundColor(.white)
+                .frame(width: 32, height: 32).background(color).clipShape(Circle())
+            VStack(alignment: .leading, spacing: 1) {
+                Text(m.concepto).font(.system(size: 15, weight: .semibold)).foregroundColor(.ink)
+                Text("\(m.categoria) · \(fechaCorta(m.fecha))").font(.system(size: 11.5)).foregroundColor(.pmut)
+            }
+            Spacer(minLength: 6)
+            Text((entra ? "+ " : "− ") + fmtDinero(m.monto)).font(.system(size: 15, weight: .heavy)).foregroundColor(color)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+    }
+}
+
 // ── Detalle de cuenta ───────────────────────────────────────────────────────
 struct DetalleCuentaView: View {
+    @EnvironmentObject var estado: AppEstado
+    var cuentaId: Int = 1
+    var onClose: () -> Void = {}
+
     var body: some View {
-        VStack(spacing: 0) {
-            CabeceraDetalle(inicial: "EF", nombre: "Efectivo", sub: "Sin banco · 32 movimientos", cuadro: .pos)
+        let medio = "cuenta:\(cuentaId)"
+        let c = estado.libreta.cuentas.first { $0.id == cuentaId }
+        let movs = estado.movimientosDe(medio)
+        let mes = String(Movimiento.hoy().prefix(7))
+        let delMes = movs.filter { String($0.fecha.prefix(7)) == mes }
+        let entra = delMes.filter { $0.tipo == .ingreso || ($0.tipo == .transferencia && $0.destino == medio) }.reduce(0) { $0 + abs($1.monto) }
+        let sale = delMes.filter { $0.tipo.esGasto || $0.tipo == .ahorro || ($0.tipo == .transferencia && $0.medio == medio) }.reduce(0) { $0 + abs($1.monto) }
+        return VStack(spacing: 0) {
+            CabeceraDetalle(inicial: inicialDe(c?.nombre ?? "?"), nombre: c?.nombre ?? "Cuenta",
+                            sub: (c?.banco.isEmpty ?? true ? "Sin banco" : c!.banco) + " · \(movs.count) mov.",
+                            cuadro: Color(hexString: c?.color ?? "#137d41"), onClose: onClose)
             cuerpoDetalle {
-                TarjetaCifra(rotulo: "Saldo disponible", valor: "DOP 24,500", color: .ink,
-                             cols: [("Entró este mes", "DOP 41,000", .pos), ("Salió este mes", "DOP 16,500", .neg)])
-                HStack(spacing: 10) {
-                    BotonAncho(texto: "Transferir", icono: "arrow.left.arrow.right")
-                    BotonAncho(texto: "Nuevo", icono: "plus")
-                }
+                TarjetaCifra(rotulo: "Saldo disponible", valor: fmtDinero(c?.saldo ?? 0), color: .ink,
+                             cols: [("Entró este mes", fmtDinero(entra), .pos), ("Salió este mes", fmtDinero(sale), .neg)])
                 SeccionTitulo(texto: "Movimientos de esta cuenta")
-                MesExtracto(mes: "Septiembre 2026", total: "+ DOP 24,500", filas: [
-                    ("cart.fill", Color(hex: 0xe0a92e), "Supermercado", "Comida · 16 sep", "− DOP 2,300", .neg),
-                    ("banknote.fill", .pos, "Salario", "Ingreso · 15 sep", "+ DOP 38,000", .pos),
-                    ("bolt.fill", .info, "Luz", "Servicios · 12 sep", "− DOP 1,900", .neg)
-                ])
-                MesExtracto(mes: "Agosto 2026", total: "+ DOP 18,200", filas: [
-                    ("fork.knife", .neg, "Restaurante", "Comida · 28 ago", "− DOP 1,450", .neg),
-                    ("banknote.fill", .pos, "Salario", "Ingreso · 15 ago", "+ DOP 38,000", .pos)
-                ])
+                if movs.isEmpty {
+                    VacioCard(titulo: "Sin movimientos", detalle: "Lo que anotes con esta cuenta saldrá aquí.")
+                } else {
+                    Grupo {
+                        ForEach(movs.indices, id: \.self) { i in
+                            FilaMovDet(m: movs[i], esta: medio)
+                            if i < movs.count - 1 { Divisor(sangria: 58) }
+                        }
+                    }
+                }
             }
         }
     }
@@ -153,116 +148,144 @@ struct DetalleCuentaView: View {
 
 // ── Detalle de préstamo / fiado ────────────────────────────────────────────
 struct DetallePrestamoView: View {
+    @EnvironmentObject var estado: AppEstado
+    var prestamoId: Int = 1
+    var onClose: () -> Void = {}
+    @State private var abono = false
+
     var body: some View {
-        VStack(spacing: 0) {
-            CabeceraDetalle(inicial: "JU", nombre: "Juan", sub: "Le presté · vence 30 sep", fondo: Color(hex: 0x5a3fa0), cuadro: .sav, volverA: "Cuentas")
+        let p = estado.libreta.prestamos.first { $0.id == prestamoId }
+        let meDeben = (p?.sentido ?? "meDeben") == "meDeben"
+        return VStack(spacing: 0) {
+            CabeceraDetalle(inicial: inicialDe(p?.nombre ?? "?"), nombre: p?.nombre ?? "Préstamo",
+                            sub: meDeben ? "Te debe" : "Le debes",
+                            fondo: Color(hex: 0x5a3fa0), cuadro: .sav, onClose: onClose)
             cuerpoDetalle {
-                TarjetaCifra(rotulo: "Te deben", valor: "DOP 3,000", color: .sav,
-                             cols: [("Prestaste", "DOP 5,000", .ink), ("Ya te abonó", "DOP 2,000", .pos)])
-                BotonAncho(texto: "Registrar un abono", icono: "plus")
-                SeccionTitulo(texto: "Abonos")
-                MesExtracto(mes: "Septiembre 2026", total: "DOP 2,000", filas: [
-                    ("arrow.down.circle.fill", .pos, "Abono", "Efectivo · 14 sep", "+ DOP 1,200", .pos),
-                    ("arrow.down.circle.fill", .pos, "Abono", "Efectivo · 5 sep", "+ DOP 800", .pos)
-                ])
+                TarjetaCifra(rotulo: meDeben ? "Te deben" : "Debes", valor: fmtDinero(p?.pendiente ?? 0), color: .sav,
+                             cols: [(meDeben ? "Prestaste" : "Te prestaron", fmtDinero(p?.total ?? 0), .ink),
+                                    ("Ya \(meDeben ? "abonó" : "abonaste")", fmtDinero(p?.pagado ?? 0), .pos)])
+                Button { abono = true } label: { BotonAncho(texto: "Registrar un abono", icono: "plus") }.buttonStyle(.plain)
+                NotaPie(texto: "Cada abono baja el saldo del préstamo y mueve tu cuenta.")
             }
+        }
+        .fullScreenCover(isPresented: $abono) {
+            AbonoView(prestamoId: prestamoId, onClose: { abono = false }).environmentObject(estado)
         }
     }
 }
 
-// ── Detalle de tarjeta de crédito ──────────────────────────────────────────
+// ── Detalle de tarjeta ──────────────────────────────────────────────────────
 struct DetalleTarjetaView: View {
+    @EnvironmentObject var estado: AppEstado
+    var tarjetaId: Int = 1
+    var onClose: () -> Void = {}
+    @State private var pago = false
+
     var body: some View {
-        VStack(spacing: 0) {
-            CabeceraDetalle(inicial: "VP", nombre: "Visa Popular", sub: "Corte 25 · Pago 5", fondo: Color(hex: 0x9a3f3f), cuadro: .neg)
+        let t = estado.libreta.tarjetas.first { $0.id == tarjetaId }
+        return VStack(spacing: 0) {
+            CabeceraDetalle(inicial: inicialDe(t?.nombre ?? "?"), nombre: t?.nombre ?? "Tarjeta",
+                            sub: "Corte \(t?.corte ?? 0) · Pago \(t?.pago ?? 0)",
+                            fondo: Color(hex: 0x9a3f3f), cuadro: .neg, onClose: onClose)
             cuerpoDetalle {
-                TarjetaCifra(rotulo: "Deuda actual", valor: "DOP 12,400", color: .neg,
-                             cols: [("Límite", "DOP 50,000", .ink), ("Disponible", "DOP 37,600", .pos)])
-                BotonAncho(texto: "Pagar la tarjeta", icono: "creditcard")
-                SeccionTitulo(texto: "Consumos")
-                MesExtracto(mes: "Septiembre 2026", total: "− DOP 5,600", filas: [
-                    ("cart.fill", Color(hex: 0xe0a92e), "Supermercado", "Comida · 16 sep", "− DOP 3,200", .neg),
-                    ("airplane", .info, "Vuelo", "Viajes · 8 sep", "− DOP 2,400", .neg)
-                ])
+                TarjetaCifra(rotulo: "Deuda actual", valor: fmtDinero(t?.saldo ?? 0), color: .neg,
+                             cols: [("Límite", fmtDinero(t?.limite ?? 0), .ink), ("Disponible", fmtDinero(t?.disponible ?? 0), .pos)])
+                Button { pago = true } label: { BotonAncho(texto: "Pagar la tarjeta", icono: "creditcard") }.buttonStyle(.plain)
+                NotaPie(texto: "El pago baja la deuda y sale de la cuenta que elijas.")
             }
+        }
+        .fullScreenCover(isPresented: $pago) {
+            PagoTarjetaView(tarjetaId: tarjetaId, onClose: { pago = false }).environmentObject(estado)
         }
     }
 }
 
 // ── Detalle de meta ─────────────────────────────────────────────────────────
 struct DetalleMetaView: View {
+    @EnvironmentObject var estado: AppEstado
+    var metaId: Int = 1
+    var onClose: () -> Void = {}
+    @State private var aporte = false
+
     var body: some View {
-        VStack(spacing: 0) {
-            CabeceraDetalle(inicial: "✈", nombre: "Viaje a Punta Cana", sub: "Meta · vence dic 2026", fondo: Color(hex: 0x5a3fa0), cuadro: .sav, volverA: "Plan")
+        let m = estado.libreta.metas.first { $0.id == metaId }
+        let prog = m?.progreso ?? 0
+        return VStack(spacing: 0) {
+            CabeceraDetalle(inicial: "◎", nombre: m?.nombre ?? "Meta", sub: "Meta de ahorro",
+                            fondo: Color(hex: 0x5a3fa0), cuadro: .sav, volverA: "Plan", onClose: onClose)
             cuerpoDetalle {
                 VStack(spacing: 14) {
                     ZStack {
                         Circle().stroke(Color.soft, lineWidth: 12).frame(width: 128, height: 128)
-                        Circle().trim(from: 0, to: 0.6)
+                        Circle().trim(from: 0, to: CGFloat(prog))
                             .stroke(Color.sav, style: StrokeStyle(lineWidth: 12, lineCap: .round))
                             .rotationEffect(.degrees(-90)).frame(width: 128, height: 128)
                         VStack(spacing: 1) {
-                            Text("60%").font(.system(size: 28, weight: .heavy)).foregroundColor(.ink)
+                            Text("\(Int(prog * 100))%").font(.system(size: 28, weight: .heavy)).foregroundColor(.ink)
                             Text("logrado").font(.system(size: 11.5)).foregroundColor(.pmut)
                         }
                     }
                     .padding(.top, 4)
-                    TarjetaCifra(rotulo: "Ahorrado", valor: "DOP 30,000", color: .sav,
-                                 cols: [("Objetivo", "DOP 50,000", .ink), ("Te falta", "DOP 20,000", .neg)])
+                    TarjetaCifra(rotulo: "Ahorrado", valor: fmtDinero(m?.ahorrado ?? 0), color: .sav,
+                                 cols: [("Objetivo", fmtDinero(m?.meta ?? 0), .ink),
+                                        ("Te falta", fmtDinero(max(0, (m?.meta ?? 0) - (m?.ahorrado ?? 0))), .neg)])
                 }
-                BotonAncho(texto: "Aportar a la meta", icono: "plus")
-                SeccionTitulo(texto: "Aportes")
-                MesExtracto(mes: "Septiembre 2026", total: "DOP 8,000", filas: [
-                    ("arrow.up.circle.fill", .sav, "Aporte", "Ahorros · 12 sep", "+ DOP 5,000", .sav),
-                    ("arrow.up.circle.fill", .sav, "Aporte", "Ahorros · 2 sep", "+ DOP 3,000", .sav)
-                ])
+                Button { aporte = true } label: { BotonAncho(texto: "Aportar a la meta", icono: "plus") }.buttonStyle(.plain)
             }
+        }
+        .fullScreenCover(isPresented: $aporte) {
+            AporteView(metaId: metaId, onClose: { aporte = false }).environmentObject(estado)
         }
     }
 }
 
-// ── Detalle de un movimiento (con acciones) ────────────────────────────────
+// ── Detalle de un movimiento (con borrar) ──────────────────────────────────
 struct DetalleMovimientoView: View {
+    @EnvironmentObject var estado: AppEstado
+    var movId: String = "s2"
+    var onClose: () -> Void = {}
+
     var body: some View {
-        VStack(spacing: 0) {
-            CabeceraDetalle(inicial: "SU", nombre: "Supermercado", sub: "Gasto · 16 sep 2026", fondo: Color(hex: 0x7a5f10), cuadro: Color(hex: 0xe0a92e), volverA: "Movimientos")
+        let m = estado.libreta.tx.first { $0.id == movId }
+        let entra = m?.tipo == .ingreso
+        return VStack(spacing: 0) {
+            CabeceraDetalle(inicial: inicialDe(m?.concepto ?? "?"), nombre: m?.concepto ?? "Movimiento",
+                            sub: "\(m?.categoria ?? "") · \(fechaCorta(m?.fecha ?? ""))",
+                            fondo: Color(hex: 0x7a5f10), cuadro: Color(hex: 0xe0a92e), volverA: "Movimientos", onClose: onClose)
             cuerpoDetalle {
                 VStack(spacing: 3) {
                     Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(.pmut)
-                    Text("− DOP 2,300").font(.system(size: 34, weight: .heavy)).foregroundColor(.neg)
+                    Text((entra ? "+ " : "− ") + fmtDinero(m?.monto ?? 0)).font(.system(size: 34, weight: .heavy))
+                        .foregroundColor(entra ? .pos : .neg)
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 18)
                 .background(Color.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.line, lineWidth: 0.5))
 
                 Grupo {
-                    FilaNav(icono: "tag.fill", tinte: Color(hex: 0xe0a92e), titulo: "Categoría", valor: "Comida")
+                    FilaNav(icono: "tag.fill", tinte: Color(hex: 0xe0a92e), titulo: "Categoría", valor: m?.categoria ?? "")
                     Divisor()
-                    FilaNav(icono: "banknote.fill", tinte: .pos, titulo: "Pagado con", valor: "Efectivo")
+                    FilaNav(icono: "banknote.fill", tinte: .pos, titulo: "Cuenta", valor: estado.nombreMedio(m?.medio ?? ""))
                     Divisor()
-                    FilaNav(icono: "calendar", tinte: .neg, titulo: "Fecha", valor: "16/09/2026")
+                    FilaNav(icono: "calendar", tinte: .neg, titulo: "Fecha", valor: fechaCorta(m?.fecha ?? ""))
                     Divisor()
-                    FilaNav(icono: "repeat", tinte: .sav, titulo: "Se repite", valor: "No")
+                    FilaNav(icono: "repeat", tinte: .sav, titulo: "Se repite", valor: (m?.recurrente ?? false) ? "Sí" : "No")
                 }
 
-                VStack(spacing: 10) {
-                    BotonAncho(texto: "Editar movimiento", icono: "pencil")
-                    HStack(spacing: 10) {
-                        accion("Duplicar", "plus.square.on.square", .info)
-                        accion("Eliminar", "trash", .neg)
+                Button {
+                    if let m = m { estado.borrar(m) }
+                    onClose()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "trash").font(.system(size: 14, weight: .bold))
+                        Text("Eliminar movimiento").font(.system(size: 15, weight: .semibold))
                     }
+                    .foregroundColor(.neg).frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(Color.card).clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color.neg.opacity(0.3), lineWidth: 1))
                 }
-                .padding(.top, 4)
+                .buttonStyle(.plain).padding(.top, 4)
             }
         }
-    }
-    private func accion(_ t: String, _ ic: String, _ c: Color) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: ic).font(.system(size: 14, weight: .bold))
-            Text(t).font(.system(size: 14, weight: .semibold))
-        }
-        .foregroundColor(c).frame(maxWidth: .infinity).padding(.vertical, 13)
-        .background(Color.card).clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13).stroke(c.opacity(0.3), lineWidth: 1))
     }
 }

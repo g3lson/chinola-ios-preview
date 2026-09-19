@@ -5,6 +5,7 @@ import SwiftUI
 struct MovsView: View {
     @EnvironmentObject var estado: AppEstado
     var onNuevo: () -> Void = {}
+    var onDetalle: (String) -> Void = { _ in }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -21,7 +22,7 @@ struct MovsView: View {
                 } else {
                     Grupo {
                         ForEach(movs.indices, id: \.self) { i in
-                            fila(movs[i])
+                            Button { onDetalle(movs[i].id) } label: { fila(movs[i]) }.buttonStyle(.plain)
                             if i < movs.count - 1 { Divisor(sangria: 60) }
                         }
                     }

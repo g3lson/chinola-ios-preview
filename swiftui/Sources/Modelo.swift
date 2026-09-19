@@ -228,6 +228,55 @@ final class AppEstado: ObservableObject {
         }
     }
 
+    // Movimientos de una cuenta/tarjeta (para el extracto del detalle).
+    func movimientosDe(_ medio: String) -> [Movimiento] {
+        libreta.tx.filter { $0.medio == medio || $0.destino == medio }.sorted { $0.fecha > $1.fecha }
+    }
+
+    // Abonar a un préstamo: sube lo pagado y mueve la cuenta (entra si te deben,
+    // sale si tú debes).
+    func abonar(_ prestamoId: Int, monto: Double, medio: String) {
+        var lb = libreta
+        guard let pi = lb.prestamos.firstIndex(where: { $0.id == prestamoId }), monto > 0 else { return }
+        lb.prestamos[pi].pagado = min(lb.prestamos[pi].total, lb.prestamos[pi].pagado + monto)
+        let entra = lb.prestamos[pi].sentido == "meDeben"
+        moverCuenta(&lb, medio, entra ? monto : -monto)
+        libreta = lb
+    }
+
+    // Aportar a una meta: sube lo ahorrado y saca de la cuenta.
+    func aportar(_ metaId: Int, monto: Double, medio: String) {
+        var lb = libreta
+        guard let mi = lb.metas.firstIndex(where: { $0.id == metaId }), monto > 0 else { return }
+        lb.metas[mi].ahorrado += monto
+        moverCuenta(&lb, medio, -monto)
+        libreta = lb
+    }
+
+    // Pagar una tarjeta: baja la deuda y saca de la cuenta.
+    func pagarTarjeta(_ tarjetaId: Int, monto: Double, medio: String) {
+        var lb = libreta
+        guard let ti = lb.tarjetas.firstIndex(where: { $0.id == tarjetaId }), monto > 0 else { return }
+        lb.tarjetas[ti].saldo = max(0, lb.tarjetas[ti].saldo - monto)
+        moverCuenta(&lb, medio, -monto)
+        libreta = lb
+    }
+
+    private func moverCuenta(_ lb: inout Libreta, _ medio: String, _ delta: Double) {
+        if medio.hasPrefix("cuenta:"), let id = Int(medio.dropFirst(7)),
+           let i = lb.cuentas.firstIndex(where: { $0.id == id }) { lb.cuentas[i].saldo += delta }
+    }
+
+    // Cambiar de libreta activa · crear una libreta nueva.
+    func cambiarLibreta(_ id: String) { datos.activa = id }
+    func crearLibreta(_ nombre: String, tipo: String) {
+        let n = nombre.trimmingCharacters(in: .whitespaces)
+        guard !n.isEmpty else { return }
+        let id = "lb\(Int(Date().timeIntervalSince1970))"
+        datos.libretas.append(Libreta(id: id, nombre: n, tipo: tipo))
+        datos.activa = id
+    }
+
     // ── Semilla de ejemplo (primera vez) ────────────────────────────────────
     static func semilla() -> Datos {
         let cuentas = [

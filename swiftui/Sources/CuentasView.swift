@@ -8,6 +8,7 @@ struct CuentasView: View {
     @State private var oculto = false
     var abrirTendencia: () -> Void = {}
     var onNuevo: () -> Void = {}
+    var onDetalle: (DetalleRef) -> Void = { _ in }
 
     private func dinero(_ n: Double) -> String { oculto ? "DOP ••••" : fmtDinero(n) }
 
@@ -25,7 +26,7 @@ struct CuentasView: View {
                     grupo(titulo: "Débito", rotulo: "Bal.", total: estado.totalCuentas, tinte: .pos) {
                         ForEach(cuentas.indices, id: \.self) { i in
                             if i > 0 { Divisor(sangria: 46) }
-                            filaCuenta(cuentas[i])
+                            Button { onDetalle(DetalleRef(tipo: .cuenta, ref: "\(cuentas[i].id)")) } label: { filaCuenta(cuentas[i]) }.buttonStyle(.plain)
                         }
                     }
                 }
@@ -36,17 +37,21 @@ struct CuentasView: View {
                     grupo(titulo: "Crédito", rotulo: "Debes", total: estado.deudaTarjetas + estado.deudaPrestamos, tinte: .neg) {
                         ForEach(tarjetas.indices, id: \.self) { i in
                             if i > 0 { Divisor(sangria: 46) }
-                            filaGenerica(icono: "creditcard.fill", color: Color(hexString: tarjetas[i].color),
-                                         nombre: tarjetas[i].nombre, sub: "Disp. \(dinero(tarjetas[i].disponible))",
-                                         monto: dinero(tarjetas[i].saldo), montoColor: .neg)
+                            Button { onDetalle(DetalleRef(tipo: .tarjeta, ref: "\(tarjetas[i].id)")) } label: {
+                                filaGenerica(icono: "creditcard.fill", color: Color(hexString: tarjetas[i].color),
+                                             nombre: tarjetas[i].nombre, sub: "Disp. \(dinero(tarjetas[i].disponible))",
+                                             monto: dinero(tarjetas[i].saldo), montoColor: .neg)
+                            }.buttonStyle(.plain)
                         }
                         ForEach(prestamos.indices, id: \.self) { i in
                             if i > 0 || !tarjetas.isEmpty { Divisor(sangria: 46) }
-                            filaGenerica(icono: "hand.raised.fill", color: Color(hexString: prestamos[i].color),
-                                         nombre: prestamos[i].nombre,
-                                         sub: prestamos[i].sentido == "meDeben" ? "Te debe" : "Le debes",
-                                         monto: dinero(prestamos[i].pendiente),
-                                         montoColor: prestamos[i].sentido == "meDeben" ? .pos : .neg)
+                            Button { onDetalle(DetalleRef(tipo: .prestamo, ref: "\(prestamos[i].id)")) } label: {
+                                filaGenerica(icono: "hand.raised.fill", color: Color(hexString: prestamos[i].color),
+                                             nombre: prestamos[i].nombre,
+                                             sub: prestamos[i].sentido == "meDeben" ? "Te debe" : "Le debes",
+                                             monto: dinero(prestamos[i].pendiente),
+                                             montoColor: prestamos[i].sentido == "meDeben" ? .pos : .neg)
+                            }.buttonStyle(.plain)
                         }
                     }
                 }

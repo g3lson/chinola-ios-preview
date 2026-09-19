@@ -7,10 +7,12 @@ struct PlanView: View {
     @EnvironmentObject var estado: AppEstado
     @State private var seg: Int
     var onNuevo: (Int) -> Void = { _ in }
-    init(seg: Int? = nil, onNuevo: @escaping (Int) -> Void = { _ in }) {
+    var onMeta: (String) -> Void = { _ in }
+    init(seg: Int? = nil, onNuevo: @escaping (Int) -> Void = { _ in }, onMeta: @escaping (String) -> Void = { _ in }) {
         let env = Int(ProcessInfo.processInfo.environment["CHINOLA_PLANSEG"] ?? "")
         _seg = State(initialValue: seg ?? env ?? 0)
         self.onNuevo = onNuevo
+        self.onMeta = onMeta
     }
 
     var body: some View {
@@ -95,7 +97,9 @@ struct PlanView: View {
             if ms.isEmpty {
                 VacioCard(titulo: "", detalle: "Ponte una meta de ahorro y ve cuánto te falta cada mes.")
             } else {
-                ForEach(ms.indices, id: \.self) { i in filaMeta(ms[i]) }
+                ForEach(ms.indices, id: \.self) { i in
+                    Button { onMeta("\(ms[i].id)") } label: { filaMeta(ms[i]) }.buttonStyle(.plain)
+                }
             }
         }
     }

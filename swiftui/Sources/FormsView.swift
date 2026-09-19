@@ -199,41 +199,56 @@ struct PrestamoView: View {
 
 // ── Abono a un préstamo ─────────────────────────────────────────────────────
 struct AbonoView: View {
+    @EnvironmentObject var estado: AppEstado
+    var prestamoId: Int = 0
+    var onClose: () -> Void = {}
+    @State private var monto = ""
+    @State private var cuenta = 0
+
     var body: some View {
-        HojaForm(titulo: "Registrar un abono") {
-            MontoBloque()
+        let p = estado.libreta.prestamos.first { $0.id == prestamoId }
+        return HojaForm(titulo: "Registrar un abono", onClose: onClose, guardar: guardar) {
+            MontoEditable(monto: $monto)
             VStack(spacing: 6) {
-                SeccionTitulo(texto: "¿A cuál préstamo?")
-                Grupo {
-                    FilaNav(icono: "hand.raised.fill", tinte: .sav, titulo: "Préstamo", valor: "Juan · DOP 5,000")
-                    Divisor()
-                    FilaNav(icono: "banknote.fill", tinte: .pos, titulo: "Entra a", valor: "Efectivo")
-                    Divisor()
-                    FilaNav(icono: "calendar", tinte: .neg, titulo: "Fecha", valor: "18/09/2026")
-                }
-                NotaPie(texto: "El saldo del préstamo baja automáticamente con cada abono.")
+                SeccionTitulo(texto: (p?.sentido ?? "meDeben") == "meDeben" ? "Entra a" : "Sale de")
+                Grupo { MenuCuenta(estado: estado, titulo: "Cuenta", icono: "banknote.fill", tinte: .pos, sel: $cuenta) }
+                NotaPie(texto: "El saldo del préstamo baja con cada abono.")
             }
         }
+        .onAppear { if cuenta == 0 { cuenta = estado.libreta.cuentas.first?.id ?? 0 } }
+    }
+    private func guardar() {
+        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        guard n > 0 else { onClose(); return }
+        estado.abonar(prestamoId, monto: n, medio: "cuenta:\(cuenta)")
+        onClose()
     }
 }
 
 // ── Aporte a una meta ───────────────────────────────────────────────────────
 struct AporteView: View {
+    @EnvironmentObject var estado: AppEstado
+    var metaId: Int = 0
+    var onClose: () -> Void = {}
+    @State private var monto = ""
+    @State private var cuenta = 0
+
     var body: some View {
-        HojaForm(titulo: "Aportar a la meta") {
-            MontoBloque()
+        HojaForm(titulo: "Aportar a la meta", onClose: onClose, guardar: guardar) {
+            MontoEditable(monto: $monto)
             VStack(spacing: 6) {
-                SeccionTitulo(texto: "¿A cuál meta?")
-                Grupo {
-                    FilaNav(icono: "target", tinte: .sav, titulo: "Meta", valor: "Viaje · 60%")
-                    Divisor()
-                    FilaNav(icono: "banknote.fill", tinte: .pos, titulo: "Sale de", valor: "Ahorros")
-                    Divisor()
-                    FilaNav(icono: "calendar", tinte: .neg, titulo: "Fecha", valor: "18/09/2026")
-                }
+                SeccionTitulo(texto: "Sale de")
+                Grupo { MenuCuenta(estado: estado, titulo: "Cuenta", icono: "banknote.fill", tinte: .pos, sel: $cuenta) }
                 NotaPie(texto: "Cada aporte acerca la meta a su objetivo.")
             }
         }
+        .onAppear { if cuenta == 0 { cuenta = estado.libreta.cuentas.first?.id ?? 0 } }
+    }
+    private func guardar() {
+        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        guard n > 0 else { onClose(); return }
+        estado.aportar(metaId, monto: n, medio: "cuenta:\(cuenta)")
+        onClose()
     }
 }
 
@@ -316,21 +331,28 @@ struct TarjetaView: View {
 
 // ── Pago de tarjeta ─────────────────────────────────────────────────────────
 struct PagoTarjetaView: View {
+    @EnvironmentObject var estado: AppEstado
+    var tarjetaId: Int = 0
+    var onClose: () -> Void = {}
+    @State private var monto = ""
+    @State private var cuenta = 0
+
     var body: some View {
-        HojaForm(titulo: "Pagar la tarjeta") {
-            MontoBloque()
+        HojaForm(titulo: "Pagar la tarjeta", onClose: onClose, guardar: guardar) {
+            MontoEditable(monto: $monto)
             VStack(spacing: 6) {
-                SeccionTitulo(texto: "Detalles del pago")
-                Grupo {
-                    FilaNav(icono: "creditcard.fill", tinte: .neg, titulo: "Tarjeta", valor: "Visa · DOP 12,400")
-                    Divisor()
-                    FilaNav(icono: "banknote.fill", tinte: .pos, titulo: "Pagas desde", valor: "Efectivo")
-                    Divisor()
-                    FilaNav(icono: "calendar", tinte: .info, titulo: "Fecha", valor: "18/09/2026")
-                }
+                SeccionTitulo(texto: "Pagas desde")
+                Grupo { MenuCuenta(estado: estado, titulo: "Cuenta", icono: "banknote.fill", tinte: .pos, sel: $cuenta) }
                 NotaPie(texto: "El pago baja la deuda de la tarjeta y sale de la cuenta elegida.")
             }
         }
+        .onAppear { if cuenta == 0 { cuenta = estado.libreta.cuentas.first?.id ?? 0 } }
+    }
+    private func guardar() {
+        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        guard n > 0 else { onClose(); return }
+        estado.pagarTarjeta(tarjetaId, monto: n, medio: "cuenta:\(cuenta)")
+        onClose()
     }
 }
 

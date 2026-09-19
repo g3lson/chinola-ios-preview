@@ -16,6 +16,14 @@ enum HojaActiva: String, Identifiable {
     var id: String { rawValue }
 }
 
+// Referencia al detalle abierto (al tocar un item).
+struct DetalleRef: Identifiable {
+    enum Tipo { case cuenta, tarjeta, prestamo, meta, movimiento }
+    let id = UUID()
+    let tipo: Tipo
+    let ref: String
+}
+
 // La raíz: rutea a la pestaña activa o a una pantalla especial (CHINOLA_SCREEN),
 // con el «+» flotante y la barra inferior flotante. Las variables de entorno
 // CHINOLA_TAB / CHINOLA_SCREEN dejan que el CI arranque la app en cada pantalla
@@ -27,6 +35,7 @@ struct RootView: View {
     @State private var tendencia = false
     @State private var hoja: HojaActiva?
     @State private var pendiente: HojaActiva?
+    @State private var detalle: DetalleRef?
     private let pantalla = ProcessInfo.processInfo.environment["CHINOLA_SCREEN"]
 
     var body: some View {
@@ -82,6 +91,18 @@ struct RootView: View {
         }
     }
 
+    // Cada pantalla de detalle, con el id del item tocado.
+    @ViewBuilder private func detalleVista(_ d: DetalleRef) -> some View {
+        let cerrar = { detalle = nil }
+        switch d.tipo {
+        case .cuenta: DetalleCuentaView(cuentaId: Int(d.ref) ?? 0, onClose: cerrar)
+        case .tarjeta: DetalleTarjetaView(tarjetaId: Int(d.ref) ?? 0, onClose: cerrar)
+        case .prestamo: DetallePrestamoView(prestamoId: Int(d.ref) ?? 0, onClose: cerrar)
+        case .meta: DetalleMetaView(metaId: Int(d.ref) ?? 0, onClose: cerrar)
+        case .movimiento: DetalleMovimientoView(movId: d.ref, onClose: cerrar)
+        }
+    }
+
     // Cada hoja de agregar, con su cierre y navegación al chooser.
     @ViewBuilder private func hojaVista(_ cual: HojaActiva) -> some View {
         let cerrar = { hoja = nil }
@@ -100,9 +121,9 @@ struct RootView: View {
     private var appTabs: some View {
         ZStack(alignment: .bottom) {
             switch tab {
-            case 1: MovsView(onNuevo: { hoja = .nuevo })
-            case 2: CuentasView(abrirTendencia: { tendencia = true }, onNuevo: { hoja = .chooser })
-            case 3: PlanView(onNuevo: { s in hoja = s == 0 ? .categoria : .meta })
+            case 1: MovsView(onNuevo: { hoja = .nuevo }, onDetalle: { detalle = DetalleRef(tipo: .movimiento, ref: $0) })
+            case 2: CuentasView(abrirTendencia: { tendencia = true }, onNuevo: { hoja = .chooser }, onDetalle: { detalle = $0 })
+            case 3: PlanView(onNuevo: { s in hoja = s == 0 ? .categoria : .meta }, onMeta: { detalle = DetalleRef(tipo: .meta, ref: $0) })
             case 4: PerfilView()
             default: DashboardView()
             }
@@ -132,6 +153,9 @@ struct RootView: View {
                     .background(Color.scr.ignoresSafeArea())
                     .transition(.move(edge: .bottom))
             }
+        }
+        .fullScreenCover(item: $detalle) { d in
+            detalleVista(d).environmentObject(estado)
         }
     }
 }
