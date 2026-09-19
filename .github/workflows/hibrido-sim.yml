@@ -13,8 +13,8 @@ on:
 
 jobs:
   sim:
-    runs-on: macos-14
-    timeout-minutes: 40
+    runs-on: macos-15   # Apple Silicon (arm64), como el device: evita el segfault
+    timeout-minutes: 40  # de @Published del simulador x86_64
     defaults:
       run:
         working-directory: hibrido
