@@ -44,9 +44,12 @@ struct CNCategoria: Decodable { var nombre: String = ""; var color: String = "#e
         icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "tag.fill" }
     enum K: String, CodingKey { case nombre, color, icono } }
 
-struct CNTarjeta: Decodable { var saldo: Double = 0
-    init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self); saldo = (try? c.decodeIfPresent(Double.self, forKey: .saldo)) ?? 0 }
-    enum K: String, CodingKey { case saldo } }
+struct CNTarjeta: Decodable { var id: Int = 0; var nombre: String = ""; var saldo: Double = 0
+    init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
+        id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
+        nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
+        saldo = (try? c.decodeIfPresent(Double.self, forKey: .saldo)) ?? 0 }
+    enum K: String, CodingKey { case id, nombre, saldo } }
 
 struct CNPrestamo: Decodable { var total: Double = 0; var pagado: Double = 0; var sentido: String = "meDeben"
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
