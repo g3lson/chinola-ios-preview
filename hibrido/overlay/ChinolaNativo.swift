@@ -3185,9 +3185,12 @@ struct CNPerfil: View {
         let tinta = f.tinta.isEmpty ? CNC.ink : cnColor(hexString: f.tinta)
         return HStack(spacing: 13) {
             // El icono en su cuadro de color, como en los Ajustes del teléfono:
-            // la fila se encuentra por el color antes que por el texto.
-            cnGlifo(f.icono, tam: 17, grosor: 1.8)
+            // la fila se encuentra por el color antes que por el texto. Viene
+            // como trazo SVG (el mismo que dibuja la web), no como nombre.
+            CNSVGShape(d: f.icono)
+                .stroke(style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
                 .foregroundColor(f.fg.isEmpty ? tinta : cnColor(hexString: f.fg))
+                .frame(width: 18, height: 18)
                 .frame(width: 30, height: 30)
                 .background(f.bg.isEmpty ? CNC.soft : cnColor(hexString: f.bg),
                             in: RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -3195,13 +3198,14 @@ struct CNPerfil: View {
                 Text(f.label).font(.system(size: 16)).foregroundColor(tinta).lineLimit(1)
                 if !f.sub.isEmpty {
                     Text(f.sub).font(.system(size: 12)).foregroundColor(CNC.pmut)
-                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1).truncationMode(.tail)
                 }
             }
+            .layoutPriority(1)
             Spacer(minLength: 8)
             if !f.valor.isEmpty {
                 Text(f.valor).font(.system(size: 14)).foregroundColor(CNC.pmut)
-                    .lineLimit(1).truncationMode(.tail)
+                    .lineLimit(1).truncationMode(.tail).layoutPriority(0)
             }
             if f.entra || !f.lista.isEmpty {
                 Image(systemName: f.lista.isEmpty ? "chevron.right" : "chevron.up.chevron.down")
