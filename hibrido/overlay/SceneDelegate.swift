@@ -63,6 +63,11 @@ class TestVC: CAPBridgeViewController {
         }
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        barra.ajustar()
+    }
+
     private func conectarAcciones() {
         datos.onNuevoMov = { [weak self] in guard let s = self else { return }
             s.presentar(AnyView(CNNuevoMov(datos: s.datos, onClose: { s.cerrar() }))) }

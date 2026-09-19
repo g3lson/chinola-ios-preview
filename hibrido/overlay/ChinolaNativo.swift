@@ -631,18 +631,36 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     let barra = UITabBar()
     private var ids: [String] = []
     private var conTitulos = true
+    private var altoC: NSLayoutConstraint?
+    private weak var anfitriona: UIView?
     var alTocar: (String) -> Void = { _ in }
 
     func montar(en vista: UIView) {
         barra.translatesAutoresizingMaskIntoConstraints = false
         barra.delegate = self
         vista.addSubview(barra)
+        // El alto a mano. Una UITabBar SUELTA (fuera de un UITabBarController)
+        // recibe el margen seguro de abajo pero NO lo suma a su alto: se queda
+        // en 49 pt, le descuenta los 34 del indicador y deja 15 para el
+        // contenido; ahí es donde el rótulo se subía encima del icono.
+        let alto = barra.heightAnchor.constraint(equalToConstant: 49)
+        altoC = alto
+        anfitriona = vista
         NSLayoutConstraint.activate([
             barra.leadingAnchor.constraint(equalTo: vista.leadingAnchor),
             barra.trailingAnchor.constraint(equalTo: vista.trailingAnchor),
-            barra.bottomAnchor.constraint(equalTo: vista.bottomAnchor)
+            barra.bottomAnchor.constraint(equalTo: vista.bottomAnchor),
+            alto
         ])
         rehacer()
+        ajustar()
+    }
+
+    /// Hay que llamarla cuando cambie el margen seguro (al girar, al aparecer).
+    func ajustar() {
+        let abajo = anfitriona?.safeAreaInsets.bottom ?? 0
+        let nuevo = (conTitulos ? 56 : 49) + abajo
+        if altoC?.constant != nuevo { altoC?.constant = nuevo }
     }
 
     private func rehacer() {
@@ -662,7 +680,7 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
 
     /// Pestaña activa, títulos y colores del tema.
     func pintar(activa: String, titulos: Bool) {
-        if titulos != conTitulos { conTitulos = titulos; rehacer() }
+        if titulos != conTitulos { conTitulos = titulos; rehacer(); ajustar() }
         barra.tintColor = UIColor(CNC.pos)
         barra.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
         if let i = ids.firstIndex(of: activa), let items = barra.items, i < items.count,
@@ -671,7 +689,7 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         }
     }
 
-    var alto: CGFloat { barra.frame.height }
+    var alto: CGFloat { max(barra.frame.height, altoC?.constant ?? 49) }
 
     func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
         guard item.tag >= 0, item.tag < ids.count else { return }
