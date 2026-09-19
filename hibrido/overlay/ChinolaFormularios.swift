@@ -9,6 +9,8 @@ import UIKit
 struct CNHoja<Content: View>: View {
     let titulo: String
     var guardarTexto: String = "Guardar"
+    /// Cuando falta algo imprescindible, el botón se ve apagado y no responde.
+    var guardarActivo: Bool = true
     var onClose: () -> Void
     var onGuardar: () -> Void
     @ViewBuilder var content: () -> Content
@@ -22,13 +24,36 @@ struct CNHoja<Content: View>: View {
                     VStack(spacing: 16) { content(); Color.clear.frame(height: 24) }
                         .padding(.horizontal, 16).padding(.top, 4)
                 }
+                .cnTeclado()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(CNC.scr.ignoresSafeArea())
         .environment(\.locale, Locale(identifier: "es_DO"))
     }
 
-    private var cabecera: some View { CNHojaCabecera(titulo: titulo, guardarTexto: guardarTexto, onClose: onClose, onGuardar: onGuardar) }
+    private var cabecera: some View {
+        CNHojaCabecera(titulo: titulo, guardarTexto: guardarTexto, guardarActivo: guardarActivo,
+                       onClose: onClose, onGuardar: onGuardar)
+    }
+}
+
+func cnCerrarTeclado() {
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+}
+
+extension View {
+    /// Teclado como en las apps de Apple: se va al arrastrar la lista y trae
+    /// su botón «Listo» encima.
+    func cnTeclado() -> some View {
+        self
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Listo") { cnCerrarTeclado() }.font(.system(size: 16, weight: .semibold))
+                }
+            }
+    }
 }
 
 /// Cabecera de hoja: tirador, cerrar en vidrio y el título. Sin más ruido: la
@@ -36,6 +61,7 @@ struct CNHoja<Content: View>: View {
 struct CNHojaCabecera: View {
     let titulo: String
     var guardarTexto: String = "Guardar"
+    var guardarActivo: Bool = true
     var onClose: () -> Void
     var onGuardar: (() -> Void)? = nil
     var body: some View {
@@ -59,8 +85,11 @@ struct CNHojaCabecera: View {
                             Text(guardarTexto).font(.system(size: 15, weight: .bold))
                                 .foregroundColor(Color(cnHex: 0x20180a))
                                 .padding(.horizontal, 16).frame(height: 36)
-                                .cnVidrio(Capsule(), tinte: CNC.acc)
-                        }.buttonStyle(CNPulsable())
+                                .cnVidrio(Capsule(), tinte: guardarActivo ? CNC.acc : CNC.line)
+                        }
+                        .buttonStyle(CNPulsable())
+                        .disabled(!guardarActivo)
+                        .opacity(guardarActivo ? 1 : 0.55)
                     }
                 }
             }.padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 14)
@@ -161,6 +190,57 @@ struct CNPasoBoton: View {
             Image(systemName: icono).font(.system(size: 16, weight: .bold)).foregroundColor(CNC.ink)
                 .frame(width: 40, height: 40).cnVidrio(Circle())
         }.buttonStyle(.plain)
+    }
+}
+
+/// Fichas de una fila: tipo de cuenta, sentido de un préstamo… Mismo aspecto
+/// que las de categoría, con háptica y borde que se desvanece.
+struct CNFichas: View {
+    let opciones: [(String, String, String)]     // (id, texto, icono)
+    @Binding var elegida: String
+    var color: Color = cnColor(0x093a20)
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(opciones, id: \.0) { o in
+                    let puesta = elegida == o.0
+                    Button {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        elegida = o.0
+                    } label: {
+                        HStack(spacing: 7) {
+                            cnGlifo(o.2, tam: 14, grosor: 2.2).foregroundColor(puesta ? .white : color)
+                            Text(o.1).font(.system(size: 14, weight: .semibold)).foregroundColor(puesta ? .white : CNC.ink)
+                        }
+                        .padding(.horizontal, 13).padding(.vertical, 9)
+                        .background(
+                            Capsule().fill(puesta ? color : CNC.card)
+                                .overlay(Capsule().stroke(puesta ? Color.clear : CNC.line, lineWidth: 0.8))
+                        )
+                    }.buttonStyle(CNPulsable())
+                }
+            }
+            .padding(.leading, 2).padding(.trailing, 16).padding(.vertical, 2)
+        }
+        .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.92),
+                                     .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
+    }
+}
+
+/// Varios campos de texto en una sola tarjeta, separados por una línea fina,
+/// como los formularios del sistema.
+struct CNGrupoCampos: View {
+    let campos: [(String, Binding<String>, UIKeyboardType)]
+    var body: some View {
+        cnGrupoHoja {
+            ForEach(campos.indices, id: \.self) { i in
+                if i > 0 { cnDiviHoja() }
+                TextField(campos[i].0, text: campos[i].1)
+                    .font(.system(size: 16)).foregroundColor(CNC.ink)
+                    .keyboardType(campos[i].2)
+                    .padding(.horizontal, 15).padding(.vertical, 14)
+            }
+        }
     }
 }
 
@@ -294,21 +374,12 @@ struct CNFormCuenta: View {
     private let clases: [(String, String, String)] = [("banco", "Banco", "banco"), ("efectivo", "Efectivo", "billete"), ("billetera", "Billetera", "telefono"), ("inversion", "Inversión", "grafico"), ("ahorro", "Ahorro", "hucha")]
 
     var body: some View {
-        CNHoja(titulo: "Nueva cuenta", onClose: onClose, onGuardar: guardar) {
-            CNCampoTexto(placeholder: "Nombre (ej. Cuenta principal)", texto: $nombre)
-            CNCampoTexto(placeholder: "Banco (opcional)", texto: $banco)
-            VStack(spacing: 6) { cnHojaTitulo("Saldo actual"); CNMontoCampo(monto: $saldo) }
-            VStack(alignment: .leading, spacing: 8) {
-                cnHojaTitulo("Tipo")
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) { ForEach(clases, id: \.0) { c in
-                        HStack(spacing: 6) { cnGlifo(c.2, tam: 15); Text(c.1).font(.system(size: 13.5, weight: .semibold)) }
-                            .foregroundColor(clase == c.0 ? .white : CNC.ink).padding(.horizontal, 13).padding(.vertical, 9)
-                            .background(clase == c.0 ? cnColor(0x093a20) : CNC.card).clipShape(Capsule())
-                            .overlay(Capsule().stroke(CNC.line, lineWidth: clase == c.0 ? 0 : 0.5)).onTapGesture { clase = c.0 }
-                    } }.padding(.horizontal, 2)
-                }
-            }
+        CNHoja(titulo: "Nueva cuenta", guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+               onClose: onClose, onGuardar: guardar) {
+            CNGrupoCampos(campos: [("Nombre (ej. Cuenta principal)", $nombre, .default),
+                                   ("Banco (opcional)", $banco, .default)])
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Saldo actual"); CNMontoCampo(monto: $saldo) }
+            VStack(alignment: .leading, spacing: 8) { cnHojaTitulo("Tipo"); CNFichas(opciones: clases, elegida: $clase) }
             CNColorFila(color: $color)
         }
     }

@@ -1254,6 +1254,7 @@ struct CNNuevoMov: View {
                         Color.clear.frame(height: 20)
                     }.padding(.horizontal, 16)
                 }
+                .cnTeclado()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(CNC.scr.ignoresSafeArea())
