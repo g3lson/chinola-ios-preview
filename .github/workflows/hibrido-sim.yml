@@ -33,13 +33,14 @@ jobs:
 
       - name: Superponer arranque + UI nativa real (barra + Movimientos)
         run: |
-          # SceneDelegate de prueba (arranca en Movimientos nativo con datos de
-          # ejemplo) + se ANEXA ChinolaNativo.swift (tipos CN* reales) al mismo
-          # archivo, que ya está en el pbxproj (así no hay que tocar el proyecto).
           cp overlay/SceneDelegate.swift ios/App/App/SceneDelegate.swift
-          tail -n +3 overlay/ChinolaNativo.swift >> ios/App/App/SceneDelegate.swift
+          # ChinolaNativo.swift como ARCHIVO PROPIO del proyecto (no anexado, que
+          # miscompilaba @Published). Se añade al pbxproj con la gema xcodeproj.
+          cp overlay/ChinolaNativo.swift ios/App/App/ChinolaNativo.swift
+          gem install xcodeproj --no-document --quiet
+          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); g=(p.main_group['App']||p.main_group); f=g.new_file('App/ChinolaNativo.swift'); p.targets.first.add_file_references([f]); p.save"
           /usr/libexec/PlistBuddy -c "Delete :UISceneStoryboardFile" ios/App/App/Info.plist 2>/dev/null || true
-          echo "=== líneas del SceneDelegate combinado ==="; wc -l ios/App/App/SceneDelegate.swift
+          echo "=== ChinolaNativo en el proyecto? ==="; grep -c "ChinolaNativo.swift" ios/App/App.xcodeproj/project.pbxproj
 
       - name: Compilar para simulador
         run: |
