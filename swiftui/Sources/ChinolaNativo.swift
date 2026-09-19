@@ -182,10 +182,28 @@ func cnDiaLargo(_ iso: String) -> String {
 
 // Estado compartido: la libreta que la web empuja + las acciones que rebotan a
 // la web (abrir "nuevo movimiento", abrir el detalle).
+struct CNPerfilInfo: Decodable {
+    var nombre: String = "Tú"; var email: String = ""; var plan: String = "Gratis"; var libretas: Int = 1; var local: Bool = true
+    init() {}
+    init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
+        nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? "Tú"
+        email = (try? c.decodeIfPresent(String.self, forKey: .email)) ?? ""
+        plan = (try? c.decodeIfPresent(String.self, forKey: .plan)) ?? "Gratis"
+        libretas = (try? c.decodeIfPresent(Int.self, forKey: .libretas)) ?? 1
+        local = (try? c.decodeIfPresent(Bool.self, forKey: .local)) ?? true }
+    enum K: String, CodingKey { case nombre, email, plan, libretas, local }
+    static func desde(json: String) -> CNPerfilInfo? {
+        guard let d = json.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(CNPerfilInfo.self, from: d)
+    }
+}
+
 final class CNDatos: ObservableObject {
     @Published var libreta = CNLibreta()
+    @Published var perfil = CNPerfilInfo()
     var onNuevoMov: () -> Void = {}
     var onDetalleMov: (String) -> Void = { _ in }
+    var onPerfil: (String) -> Void = { _ in }
     var onTendencia: () -> Void = {}
     var onAgregar: () -> Void = {}
     var onNuevaCategoria: () -> Void = {}
@@ -195,6 +213,7 @@ final class CNDatos: ObservableObject {
     var onAbrirPrestamo: (Int) -> Void = { _ in }
     var onAbrirMeta: (Int) -> Void = { _ in }
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
+    func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p } }
 }
 
 // ── Pantalla «Movimientos» NATIVA ──────────────────────────────────────────
@@ -823,3 +842,98 @@ struct CNPlan: View {
             .frame(width: 46, height: 46).background(CNC.acc).clipShape(Circle()).shadow(color: CNC.acc.opacity(0.4), radius: 8, y: 3) }.buttonStyle(.plain)
     }
 }
+
+// ── Pantalla «Perfil» NATIVA ────────────────────────────────────────────────
+struct CNPerfil: View {
+    @ObservedObject var datos: CNDatos
+
+    var body: some View {
+        let p = datos.perfil
+        return ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 18) {
+                // Marca.
+                HStack(spacing: 10) {
+                    Circle().fill(cnColor(0x093a20)).frame(width: 30, height: 30)
+                        .overlay(Circle().fill(CNC.acc).frame(width: 14, height: 14))
+                    Text("Chinola").font(.system(size: 22, weight: .heavy)).foregroundColor(CNC.ink)
+                }.padding(.top, 8)
+
+                // Tarjeta del usuario.
+                HStack(spacing: 13) {
+                    Text(String(p.nombre.prefix(1)).uppercased()).font(.system(size: 20, weight: .heavy)).foregroundColor(Color(cnHex: 0x20180a))
+                        .frame(width: 48, height: 48).background(CNC.acc).clipShape(Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(p.nombre).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
+                        Text(p.local ? "Los datos se quedan en este dispositivo" : (p.email.isEmpty ? "Cuenta" : p.email))
+                            .font(.system(size: 12.5)).foregroundColor(CNC.pmut).lineLimit(1)
+                    }
+                    Spacer(minLength: 6)
+                    Text(p.local ? "Local" : p.plan).font(.system(size: 12, weight: .bold)).foregroundColor(CNC.pmut)
+                        .padding(.horizontal, 10).padding(.vertical, 5).background(CNC.soft).clipShape(Capsule())
+                }.tarjetaCN()
+
+                seccion("Cuenta")
+                grupo {
+                    fila("person.fill", CNC.pos, "Mi nombre", p.nombre, "nombre")
+                    div()
+                    fila("book.closed.fill", CNC.info, "Libretas y permisos", "\(p.libretas)", "libretas")
+                }
+                seccion("Preferencias")
+                grupo {
+                    fila("paintpalette.fill", cnColor(0x825eb9), "Personalización", "Chinola", "personaliza")
+                    div()
+                    fila("character.bubble.fill", CNC.info, "Idioma", "Español", "idioma")
+                    div()
+                    fila("bell.fill", CNC.neg, "Notificaciones", "Solo en la app", "notis")
+                }
+                seccion("Datos")
+                grupo {
+                    fila("square.and.arrow.down.fill", cnColor(0x1fa9a0), "Exportar esta libreta", "", "exportar")
+                    div()
+                    fila("square.and.arrow.up.fill", cnColor(0xe0a92e), "Importar movimientos", "CSV", "importar")
+                }
+                seccion("Sobre Chinola")
+                grupo {
+                    fila("play.circle.fill", CNC.pos, "Ver el tour otra vez", "", "tour")
+                    div()
+                    fila("questionmark.circle.fill", CNC.info, "Ayuda y guía", "", "ayuda")
+                    div()
+                    fila("checkmark.shield.fill", cnColor(0x825eb9), "Privacidad y términos", "", "privacidad")
+                }
+                Text("Chinola · nativo").font(.system(size: 12)).foregroundColor(CNC.pmut).padding(.leading, 4)
+
+                Color.clear.frame(height: 120)
+            }
+            .padding(.horizontal, 14).padding(.top, 6)
+        }
+        .background(CNC.scr.ignoresSafeArea())
+    }
+
+    private func seccion(_ t: String) -> some View {
+        Text(t.uppercased()).font(.system(size: 12.5, weight: .semibold)).tracking(0.3).foregroundColor(CNC.pmut)
+            .padding(.leading, 16).padding(.bottom, -6).frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private func grupo<C: View>(@ViewBuilder _ c: () -> C) -> some View {
+        VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
+    }
+    private func div() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 57) }
+    private func fila(_ icono: String, _ tinte: Color, _ titulo: String, _ valor: String, _ id: String) -> some View {
+        Button { datos.onPerfil(id) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icono).font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
+                    .frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink)
+                Spacer(minLength: 8)
+                if !valor.isEmpty { Text(valor).font(.system(size: 14)).foregroundColor(CNC.pmut) }
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6))
+            }.padding(.horizontal, 14).padding(.vertical, 11)
+        }.buttonStyle(.plain)
+    }
+}
+
+extension View { func tarjetaCN() -> some View {
+    self.padding(14).frame(maxWidth: .infinity)
+        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
+} }
