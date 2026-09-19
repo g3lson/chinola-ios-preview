@@ -27,7 +27,7 @@ struct Chino: View {
             RoundedRectangle(cornerRadius: lado * 0.12)
                 .fill(Color(hex: 0x243a1a))
                 .frame(width: lado * 0.30, height: lado * 0.15)
-                .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: lado * 0.14, bottomTrailingRadius: lado * 0.14))
+                .clipShape(CNRedondo(radio: lado * 0.14, esquinas: [.bottomLeft, .bottomRight]))
                 .offset(y: lado * 0.22)
         }
         .frame(width: lado, height: lado)

@@ -126,7 +126,7 @@ extension View {
         self
             .frame(maxWidth: .infinity, maxHeight: grande ? .infinity : nil, alignment: .top)
             .background(
-                Color.scr.clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous))
+                Color.scr.clipShape(CNRedondo(radio: 28, esquinas: [.topLeft, .topRight]))
             )
             .ignoresSafeArea(edges: .bottom)
             .padding(.top, grande ? 46 : 0)

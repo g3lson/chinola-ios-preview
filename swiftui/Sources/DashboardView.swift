@@ -78,7 +78,7 @@ struct DashboardView: View {
             LinearGradient(colors: [Color(hex: 0xf0b638), Color(hex: 0xe0a92e), Color(hex: 0x2f8a44), Color(hex: 0x137d41)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
         )
-        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 30, bottomTrailingRadius: 30, style: .continuous))
+        .clipShape(CNRedondo(radio: 30, esquinas: [.bottomLeft, .bottomRight]))
     }
 
     private func navBtn(_ icono: String, _ tap: @escaping () -> Void) -> some View {

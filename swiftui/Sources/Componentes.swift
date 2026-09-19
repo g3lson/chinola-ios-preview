@@ -35,7 +35,7 @@ struct CabeceraFina: View {
         .padding(.bottom, 14)
         .frame(maxWidth: .infinity)
         .background(Color.side)
-        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 26, bottomTrailingRadius: 26, style: .continuous))
+        .clipShape(CNRedondo(radio: 26, esquinas: [.bottomLeft, .bottomRight]))
     }
 }
 
