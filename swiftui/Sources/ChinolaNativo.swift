@@ -127,6 +127,10 @@ struct CNLibreta: Decodable {
     }
     var presupuestoTotal: Double { categorias.filter { $0.tipo == "Gasto" }.reduce(0) { $0 + $1.limite } }
     var deudaTarjetas: Double { tarjetas.reduce(0) { $0 + $1.saldo } }
+    private var mesActual: String { String(cnHoy().prefix(7)) }
+    var ingresosMes: Double { tx.filter { $0.esIngreso && $0.fecha.hasPrefix(mesActual) }.reduce(0) { $0 + abs($1.monto) } }
+    var gastosMes: Double { tx.filter { $0.esGasto && $0.fecha.hasPrefix(mesActual) }.reduce(0) { $0 + abs($1.monto) } }
+    var balanceMes: Double { ingresosMes - gastosMes }
     func movimientosDe(_ medio: String) -> [CNMov] { tx.filter { $0.medio == medio || $0.destino == medio }.sorted { $0.fecha > $1.fecha } }
     func nombreMedio(_ medio: String) -> String {
         if medio.hasPrefix("cuenta:"), let id = Int(medio.dropFirst(7)), let c = cuentas.first(where: { $0.id == id }) { return c.nombre }
@@ -221,6 +225,8 @@ final class CNDatos: ObservableObject {
     var onAbrirMeta: (Int) -> Void = { _ in }
     var onAccion: (String, String) -> Void = { _, _ in }   // (tipo, id) → flujo web
     var onCrearMov: ([String: Any]) -> Void = { _ in }     // guardar un movimiento nativo → web
+    var onSelector: () -> Void = {}
+    var onVerPresupuesto: () -> Void = {}
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
     func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p } }
 }
@@ -1207,5 +1213,93 @@ struct CNNuevoMov: View {
             "medio": "cuenta:\(cuentaId)", "recurrente": repetir
         ])
         onClose()
+    }
+}
+
+// ── Pantalla «Resumen» NATIVA ───────────────────────────────────────────────
+struct CNResumen: View {
+    @ObservedObject var datos: CNDatos
+    @State private var mesOffset = 0
+
+    private var nombreMes: String {
+        let d = Calendar.current.date(byAdding: .month, value: mesOffset, to: Date()) ?? Date()
+        let f = DateFormatter(); f.locale = Locale(identifier: "es"); f.dateFormat = "MMMM"
+        return f.string(from: d).capitalized
+    }
+
+    var body: some View {
+        let lb = datos.libreta
+        return ScrollView(showsIndicators: false) {
+            VStack(spacing: 14) {
+                cabecera(lb)
+                VStack(spacing: 14) {
+                    if lb.cuentas.isEmpty {
+                        tarjeta { VStack(alignment: .leading, spacing: 10) {
+                            Text("Empieza por aquí").font(.system(size: 18, weight: .bold)).foregroundColor(CNC.ink)
+                            Text("Dile cuánto tienes ahora mismo y la app empieza a cuadrar sola. No tiene que ser exacto.").font(.system(size: 14)).foregroundColor(CNC.pmut).fixedSize(horizontal: false, vertical: true)
+                            Button { datos.onAgregar() } label: { Text("Poner lo que tengo").font(.system(size: 15, weight: .bold)).foregroundColor(Color(cnHex: 0x20180a)).frame(maxWidth: .infinity).padding(.vertical, 14).background(CNC.acc).clipShape(RoundedRectangle(cornerRadius: 26)) }.buttonStyle(.plain).padding(.top, 2)
+                        } }
+                    }
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                        kpi("Ingresos del mes", cnDinero(lb.ingresosMes), CNC.pos, "del mes")
+                        kpi("Gastos del mes", cnDinero(lb.gastosMes), CNC.neg, lb.ingresosMes > 0 ? "\(Int((lb.gastosMes / lb.ingresosMes * 100).rounded()))% de tus ingresos" : "de tus ingresos")
+                        kpi("Deuda total", cnDinero(lb.deudaTotal), cnColor(0xe0a92e), "tarjetas + préstamos")
+                        kpi("Patrimonio", cnDinero(lb.patrimonio), CNC.ink, "cuentas − deudas")
+                    }
+                    tarjeta { VStack(alignment: .leading, spacing: 12) {
+                        Text("Evolución en el tiempo").font(.system(size: 15, weight: .semibold)).foregroundColor(CNC.ink)
+                        HStack(spacing: 16) { leyenda(CNC.pos, "Ingresos", cnDinero(lb.ingresosMes)); leyenda(CNC.neg, "Gastos", cnDinero(lb.gastosMes)) }
+                        CNArea(valores: lb.tendencia().map { $0.valor }).frame(height: 90)
+                    }.frame(maxWidth: .infinity, alignment: .leading) }
+                }.padding(.horizontal, 16)
+                Color.clear.frame(height: 120)
+            }
+        }
+        .background(CNC.scr.ignoresSafeArea())
+    }
+
+    private func cabecera(_ lb: CNLibreta) -> some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Button { datos.onSelector() } label: {
+                    HStack(spacing: 6) { Image(systemName: "house.fill").font(.system(size: 12, weight: .semibold)); Text(lb.nombre).font(.system(size: 14, weight: .bold)).lineLimit(1); Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold)) }
+                        .foregroundColor(.white).padding(.horizontal, 13).padding(.vertical, 8).background(Color.black.opacity(0.16)).clipShape(Capsule())
+                }.buttonStyle(.plain)
+                Spacer(minLength: 6)
+                HStack(spacing: 6) {
+                    nav("chevron.left") { mesOffset -= 1 }
+                    Text(nombreMes).font(.system(size: 13, weight: .bold)).foregroundColor(.white).lineLimit(1)
+                    nav("chevron.right") { if mesOffset < 0 { mesOffset += 1 } }
+                }
+            }
+            VStack(spacing: 6) {
+                Text("TE QUEDA ESTE MES").font(.system(size: 11, weight: .heavy)).tracking(0.5).foregroundColor(cnColor(0x0f3d1e).opacity(0.65))
+                Text(cnDinero(lb.balanceMes)).font(.system(size: 42, weight: .heavy)).foregroundColor(cnColor(0x0d3a1c)).minimumScaleFactor(0.6).lineLimit(1)
+                HStack(spacing: 18) {
+                    HStack(spacing: 5) { Image(systemName: "arrow.up").font(.system(size: 12, weight: .heavy)).foregroundColor(cnColor(0x0d5a2b)); Text(cnDinero(lb.ingresosMes)).font(.system(size: 15, weight: .heavy)).foregroundColor(cnColor(0x0d3a1c)) }
+                    HStack(spacing: 5) { Image(systemName: "arrow.down").font(.system(size: 12, weight: .heavy)).foregroundColor(cnColor(0xb43a2a)); Text(cnDinero(lb.gastosMes)).font(.system(size: 15, weight: .heavy)).foregroundColor(cnColor(0x0d3a1c)) }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity).padding(.top, 58).padding(.bottom, 20).padding(.horizontal, 16)
+        .background(LinearGradient(colors: [cnColor(0xf0b638), cnColor(0xe0a92e), cnColor(0x2f8a44), cnColor(0x137d41)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 30, bottomTrailingRadius: 30, style: .continuous))
+        .ignoresSafeArea(edges: .top)
+    }
+    private func nav(_ ic: String, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) { Image(systemName: ic).font(.system(size: 12, weight: .bold)).foregroundColor(.white).frame(width: 30, height: 30).background(Color.black.opacity(0.16)).clipShape(Circle()) }.buttonStyle(.plain)
+    }
+    private func kpi(_ t: String, _ v: String, _ color: Color, _ d: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(t).font(.system(size: 14, weight: .medium)).foregroundColor(CNC.pmut)
+            Text(v).font(.system(size: 24, weight: .heavy)).foregroundColor(color).minimumScaleFactor(0.6).lineLimit(1)
+            Text(d).font(.system(size: 12)).foregroundColor(CNC.pmut).lineLimit(1)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(15).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
+    }
+    private func leyenda(_ c: Color, _ t: String, _ v: String) -> some View {
+        HStack(spacing: 6) { Circle().fill(c).frame(width: 9, height: 9); Text(t).font(.system(size: 13)).foregroundColor(CNC.pmut); Text(v).font(.system(size: 13, weight: .bold)).foregroundColor(CNC.ink) }
+    }
+    private func tarjeta<C: View>(@ViewBuilder _ c: () -> C) -> some View {
+        c().padding(16).frame(maxWidth: .infinity, alignment: .leading).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
     }
 }
