@@ -4,37 +4,33 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Chinola Sim</title>
-  <style>html,body{margin:0;height:100%;background:#f7f6ee;font-family:-apple-system,system-ui,sans-serif}</style>
+  <style>html,body{margin:0;min-height:100%;background:#f7f6ee;color:#111;font-family:-apple-system,system-ui,sans-serif;padding:60px 16px}
+  h2{font-size:20px} pre{white-space:pre-wrap;word-break:break-word;font-size:13px}</style>
 </head>
 <body>
+  <h2>Diagnóstico del puente</h2>
+  <pre id="s">arrancando…</pre>
   <script>
-    // Prueba del PUENTE de datos web→nativo EXACTO de la app: empuja el JSON de
-    // la libreta por el plugin Nativo.datos, igual que hace menuNativoDatos.
-    var LIBRETA = {
-      nombre: "Personal",
-      cuentas: [{ id: 1, nombre: "Cuenta principal", banco: "Banreservas", saldo: 48200, color: "#137d41", clase: "banco", icono: "banco" }],
-      categorias: [
-        { nombre: "Alimentación", tipo: "Gasto", color: "#e0a92e", icono: "comida" },
-        { nombre: "Transporte", tipo: "Gasto", color: "#2f6fd6", icono: "auto" },
-        { nombre: "Servicios", tipo: "Gasto", color: "#825eb9", icono: "rayo" }
-      ],
-      tx: [
-        { id: "m1", concepto: "Sueldo quincena", categoria: "Ingresos", tipo: "Ingreso", monto: 30000, fecha: "2026-09-18", medio: "cuenta:1" },
-        { id: "m2", concepto: "Supermercado Nacional", categoria: "Alimentación", tipo: "Gasto Variable", monto: 2400, fecha: "2026-09-18", medio: "cuenta:1" },
-        { id: "m3", concepto: "Uber al trabajo", categoria: "Transporte", tipo: "Gasto Variable", monto: 350, fecha: "2026-09-18", medio: "cuenta:1" },
-        { id: "m4", concepto: "Café con Ana", categoria: "Alimentación", tipo: "Gasto Variable", monto: 420, fecha: "2026-09-17", medio: "cuenta:1" },
-        { id: "m5", concepto: "Luz (EdeEste)", categoria: "Servicios", tipo: "Gasto Fijo", monto: 1850, fecha: "2026-09-17", medio: "cuenta:1" }
-      ]
-    };
-    function empuja() {
+    var LIBRETA = { nombre:"Personal", cuentas:[{id:1,nombre:"Cuenta",saldo:100,color:"#137d41",clase:"banco",icono:"banco"}],
+      tx:[{id:"m1",concepto:"Sueldo",categoria:"Ingresos",tipo:"Ingreso",monto:30000,fecha:"2026-09-18",medio:"cuenta:1"}] };
+    var log = [];
+    function p(x){ log.push(x); document.getElementById('s').textContent = log.join('\n'); }
+    p('Capacitor: ' + (typeof window.Capacitor));
+    if (window.Capacitor) {
+      p('isNativePlatform: ' + (window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()));
+      p('registerPlugin: ' + (typeof window.Capacitor.registerPlugin));
+      p('Plugins: ' + Object.keys(window.Capacitor.Plugins || {}).join(', '));
+    }
+    (async function(){
       try {
         var N = window.Capacitor.registerPlugin('Nativo');
-        N.datos({ json: JSON.stringify(LIBRETA), perfil: JSON.stringify({ nombre: "Gelson" }) });
-      } catch (e) { document.body.innerHTML = '<pre>error: ' + e + '</pre>'; }
-    }
-    // Empuja al cargar y otra vez por si el plugin monta un pelín después.
-    empuja();
-    setTimeout(empuja, 800);
+        p('llamando Nativo.datos…');
+        var r = await N.datos({ json: JSON.stringify(LIBRETA), perfil: '{}' });
+        p('OK datos() resolvió: ' + JSON.stringify(r));
+      } catch (e) {
+        p('ERROR: ' + (e && e.message ? e.message : e));
+      }
+    })();
   </script>
 </body>
 </html>

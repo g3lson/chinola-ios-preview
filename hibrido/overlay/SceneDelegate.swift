@@ -21,17 +21,7 @@ class TestVC: CAPBridgeViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Movimientos nativa (real) encima del webview, opaca. SIN precargar.
-        let host = UIHostingController(rootView: AnyView(CNMovs(datos: datos)))
-        host.view.backgroundColor = UIColor(CNC.scr)
-        addChild(host); view.addSubview(host.view); host.didMove(toParent: self)
-        host.view.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            host.view.topAnchor.constraint(equalTo: view.topAnchor),
-            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
+        // DIAGNÓSTICO: NO se tapa el webview, para ver el resultado del puente.
 
         // Barra de menú nativa REAL.
         let barra = UIHostingController(rootView: CNBarraMenu(estado: estado))
