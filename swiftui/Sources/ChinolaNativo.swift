@@ -28,36 +28,58 @@ enum CNC {
 }
 
 // ── Modelos (tolerantes: campos faltantes toman un valor por defecto) ───────
-struct CNCuenta: Decodable { var id: Int = 0; var nombre: String = ""; var saldo: Double = 0; var color: String = "#137d41"; var icono: String = "banknote.fill"
+struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var color: String = "#137d41"; var clase: String = "banco"; var icono: String = "banknote.fill"
+    init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
+        id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
+        nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
+        banco = (try? c.decodeIfPresent(String.self, forKey: .banco)) ?? ""
+        saldo = (try? c.decodeIfPresent(Double.self, forKey: .saldo)) ?? 0
+        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#137d41"
+        clase = (try? c.decodeIfPresent(String.self, forKey: .clase)) ?? "banco"
+        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "banknote.fill" }
+    enum K: String, CodingKey { case id, nombre, banco, saldo, color, clase, icono } }
+
+struct CNCategoria: Decodable { var nombre: String = ""; var tipo: String = "Gasto"; var limite: Double = 0; var color: String = "#e0a92e"; var icono: String = "tag.fill"
+    init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
+        nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
+        tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? "Gasto"
+        limite = (try? c.decodeIfPresent(Double.self, forKey: .limite)) ?? 0
+        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#e0a92e"
+        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "tag.fill" }
+    enum K: String, CodingKey { case nombre, tipo, limite, color, icono } }
+
+struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var saldo: Double = 0; var limite: Double = 0; var corte: Int = 0; var color: String = "#d55948"
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         saldo = (try? c.decodeIfPresent(Double.self, forKey: .saldo)) ?? 0
-        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#137d41"
-        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "banknote.fill" }
-    enum K: String, CodingKey { case id, nombre, saldo, color, icono } }
+        limite = (try? c.decodeIfPresent(Double.self, forKey: .limite)) ?? 0
+        corte = (try? c.decodeIfPresent(Int.self, forKey: .corte)) ?? 0
+        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#d55948" }
+    enum K: String, CodingKey { case id, nombre, saldo, limite, corte, color }
+    var disponible: Double { max(0, limite - saldo) } }
 
-struct CNCategoria: Decodable { var nombre: String = ""; var color: String = "#e0a92e"; var icono: String = "tag.fill"
-    init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
-        nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
-        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#e0a92e"
-        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "tag.fill" }
-    enum K: String, CodingKey { case nombre, color, icono } }
-
-struct CNTarjeta: Decodable { var id: Int = 0; var nombre: String = ""; var saldo: Double = 0
+struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var total: Double = 0; var pagado: Double = 0; var sentido: String = "meDeben"; var color: String = "#825eb9"
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
-        saldo = (try? c.decodeIfPresent(Double.self, forKey: .saldo)) ?? 0 }
-    enum K: String, CodingKey { case id, nombre, saldo } }
-
-struct CNPrestamo: Decodable { var total: Double = 0; var pagado: Double = 0; var sentido: String = "meDeben"
-    init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         total = (try? c.decodeIfPresent(Double.self, forKey: .total)) ?? 0
         pagado = (try? c.decodeIfPresent(Double.self, forKey: .pagado)) ?? 0
-        sentido = (try? c.decodeIfPresent(String.self, forKey: .sentido)) ?? "meDeben" }
-    enum K: String, CodingKey { case total, pagado, sentido }
+        sentido = (try? c.decodeIfPresent(String.self, forKey: .sentido)) ?? "meDeben"
+        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#825eb9" }
+    enum K: String, CodingKey { case id, nombre, total, pagado, sentido, color }
     var pendiente: Double { max(0, total - pagado) } }
+
+struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var color: String = "#825eb9"; var icono: String = "target"
+    init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
+        id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
+        nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
+        meta = (try? c.decodeIfPresent(Double.self, forKey: .meta)) ?? 0
+        ahorrado = (try? c.decodeIfPresent(Double.self, forKey: .ahorrado)) ?? 0
+        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#825eb9"
+        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "target" }
+    enum K: String, CodingKey { case id, nombre, meta, ahorrado, color, icono }
+    var progreso: Double { meta > 0 ? min(1, ahorrado / meta) : 0 } }
 
 struct CNMov: Decodable, Identifiable {
     var id: String = ""; var concepto: String = ""; var categoria: String = ""
@@ -84,6 +106,7 @@ struct CNLibreta: Decodable {
     var tarjetas: [CNTarjeta] = []
     var prestamos: [CNPrestamo] = []
     var categorias: [CNCategoria] = []
+    var metas: [CNMeta] = []
     var tx: [CNMov] = []
     init() {}
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
@@ -92,10 +115,17 @@ struct CNLibreta: Decodable {
         tarjetas = (try? c.decodeIfPresent([CNTarjeta].self, forKey: .tarjetas)) ?? []
         prestamos = (try? c.decodeIfPresent([CNPrestamo].self, forKey: .prestamos)) ?? []
         categorias = (try? c.decodeIfPresent([CNCategoria].self, forKey: .categorias)) ?? []
+        metas = (try? c.decodeIfPresent([CNMeta].self, forKey: .metas)) ?? []
         tx = (try? c.decodeIfPresent([CNMov].self, forKey: .tx)) ?? [] }
-    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, tx }
+    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx }
 
     func categoria(_ nombre: String) -> CNCategoria? { categorias.first { $0.nombre == nombre } }
+    func gastadoCategoria(_ nombre: String) -> Double {
+        let mes = String(cnHoy().prefix(7))
+        return tx.filter { $0.categoria == nombre && $0.esGasto && $0.fecha.hasPrefix(mes) }.reduce(0) { $0 + abs($1.monto) }
+    }
+    var presupuestoTotal: Double { categorias.filter { $0.tipo == "Gasto" }.reduce(0) { $0 + $1.limite } }
+    var deudaTarjetas: Double { tarjetas.reduce(0) { $0 + $1.saldo } }
 
     static func desde(json: String) -> CNLibreta? {
         guard let data = json.data(using: .utf8) else { return nil }
@@ -127,6 +157,10 @@ struct CNLibreta: Decodable {
     }
 }
 
+func cnHoy() -> String {
+    let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+    return f.string(from: Date())
+}
 func cnDinero(_ n: Double) -> String {
     let f = NumberFormatter(); f.numberStyle = .decimal; f.maximumFractionDigits = 0; f.groupingSeparator = ","
     return "RD$" + (f.string(from: NSNumber(value: abs(n).rounded())) ?? "0")
@@ -152,6 +186,14 @@ final class CNDatos: ObservableObject {
     @Published var libreta = CNLibreta()
     var onNuevoMov: () -> Void = {}
     var onDetalleMov: (String) -> Void = { _ in }
+    var onTendencia: () -> Void = {}
+    var onAgregar: () -> Void = {}
+    var onNuevaCategoria: () -> Void = {}
+    var onNuevaMeta: () -> Void = {}
+    var onAbrirCuenta: (Int) -> Void = { _ in }
+    var onAbrirTarjeta: (Int) -> Void = { _ in }
+    var onAbrirPrestamo: (Int) -> Void = { _ in }
+    var onAbrirMeta: (Int) -> Void = { _ in }
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
 }
 
@@ -543,5 +585,241 @@ struct CNIconoTab: View {
     let d: String
     var body: some View {
         CNSVGShape(d: d).stroke(style: StrokeStyle(lineWidth: 2.3, lineCap: .round, lineJoin: .round)).frame(width: 24, height: 24)
+    }
+}
+
+// ── Pantalla «Cuentas» NATIVA ───────────────────────────────────────────────
+struct CNCuentas: View {
+    @ObservedObject var datos: CNDatos
+    @State private var oculto = false
+    private func dinero(_ n: Double) -> String { oculto ? "RD$••••" : cnDinero(n) }
+
+    var body: some View {
+        let lb = datos.libreta
+        return ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .center, spacing: 10) {
+                    Text("Cuentas").font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
+                    Spacer(minLength: 8)
+                    circuloGlass("line.3.horizontal.decrease") {}
+                    circuloAcc("plus") { datos.onAgregar() }
+                }
+                .padding(.horizontal, 4).padding(.top, 8)
+
+                patrimonio(lb)
+
+                seccion("Cuentas") {
+                    if lb.cuentas.isEmpty { vacio("Aquí saldrán tus cuentas: efectivo, banco, ahorros.") }
+                    else { tarjetaLista { ForEach(lb.cuentas.indices, id: \.self) { i in
+                        if i > 0 { div(62) }
+                        let c = lb.cuentas[i]
+                        fila(icono: c.icono, color: cnColor(hexString: c.color), nombre: c.nombre,
+                             sub: (c.clase == "efectivo" ? "En mano" : (c.banco.isEmpty ? "Sin banco" : c.banco)),
+                             monto: dinero(c.saldo), montoColor: CNC.ink) { datos.onAbrirCuenta(c.id) }
+                    } } }
+                }
+                seccion("Tarjetas de crédito") {
+                    if lb.tarjetas.isEmpty { vacio("Aquí saldrán tus tarjetas de crédito, con su deuda y sus fechas.") }
+                    else { tarjetaLista { ForEach(lb.tarjetas.indices, id: \.self) { i in
+                        if i > 0 { div(62) }
+                        let t = lb.tarjetas[i]
+                        fila(icono: "creditcard.fill", color: cnColor(hexString: t.color), nombre: t.nombre,
+                             sub: "Disp. \(dinero(t.disponible)) · corte \(t.corte)", monto: dinero(t.saldo), montoColor: CNC.neg) { datos.onAbrirTarjeta(t.id) }
+                    } } }
+                }
+                seccion("Préstamos y fiados") {
+                    if lb.prestamos.isEmpty { vacio("Aquí saldrán tus préstamos y lo que llevas pagado.") }
+                    else { tarjetaLista { ForEach(lb.prestamos.indices, id: \.self) { i in
+                        if i > 0 { div(62) }
+                        let p = lb.prestamos[i]
+                        fila(icono: "hand.raised.fill", color: cnColor(hexString: p.color), nombre: p.nombre,
+                             sub: p.sentido == "meDeben" ? "Te debe" : "Le debes", monto: dinero(p.pendiente),
+                             montoColor: p.sentido == "meDeben" ? CNC.pos : CNC.neg) { datos.onAbrirPrestamo(p.id) }
+                    } } }
+                }
+                Color.clear.frame(height: 120)
+            }
+            .padding(.horizontal, 14).padding(.top, 6)
+        }
+        .background(CNC.scr.ignoresSafeArea())
+    }
+
+    private func patrimonio(_ lb: CNLibreta) -> some View {
+        VStack(spacing: 14) {
+            HStack {
+                Button { oculto.toggle() } label: { chip(oculto ? "eye.slash" : "eye") }.buttonStyle(.plain)
+                Spacer()
+                Text("Patrimonio").font(.system(size: 15, weight: .semibold)).foregroundColor(.white.opacity(0.92))
+                Spacer()
+                Button { datos.onTendencia() } label: { chip("chart.line.uptrend.xyaxis") }.buttonStyle(.plain)
+            }
+            Text(dinero(lb.patrimonio)).font(.system(size: 34, weight: .heavy)).foregroundColor(.white)
+            HStack(spacing: 0) {
+                col("Activos", dinero(lb.totalCuentas + lb.porCobrar))
+                col("Pasivos", dinero(lb.deudaTotal))
+            }
+        }
+        .padding(.horizontal, 18).padding(.vertical, 18).frame(maxWidth: .infinity)
+        .background(LinearGradient(colors: [cnColor(0x0e4a29), cnColor(0x093a20)], startPoint: .top, endPoint: .bottom))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: cnColor(0x093a20).opacity(0.28), radius: 16, y: 8)
+    }
+    private func chip(_ ic: String) -> some View {
+        Image(systemName: ic).font(.system(size: 15, weight: .semibold)).foregroundColor(.white)
+            .frame(width: 36, height: 36).background(Color.white.opacity(0.16)).clipShape(Circle())
+    }
+    private func col(_ t: String, _ v: String) -> some View {
+        VStack(spacing: 3) { Text(t).font(.system(size: 12.5)).foregroundColor(.white.opacity(0.72)); Text(v).font(.system(size: 15, weight: .bold)).foregroundColor(.white) }.frame(maxWidth: .infinity)
+    }
+    private func seccion<C: View>(_ t: String, @ViewBuilder _ c: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(t.uppercased()).font(.system(size: 12.5, weight: .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 4)
+            c()
+        }
+    }
+    private func tarjetaLista<C: View>(@ViewBuilder _ c: () -> C) -> some View {
+        VStack(spacing: 0) { c() }
+            .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
+    }
+    private func div(_ s: CGFloat) -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, s) }
+    private func vacio(_ t: String) -> some View {
+        Text(t).font(.system(size: 13.5)).foregroundColor(CNC.pmut).frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+            .padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+    }
+    private func fila(icono: String, color: Color, nombre: String, sub: String, monto: String, montoColor: Color, tap: @escaping () -> Void) -> some View {
+        Button(action: tap) {
+            HStack(spacing: 12) {
+                Image(systemName: icono).font(.system(size: 16, weight: .semibold)).foregroundColor(color)
+                    .frame(width: 40, height: 40).background(color.opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(nombre).font(.system(size: 15.5, weight: .semibold)).foregroundColor(CNC.ink)
+                    Text(sub).font(.system(size: 12.5)).foregroundColor(CNC.pmut)
+                }
+                Spacer(minLength: 8)
+                Text(monto).font(.system(size: 15, weight: .heavy)).foregroundColor(montoColor)
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6))
+            }.padding(.horizontal, 14).padding(.vertical, 11)
+        }.buttonStyle(.plain)
+    }
+    private func circuloGlass(_ ic: String, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) { Image(systemName: ic).font(.system(size: 17, weight: .semibold)).foregroundColor(CNC.ink)
+            .frame(width: 44, height: 44).background(.ultraThinMaterial, in: Circle()).overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.8)) }.buttonStyle(.plain)
+    }
+    private func circuloAcc(_ ic: String, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) { Image(systemName: ic).font(.system(size: 20, weight: .semibold)).foregroundColor(Color(cnHex: 0x20180a))
+            .frame(width: 46, height: 46).background(CNC.acc).clipShape(Circle()).shadow(color: CNC.acc.opacity(0.4), radius: 8, y: 3) }.buttonStyle(.plain)
+    }
+}
+
+// ── Pantalla «Plan» NATIVA ──────────────────────────────────────────────────
+struct CNPlan: View {
+    @ObservedObject var datos: CNDatos
+    @State private var seg = 0
+
+    var body: some View {
+        let lb = datos.libreta
+        return ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .center, spacing: 10) {
+                    Text("Plan").font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
+                    Spacer(minLength: 8)
+                    circuloGlass("calendar") {}
+                    circuloAcc("plus") { seg == 0 ? datos.onNuevaCategoria() : datos.onNuevaMeta() }
+                }
+                .padding(.horizontal, 4).padding(.top, 8)
+
+                segmentos
+
+                if seg == 0 { presupuesto(lb) } else { metas(lb) }
+                Color.clear.frame(height: 120)
+            }
+            .padding(.horizontal, 14).padding(.top, 6)
+        }
+        .background(CNC.scr.ignoresSafeArea())
+    }
+
+    private var segmentos: some View {
+        HStack(spacing: 6) {
+            ForEach(["Presupuesto", "Metas"].indices, id: \.self) { i in
+                Text(["Presupuesto", "Metas"][i])
+                    .font(.system(size: 14, weight: i == seg ? .bold : .semibold)).foregroundColor(i == seg ? .white : CNC.pmut)
+                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                    .background(i == seg ? cnColor(0x093a20) : Color.clear).clipShape(Capsule())
+                    .onTapGesture { seg = i }
+            }
+        }.padding(4).background(CNC.soft).clipShape(Capsule())
+    }
+
+    private func presupuesto(_ lb: CNLibreta) -> some View {
+        let cats = lb.categorias.filter { $0.tipo == "Gasto" }
+        let gastado = cats.reduce(0.0) { $0 + lb.gastadoCategoria($1.nombre) }
+        return VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack { Text(cnDinero(gastado)).font(.system(size: 26, weight: .heavy)).foregroundColor(CNC.pos)
+                    Spacer(); Text("de \(cnDinero(lb.presupuestoTotal))").font(.system(size: 14)).foregroundColor(CNC.pmut) }
+                barra(gastado, lb.presupuestoTotal, CNC.pos)
+            }.padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
+            if cats.isEmpty { vacio("Crea categorías para organizar tus gastos.") }
+            else { VStack(spacing: 0) { ForEach(cats.indices, id: \.self) { i in
+                filaCat(cats[i], lb); if i < cats.count - 1 { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 52) }
+            } }.padding(.vertical, 4).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1)) }
+        }
+    }
+    private func filaCat(_ c: CNCategoria, _ lb: CNLibreta) -> some View {
+        let g = lb.gastadoCategoria(c.nombre); let pas = c.limite > 0 && g > c.limite
+        return HStack(spacing: 12) {
+            Image(systemName: c.icono).font(.system(size: 15, weight: .semibold)).foregroundColor(cnColor(hexString: c.color))
+                .frame(width: 40, height: 40).background(cnColor(hexString: c.color).opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            VStack(alignment: .leading, spacing: 5) {
+                HStack { Text(c.nombre).font(.system(size: 15.5, weight: .semibold)).foregroundColor(CNC.ink)
+                    Spacer(); Text(cnDinero(g)).font(.system(size: 14.5, weight: .heavy)).foregroundColor(pas ? CNC.neg : CNC.pos) }
+                barra(g, c.limite, pas ? CNC.neg : CNC.pos)
+                Text(c.limite > 0 ? "\(cnDinero(g)) de \(cnDinero(c.limite))" : "\(cnDinero(g)) · sin tope").font(.system(size: 12)).foregroundColor(CNC.pmut)
+            }
+        }.padding(.horizontal, 12).padding(.vertical, 11)
+    }
+    private func metas(_ lb: CNLibreta) -> some View {
+        VStack(spacing: 12) {
+            if lb.metas.isEmpty { vacio("Ponte una meta de ahorro y ve cuánto te falta cada mes.") }
+            else { ForEach(lb.metas.indices, id: \.self) { i in filaMeta(lb.metas[i]) } }
+        }
+    }
+    private func filaMeta(_ m: CNMeta) -> some View {
+        Button { datos.onAbrirMeta(m.id) } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 12) {
+                    Image(systemName: m.icono).font(.system(size: 15, weight: .semibold)).foregroundColor(cnColor(hexString: m.color))
+                        .frame(width: 40, height: 40).background(cnColor(hexString: m.color).opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(m.nombre).font(.system(size: 15.5, weight: .semibold)).foregroundColor(CNC.ink)
+                        Text("\(Int(m.progreso * 100))% · faltan \(cnDinero(max(0, m.meta - m.ahorrado)))").font(.system(size: 12)).foregroundColor(CNC.pmut)
+                    }
+                    Spacer(minLength: 6)
+                    Text(cnDinero(m.ahorrado)).font(.system(size: 15, weight: .heavy)).foregroundColor(cnColor(hexString: m.color))
+                }
+                barra(m.ahorrado, m.meta, cnColor(hexString: m.color))
+            }.padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
+        }.buttonStyle(.plain)
+    }
+    private func barra(_ v: Double, _ total: Double, _ color: Color) -> some View {
+        GeometryReader { g in ZStack(alignment: .leading) {
+            Capsule().fill(CNC.line)
+            Capsule().fill(color).frame(width: total > 0 ? min(g.size.width, g.size.width * CGFloat(v / total)) : 0)
+        } }.frame(height: 7)
+    }
+    private func vacio(_ t: String) -> some View {
+        Text(t).font(.system(size: 13.5)).foregroundColor(CNC.pmut).frame(maxWidth: .infinity).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            .padding(.vertical, 24).padding(.horizontal, 16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+    }
+    private func circuloGlass(_ ic: String, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) { Image(systemName: ic).font(.system(size: 17, weight: .semibold)).foregroundColor(CNC.ink)
+            .frame(width: 44, height: 44).background(.ultraThinMaterial, in: Circle()).overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.8)) }.buttonStyle(.plain)
+    }
+    private func circuloAcc(_ ic: String, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) { Image(systemName: ic).font(.system(size: 20, weight: .semibold)).foregroundColor(Color(cnHex: 0x20180a))
+            .frame(width: 46, height: 46).background(CNC.acc).clipShape(Circle()).shadow(color: CNC.acc.opacity(0.4), radius: 8, y: 3) }.buttonStyle(.plain)
     }
 }
