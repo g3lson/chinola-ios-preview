@@ -1181,15 +1181,11 @@ struct CNNuevoMov: View {
         ZStack(alignment: .bottom) {
             Color.black.opacity(0.4).ignoresSafeArea()
             VStack(spacing: 0) {
-                cabecera
+                CNHojaCabecera(titulo: editar == nil ? "Nuevo movimiento" : "Editar movimiento", onClose: onClose)
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
                         pildoras
-                        grupo { VStack(spacing: 2) {
-                            Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut)
-                            HStack(spacing: 6) { Text("RD$").font(.system(size: 20, weight: .heavy)).foregroundColor(CNC.pmut)
-                                TextField("0", text: $monto).font(.system(size: 34, weight: .heavy)).foregroundColor(CNC.ink).keyboardType(.numberPad).multilineTextAlignment(.center).fixedSize() }
-                        }.frame(maxWidth: .infinity).padding(.vertical, 16) }
+                        CNMontoCampo(monto: $monto)
                         grupo { TextField("Descripción o concepto", text: $concepto).font(.system(size: 16)).foregroundColor(CNC.ink).padding(.horizontal, 15).padding(.vertical, 13) }
                         VStack(spacing: 6) {
                             titulo("Cuándo y de dónde")
@@ -1199,14 +1195,24 @@ struct CNNuevoMov: View {
                                 menuFila("banknote.fill", CNC.info, "Pagado con", cuentaNombre) { ForEach(datos.libreta.cuentas) { c in Button(c.nombre) { cuentaId = c.id } } }
                             }
                         }
-                        VStack(spacing: 6) {
+                        VStack(alignment: .leading, spacing: 8) {
                             titulo("Categoría")
-                            grupo { menuFila("tag.fill", cnColor(0xe0a92e), "Categoría", categoria.isEmpty ? "Otros" : categoria) { ForEach(datos.libreta.categorias, id: \.nombre) { c in Button(c.nombre) { categoria = c.nombre } }; Button("Otros") { categoria = "Otros" } } }
+                            CNChipsCategoria(datos: datos, categoria: $categoria)
                         }
-                        grupo { HStack(spacing: 12) { cuadro("repeat", cnColor(0x825eb9)); Text("Repetir cada mes").font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(); Toggle("", isOn: $repetir).labelsHidden().tint(CNC.pos) }.padding(.horizontal, 14).padding(.vertical, 7) }
-                        Color.clear.frame(height: 40)
+                        grupo { HStack(spacing: 12) {
+                            cuadro("repeat", cnColor(0x825eb9))
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Repetir cada mes").font(.system(size: 16)).foregroundColor(CNC.ink)
+                                Text("Para lo que pagas siempre: renta, luz, colegio")
+                                    .font(.system(size: 12)).foregroundColor(CNC.pmut).lineLimit(2)
+                            }
+                            Spacer(minLength: 6)
+                            Toggle("", isOn: $repetir).labelsHidden().tint(CNC.pos)
+                        }.padding(.horizontal, 14).padding(.vertical, 9) }
+                        Color.clear.frame(height: 20)
                     }.padding(.horizontal, 16)
                 }
+                CNBotonGuardar(texto: editar == nil ? "Guardar movimiento" : "Guardar cambios", accion: guardar)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(CNC.scr.clipShape(CNRedondo(radio: 28, esquinas: [.topLeft, .topRight])))
@@ -1227,19 +1233,6 @@ struct CNNuevoMov: View {
         }
     }
 
-    private var cabecera: some View {
-        VStack(spacing: 0) {
-            Capsule().fill(CNC.line).frame(width: 40, height: 5).padding(.top, 8).padding(.bottom, 10)
-            ZStack {
-                Text(editar == nil ? "Nuevo movimiento" : "Editar movimiento").font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
-                HStack {
-                    Button(action: onClose) { Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundColor(CNC.pmut).frame(width: 34, height: 34).cnVidrio(Circle()) }.buttonStyle(.plain)
-                    Spacer()
-                    Button(action: guardar) { HStack(spacing: 5) { Image(systemName: "checkmark").font(.system(size: 12, weight: .heavy)); Text("Guardar").font(.system(size: 14, weight: .bold)) }.foregroundColor(Color(cnHex: 0x3a2c00)).padding(.horizontal, 15).padding(.vertical, 8).cnVidrio(Capsule(), tinte: CNC.acc) }.buttonStyle(.plain)
-                }
-            }.padding(.horizontal, 16).padding(.bottom, 14)
-        }
-    }
     private var pildoras: some View {
         HStack(spacing: 4) { ForEach(tipos.indices, id: \.self) { i in
             Text(tipos[i]).font(.system(size: 13.5, weight: i == tipo ? .bold : .semibold)).foregroundColor(i == tipo ? .white : CNC.pmut)
