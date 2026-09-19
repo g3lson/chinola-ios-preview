@@ -22,22 +22,22 @@ struct CNHoja<Content: View>: View {
                     VStack(spacing: 16) { content(); Color.clear.frame(height: 24) }
                         .padding(.horizontal, 16).padding(.top, 4)
                 }
-                // El botón principal, grande y abajo: donde llega el pulgar.
-                CNBotonGuardar(texto: guardarTexto, accion: onGuardar)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(CNC.scr.ignoresSafeArea())
         .environment(\.locale, Locale(identifier: "es_DO"))
     }
 
-    private var cabecera: some View { CNHojaCabecera(titulo: titulo, onClose: onClose) }
+    private var cabecera: some View { CNHojaCabecera(titulo: titulo, guardarTexto: guardarTexto, onClose: onClose, onGuardar: onGuardar) }
 }
 
 /// Cabecera de hoja: tirador, cerrar en vidrio y el título. Sin más ruido: la
 /// acción de guardar vive abajo, en un botón grande.
 struct CNHojaCabecera: View {
     let titulo: String
+    var guardarTexto: String = "Guardar"
     var onClose: () -> Void
+    var onGuardar: (() -> Void)? = nil
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
@@ -49,8 +49,19 @@ struct CNHojaCabecera: View {
                     } label: {
                         Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundColor(CNC.pmut)
                             .frame(width: 36, height: 36).cnVidrio(Circle())
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(CNPulsable())
                     Spacer()
+                    if let guardar = onGuardar {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            guardar()
+                        } label: {
+                            Text(guardarTexto).font(.system(size: 15, weight: .bold))
+                                .foregroundColor(Color(cnHex: 0x20180a))
+                                .padding(.horizontal, 16).frame(height: 36)
+                                .cnVidrio(Capsule(), tinte: CNC.acc)
+                        }.buttonStyle(CNPulsable())
+                    }
                 }
             }.padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 14)
         }

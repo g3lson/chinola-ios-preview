@@ -591,24 +591,41 @@ struct CNVidrio: ViewModifier {
     }
 }
 
+/// Liquid Glass de VERDAD: UIVisualEffectView con UIGlassEffect (iOS 26).
+///
+/// El .glassEffect() de SwiftUI, dentro de un UIHostingController aislado, se
+/// queda en un gris plano: no refracta lo que pasa por detrás. El de UIKit sí,
+/// y es el mismo que usa la barra del menú.
+struct CNVidrioUIKit: UIViewRepresentable {
+    var tinte: UIColor? = nil
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        var efecto: UIVisualEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+        if #available(iOS 26.0, *) {
+            let e = UIGlassEffect()
+            e.isInteractive = true
+            if let t = tinte { e.tintColor = t }
+            efecto = e
+        }
+        let v = UIVisualEffectView(effect: efecto)
+        v.isUserInteractionEnabled = false
+        v.backgroundColor = .clear
+        return v
+    }
+    func updateUIView(_ v: UIVisualEffectView, context: Context) {}
+}
+
 /// Liquid Glass en CUALQUIER forma (círculos de «+», cerrar, búsqueda, botones
-/// de las hojas…). iOS 26 → vidrio real; antes → material esmerilado.
+/// de las hojas…), recortado a esa forma.
 struct CNVidrioForma<S: Shape>: ViewModifier {
     let forma: S
     var tinte: Color? = nil
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            if let t = tinte {
-                content.glassEffect(.regular.tint(t).interactive(), in: forma)
-            } else {
-                content.glassEffect(.regular.interactive(), in: forma)
-            }
-        } else {
-            content
-                .background(forma.fill(.ultraThinMaterial))
-                .background(tinte.map { forma.fill($0.opacity(0.55)) })
-                .overlay(forma.stroke(Color.white.opacity(0.5), lineWidth: 0.8))
-        }
+        content
+            .background(
+                CNVidrioUIKit(tinte: tinte.map { UIColor($0) })
+                    .clipShape(forma)
+                    .overlay(forma.stroke(Color.white.opacity(0.22), lineWidth: 0.8))
+            )
     }
 }
 
@@ -1179,7 +1196,8 @@ struct CNNuevoMov: View {
 
     var body: some View {
         VStack(spacing: 0) {
-                CNHojaCabecera(titulo: editar == nil ? "Nuevo movimiento" : "Editar movimiento", onClose: onClose)
+                CNHojaCabecera(titulo: editar == nil ? "Nuevo movimiento" : "Editar movimiento",
+                               guardarTexto: "Guardar", onClose: onClose, onGuardar: guardar)
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
                         pildoras
@@ -1210,7 +1228,6 @@ struct CNNuevoMov: View {
                         Color.clear.frame(height: 20)
                     }.padding(.horizontal, 16)
                 }
-                CNBotonGuardar(texto: editar == nil ? "Guardar movimiento" : "Guardar cambios", accion: guardar)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(CNC.scr.ignoresSafeArea())
