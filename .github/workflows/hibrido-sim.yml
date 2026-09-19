@@ -63,8 +63,8 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b || true
           xcrun simctl install "$UDID" "$APP"
           xcrun simctl launch "$UDID" do.com.fente.chinolasim || true
-          sleep 5;  xcrun simctl io "$UDID" screenshot cap-01.png || true
-          sleep 6;  xcrun simctl io "$UDID" screenshot cap-02.png || true
+          sleep 2;  xcrun simctl io "$UDID" screenshot cap-01-web.png || true
+          sleep 6;  xcrun simctl io "$UDID" screenshot cap-02-nativo.png || true
 
       - name: Subir capturas
         if: always()
@@ -72,4 +72,5 @@ jobs:
         with:
           name: capturas-hibrido
           path: hibrido/cap-*.png
+
           if-no-files-found: warn
