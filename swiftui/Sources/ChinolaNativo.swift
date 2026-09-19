@@ -149,11 +149,18 @@ struct CNBarraMenu: View {
         .padding(.top, estado.titulos ? 9 : 12)
         .padding(.bottom, 8)
         .background(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.12), radius: 20, y: 6)
+            ZStack {
+                // Material más frosteado + un velo claro para que el vidrio se
+                // note también sobre el fondo crema de Chinola.
+                RoundedRectangle(cornerRadius: 28, style: .continuous).fill(.regularMaterial)
+                RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Color.white.opacity(0.28))
+            }
+            .shadow(color: .black.opacity(0.18), radius: 22, y: 8)
         )
-        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(CNC.ink.opacity(0.08), lineWidth: 1))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
         .padding(.horizontal, 14)
     }
 }
