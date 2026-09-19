@@ -417,6 +417,18 @@ final class CNMenuEstado: ObservableObject {
     var alTocar: (String) -> Void = { _ in }
 }
 
+/// Las 5 pestañas, en un solo sitio (las usa la barra nativa UITabBar).
+enum CNTabs {
+    struct T { let id: String; let titulo: String; let path: String }
+    static let todas: [T] = [
+        .init(id: "resumen", titulo: "Resumen", path: CNTabIcono.resumen),
+        .init(id: "movs", titulo: "Movs.", path: CNTabIcono.movs),
+        .init(id: "cuentas", titulo: "Cuentas", path: CNTabIcono.cuentas),
+        .init(id: "plan", titulo: "Plan", path: CNTabIcono.plan),
+        .init(id: "perfil", titulo: "Perfil", path: CNTabIcono.perfil)
+    ]
+}
+
 struct CNBarraMenu: View {
     @ObservedObject var estado: CNMenuEstado
     /// false = el vidrio lo pone UIKit (UIGlassEffect) por fuera.
@@ -682,6 +694,23 @@ enum CNTabIcono {
     static let cuentas = "M7.5 5.5h9a4 4 0 0 1 4 4v5a4 4 0 0 1-4 4h-9a4 4 0 0 1-4-4v-5a4 4 0 0 1 4-4zM3.5 10h17M7 14.5h3.5"
     static let plan = "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 3.4v7.6a1 1 0 0 0 1 1h7.6"
     static let perfil = "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0"
+}
+
+/// Convierte un icono SVG de la app en UIImage (plantilla) para usarlo en un
+/// UITabBar nativo — igual que hace Batuta con sus PNG.
+func cnIconoUIImage(_ d: String, lado: CGFloat = 26, grosor: CGFloat = 2) -> UIImage {
+    let r = UIGraphicsImageRenderer(size: CGSize(width: lado, height: lado))
+    let img = r.image { ctx in
+        let p = CNSVGShape(d: d).path(in: CGRect(x: 0, y: 0, width: lado, height: lado))
+        let c = ctx.cgContext
+        c.addPath(p.cgPath)
+        c.setLineWidth(grosor)
+        c.setLineCap(.round)
+        c.setLineJoin(.round)
+        c.setStrokeColor(UIColor.label.cgColor)
+        c.strokePath()
+    }
+    return img.withRenderingMode(.alwaysTemplate)
 }
 
 struct CNIconoTab: View {

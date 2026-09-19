@@ -34,57 +34,24 @@ class TestVC: CAPBridgeViewController {
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        // Barra con LIQUID GLASS de UIKit: capa de SOMBRA fuera + vidrio RECORTADO dentro.
-        let contenedor = UIView()
-        contenedor.backgroundColor = .clear
-        contenedor.layer.shadowColor = UIColor.black.cgColor
-        contenedor.layer.shadowOpacity = 0.18
-        contenedor.layer.shadowRadius = 22
-        contenedor.layer.shadowOffset = CGSize(width: 0, height: 8)
-        contenedor.layer.masksToBounds = false
-
-        let vidrio: UIVisualEffectView
-        if #available(iOS 26.0, *) {
-            let efecto = UIGlassEffect()
-            efecto.isInteractive = true
-            vidrio = UIVisualEffectView(effect: efecto)
-        } else {
-            vidrio = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+        // BARRA NATIVA: UITabBar real (iOS 26 le pone su propio Liquid Glass).
+        let barra = UITabBar()
+        barra.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(barra)
+        NSLayoutConstraint.activate([
+            barra.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            barra.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            barra.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        var items: [UITabBarItem] = []
+        for (i, t) in CNTabs.todas.enumerated() {
+            items.append(UITabBarItem(title: t.titulo, image: cnIconoUIImage(t.path), tag: i))
         }
-        vidrio.layer.cornerRadius = 32
-        vidrio.layer.cornerCurve = .continuous
-        vidrio.clipsToBounds = true
-        vidrio.translatesAutoresizingMaskIntoConstraints = false
-        contenedor.addSubview(vidrio)
-        NSLayoutConstraint.activate([
-            vidrio.topAnchor.constraint(equalTo: contenedor.topAnchor),
-            vidrio.bottomAnchor.constraint(equalTo: contenedor.bottomAnchor),
-            vidrio.leadingAnchor.constraint(equalTo: contenedor.leadingAnchor),
-            vidrio.trailingAnchor.constraint(equalTo: contenedor.trailingAnchor)
-        ])
-        let dentro: UIView = vidrio.contentView
-
-        let barra = UIHostingController(rootView: CNBarraMenu(estado: estado, conFondo: false))
-        barra.view.backgroundColor = .clear
-        addChild(barra); barra.didMove(toParent: self)
-        barra.view.translatesAutoresizingMaskIntoConstraints = false
-        dentro.addSubview(barra.view)
-        NSLayoutConstraint.activate([
-            barra.view.topAnchor.constraint(equalTo: dentro.topAnchor),
-            barra.view.bottomAnchor.constraint(equalTo: dentro.bottomAnchor),
-            barra.view.leadingAnchor.constraint(equalTo: dentro.leadingAnchor),
-            barra.view.trailingAnchor.constraint(equalTo: dentro.trailingAnchor)
-        ])
-        view.addSubview(contenedor)
-        contenedor.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            contenedor.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            contenedor.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            contenedor.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 6)
-        ])
-        view.bringSubviewToFront(contenedor)
-        contenedor.layer.zPosition = 999
-        barraView = contenedor
+        barra.setItems(items, animated: false)
+        barra.selectedItem = items[1]
+        barra.tintColor = UIColor(CNC.pos)
+        view.bringSubviewToFront(barra)
+        barraView = barra
 
     }
 }
