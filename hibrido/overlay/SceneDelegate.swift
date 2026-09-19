@@ -101,7 +101,7 @@ extension TestVC {
         contenido = h.view
         if let p = barraView { view.bringSubviewToFront(p) }
         if i < 4 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in self?.mostrar(i + 1) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak self] in self?.mostrar(i + 1) }
         }
     }
 }
