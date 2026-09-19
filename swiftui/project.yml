@@ -6,7 +6,7 @@ name: Chinola
 options:
   bundleIdPrefix: do.com.fente
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "15.0"
   createIntermediateGroups: true
 targets:
   Chinola:

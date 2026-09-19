@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Pantallas NATIVAS incrustadas en la app Capacitor. La web le pasa el JSON de
 // la libreta (el de localStorage) y aquí se decodifica y se dibuja en SwiftUI.
@@ -86,8 +87,8 @@ struct CNMov: Decodable, Identifiable {
     var tipo: String = ""; var monto: Double = 0; var fecha: String = ""; var medio: String = ""; var destino: String = ""; var recurrente: Bool = false
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         // id puede venir como número o texto.
-        if let s = try? c.decodeIfPresent(String.self, forKey: .id) { id = s ?? "" }
-        else if let n = try? c.decodeIfPresent(Int.self, forKey: .id) { id = String(n ?? 0) }
+        if let s = try? c.decodeIfPresent(String.self, forKey: .id) { id = s }
+        else if let n = try? c.decodeIfPresent(Int.self, forKey: .id) { id = String(n) }
         concepto = (try? c.decodeIfPresent(String.self, forKey: .concepto)) ?? ""
         categoria = (try? c.decodeIfPresent(String.self, forKey: .categoria)) ?? ""
         tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? ""
@@ -1167,7 +1168,7 @@ struct CNNuevoMov: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(CNC.scr.clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)))
+            .background(CNC.scr.clipShape(CNRedondo(radio: 28, esquinas: [.topLeft, .topRight])))
             .ignoresSafeArea(edges: .bottom).padding(.top, 46)
         }
         .onAppear { if cuentaId == 0 { cuentaId = datos.libreta.cuentas.first?.id ?? 0 } }
@@ -1283,7 +1284,7 @@ struct CNResumen: View {
         }
         .frame(maxWidth: .infinity).padding(.top, 58).padding(.bottom, 20).padding(.horizontal, 16)
         .background(LinearGradient(colors: [cnColor(0xf0b638), cnColor(0xe0a92e), cnColor(0x2f8a44), cnColor(0x137d41)], startPoint: .topLeading, endPoint: .bottomTrailing))
-        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 30, bottomTrailingRadius: 30, style: .continuous))
+        .clipShape(CNRedondo(radio: 30, esquinas: [.bottomLeft, .bottomRight]))
         .ignoresSafeArea(edges: .top)
     }
     private func nav(_ ic: String, _ tap: @escaping () -> Void) -> some View {
@@ -1301,5 +1302,14 @@ struct CNResumen: View {
     }
     private func tarjeta<C: View>(@ViewBuilder _ c: () -> C) -> some View {
         c().padding(16).frame(maxWidth: .infinity, alignment: .leading).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
+    }
+}
+
+// Esquinas redondeadas selectivas (iOS 15+, sin UnevenRoundedRectangle que es 16+).
+struct CNRedondo: Shape {
+    var radio: CGFloat
+    var esquinas: UIRectCorner
+    func path(in rect: CGRect) -> Path {
+        Path(UIBezierPath(roundedRect: rect, byRoundingCorners: esquinas, cornerRadii: CGSize(width: radio, height: radio)).cgPath)
     }
 }
