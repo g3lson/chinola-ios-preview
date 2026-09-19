@@ -23,8 +23,8 @@ class TestVC: CAPBridgeViewController {
 
         // Movimientos nativa (real) encima del webview, opaca. Se llena por el
         // puente (la web empuja Nativo.datos al store compartido).
-        let host = UIHostingController(rootView: AnyView(CNPruebaColores()))
-        host.view.backgroundColor = UIColor(CNC.scr)
+        let host = UIHostingController(rootView: AnyView(CNMovs(datos: datos)))
+        host.view.backgroundColor = .systemGroupedBackground
         addChild(host); view.addSubview(host.view); host.didMove(toParent: self)
         host.view.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -41,7 +41,7 @@ class TestVC: CAPBridgeViewController {
         NSLayoutConstraint.activate([
             barra.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             barra.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            barra.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            barra.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
         var items: [UITabBarItem] = []
         for (i, t) in CNTabs.todas.enumerated() {
