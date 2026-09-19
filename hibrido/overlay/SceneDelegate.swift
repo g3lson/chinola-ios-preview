@@ -34,14 +34,32 @@ class TestVC: CAPBridgeViewController {
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        // BARRA NATIVA: UITabBar real (iOS 26 le pone su propio Liquid Glass).
+        // UITabBar TRANSPARENTE sobre cápsula de UIGlassEffect (patrón Batuta).
+        var efecto: UIVisualEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+        if #available(iOS 26.0, *) { let e = UIGlassEffect(); e.isInteractive = true; efecto = e }
+        let panel = UIVisualEffectView(effect: efecto)
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        panel.layer.cornerRadius = 30
+        panel.layer.cornerCurve = .continuous
+        panel.clipsToBounds = true
+        panel.isUserInteractionEnabled = false
+        view.addSubview(panel)
+
         let barra = UITabBar()
         barra.translatesAutoresizingMaskIntoConstraints = false
+        let ap = UITabBarAppearance()
+        ap.configureWithTransparentBackground()
+        barra.standardAppearance = ap
+        barra.scrollEdgeAppearance = ap
         view.addSubview(barra)
         NSLayoutConstraint.activate([
-            barra.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            barra.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            barra.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            barra.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 14),
+            barra.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -14),
+            barra.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -4),
+            panel.leadingAnchor.constraint(equalTo: barra.leadingAnchor),
+            panel.trailingAnchor.constraint(equalTo: barra.trailingAnchor),
+            panel.topAnchor.constraint(equalTo: barra.topAnchor),
+            panel.bottomAnchor.constraint(equalTo: barra.bottomAnchor)
         ])
         var items: [UITabBarItem] = []
         for (i, t) in CNTabs.todas.enumerated() {
@@ -50,6 +68,7 @@ class TestVC: CAPBridgeViewController {
         barra.setItems(items, animated: false)
         barra.selectedItem = items[1]
         barra.tintColor = UIColor(CNC.pos)
+        view.bringSubviewToFront(panel)
         view.bringSubviewToFront(barra)
         barraView = barra
 
