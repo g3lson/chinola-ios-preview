@@ -275,6 +275,23 @@ final class CNDatos: ObservableObject {
 // ── Pantalla «Movimientos» NATIVA ──────────────────────────────────────────
 // Título arriba (se va con el scroll), búsqueda sticky en liquid glass real
 // (material) y la lista agrupada por día. Los datos vienen del web.
+/// Botón redondo de 44pt (el tamaño táctil por defecto de iOS) con Liquid Glass.
+struct CNBotonVidrio: View {
+    let icono: String
+    var acento: Bool = false
+    var accion: () -> Void
+    var body: some View {
+        Button(action: accion) {
+            Image(systemName: icono)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(acento ? Color(cnHex: 0x20180a) : .primary)
+                .frame(width: 44, height: 44)
+                .cnVidrio(Circle(), tinte: acento ? CNC.acc : nil)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 struct CNMovs: View {
     @ObservedObject var datos: CNDatos
     @State private var q = ""
@@ -300,11 +317,9 @@ struct CNMovs: View {
             .searchable(text: $q, prompt: "Buscar movimiento")
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    Button { } label: { Image(systemName: "line.3.horizontal.decrease.circle") }
-                    Button { } label: { Image(systemName: "calendar") }
-                    Button { datos.onNuevoMov() } label: {
-                        Image(systemName: "plus").font(.system(size: 17, weight: .semibold))
-                    }
+                    CNBotonVidrio(icono: "line.3.horizontal.decrease") { }
+                    CNBotonVidrio(icono: "calendar") { }
+                    CNBotonVidrio(icono: "plus", acento: true) { datos.onNuevoMov() }
                 }
             }
         }
