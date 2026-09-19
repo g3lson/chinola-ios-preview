@@ -426,21 +426,14 @@ struct CNBarraMenu: View {
         .init(id: "movs", label: "Movs.", path: CNTabIcono.movs),
         .init(id: "cuentas", label: "Cuentas", path: CNTabIcono.cuentas),
         .init(id: "plan", label: "Plan", path: CNTabIcono.plan),
-        .init(id: "perfil", label: "Perfil", path: "")
+        .init(id: "perfil", label: "Perfil", path: CNTabIcono.perfil)
     ]
     var body: some View {
         HStack(spacing: 0) {
             ForEach(items, id: \.id) { it in
                 Button { estado.alTocar(it.id) } label: {
                     VStack(spacing: 4) {
-                        if it.id == "perfil" {
-                            Text("🍊").font(.system(size: 19))
-                                .frame(width: 26, height: 26)
-                                .background(CNC.acc.opacity(estado.activa == it.id ? 1 : 0.85))
-                                .clipShape(Circle())
-                        } else {
-                            CNIconoTab(d: it.path).frame(height: 26)   // los iconos EXACTOS de la app
-                        }
+                        CNIconoTab(d: it.path).frame(height: 26)   // los 5 iconos, mismo estilo de línea
                         if estado.titulos {
                             Text(it.label).font(.system(size: 11, weight: .heavy)).tracking(-0.1)
                         }
@@ -647,6 +640,7 @@ enum CNTabIcono {
     static let movs = "M7 4.5v15M7 19.5l-3-3M7 19.5l3-3M17 19.5v-15M17 4.5l-3 3M17 4.5l3 3"
     static let cuentas = "M7.5 5.5h9a4 4 0 0 1 4 4v5a4 4 0 0 1-4 4h-9a4 4 0 0 1-4-4v-5a4 4 0 0 1 4-4zM3.5 10h17M7 14.5h3.5"
     static let plan = "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 3.4v7.6a1 1 0 0 0 1 1h7.6"
+    static let perfil = "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0"
 }
 
 struct CNIconoTab: View {
