@@ -63,15 +63,30 @@ struct CNBotonGuardar: View {
     let texto: String
     var accion: () -> Void
     var body: some View {
-        Button(action: accion) {
-            Text(texto).font(.system(size: 17, weight: .bold)).foregroundColor(Color(cnHex: 0x3a2c00))
-                .frame(maxWidth: .infinity).padding(.vertical, 16)
-                .cnVidrio(Capsule(), tinte: CNC.acc)
-                .shadow(color: CNC.acc.opacity(0.3), radius: 14, y: 5)
+        VStack(spacing: 0) {
+            Rectangle().fill(CNC.line).frame(height: 0.5)
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                accion()
+            } label: {
+                Text(texto).font(.system(size: 17, weight: .bold)).foregroundColor(Color(cnHex: 0x20180a))
+                    .frame(maxWidth: .infinity).padding(.vertical, 16)
+                    .background(CNC.acc, in: Capsule())
+            }
+            .buttonStyle(CNPulsable())
+            .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 8)
         }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 26)
-        .background(.ultraThinMaterial)
+        .background(CNC.scr)
+    }
+}
+
+/// Se hunde un poco al pulsar, como los botones del sistema.
+struct CNPulsable: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }
 
@@ -151,8 +166,14 @@ struct CNChipsCategoria: View {
                 }
                 ficha("Otros", cnColor(0x9a9a8e), "tag")
             }
-            .padding(.leading, 2).padding(.trailing, 14).padding(.vertical, 2)
+            .padding(.leading, 2).padding(.trailing, 16).padding(.vertical, 2)
         }
+        .mask(
+            LinearGradient(stops: [.init(color: .black, location: 0),
+                                   .init(color: .black, location: 0.92),
+                                   .init(color: .clear, location: 1)],
+                           startPoint: .leading, endPoint: .trailing)
+        )
     }
     private func ficha(_ nombre: String, _ color: Color, _ icono: String) -> some View {
         let puesta = categoria == nombre || (categoria.isEmpty && nombre == "Otros")

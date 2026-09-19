@@ -57,11 +57,11 @@ class TestVC: CAPBridgeViewController {
         // Guion de la prueba: Movimientos → detalle de un movimiento (para ver
         // atrás y ⋯ en vidrio) → nuevo movimiento (cerrar y guardar).
         conectarAcciones()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 12) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 14) { [weak self] in
             guard let s = self, let m = s.datos.libreta.tx.first else { return }
             s.presentar(AnyView(CNDetalleMov(datos: s.datos, movId: m.id, onClose: { s.cerrar() })))
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 22) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 28) { [weak self] in
             guard let s = self else { return }
             s.cerrar()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
