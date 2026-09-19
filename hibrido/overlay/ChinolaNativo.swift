@@ -292,7 +292,7 @@ struct CNMovs: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 14, pinnedViews: [.sectionHeaders]) {
+            LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
                 // Título + calendario + «+» (se van con el scroll).
                 HStack(alignment: .center, spacing: 10) {
                     Text("Movimientos").font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
@@ -300,7 +300,7 @@ struct CNMovs: View {
                     circulo("calendar", acento: false) {}
                     circulo("plus", acento: true) { datos.onNuevoMov() }
                 }
-                .padding(.horizontal, 16).padding(.top, 8)
+                .padding(.horizontal, 16).padding(.top, 0)
 
                 Section(header: busqueda) {
                     if porDia.isEmpty {
@@ -330,7 +330,7 @@ struct CNMovs: View {
                 .frame(width: 46, height: 46)
                 .cnVidrio(Circle())
         }
-        .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 10)
+        .padding(.horizontal, 14).padding(.top, 2).padding(.bottom, 8)
         .background(.ultraThinMaterial)   // el contenido pasa por detrás al hacer scroll
     }
 
