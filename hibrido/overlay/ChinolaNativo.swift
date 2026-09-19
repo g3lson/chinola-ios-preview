@@ -310,20 +310,52 @@ struct CNMovs: View {
 
     var body: some View {
         NavigationView {
-            Group {
-                if porDia.isEmpty { vacio } else { lista }
+            VStack(spacing: 0) {
+                buscador
+                Group { if porDia.isEmpty { vacio } else { lista } }
             }
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .navigationTitle("Movimientos")
-            .searchable(text: $q, prompt: "Buscar movimiento")
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    CNBotonVidrio(icono: "line.3.horizontal.decrease") { }
                     CNBotonVidrio(icono: "calendar") { }
                     CNBotonVidrio(icono: "plus", acento: true) { datos.onNuevoMov() }
                 }
             }
         }
         .navigationViewStyle(.stack)
+    }
+
+    /// Buscador en Liquid Glass con el botón de filtro al lado, como en la app.
+    private var buscador: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 9) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.secondary)
+                TextField("Buscar movimiento…", text: $q)
+                    .font(.system(size: 16))
+                    .textFieldStyle(.plain)
+                if !q.isEmpty {
+                    Button { q = "" } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
+                    }.buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 44)                      // alto por defecto de iOS
+            .cnVidrio(Capsule())
+
+            Button { } label: {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .frame(width: 44, height: 44)
+                    .cnVidrio(Circle())
+            }.buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 10)
     }
 
     private var lista: some View {

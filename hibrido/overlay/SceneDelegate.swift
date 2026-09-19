@@ -43,6 +43,8 @@ class TestVC: CAPBridgeViewController {
         panel.layer.cornerCurve = .continuous
         panel.clipsToBounds = true
         panel.isUserInteractionEnabled = false
+        panel.layer.borderWidth = 1
+        panel.layer.borderColor = UIColor.white.withAlphaComponent(0.28).cgColor
         view.addSubview(panel)
 
         let barra = UITabBar()
