@@ -34,27 +34,35 @@ class TestVC: CAPBridgeViewController {
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        // Barra con LIQUID GLASS de UIKit (UIGlassEffect) — el que sí refracta.
-        let contenedor: UIView
-        var dentro: UIView
+        // Barra con LIQUID GLASS de UIKit: capa de SOMBRA fuera + vidrio RECORTADO dentro.
+        let contenedor = UIView()
+        contenedor.backgroundColor = .clear
+        contenedor.layer.shadowColor = UIColor.black.cgColor
+        contenedor.layer.shadowOpacity = 0.18
+        contenedor.layer.shadowRadius = 22
+        contenedor.layer.shadowOffset = CGSize(width: 0, height: 8)
+        contenedor.layer.masksToBounds = false
+
+        let vidrio: UIVisualEffectView
         if #available(iOS 26.0, *) {
             let efecto = UIGlassEffect()
             efecto.isInteractive = true
-            let vv = UIVisualEffectView(effect: efecto)
-            vv.clipsToBounds = true
-            contenedor = vv; dentro = vv.contentView
+            vidrio = UIVisualEffectView(effect: efecto)
         } else {
-            let vv = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-            vv.clipsToBounds = true
-            contenedor = vv; dentro = vv.contentView
+            vidrio = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
         }
-        contenedor.layer.cornerRadius = 30
-        contenedor.layer.cornerCurve = .continuous
-        contenedor.layer.shadowColor = UIColor.black.cgColor
-        contenedor.layer.shadowOpacity = 0.18
-        contenedor.layer.shadowRadius = 24
-        contenedor.layer.shadowOffset = CGSize(width: 0, height: 8)
-        contenedor.layer.masksToBounds = false
+        vidrio.layer.cornerRadius = 32
+        vidrio.layer.cornerCurve = .continuous
+        vidrio.clipsToBounds = true
+        vidrio.translatesAutoresizingMaskIntoConstraints = false
+        contenedor.addSubview(vidrio)
+        NSLayoutConstraint.activate([
+            vidrio.topAnchor.constraint(equalTo: contenedor.topAnchor),
+            vidrio.bottomAnchor.constraint(equalTo: contenedor.bottomAnchor),
+            vidrio.leadingAnchor.constraint(equalTo: contenedor.leadingAnchor),
+            vidrio.trailingAnchor.constraint(equalTo: contenedor.trailingAnchor)
+        ])
+        let dentro: UIView = vidrio.contentView
 
         let barra = UIHostingController(rootView: CNBarraMenu(estado: estado, conFondo: false))
         barra.view.backgroundColor = .clear
