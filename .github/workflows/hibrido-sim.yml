@@ -47,8 +47,9 @@ jobs:
           # pbxproj con la gema xcodeproj).
           cp overlay/ChinolaNativo.swift ios/App/App/ChinolaNativo.swift
           cp overlay/NativoPlugin.swift ios/App/App/NativoPlugin.swift
+          cp overlay/ChinolaFormularios.swift ios/App/App/ChinolaFormularios.swift
           gem install xcodeproj --no-document --quiet
-          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); g=(p.main_group['App']||p.main_group); ['ChinolaNativo.swift','NativoPlugin.swift'].each{|n| f=g.new_file(n); p.targets.first.add_file_references([f])}; p.save"
+          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); g=(p.main_group['App']||p.main_group); ['ChinolaNativo.swift','NativoPlugin.swift','ChinolaFormularios.swift'].each{|n| f=g.new_file(n); p.targets.first.add_file_references([f])}; p.save"
           /usr/libexec/PlistBuddy -c "Delete :UISceneStoryboardFile" ios/App/App/Info.plist 2>/dev/null || true
           echo "=== archivos en el proyecto ==="; grep -cE "ChinolaNativo.swift|NativoPlugin.swift" ios/App/App.xcodeproj/project.pbxproj
 

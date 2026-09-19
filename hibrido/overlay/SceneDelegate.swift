@@ -47,6 +47,15 @@ class TestVC: CAPBridgeViewController {
         view.bringSubviewToFront(barra.view)
         barra.view.layer.zPosition = 999
         barraView = barra.view
+
+        // A los 3s abre el formulario nativo para ver los botones Liquid Glass.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let s = self else { return }
+            let h = UIHostingController(rootView: AnyView(CNNuevoMov(datos: s.datos, onClose: {})))
+            h.modalPresentationStyle = .overFullScreen
+            h.view.backgroundColor = .clear
+            s.present(h, animated: true)
+        }
     }
 }
 

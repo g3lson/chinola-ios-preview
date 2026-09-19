@@ -324,13 +324,11 @@ struct CNMovs: View {
                 TextField("Buscar movimiento…", text: $q).font(.system(size: 15)).foregroundColor(CNC.ink)
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            // Búsqueda en liquid glass real (material translúcido).
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.5), lineWidth: 0.8))
+            // Búsqueda en Liquid Glass.
+            .cnVidrio(RoundedRectangle(cornerRadius: 16, style: .continuous))
             Image(systemName: "line.3.horizontal.decrease").font(.system(size: 17, weight: .semibold)).foregroundColor(CNC.ink)
                 .frame(width: 46, height: 46)
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.8))
+                .cnVidrio(Circle())
         }
         .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 10)
         .background(.ultraThinMaterial)   // el contenido pasa por detrás al hacer scroll
@@ -391,15 +389,16 @@ struct CNMovs: View {
     @ViewBuilder private func circulo(_ icono: String, acento: Bool, _ tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
             if acento {
+                // El «+» en Liquid Glass tintado del color de la marca.
                 Image(systemName: icono).font(.system(size: 20, weight: .semibold))
                     .foregroundColor(Color(cnHex: 0x20180a))
-                    .frame(width: 46, height: 46).background(CNC.acc).clipShape(Circle())
-                    .shadow(color: CNC.acc.opacity(0.4), radius: 8, y: 3)
+                    .frame(width: 46, height: 46)
+                    .cnVidrio(Circle(), tinte: CNC.acc)
+                    .shadow(color: CNC.acc.opacity(0.35), radius: 10, y: 4)
             } else {
                 Image(systemName: icono).font(.system(size: 18, weight: .semibold)).foregroundColor(CNC.ink)
                     .frame(width: 44, height: 44)
-                    .background(.ultraThinMaterial, in: Circle())   // glass
-                    .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.8))
+                    .cnVidrio(Circle())
             }
         }.buttonStyle(.plain)
     }
@@ -474,6 +473,34 @@ struct CNVidrio: ViewModifier {
     }
 }
 
+/// Liquid Glass en CUALQUIER forma (círculos de «+», cerrar, búsqueda, botones
+/// de las hojas…). iOS 26 → vidrio real; antes → material esmerilado.
+struct CNVidrioForma<S: Shape>: ViewModifier {
+    let forma: S
+    var tinte: Color? = nil
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if let t = tinte {
+                content.glassEffect(.regular.tint(t).interactive(), in: forma)
+            } else {
+                content.glassEffect(.regular.interactive(), in: forma)
+            }
+        } else {
+            content
+                .background(forma.fill(.ultraThinMaterial))
+                .background(tinte.map { forma.fill($0.opacity(0.55)) })
+                .overlay(forma.stroke(Color.white.opacity(0.5), lineWidth: 0.8))
+        }
+    }
+}
+
+extension View {
+    /// Vidrio (Liquid Glass en iOS 26) con la forma dada.
+    func cnVidrio<S: Shape>(_ forma: S, tinte: Color? = nil) -> some View {
+        modifier(CNVidrioForma(forma: forma, tinte: tinte))
+    }
+}
+
 // ── Pantalla Tendencia (SwiftUI, misma que la nativa) ──────────────────────
 struct CNTendencia: View {
     let libreta: CNLibreta
@@ -487,9 +514,7 @@ struct CNTendencia: View {
                 HStack {
                     Button(action: onClose) {
                         Image(systemName: "xmark").font(.system(size: 17, weight: .semibold)).foregroundColor(CNC.pmut)
-                            .frame(width: 44, height: 44)
-                            .background(.ultraThinMaterial, in: Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.6))
+                            .frame(width: 44, height: 44).cnVidrio(Circle())
                             .shadow(color: .black.opacity(0.10), radius: 6, y: 2)
                     }
                     Spacer()
@@ -1148,8 +1173,8 @@ struct CNBotonAncho: View {
         Button(action: tap) {
             HStack(spacing: 6) { if let ic = icono { Image(systemName: ic).font(.system(size: 15, weight: .heavy)) }; Text(texto).font(.system(size: 15.5, weight: .bold)) }
                 .foregroundColor(Color(cnHex: 0x3a2c00)).frame(maxWidth: .infinity).padding(.vertical, 15)
-                .background(Capsule().fill(.ultraThinMaterial).overlay(Capsule().fill(CNC.acc.opacity(0.6))))
-                .overlay(Capsule().stroke(Color.white.opacity(0.5), lineWidth: 0.7)).shadow(color: CNC.acc.opacity(0.4), radius: 12, y: 4)
+                .cnVidrio(Capsule(), tinte: CNC.acc)
+                .shadow(color: CNC.acc.opacity(0.35), radius: 12, y: 4)
         }.buttonStyle(.plain)
     }
 }
@@ -1349,9 +1374,9 @@ struct CNNuevoMov: View {
             ZStack {
                 Text(editar == nil ? "Nuevo movimiento" : "Editar movimiento").font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
                 HStack {
-                    Button(action: onClose) { Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundColor(CNC.pmut).frame(width: 34, height: 34).background(.ultraThinMaterial, in: Circle()).overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 0.6)) }.buttonStyle(.plain)
+                    Button(action: onClose) { Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundColor(CNC.pmut).frame(width: 34, height: 34).cnVidrio(Circle()) }.buttonStyle(.plain)
                     Spacer()
-                    Button(action: guardar) { HStack(spacing: 5) { Image(systemName: "checkmark").font(.system(size: 12, weight: .heavy)); Text("Guardar").font(.system(size: 14, weight: .bold)) }.foregroundColor(Color(cnHex: 0x3a2c00)).padding(.horizontal, 15).padding(.vertical, 8).background(Capsule().fill(.ultraThinMaterial).overlay(Capsule().fill(CNC.acc.opacity(0.55)))).overlay(Capsule().stroke(Color.white.opacity(0.45), lineWidth: 0.6)) }.buttonStyle(.plain)
+                    Button(action: guardar) { HStack(spacing: 5) { Image(systemName: "checkmark").font(.system(size: 12, weight: .heavy)); Text("Guardar").font(.system(size: 14, weight: .bold)) }.foregroundColor(Color(cnHex: 0x3a2c00)).padding(.horizontal, 15).padding(.vertical, 8).cnVidrio(Capsule(), tinte: CNC.acc) }.buttonStyle(.plain)
                 }
             }.padding(.horizontal, 16).padding(.bottom, 14)
         }
