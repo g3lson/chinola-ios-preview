@@ -477,27 +477,42 @@ struct CNBarraMenu: View {
         .init(id: "perfil", label: "Perfil", path: CNTabIcono.perfil)
     ]
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 4) {
             ForEach(items, id: \.id) { it in
+                let sel = estado.activa == it.id
                 Button { estado.alTocar(it.id) } label: {
-                    VStack(spacing: 4) {
-                        CNIconoTab(d: it.path).frame(height: 26)   // los 5 iconos, mismo estilo de línea
+                    VStack(spacing: 3) {
+                        CNIconoTab(d: it.path).frame(height: 25)
                         if estado.titulos {
-                            Text(it.label).font(.system(size: 11, weight: .heavy)).tracking(-0.1)
+                            Text(it.label).font(.system(size: 10.5, weight: .semibold))
                         }
                     }
-                    .foregroundColor(estado.activa == it.id ? CNC.ink : CNC.pmut)
+                    .foregroundColor(sel ? CNC.pos : .secondary)
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    // LA LENTE: cápsula de vidrio sobre la opción activa.
+                    .background(lente(sel))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.top, estado.titulos ? 9 : 12)
-        .padding(.bottom, 9)
+        .padding(.horizontal, 6)
+        .padding(.top, estado.titulos ? 7 : 11)
+        .padding(.bottom, 7)
         .modifier(CNVidrio(activo: conFondo))
         .padding(.horizontal, conFondo ? 16 : 0)
         .padding(.bottom, conFondo ? 2 : 0)
+    }
+
+    @ViewBuilder private func lente(_ sel: Bool) -> some View {
+        if sel {
+            if #available(iOS 26.0, *) {
+                Capsule().fill(.clear).glassEffect(.regular.interactive(), in: Capsule())
+            } else {
+                Capsule().fill(Color.white.opacity(0.18))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.38), lineWidth: 1))
+            }
+        }
     }
 }
 

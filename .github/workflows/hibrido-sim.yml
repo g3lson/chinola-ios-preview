@@ -78,8 +78,11 @@ jobs:
           xcrun simctl install "$UDID" "$APP"
           xcrun simctl ui "$UDID" appearance dark || true
           xcrun simctl launch "$UDID" do.com.fente.chinolasim || true
-          sleep 5;  xcrun simctl io "$UDID" screenshot cap-01-movs.png || true
-          sleep 3;  xcrun simctl io "$UDID" screenshot cap-02-movs.png || true
+          sleep 3;  xcrun simctl io "$UDID" screenshot cap-1-resumen.png || true
+          sleep 4;  xcrun simctl io "$UDID" screenshot cap-2-movs.png || true
+          sleep 4;  xcrun simctl io "$UDID" screenshot cap-3-cuentas.png || true
+          sleep 4;  xcrun simctl io "$UDID" screenshot cap-4-plan.png || true
+          sleep 4;  xcrun simctl io "$UDID" screenshot cap-5-perfil.png || true
           echo "=== ¿sigue vivo el proceso? ==="
           xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolasim || echo "(el proceso NO está vivo → crasheó)"
           echo "=== crash reports ==="

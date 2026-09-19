@@ -11,6 +11,7 @@ class TestVC: CAPBridgeViewController {
     let estado = CNMenuEstado.shared
     private let nativo = NativoPlugin()
     private var barraView: UIView?
+    var contenido: UIView?
 
     override func capacitorDidLoad() {
         nativo.store = datos
@@ -21,20 +22,10 @@ class TestVC: CAPBridgeViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Movimientos nativa (real) encima del webview, opaca. Se llena por el
-        // puente (la web empuja Nativo.datos al store compartido).
-        let host = UIHostingController(rootView: AnyView(CNMovs(datos: datos)))
-        host.view.backgroundColor = .systemGroupedBackground
-        addChild(host); view.addSubview(host.view); host.didMove(toParent: self)
-        host.view.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            host.view.topAnchor.constraint(equalTo: view.topAnchor),
-            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
+        mostrar(0)
 
-        // UITabBar TRANSPARENTE sobre cápsula de UIGlassEffect (patrón Batuta).
+        // Cápsula flotante de Liquid Glass con la barra propia dentro (permite
+        // la LENTE de vidrio sobre la opción seleccionada).
         var efecto: UIVisualEffect = UIBlurEffect(style: .systemUltraThinMaterial)
         if #available(iOS 26.0, *) { let e = UIGlassEffect(); e.isInteractive = true; efecto = e }
         let panel = UIVisualEffectView(effect: efecto)
@@ -42,37 +33,26 @@ class TestVC: CAPBridgeViewController {
         panel.layer.cornerRadius = 30
         panel.layer.cornerCurve = .continuous
         panel.clipsToBounds = true
-        panel.isUserInteractionEnabled = false
         panel.layer.borderWidth = 1
         panel.layer.borderColor = UIColor.white.withAlphaComponent(0.28).cgColor
         view.addSubview(panel)
 
-        let barra = UITabBar()
-        barra.translatesAutoresizingMaskIntoConstraints = false
-        let ap = UITabBarAppearance()
-        ap.configureWithTransparentBackground()
-        barra.standardAppearance = ap
-        barra.scrollEdgeAppearance = ap
-        view.addSubview(barra)
+        let hosting = UIHostingController(rootView: CNBarraMenu(estado: estado, conFondo: false))
+        hosting.view.backgroundColor = .clear
+        hosting.view.translatesAutoresizingMaskIntoConstraints = false
+        addChild(hosting); hosting.didMove(toParent: self)
+        panel.contentView.addSubview(hosting.view)
         NSLayoutConstraint.activate([
-            barra.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 14),
-            barra.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -14),
-            barra.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -4),
-            panel.leadingAnchor.constraint(equalTo: barra.leadingAnchor),
-            panel.trailingAnchor.constraint(equalTo: barra.trailingAnchor),
-            panel.topAnchor.constraint(equalTo: barra.topAnchor),
-            panel.bottomAnchor.constraint(equalTo: barra.bottomAnchor)
+            hosting.view.topAnchor.constraint(equalTo: panel.contentView.topAnchor),
+            hosting.view.bottomAnchor.constraint(equalTo: panel.contentView.bottomAnchor),
+            hosting.view.leadingAnchor.constraint(equalTo: panel.contentView.leadingAnchor),
+            hosting.view.trailingAnchor.constraint(equalTo: panel.contentView.trailingAnchor),
+            panel.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 14),
+            panel.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -14),
+            panel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -4)
         ])
-        var items: [UITabBarItem] = []
-        for (i, t) in CNTabs.todas.enumerated() {
-            items.append(UITabBarItem(title: t.titulo, image: cnIconoUIImage(t.path), tag: i))
-        }
-        barra.setItems(items, animated: false)
-        barra.selectedItem = items[1]
-        barra.tintColor = UIColor(CNC.pos)
         view.bringSubviewToFront(panel)
-        view.bringSubviewToFront(barra)
-        barraView = barra
+        barraView = panel
 
     }
 }
@@ -93,6 +73,35 @@ struct CNPruebaColores: View {
                         .overlay(Text("Fila \(i + 1)").font(.system(size: 18, weight: .bold)).foregroundColor(.black))
                 }
             }.padding(.horizontal, 20)
+        }
+    }
+}
+
+extension TestVC {
+    /// Va cambiando de pantalla para capturar cada sección.
+    func mostrar(_ i: Int) {
+        contenido?.removeFromSuperview()
+        let vistas: [AnyView] = [
+            AnyView(CNResumen(datos: datos)), AnyView(CNMovs(datos: datos)),
+            AnyView(CNCuentas(datos: datos)), AnyView(CNPlan(datos: datos)),
+            AnyView(CNPerfil(datos: datos))
+        ]
+        let ids = ["resumen","movs","cuentas","plan","perfil"]
+        estado.activa = ids[i % 5]
+        let h = UIHostingController(rootView: vistas[i % 5])
+        h.view.backgroundColor = .systemGroupedBackground
+        addChild(h); view.addSubview(h.view); h.didMove(toParent: self)
+        h.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            h.view.topAnchor.constraint(equalTo: view.topAnchor),
+            h.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            h.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            h.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        contenido = h.view
+        if let p = barraView { view.bringSubviewToFront(p) }
+        if i < 4 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in self?.mostrar(i + 1) }
         }
     }
 }
