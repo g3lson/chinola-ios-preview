@@ -292,12 +292,62 @@ struct CNBotonVidrio: View {
     }
 }
 
+/// Menú nativo (el del sistema) con el mismo botón de vidrio: filtros y
+/// acciones salen pegados a su botón, como en cualquier app de iOS.
+struct CNMenuVidrio<C: View>: View {
+    let icono: String
+    var acento: Bool = false
+    var activo: Bool = false
+    var lado: CGFloat = 44
+    @ViewBuilder var contenido: () -> C
+    var body: some View {
+        Menu {
+            contenido()
+        } label: {
+            Image(systemName: icono)
+                .font(.system(size: acento ? 20 : 17, weight: .semibold))
+                .foregroundColor(acento ? Color(cnHex: 0x20180a) : CNC.ink)
+                .frame(width: lado, height: lado)
+                .cnVidrio(Circle(), tinte: acento ? CNC.acc : (activo ? CNC.acc.opacity(0.5) : nil))
+        }
+    }
+}
+
 struct CNMovs: View {
     @ObservedObject var datos: CNDatos
     @State private var q = ""
+    /// Los mismos filtros de la web, pero en menús del sistema.
+    @State private var filtro = 0
+    @State private var periodo = 0
+    private static let filtros = ["Todos", "Ingresos", "Gastos", "Fijos", "Variables", "Ahorro"]
+    private static let periodos = ["Todo", "Este mes", "Mes pasado", "Últimos 3 meses"]
 
     private var movimientos: [CNMov] {
-        let t = datos.libreta.tx.sorted { $0.fecha > $1.fecha }
+        var t = datos.libreta.tx.sorted { $0.fecha > $1.fecha }
+        switch filtro {
+        case 1: t = t.filter { $0.esIngreso }
+        case 2: t = t.filter { !$0.esIngreso && !$0.esTransfer }
+        case 3: t = t.filter { $0.tipo.lowercased().contains("fijo") }
+        case 4: t = t.filter { $0.tipo.lowercased().contains("variable") }
+        case 5: t = t.filter { $0.tipo.lowercased().contains("ahorro") }
+        default: break
+        }
+        if periodo > 0 {
+            let cal = Calendar.current, hoy = Date()
+            let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+            t = t.filter { m in
+                guard let d = f.date(from: m.fecha) else { return true }
+                switch periodo {
+                case 1: return cal.isDate(d, equalTo: hoy, toGranularity: .month)
+                case 2:
+                    guard let anterior = cal.date(byAdding: .month, value: -1, to: hoy) else { return true }
+                    return cal.isDate(d, equalTo: anterior, toGranularity: .month)
+                default:
+                    guard let desde = cal.date(byAdding: .month, value: -3, to: hoy) else { return true }
+                    return d >= desde
+                }
+            }
+        }
         guard !q.isEmpty else { return t }
         let n = q.lowercased()
         return t.filter { $0.concepto.lowercased().contains(n) || $0.categoria.lowercased().contains(n) }
@@ -322,7 +372,11 @@ struct CNMovs: View {
                 HStack(alignment: .center, spacing: 10) {
                     Text("Movimientos").font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
                     Spacer(minLength: 8)
-                    circulo("calendar", acento: false) {}
+                    CNMenuVidrio(icono: "calendar", activo: periodo > 0) {
+                        Picker("", selection: $periodo) {
+                            ForEach(CNMovs.periodos.indices, id: \.self) { i in Text(CNMovs.periodos[i]).tag(i) }
+                        }
+                    }
                     circulo("plus", acento: true) { datos.onNuevoMov() }
                 }
                 .padding(.horizontal, 16).padding(.top, 0)
@@ -350,9 +404,11 @@ struct CNMovs: View {
             }
             .padding(.horizontal, 14).frame(height: 44)
             .cnVidrio(Capsule())
-            Image(systemName: "line.3.horizontal.decrease").font(.system(size: 17, weight: .semibold)).foregroundColor(CNC.ink)
-                .frame(width: 46, height: 46)
-                .cnVidrio(Circle())
+            CNMenuVidrio(icono: "line.3.horizontal.decrease", activo: filtro > 0, lado: 46) {
+                Picker("", selection: $filtro) {
+                    ForEach(CNMovs.filtros.indices, id: \.self) { i in Text(CNMovs.filtros[i]).tag(i) }
+                }
+            }
         }
         .padding(.horizontal, 14).padding(.top, 2).padding(.bottom, 8)
         .background(.ultraThinMaterial)   // el contenido pasa por detrás al hacer scroll
@@ -398,6 +454,12 @@ struct CNMovs: View {
             .padding(.horizontal, 14).padding(.vertical, 11)
         }
         .buttonStyle(.plain)
+        // Mantener pulsado: las mismas acciones, en el menú del sistema.
+        .contextMenu {
+            Button { datos.onDetalleMov(m.id) } label: { Label("Ver detalle", systemImage: "doc.text.magnifyingglass") }
+            Button { datos.onAccion("editarMov", m.id) } label: { Label("Editar", systemImage: "pencil") }
+            Button(role: .destructive) { datos.onBorrarMov(m.id) } label: { Label("Eliminar", systemImage: "trash") }
+        }
     }
 
     private var vacio: some View {
@@ -877,16 +939,49 @@ extension View { func tarjetaCN() -> some View {
 private func cnInicial(_ s: String) -> String {
     let p = s.split(separator: " ").prefix(2).compactMap { $0.first }; return String(p).uppercased()
 }
+/// Una acción del menú ⋯ de una pantalla de detalle.
+struct CNAccion: Identifiable {
+    let id = UUID()
+    let texto: String
+    let icono: String
+    var peligro: Bool = false
+    let hacer: () -> Void
+}
+
 struct CNDetCabecera: View {
     let inicial: String; let nombre: String; let sub: String
     var fondo: Color = cnColor(0x093a20); var cuadro: Color = CNC.info; var volverA: String = "Cuentas"
+    /// Acciones de la pantalla (editar, eliminar…): salen en el menú ⋯.
+    var acciones: [CNAccion] = []
     var onClose: () -> Void
     var body: some View {
         VStack(spacing: 0) {
             Color.clear.frame(height: 52)
             HStack(spacing: 12) {
-                Button(action: onClose) { HStack(spacing: 2) { Image(systemName: "chevron.left").font(.system(size: 16, weight: .bold)); Text(volverA).font(.system(size: 15, weight: .semibold)) }.foregroundColor(.white).opacity(0.9) }.buttonStyle(.plain)
+                // Atrás y ⋯ en vidrio, como el resto de botones de la app.
+                Button(action: onClose) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left").font(.system(size: 15, weight: .bold))
+                        Text(volverA).font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.leading, 10).padding(.trailing, 14).frame(height: 38)
+                    .cnVidrio(Capsule())
+                }.buttonStyle(.plain)
                 Spacer(minLength: 0)
+                if !acciones.isEmpty {
+                    Menu {
+                        ForEach(acciones) { a in
+                            Button(role: a.peligro ? .destructive : nil, action: a.hacer) {
+                                Label(a.texto, systemImage: a.icono)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                            .frame(width: 38, height: 38).cnVidrio(Circle())
+                    }
+                }
             }
             HStack(spacing: 12) {
                 Text(inicial).font(.system(size: 15, weight: .heavy)).foregroundColor(.white)
@@ -939,7 +1034,11 @@ struct CNDetalleCuenta: View {
         let entra = movs.filter { ($0.esIngreso || ($0.esTransfer && $0.destino == medio)) && $0.fecha.hasPrefix(mes) }.reduce(0) { $0 + abs($1.monto) }
         let sale = movs.filter { ($0.esGasto || $0.tipo == "Ahorro" || ($0.esTransfer && $0.medio == medio)) && $0.fecha.hasPrefix(mes) }.reduce(0) { $0 + abs($1.monto) }
         return VStack(spacing: 0) {
-            CNDetCabecera(inicial: cnInicial(c?.nombre ?? "?"), nombre: c?.nombre ?? "Cuenta", sub: ((c?.banco.isEmpty ?? true) ? "Sin banco" : c!.banco) + " · \(movs.count) mov.", cuadro: cnColor(hexString: c?.color ?? "#137d41"), onClose: onClose)
+            CNDetCabecera(inicial: cnInicial(c?.nombre ?? "?"), nombre: c?.nombre ?? "Cuenta", sub: ((c?.banco.isEmpty ?? true) ? "Sin banco" : c!.banco) + " · \(movs.count) mov.", cuadro: cnColor(hexString: c?.color ?? "#137d41"),
+                          acciones: [CNAccion(texto: "Editar cuenta", icono: "pencil") { datos.onAccion("editarCuenta", "\(cuentaId)") },
+                                     CNAccion(texto: "Transferir", icono: "arrow.left.arrow.right") { datos.onAccion("transferir", "\(cuentaId)") },
+                                     CNAccion(texto: "Eliminar cuenta", icono: "trash", peligro: true) { datos.onAccion("borrarCuenta", "\(cuentaId)") }],
+                          onClose: onClose)
             cnCuerpo {
                 CNDetCifra(rotulo: "Saldo disponible", valor: cnDinero(c?.saldo ?? 0), cols: [("Entró este mes", cnDinero(entra), CNC.pos), ("Salió este mes", cnDinero(sale), CNC.neg)])
                 CNBotonAncho(texto: "Nuevo movimiento", icono: "plus") { datos.onAccion("nuevo", "") }
@@ -969,7 +1068,10 @@ struct CNDetallePrestamo: View {
     var body: some View {
         let p = datos.libreta.prestamos.first { $0.id == prestamoId }; let meDeben = (p?.sentido ?? "meDeben") == "meDeben"
         return VStack(spacing: 0) {
-            CNDetCabecera(inicial: cnInicial(p?.nombre ?? "?"), nombre: p?.nombre ?? "Préstamo", sub: meDeben ? "Te debe" : "Le debes", fondo: cnColor(0x5a3fa0), cuadro: cnColor(0x825eb9), onClose: onClose)
+            CNDetCabecera(inicial: cnInicial(p?.nombre ?? "?"), nombre: p?.nombre ?? "Préstamo", sub: meDeben ? "Te debe" : "Le debes", fondo: cnColor(0x5a3fa0), cuadro: cnColor(0x825eb9),
+                          acciones: [CNAccion(texto: "Editar préstamo", icono: "pencil") { datos.onAccion("editarPrestamo", "\(prestamoId)") },
+                                     CNAccion(texto: "Eliminar préstamo", icono: "trash", peligro: true) { datos.onAccion("borrarPrestamo", "\(prestamoId)") }],
+                          onClose: onClose)
             cnCuerpo {
                 CNDetCifra(rotulo: meDeben ? "Te deben" : "Debes", valor: cnDinero(p?.pendiente ?? 0), color: cnColor(0x825eb9),
                     cols: [(meDeben ? "Prestaste" : "Te prestaron", cnDinero(p?.total ?? 0), CNC.ink), ("Ya \(meDeben ? "abonó" : "abonaste")", cnDinero(p?.pagado ?? 0), CNC.pos)])
@@ -984,7 +1086,10 @@ struct CNDetalleTarjeta: View {
     var body: some View {
         let t = datos.libreta.tarjetas.first { $0.id == tarjetaId }
         return VStack(spacing: 0) {
-            CNDetCabecera(inicial: cnInicial(t?.nombre ?? "?"), nombre: t?.nombre ?? "Tarjeta", sub: "Corte \(t?.corte ?? 0)", fondo: cnColor(0x9a3f3f), cuadro: CNC.neg, onClose: onClose)
+            CNDetCabecera(inicial: cnInicial(t?.nombre ?? "?"), nombre: t?.nombre ?? "Tarjeta", sub: "Corte \(t?.corte ?? 0)", fondo: cnColor(0x9a3f3f), cuadro: CNC.neg,
+                          acciones: [CNAccion(texto: "Editar tarjeta", icono: "pencil") { datos.onAccion("editarTarjeta", "\(tarjetaId)") },
+                                     CNAccion(texto: "Eliminar tarjeta", icono: "trash", peligro: true) { datos.onAccion("borrarTarjeta", "\(tarjetaId)") }],
+                          onClose: onClose)
             cnCuerpo {
                 CNDetCifra(rotulo: "Deuda actual", valor: cnDinero(t?.saldo ?? 0), color: CNC.neg, cols: [("Límite", cnDinero(t?.limite ?? 0), CNC.ink), ("Disponible", cnDinero(t?.disponible ?? 0), CNC.pos)])
                 CNBotonAncho(texto: "Pagar la tarjeta", icono: "creditcard") { datos.onAccion("pagoTarjeta", "\(tarjetaId)") }
@@ -998,7 +1103,10 @@ struct CNDetalleMeta: View {
     var body: some View {
         let m = datos.libreta.metas.first { $0.id == metaId }; let prog = m?.progreso ?? 0
         return VStack(spacing: 0) {
-            CNDetCabecera(inicial: "◎", nombre: m?.nombre ?? "Meta", sub: "Meta de ahorro", fondo: cnColor(0x5a3fa0), cuadro: cnColor(0x825eb9), volverA: "Plan", onClose: onClose)
+            CNDetCabecera(inicial: "◎", nombre: m?.nombre ?? "Meta", sub: "Meta de ahorro", fondo: cnColor(0x5a3fa0), cuadro: cnColor(0x825eb9), volverA: "Plan",
+                          acciones: [CNAccion(texto: "Editar meta", icono: "pencil") { datos.onAccion("editarMeta", "\(metaId)") },
+                                     CNAccion(texto: "Eliminar meta", icono: "trash", peligro: true) { datos.onAccion("borrarMeta", "\(metaId)") }],
+                          onClose: onClose)
             cnCuerpo {
                 VStack(spacing: 14) {
                     ZStack {
@@ -1020,7 +1128,10 @@ struct CNDetalleMov: View {
     var body: some View {
         let m = datos.libreta.tx.first { $0.id == movId }; let entra = m?.esIngreso ?? false
         return VStack(spacing: 0) {
-            CNDetCabecera(inicial: cnInicial(m?.concepto ?? "?"), nombre: m?.concepto ?? "Movimiento", sub: "\(m?.categoria ?? "") · \(cnFechaCorta(m?.fecha ?? ""))", fondo: cnColor(0x7a5f10), cuadro: cnColor(0xe0a92e), volverA: "Movimientos", onClose: onClose)
+            CNDetCabecera(inicial: cnInicial(m?.concepto ?? "?"), nombre: m?.concepto ?? "Movimiento", sub: "\(m?.categoria ?? "") · \(cnFechaCorta(m?.fecha ?? ""))", fondo: cnColor(0x7a5f10), cuadro: cnColor(0xe0a92e), volverA: "Movimientos",
+                          acciones: [CNAccion(texto: "Editar movimiento", icono: "pencil") { datos.onAccion("editarMov", movId) },
+                                     CNAccion(texto: "Eliminar movimiento", icono: "trash", peligro: true) { confirmarBorrar = true }],
+                          onClose: onClose)
             cnCuerpo {
                 VStack(spacing: 3) { Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut); Text((entra ? "+ " : "− ") + cnDinero(m?.monto ?? 0)).font(.system(size: 34, weight: .heavy)).foregroundColor(entra ? CNC.pos : CNC.neg) }
                     .frame(maxWidth: .infinity).padding(.vertical, 18).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 0.5))

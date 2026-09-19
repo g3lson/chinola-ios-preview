@@ -54,6 +54,40 @@ class TestVC: CAPBridgeViewController {
         view.bringSubviewToFront(panel)
         barraView = panel
 
+        // Guion de la prueba: Movimientos → detalle de un movimiento (para ver
+        // atrás y ⋯ en vidrio) → nuevo movimiento (cerrar y guardar).
+        conectarAcciones()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12) { [weak self] in
+            guard let s = self, let m = s.datos.libreta.tx.first else { return }
+            s.presentar(AnyView(CNDetalleMov(datos: s.datos, movId: m.id, onClose: { s.cerrar() })))
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 22) { [weak self] in
+            guard let s = self else { return }
+            s.cerrar()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                s.presentar(AnyView(CNNuevoMov(datos: s.datos, onClose: { s.cerrar() })))
+            }
+        }
+    }
+
+    private func conectarAcciones() {
+        datos.onNuevoMov = { [weak self] in guard let s = self else { return }
+            s.presentar(AnyView(CNNuevoMov(datos: s.datos, onClose: { s.cerrar() }))) }
+        datos.onDetalleMov = { [weak self] id in guard let s = self else { return }
+            s.presentar(AnyView(CNDetalleMov(datos: s.datos, movId: id, onClose: { s.cerrar() }))) }
+    }
+
+    private var hojaActual: UIViewController?
+    func presentar(_ v: AnyView) {
+        let host = UIHostingController(rootView: v)
+        host.modalPresentationStyle = .overFullScreen
+        host.view.backgroundColor = .clear
+        hojaActual = host
+        present(host, animated: true)
+    }
+    func cerrar() {
+        hojaActual?.dismiss(animated: true)
+        hojaActual = nil
     }
 }
 
