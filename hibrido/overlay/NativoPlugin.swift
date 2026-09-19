@@ -18,7 +18,8 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "abrirTendencia", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "menuActiva", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "menuTitulos", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "datos", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "datos", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "tema", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -38,16 +39,26 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    // La web manda el tema puesto (31 temas): las pantallas nativas pintan con él.
+    @objc func tema(_ call: CAPPluginCall) {
+        let json = call.getString("json") ?? ""
+        DispatchQueue.main.async {
+            CNDatos.shared.cargarTema(json: json)
+            CNMenuEstado.shared.alRepintar()
+            call.resolve()
+        }
+    }
+
     // La web avisa qué pestaña quedó activa, para que la barra la resalte.
     @objc func menuActiva(_ call: CAPPluginCall) {
         let id = call.getString("id") ?? "resumen"
-        DispatchQueue.main.async { CNMenuEstado.shared.activa = id; call.resolve() }
+        DispatchQueue.main.async { CNMenuEstado.shared.activa = id; CNMenuEstado.shared.alRepintar(); call.resolve() }
     }
 
     // Mostrar u ocultar los títulos del menú (ajuste de la app).
     @objc func menuTitulos(_ call: CAPPluginCall) {
         let on = call.getBool("on") ?? true
-        DispatchQueue.main.async { CNMenuEstado.shared.titulos = on; call.resolve() }
+        DispatchQueue.main.async { CNMenuEstado.shared.titulos = on; CNMenuEstado.shared.alRepintar(); call.resolve() }
     }
 
     @objc func abrirTendencia(_ call: CAPPluginCall) {

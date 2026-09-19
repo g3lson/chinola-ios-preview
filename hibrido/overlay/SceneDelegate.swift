@@ -10,7 +10,7 @@ class TestVC: CAPBridgeViewController {
     let datos = CNDatos.shared
     let estado = CNMenuEstado.shared
     private let nativo = NativoPlugin()
-    private var barraView: UIView?
+    let barra = CNBarraNativa()
     var contenido: UIView?
 
     override func capacitorDidLoad() {
@@ -24,45 +24,29 @@ class TestVC: CAPBridgeViewController {
 
         mostrar(0)
 
-        // Cápsula flotante de Liquid Glass con la barra propia dentro (permite
-        // la LENTE de vidrio sobre la opción seleccionada).
-        var efecto: UIVisualEffect = UIBlurEffect(style: .systemUltraThinMaterial)
-        if #available(iOS 26.0, *) { let e = UIGlassEffect(); e.isInteractive = true; efecto = e }
-        let panel = UIVisualEffectView(effect: efecto)
-        panel.translatesAutoresizingMaskIntoConstraints = false
-        panel.layer.cornerRadius = 30
-        panel.layer.cornerCurve = .continuous
-        panel.clipsToBounds = true
-        panel.layer.borderWidth = 1
-        panel.layer.borderColor = UIColor.white.withAlphaComponent(0.28).cgColor
-        view.addSubview(panel)
+        // El MENÚ: un UITabBar de verdad (Liquid Glass del sistema en iOS 26).
+        barra.alTocar = { [weak self] id in self?.estado.activa = id; self?.barra.pintar(activa: id, titulos: true) }
+        barra.montar(en: view)
+        barra.pintar(activa: estado.activa, titulos: true)
 
-        let hosting = UIHostingController(rootView: CNBarraMenu(estado: estado, conFondo: false))
-        hosting.view.backgroundColor = .clear
-        hosting.view.translatesAutoresizingMaskIntoConstraints = false
-        addChild(hosting); hosting.didMove(toParent: self)
-        panel.contentView.addSubview(hosting.view)
-        NSLayoutConstraint.activate([
-            hosting.view.topAnchor.constraint(equalTo: panel.contentView.topAnchor),
-            hosting.view.bottomAnchor.constraint(equalTo: panel.contentView.bottomAnchor),
-            hosting.view.leadingAnchor.constraint(equalTo: panel.contentView.leadingAnchor),
-            hosting.view.trailingAnchor.constraint(equalTo: panel.contentView.trailingAnchor),
-            panel.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 14),
-            panel.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -14),
-            panel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -4)
-        ])
-        view.bringSubviewToFront(panel)
-        barraView = panel
-
-        // Guion de la prueba: Movimientos → detalle de un movimiento (para ver
-        // atrás y ⋯ en vidrio) → nuevo movimiento (cerrar y guardar).
+        // Guion de la prueba, acompasado con las capturas del workflow:
+        //  6 s Movimientos · 12 s Movimientos con OTRO TEMA · 20 s detalle · 34 s nuevo.
         conectarAcciones()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak self] in
+            // Cambio de tema (como si el usuario lo cambiara en la web): todo
+            // lo nativo tiene que repintarse.
+            self?.datos.cargarTema(json: """
+            {"bg":"#101713","card":"#18211b","suave":"#1d2820","borde":"#2c3a31","tinta":"#eef3ee",
+             "gris":"#9bb0a1","side":"#0b120e","acento":"#8fd6a0","pos":"#5fcf8a","neg":"#e08a7a","oscuro":true}
+            """)
+            self?.barra.pintar(activa: self?.estado.activa ?? "movs", titulos: true)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 17) { [weak self] in
             guard let s = self else { return }
             let id = s.datos.libreta.tx.first?.id ?? ""
             s.presentar(AnyView(CNDetalleMov(datos: s.datos, movId: id, onClose: { s.cerrar() })))
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 24) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
             guard let s = self else { return }
             s.cerrar()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
@@ -125,7 +109,7 @@ extension TestVC {
         let ids = ["movs"]
         estado.activa = ids[0]
         let h = UIHostingController(rootView: vistas[0])
-        h.view.backgroundColor = .systemGroupedBackground
+        h.view.backgroundColor = UIColor(CNC.scr)
         addChild(h); view.addSubview(h.view); h.didMove(toParent: self)
         h.view.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -135,7 +119,9 @@ extension TestVC {
             h.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         contenido = h.view
-        if let p = barraView { view.bringSubviewToFront(p) }
+        view.bringSubviewToFront(barra.barra)
+        view.layoutIfNeeded()
+        h.additionalSafeAreaInsets.bottom = max(0, max(barra.alto, 56) - view.safeAreaInsets.bottom)
 
     }
 }

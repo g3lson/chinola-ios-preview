@@ -37,17 +37,65 @@ func cnOklch(_ s: String) -> Color {
     func cl(_ c: Double) -> Double { min(1, max(0, c)) }
     return Color(.sRGB, red: cl(gam(r)), green: cl(gam(g)), blue: cl(gam(bl)), opacity: 1)
 }
+/// La paleta del tema que tiene puesto el usuario. La web tiene 31 temas y los
+/// pinta con variables CSS; el nativo los recibe por `__chinolaTemaJSON` y los
+/// guarda aquí, para que las pantallas nativas cambien de color con la app.
+struct CNPaletaTema {
+    var scr  = cnColor(0xfaf7ec)
+    var card = cnColor(0xffffff)
+    var soft = cnColor(0xf9f5e6)
+    var line = cnColor(0xe5e1d3)
+    var ink  = cnColor(0x132419)
+    var pmut = cnColor(0x516356)
+    var acc  = cnColor(0xefcb4c)
+    var side = cnColor(0x1d3d28)      // la franja de la cabecera
+    var pos  = cnColor(0x137d41)
+    var neg  = cnColor(0xd55948)
+    var info = cnColor(0x398ad6)
+    var oscuro = false
+
+    /// Del JSON que manda la web: { bg, card, suave, borde, tinta, gris, side,
+    /// acento, pos, neg, oscuro }. Lo que falte se queda como está.
+    static func desde(json: String) -> CNPaletaTema? {
+        guard let d = json.data(using: .utf8),
+              let o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        var p = CNPaletaTema()
+        func col(_ k: String, _ destino: inout Color) {
+            if let v = o[k] as? String, !v.isEmpty, !v.contains("var(") { destino = cnColor(hexString: v) }
+        }
+        col("bg", &p.scr); col("card", &p.card); col("suave", &p.soft); col("borde", &p.line)
+        col("tinta", &p.ink); col("gris", &p.pmut); col("side", &p.side); col("acento", &p.acc)
+        col("pos", &p.pos); col("neg", &p.neg); col("info", &p.info)
+        p.oscuro = (o["oscuro"] as? Bool) ?? false
+        return p
+    }
+}
+
+/// Los colores, siempre leídos del tema puesto (por eso son `var` calculadas:
+/// al cambiar el tema, el siguiente dibujo ya sale del color nuevo).
 enum CNC {
-    static let scr  = cnColor(0xfaf7ec)
-    static let card = cnColor(0xffffff)
-    static let soft = cnColor(0xf9f5e6)
-    static let line = cnColor(0xe5e1d3)
-    static let ink  = cnColor(0x132419)
-    static let pmut = cnColor(0x516356)
-    static let acc  = cnColor(0xefcb4c)
-    static let pos  = cnColor(0x137d41)
-    static let neg  = cnColor(0xd55948)
-    static let info = cnColor(0x398ad6)
+    static var tema = CNPaletaTema()
+    static var scr: Color  { tema.scr }
+    static var card: Color { tema.card }
+    static var soft: Color { tema.soft }
+    static var line: Color { tema.line }
+    static var ink: Color  { tema.ink }
+    static var pmut: Color { tema.pmut }
+    static var acc: Color  { tema.acc }
+    static var side: Color { tema.side }
+    static var pos: Color  { tema.pos }
+    static var neg: Color  { tema.neg }
+    static var info: Color { tema.info }
+    /// Lo que se escribe ENCIMA del acento (el amarillo de la marca pide tinta
+    /// oscura; un acento oscuro pide tinta clara).
+    static var sobreAcc: Color { cnClaro(tema.acc) ? cnColor(0x20180a) : .white }
+}
+
+/// ¿Este color es claro? (luminancia relativa, como hace la web en color.js)
+func cnClaro(_ c: Color) -> Bool {
+    let u = UIColor(c); var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+    u.getRed(&r, green: &g, blue: &b, alpha: &a)
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 0.6
 }
 
 // ── Modelos (tolerantes: campos faltantes toman un valor por defecto) ───────
@@ -270,6 +318,14 @@ final class CNDatos: ObservableObject {
     var onVerPresupuesto: () -> Void = {}
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
     func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p } }
+    /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
+    /// con los colores nuevos (los de CNC son calculados).
+    @Published var selloTema = 0
+    func cargarTema(json: String) {
+        guard let p = CNPaletaTema.desde(json: json) else { return }
+        CNC.tema = p
+        selloTema += 1
+    }
 }
 
 // ── Pantalla «Movimientos» NATIVA ──────────────────────────────────────────
@@ -299,6 +355,8 @@ struct CNMenuVidrio<C: View>: View {
     var acento: Bool = false
     var activo: Bool = false
     var lado: CGFloat = 44
+    /// Color del glifo (blanco cuando va sobre la franja de la cabecera).
+    var color: Color? = nil
     @ViewBuilder var contenido: () -> C
     var body: some View {
         Menu {
@@ -306,7 +364,7 @@ struct CNMenuVidrio<C: View>: View {
         } label: {
             Image(systemName: icono)
                 .font(.system(size: acento ? 20 : 17, weight: .semibold))
-                .foregroundColor(acento ? Color(cnHex: 0x20180a) : CNC.ink)
+                .foregroundColor(acento ? CNC.sobreAcc : (color ?? CNC.ink))
                 .frame(width: lado, height: lado)
                 .cnVidrio(Circle(), tinte: acento ? CNC.acc : (activo ? CNC.acc.opacity(0.5) : nil))
         }
@@ -366,22 +424,10 @@ struct CNMovs: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
-                // Título + calendario + «+» (se van con el scroll).
-                HStack(alignment: .center, spacing: 10) {
-                    Text("Movimientos").font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
-                    Spacer(minLength: 8)
-                    CNMenuVidrio(icono: "calendar", activo: periodo > 0) {
-                        Picker("", selection: $periodo) {
-                            ForEach(CNMovs.periodos.indices, id: \.self) { i in Text(CNMovs.periodos[i]).tag(i) }
-                        }
-                    }
-                    circulo("plus", acento: true) { datos.onNuevoMov() }
-                }
-                .padding(.horizontal, 16).padding(.top, 0)
-
-                Section(header: busqueda) {
+        VStack(spacing: 0) {
+            cabecera
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 12) {
                     if porDia.isEmpty {
                         vacio.padding(.horizontal, 14)
                     } else {
@@ -391,27 +437,61 @@ struct CNMovs: View {
                     }
                     Color.clear.frame(height: 110)
                 }
+                .padding(.top, 12)
             }
         }
         .background(CNC.scr.ignoresSafeArea())
     }
 
-    private var busqueda: some View {
-        HStack(spacing: 9) {
-            HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .semibold)).foregroundColor(CNC.pmut)
-                TextField("Buscar movimiento…", text: $q).font(.system(size: 15)).foregroundColor(CNC.ink)
+    /// La MISMA franja de color que la cabecera del resto de la app (el `side`
+    /// del tema), para que Movimientos no parezca otra app: título, acciones y
+    /// buscador van dentro, en vidrio.
+    private var cabecera: some View {
+        VStack(spacing: 11) {
+            HStack(alignment: .center, spacing: 10) {
+                Text("Movimientos").font(.system(size: 26, weight: .heavy)).foregroundColor(.white)
+                Spacer(minLength: 8)
+                CNMenuVidrio(icono: "calendar", activo: periodo > 0, color: .white) {
+                    Picker("", selection: $periodo) {
+                        ForEach(CNMovs.periodos.indices, id: \.self) { i in Text(CNMovs.periodos[i]).tag(i) }
+                    }
+                }
+                circulo("plus", acento: true) { datos.onNuevoMov() }
             }
-            .padding(.horizontal, 14).frame(height: 44)
-            .cnVidrio(Capsule())
-            CNMenuVidrio(icono: "line.3.horizontal.decrease", activo: filtro > 0, lado: 46) {
-                Picker("", selection: $filtro) {
-                    ForEach(CNMovs.filtros.indices, id: \.self) { i in Text(CNMovs.filtros[i]).tag(i) }
+            HStack(spacing: 9) {
+                ZStack(alignment: .leading) {
+                    HStack(spacing: 9) {
+                        Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.75))
+                        // El marcador de agua a mano: el del sistema saldría gris
+                        // oscuro y aquí el fondo es de color.
+                        ZStack(alignment: .leading) {
+                            if q.isEmpty {
+                                Text("Buscar movimiento…").font(.system(size: 15)).foregroundColor(.white.opacity(0.7))
+                            }
+                            TextField("", text: $q).font(.system(size: 15)).foregroundColor(.white)
+                                .tint(.white).submitLabel(.search)
+                        }
+                        if !q.isEmpty {
+                            Button { q = "" } label: {
+                                Image(systemName: "xmark.circle.fill").font(.system(size: 15))
+                                    .foregroundColor(.white.opacity(0.75))
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                }
+                .frame(height: 44)
+                .cnVidrio(Capsule())
+                CNMenuVidrio(icono: "line.3.horizontal.decrease", activo: filtro > 0, lado: 44, color: .white) {
+                    Picker("", selection: $filtro) {
+                        ForEach(CNMovs.filtros.indices, id: \.self) { i in Text(CNMovs.filtros[i]).tag(i) }
+                    }
                 }
             }
         }
-        .padding(.horizontal, 14).padding(.top, 2).padding(.bottom, 8)
-        .background(.ultraThinMaterial)   // el contenido pasa por detrás al hacer scroll
+        .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 14)
+        .background(CNC.side.ignoresSafeArea(edges: .top))
     }
 
     private func grupoDia(_ fecha: String, _ items: [CNMov]) -> some View {
@@ -477,7 +557,7 @@ struct CNMovs: View {
             if acento {
                 // El «+» en Liquid Glass tintado del color de la marca.
                 Image(systemName: icono).font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(Color(cnHex: 0x20180a))
+                    .foregroundColor(CNC.sobreAcc)
                     .frame(width: 46, height: 46)
                     .cnVidrio(Circle(), tinte: CNC.acc)
                     .shadow(color: CNC.acc.opacity(0.35), radius: 10, y: 4)
@@ -501,6 +581,9 @@ final class CNMenuEstado: ObservableObject {
     @Published var activa: String = "resumen"
     @Published var titulos: Bool = true
     var alTocar: (String) -> Void = { _ in }
+    /// Lo pone el contenedor: repinta la barra de UIKit cuando la web avisa de
+    /// un cambio (pestaña activa, títulos, tema).
+    var alRepintar: () -> Void = {}
 }
 
 /// Las 5 pestañas, en un solo sitio (las usa la barra nativa UITabBar).
@@ -513,6 +596,65 @@ enum CNTabs {
         .init(id: "plan", titulo: "Plan", path: CNTabIcono.plan),
         .init(id: "perfil", titulo: "Perfil", path: CNTabIcono.perfil)
     ]
+}
+
+/// EL MENÚ, con un `UITabBar` de VERDAD.
+///
+/// En iOS 26 los controles de UIKit traen el Liquid Glass del sistema: la lente
+/// que se desliza hasta la pestaña elegida, el brillo de los bordes y el
+/// morfeo al hacer scroll. Una barra dibujada a mano (aunque se meta dentro de
+/// un UIVisualEffectView) NO tiene nada de eso: se ve como cristal, pero está
+/// quieta. Es la misma solución que en Batuta.
+final class CNBarraNativa: NSObject, UITabBarDelegate {
+    let barra = UITabBar()
+    private var ids: [String] = []
+    private var conTitulos = true
+    var alTocar: (String) -> Void = { _ in }
+
+    func montar(en vista: UIView) {
+        barra.translatesAutoresizingMaskIntoConstraints = false
+        barra.delegate = self
+        vista.addSubview(barra)
+        NSLayoutConstraint.activate([
+            barra.leadingAnchor.constraint(equalTo: vista.leadingAnchor),
+            barra.trailingAnchor.constraint(equalTo: vista.trailingAnchor),
+            barra.bottomAnchor.constraint(equalTo: vista.bottomAnchor)
+        ])
+        rehacer()
+    }
+
+    private func rehacer() {
+        var items: [UITabBarItem] = []
+        ids = []
+        for (i, t) in CNTabs.todas.enumerated() {
+            let img = cnIconoUIImage(t.path, lado: 26, grosor: 2).withRenderingMode(.alwaysTemplate)
+            let item = UITabBarItem(title: conTitulos ? t.titulo : nil, image: img, tag: i)
+            item.accessibilityLabel = t.titulo
+            items.append(item); ids.append(t.id)
+        }
+        let antes = barra.selectedItem?.tag
+        barra.setItems(items, animated: false)
+        if let t = antes, t < items.count { barra.selectedItem = items[t] }
+    }
+
+    /// Pestaña activa, títulos y colores del tema.
+    func pintar(activa: String, titulos: Bool) {
+        if titulos != conTitulos { conTitulos = titulos; rehacer() }
+        barra.tintColor = UIColor(CNC.pos)
+        barra.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
+        if let i = ids.firstIndex(of: activa), let items = barra.items, i < items.count,
+           barra.selectedItem !== items[i] {
+            barra.selectedItem = items[i]
+        }
+    }
+
+    var alto: CGFloat { barra.frame.height }
+
+    func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+        guard item.tag >= 0, item.tag < ids.count else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+        alTocar(ids[item.tag])
+    }
 }
 
 struct CNBarraMenu: View {
@@ -1171,15 +1313,17 @@ struct CNDetalleMov: View {
     var body: some View {
         let m = datos.libreta.tx.first { $0.id == movId }; let entra = m?.esIngreso ?? false
         return VStack(spacing: 0) {
+            // Sin menú ⋯: editar y eliminar están a la vista abajo, como en la web.
             CNDetCabecera(inicial: cnInicial(m?.concepto ?? "?"), nombre: m?.concepto ?? "Movimiento", sub: "\(m?.categoria ?? "") · \(cnFechaCorta(m?.fecha ?? ""))", fondo: cnOscurecer(colorMov(m)), cuadro: colorMov(m), volverA: "Movimientos",
-                          acciones: [CNAccion(texto: "Editar movimiento", icono: "pencil") { datos.onAccion("editarMov", movId) },
-                                     CNAccion(texto: "Eliminar movimiento", icono: "trash", peligro: true) { confirmarBorrar = true }],
                           onClose: onClose)
             cnCuerpo {
-                VStack(spacing: 3) { Text("MONTO").font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut); Text((entra ? "+ " : "− ") + cnDinero(m?.monto ?? 0)).font(.system(size: 34, weight: .heavy)).foregroundColor(entra ? CNC.pos : CNC.neg) }
-                    .frame(maxWidth: .infinity).padding(.vertical, 18).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 0.5))
+                VStack(spacing: 3) { Text("MONTO").font(.system(size: 11.5, weight: .semibold)).tracking(0.5).foregroundColor(CNC.pmut); Text((entra ? "+ " : "− ") + cnDinero(m?.monto ?? 0)).font(.system(size: 38, weight: .heavy)).foregroundColor(entra ? CNC.pos : CNC.neg).minimumScaleFactor(0.6).lineLimit(1) }
+                    .frame(maxWidth: .infinity).padding(.vertical, 20).padding(.horizontal, 14).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 0.5))
                 VStack(spacing: 0) {
-                    filaInfo("tag.fill", cnColor(0xe0a92e), "Categoría", m?.categoria ?? ""); div()
+                    // La categoría, con SU icono y SU color (los de la libreta).
+                    filaInfo(datos.libreta.categoria(m?.categoria ?? "")?.icono ?? "tag.fill",
+                             datos.libreta.categoria(m?.categoria ?? "").map { cnColor(hexString: $0.color) } ?? cnColor(0xe0a92e),
+                             "Categoría", m?.categoria ?? ""); div()
                     filaInfo("banknote.fill", CNC.pos, "Cuenta", datos.libreta.nombreMedio(m?.medio ?? "")); div()
                     filaInfo("calendar", CNC.neg, "Fecha", cnFechaCorta(m?.fecha ?? "")); div()
                     filaInfo("repeat", cnColor(0x825eb9), "Se repite", (m?.recurrente ?? false) ? "Sí" : "No")
@@ -1198,8 +1342,12 @@ struct CNDetalleMov: View {
     }
     private func filaInfo(_ icono: String, _ tinte: Color, _ titulo: String, _ valor: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: icono).font(.system(size: 14, weight: .semibold)).foregroundColor(.white).frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(valor).font(.system(size: 15)).foregroundColor(CNC.pmut)
+            // cnGlifo: sirve tanto para los iconos propios de Chinola (los de
+            // las categorías) como para un SF Symbol si no está en el catálogo.
+            cnGlifo(icono, tam: 15, grosor: 2.1).foregroundColor(.white)
+                .frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(minLength: 8)
+            Text(valor).font(.system(size: 15)).foregroundColor(CNC.pmut).lineLimit(1).truncationMode(.tail)
         }.padding(.horizontal, 14).padding(.vertical, 11)
     }
     private func div() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 57) }
