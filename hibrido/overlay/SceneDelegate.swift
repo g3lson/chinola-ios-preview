@@ -64,6 +64,8 @@ class TestVC: CAPBridgeViewController {
         let pastCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.13)" : "rgba(255,255,255,0.13)"
         let pastF = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)"
         datos.cargarCuentas(json: TestVC.cuentasDeMuestra)
+        datos.cargarPlan(json: TestVC.planDeMuestra)
+        datos.cargarCuentaDetalle(json: TestVC.cuentaDeMuestra)
         datos.cargarMovDetalle(json: TestVC.movDeMuestra)
         datos.cargarAjustes(json: TestVC.ajustesDeMuestra
             .replacingOccurrences(of: "rgb(249,245,230)",
@@ -82,6 +84,12 @@ class TestVC: CAPBridgeViewController {
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
         barra.pintar(activa: estado.activa, titulos: true)
+        if base == "cuenta" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                guard let s = self else { return }
+                s.presentar(AnyView(CNDetalleCuenta(datos: s.datos, cuentaId: 1, onClose: { s.cerrar() })))
+            }
+        }
         if base == "periodo" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
                 guard let s = self else { return }
@@ -186,7 +194,9 @@ extension TestVC {
                                       rodarAlEmpezar: cual == "plegada"))
             estado.activa = "resumen"
         case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
-        case "plan":    vista = AnyView(CNPlan(datos: datos));    estado.activa = "plan"
+        case "plan", "metas":
+            if cual == "metas" { datos.cargarPlan(json: TestVC.planDeMuestra.replacingOccurrences(of: "\"tab\":\"presupuesto\"", with: "\"tab\":\"metas\"")) }
+            vista = AnyView(CNPlan(datos: datos)); estado.activa = "plan"
         default:        vista = AnyView(CNMovs(datos: datos));    estado.activa = "movs"
         }
         let h = UIHostingController(rootView: vista)
@@ -521,5 +531,52 @@ extension TestVC {
      "datos":[{"label":"Categoría","valor":"Deudas"},{"label":"Tipo","valor":"Fijo"},
               {"label":"Fecha","valor":"11 de septiembre"},{"label":"Pagado con","valor":"Cuenta principal"},
               {"label":"Se repite","valor":"Cada mes"}]}
+    """
+}
+
+extension TestVC {
+    static let planDeMuestra = """
+    {"titulo":"Plan","tab":"presupuesto","puedeEditar":true,"puedeRegistrar":true,
+     "tabs":[{"indice":0,"label":"Presupuesto","puesta":true},{"indice":1,"label":"Metas","puesta":false}],
+     "presGastado":"RD$82,400","presDe":"de","presTotal":"RD$88,000","presPct":94,"presColor":"rgb(224,169,46)",
+     "presNota":"2 categorías sobre el límite","presAvisoTinta":"rgb(224,169,46)",
+     "tituloCategorias":"Categorías","rotuloNuevaCat":"Categoría",
+     "tituloTusMetas":"Tus metas","rotuloNuevaMeta":"Meta",
+     "filas":[
+       {"indice":0,"nombre":"Vivienda","queda":"RD$1,200","pie":"RD$8,800 de RD$10,000","pct":88,
+        "color":"rgb(19,125,65)","iconoPath":"M4 21V9l8-6 8 6v12M9 21v-6h6v6","catColor":"rgb(52,110,74)","iconoBg":"rgba(52,110,74,0.15)"},
+       {"indice":1,"nombre":"Alimentación","queda":"−RD$1,400","pie":"RD$13,400 de RD$12,000","pct":100,
+        "color":"rgb(213,89,72)","iconoPath":"M6 3v8a3 3 0 0 0 6 0V3M9 11v10M18 3c-1.5 2-2 4-2 6v4h3v8","catColor":"rgb(196,124,44)","iconoBg":"rgba(196,124,44,0.15)"},
+       {"indice":2,"nombre":"Transporte","queda":"RD$0","pie":"RD$6,000 de RD$6,000","pct":100,
+        "color":"rgb(224,169,46)","iconoPath":"M5 17h14M6 17V9l2-4h8l2 4v8M7 13h10","catColor":"rgb(52,94,178)","iconoBg":"rgba(52,94,178,0.15)"},
+       {"indice":3,"nombre":"Salud","queda":"sin tope","pie":"RD$2,000 de sin tope","pct":0,
+        "color":"rgb(81,99,86)","iconoPath":"M12 7v10M7 12h10","catColor":"rgb(20,158,140)","iconoBg":"rgba(20,158,140,0.15)"}],
+     "metas":[
+       {"indice":0,"nombre":"Fondo de emergencia","proyeccion":"Listo en ~33 meses","pctLabel":"13%","pct":13,
+        "color":"rgb(19,125,65)","iconoPath":"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M8.5 14.5a4.5 4.5 0 0 0 7 0M9 10h.01M15 10h.01",
+        "iconoBg":"rgba(19,125,65,0.14)","pie":"RD$20,000 de RD$150,000","falta":"Falta RD$130,000","aportar":"Aportar RD$4,000"},
+       {"indice":1,"nombre":"Viaje familiar","proyeccion":"Listo en ~22 meses","pctLabel":"8%","pct":8,
+        "color":"rgb(130,94,185)","iconoPath":"M12 2l3 8 7 2-7 2-3 8-3-8-7-2 7-2z",
+        "iconoBg":"rgba(130,94,185,0.14)","pie":"RD$5,000 de RD$60,000","falta":"Falta RD$55,000","aportar":"Aportar RD$2,500"}]}
+    """
+    static let cuentaDeMuestra = """
+    {"nombre":"Cuenta principal","rotuloSaldo":"Saldo disponible","saldoFmt":"RD$54,800",
+     "iconoPath":"M4 21V9l8-6 8 6v12M9 21v-6h6v6","color":"rgb(52,110,74)","iconoBg":"rgba(52,110,74,0.15)",
+     "rotuloEntra":"Entró este mes","entraFmt":"RD$80,000","rotuloSale":"Salió este mes","saleFmt":"RD$87,400",
+     "verde":"rgb(19,125,65)","rojo":"rgb(213,89,72)","puedeRegistrar":true,
+     "textoNuevo":"Nuevo movimiento","textoEditar":"Transferir",
+     "datos":[{"label":"Banco","valor":"Banreservas"},{"label":"Movimientos","valor":"73"}],
+     "rotuloLista":"Movimientos de esta cuenta","vacioTexto":"",
+     "tramos":[{"label":"Septiembre de 2026","total":"−RD$7,400","items":[
+       {"concepto":"Fondo de emergencia","sub":"Ahorro · 14 sept 2026 · cada mes","montoFmt":"−RD$5,000","color":"rgb(213,89,72)",
+        "iconoPath":"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M8.5 14.5a4.5 4.5 0 0 0 7 0M9 10h.01M15 10h.01","catColor":"rgb(130,94,185)","iconoBg":"rgba(130,94,185,0.15)"},
+       {"concepto":"Salidas","sub":"Entretenimiento · 13 sept 2026","montoFmt":"−RD$4,500","color":"rgb(213,89,72)",
+        "iconoPath":"M4 6h16v12H4zM8 6v12M16 6v12","catColor":"rgb(196,124,44)","iconoBg":"rgba(196,124,44,0.15)"},
+       {"concepto":"Gasolina","sub":"Transporte · 12 sept 2026","montoFmt":"−RD$6,000","color":"rgb(213,89,72)",
+        "iconoPath":"M5 17h14M6 17V9l2-4h8l2 4v8M7 13h10","catColor":"rgb(213,89,72)","iconoBg":"rgba(213,89,72,0.15)"},
+       {"concepto":"Préstamo del carro","sub":"Deudas · 11 sept 2026 · cada mes","montoFmt":"−RD$9,800","color":"rgb(213,89,72)",
+        "iconoPath":"M4 7h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM3 11h18M7 15h3","catColor":"rgb(213,89,72)","iconoBg":"rgba(213,89,72,0.15)"},
+       {"concepto":"Sueldo quincena","sub":"Ingresos · 3 sept 2026","montoFmt":"RD$40,000","color":"rgb(19,125,65)",
+        "iconoPath":"M4 7h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM3 11h18M7 15h3","catColor":"rgb(19,125,65)","iconoBg":"rgba(19,125,65,0.15)"}]}]}
     """
 }
