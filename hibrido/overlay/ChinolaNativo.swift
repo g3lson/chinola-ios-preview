@@ -232,7 +232,7 @@ enum CNFuentes {
     static func fuente(_ familia: String, _ tam: CGFloat, _ peso: CGFloat) -> UIFont {
         let clave = familia + "|" + String(format: "%.1f|%.0f", tam, peso)
         if let f = cache[clave] { return f }
-        let eje = UIFontDescriptor.AttributeName(kCTFontVariationAttribute as String)
+        let eje = UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String)
         let desc = UIFontDescriptor(fontAttributes: [
             .family: familia,
             eje: [2003265652: peso]        // 'wght'
@@ -656,6 +656,8 @@ final class CNDatos: ObservableObject {
     var onSelector: () -> Void = {}
     /// Las libretas, para la hoja nativa del selector.
     var onLibreta: (String, Int) -> Void = { _, _ in }
+    /// Crear una libreta desde el formulario nativo.
+    var onCrearLibreta: ([String: Any]) -> Void = { _ in }
     var onVerPresupuesto: () -> Void = {}
     var onLimiteCategoria: (String, Double) -> Void = { _, _ in }   // (categoría, presupuesto) → web
     var onMes: (Int) -> Void = { _ in }         // −1 / +1 desde la cabecera
@@ -686,6 +688,7 @@ final class CNDatos: ObservableObject {
     @Published var hojaWeb: CNHojaWeb.Modelo? = nil
     @Published var periodo: CNPeriodo? = nil
     @Published var libretas: CNLibretas? = nil
+    @Published var libretaNueva: CNLibretaNueva? = nil
     /// tipo: opcion · dia · antes · despues · aplicar · cerrar
     var onPeriodo: (String, Int) -> Void = { _, _ in }
     /// El detalle de un movimiento, armado por la web.
@@ -723,6 +726,7 @@ final class CNDatos: ObservableObject {
     func cargarMovDetalle(json: String) { movDetalle = CNMovDetalle.desde(json: json) }
     func cargarPeriodo(json: String) { periodo = CNPeriodo.desde(json: json) }
     func cargarLibretas(json: String) { libretas = CNLibretas.desde(json: json) }
+    func cargarLibretaNueva(json: String) { libretaNueva = CNLibretaNueva.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil

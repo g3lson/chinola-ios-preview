@@ -1166,3 +1166,126 @@ struct CNLibretasHoja: View {
         }.buttonStyle(CNPulsable())
     }
 }
+
+// ── Nueva libreta, en nativo ────────────────────────────────────────────────
+//
+// Era de las últimas pantallas que obligaban a enseñar la web. Los tipos, los
+// colores y los iconos los manda la web (son los suyos), y al guardar se llama
+// a SU función: los avisos de nombre repetido y de límite del plan siguen
+// siendo los de siempre, sin copiarlos aquí.
+struct CNLibretaNueva {
+    struct Tipo: Identifiable { var id: String; var label: String }
+    struct Icono: Identifiable { var id: String; var label: String; var path: String }
+    var titulo = "Nueva libreta"
+    var rotuloNombre = "Nombre"; var phNombre = ""
+    var rotuloTipo = "Tipo"; var rotuloIcono = "Icono"
+    var tipos: [Tipo] = []
+    var colores: [String] = []
+    var coloresId: [String] = []
+    var iconos: [Icono] = []
+
+    static func desde(json: String) -> CNLibretaNueva? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
+        var m = CNLibretaNueva()
+        if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
+        m.rotuloNombre = s(r, "rotuloNombre"); m.phNombre = s(r, "phNombre")
+        m.rotuloTipo = s(r, "rotuloTipo"); m.rotuloIcono = s(r, "rotuloIcono")
+        m.tipos = ((r["tipos"] as? [[String: Any]]) ?? []).map { Tipo(id: s($0, "id"), label: s($0, "label")) }
+        m.colores = (r["colores"] as? [String]) ?? []
+        m.coloresId = (r["coloresId"] as? [String]) ?? []
+        m.iconos = ((r["iconos"] as? [[String: Any]]) ?? []).map {
+            Icono(id: s($0, "id"), label: s($0, "label"), path: s($0, "path"))
+        }
+        return m
+    }
+}
+
+struct CNFormLibreta: View {
+    @ObservedObject var datos: CNDatos
+    var onClose: () -> Void
+    @State private var nombre = ""
+    @State private var tipo = ""
+    @State private var icono = ""
+    @State private var color = 0
+
+    var body: some View {
+        let m = datos.libretaNueva ?? CNLibretaNueva()
+        return CNHoja(titulo: m.titulo,
+                      guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+                      onClose: onClose, onGuardar: { guardar(m) }) {
+            CNCampoTexto(placeholder: m.phNombre.isEmpty ? cnT("Nombre") : m.phNombre, texto: $nombre)
+            if !m.tipos.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    cnHojaTitulo(m.rotuloTipo)
+                    CNRejillaFija(columnas: 2, total: m.tipos.count) { i in
+                        let t = m.tipos[i]
+                        Button {
+                            UISelectionFeedbackGenerator().selectionChanged(); tipo = t.id
+                        } label: {
+                            Text(t.label).font(cnLetra(14.5, tipo == t.id ? .bold : .semibold))
+                                .foregroundColor(tipo == t.id ? CNC.sobreAcc : CNC.ink)
+                                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                .background(tipo == t.id ? CNC.acc : CNC.card,
+                                            in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 13).stroke(CNC.line, lineWidth: tipo == t.id ? 0 : 1))
+                        }.buttonStyle(CNPulsable())
+                    }
+                }
+            }
+            if !m.iconos.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    cnHojaTitulo(m.rotuloIcono)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(m.iconos) { ic in
+                                CNSVGShape(d: ic.path)
+                                    .stroke(icono == ic.id ? Color.white : CNC.ink,
+                                            style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                                    .frame(width: 20, height: 20)
+                                    .frame(width: 44, height: 44)
+                                    .background(icono == ic.id ? cnColor(hexString: colorPuesto(m)) : CNC.card)
+                                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: 13)
+                                        .stroke(CNC.line, lineWidth: icono == ic.id ? 0 : 0.5))
+                                    .onTapGesture { UISelectionFeedbackGenerator().selectionChanged(); icono = ic.id }
+                            }
+                        }.padding(.horizontal, 2).padding(.vertical, 2)
+                    }
+                }
+            }
+            if !m.colores.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    cnHojaTitulo(cnT("Color"))
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(m.colores.indices, id: \.self) { i in
+                                Circle().fill(cnColor(hexString: m.colores[i]))
+                                    .frame(width: 30, height: 30)
+                                    .overlay(Circle().stroke(CNC.ink, lineWidth: color == i ? 2.5 : 0))
+                                    .onTapGesture { UISelectionFeedbackGenerator().selectionChanged(); color = i }
+                            }
+                        }.padding(.horizontal, 2).padding(.vertical, 2)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            if tipo.isEmpty { tipo = m.tipos.first?.id ?? "Personal" }
+            if icono.isEmpty { icono = m.iconos.first?.id ?? "casa" }
+        }
+    }
+
+    private func colorPuesto(_ m: CNLibretaNueva) -> String {
+        color < m.colores.count ? m.colores[color] : (m.colores.first ?? "")
+    }
+
+    private func guardar(_ m: CNLibretaNueva) {
+        let nm = nombre.trimmingCharacters(in: .whitespaces)
+        guard !nm.isEmpty else { return }
+        let id = color < m.coloresId.count ? m.coloresId[color] : (m.coloresId.first ?? "")
+        datos.onCrearLibreta(["nombre": nm, "tipo": tipo, "icono": icono, "color": id])
+        onClose()
+    }
+}

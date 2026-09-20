@@ -214,6 +214,9 @@ extension TestVC {
         case "libretas":
             datos.cargarLibretas(json: TestVC.libretasDeMuestra)
             vista = AnyView(CNLibretasHoja(datos: datos, onClose: {})); estado.activa = "resumen"
+        case "libreta-nueva":
+            datos.cargarLibretaNueva(json: TestVC.libretaNuevaDeMuestra)
+            vista = AnyView(CNFormLibreta(datos: datos, onClose: {})); estado.activa = "resumen"
         case "fuente-outfit":
             CNC.fmt.fuente = "outfit"
             vista = AnyView(CNMovs(datos: datos)); estado.activa = "movs"
@@ -567,6 +570,21 @@ extension TestVC {
      "datos":[{"label":"Categoría","valor":"Deudas"},{"label":"Tipo","valor":"Fijo"},
               {"label":"Fecha","valor":"11 de septiembre"},{"label":"Pagado con","valor":"Cuenta principal"},
               {"label":"Se repite","valor":"Cada mes"}]}
+    """
+}
+
+extension TestVC {
+    static let libretaNuevaDeMuestra = """
+    {"titulo":"Nueva libreta","rotuloNombre":"Nombre","phNombre":"Nombre (ej. La casa)",
+     "rotuloTipo":"Tipo","rotuloIcono":"Icono",
+     "tipos":[{"id":"Personal","label":"Personal"},{"id":"Familiar","label":"Familiar"},
+              {"id":"Negocio","label":"Negocio"},{"id":"Proyecto","label":"Proyecto"}],
+     "colores":["rgb(19,125,65)","rgb(47,111,214)","rgb(122,79,208)","rgb(224,130,46)","rgb(198,95,156)","rgb(90,122,46)"],
+     "coloresId":["a","b","c","d","e","f"],
+     "iconos":[{"id":"casa","label":"Casa","path":"M3 10.5L12 3l9 7.5M5 9.5V21h14V9.5M10 21v-6h4v6"},
+               {"id":"gente","label":"Familia","path":"M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M18 21a6.5 6.5 0 0 0-2-4.7"},
+               {"id":"maletin","label":"Negocio","path":"M3 8h18v12H3zM9 8V5h6v3M3 13h18"},
+               {"id":"estrella","label":"Metas","path":"M12 3l2.7 5.6 6.3.9-4.5 4.4 1 6.1-5.5-2.9-5.5 2.9 1-6.1L3 9.5l6.3-.9z"}]}
     """
 }
 
