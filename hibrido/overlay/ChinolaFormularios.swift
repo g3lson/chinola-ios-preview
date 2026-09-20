@@ -28,7 +28,7 @@ struct CNHoja<Content: View>: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(CNC.scr.ignoresSafeArea())
-        .environment(\.locale, Locale(identifier: "es_DO"))
+        .environment(\.locale, Locale(identifier: CNC.fmt.loc))
     }
 
     private var cabecera: some View {
@@ -60,7 +60,7 @@ struct CNBarraTeclado: ViewModifier {
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Listo") { cnCerrarTeclado() }.font(.system(size: 16, weight: .semibold))
+                    Button("Listo") { cnCerrarTeclado() }.font(.system(size: cnPt(16), weight: .semibold))
                 }
             }
     }
@@ -79,7 +79,7 @@ struct CNHojaCabecera: View {
     var onGuardar: (() -> Void)? = nil
     var body: some View {
         ZStack {
-            Text(titulo).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
+            Text(titulo).font(.system(size: cnPt(17), weight: .bold)).foregroundColor(CNC.ink)
                 .lineLimit(1).padding(.horizontal, 56)
             HStack {
                 // Los dos, redondos y del tamaño de siempre del teléfono (44),
@@ -88,7 +88,7 @@ struct CNHojaCabecera: View {
                     UISelectionFeedbackGenerator().selectionChanged()
                     onClose()
                 } label: {
-                    Image(systemName: "xmark").font(.system(size: 16, weight: .bold))
+                    Image(systemName: "xmark").font(.system(size: cnPt(16), weight: .bold))
                         .foregroundColor(CNC.ink)
                         .frame(width: 44, height: 44).cnVidrio(Circle())
                 }.buttonStyle(CNPulsable())
@@ -98,7 +98,7 @@ struct CNHojaCabecera: View {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         guardar()
                     } label: {
-                        Image(systemName: "checkmark").font(.system(size: 17, weight: .bold))
+                        Image(systemName: "checkmark").font(.system(size: cnPt(17), weight: .bold))
                             .foregroundColor(guardarActivo ? CNC.sobreAcc : CNC.pmut)
                             .frame(width: 44, height: 44)
                             .cnVidrio(Circle(), tinte: guardarActivo ? CNC.acc : nil)
@@ -128,7 +128,7 @@ struct CNBotonGuardar: View {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 accion()
             } label: {
-                Text(texto).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.sobreAcc)
+                Text(texto).font(.system(size: cnPt(17), weight: .bold)).foregroundColor(CNC.sobreAcc)
                     .frame(maxWidth: .infinity).padding(.vertical, 16)
                     .background(CNC.acc, in: Capsule())
             }
@@ -153,14 +153,14 @@ struct CNPulsable: ButtonStyle {
 enum CNPaleta { static let colores = ["#137d41", "#2f6fd6", "#3b4fd0", "#7a4fd0", "#c65f9c", "#e0822e", "#e0a92e", "#5a7a2e"] }
 
 func cnHojaTitulo(_ t: String) -> some View {
-    Text(t.uppercased()).font(.system(size: 12.5, weight: .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading)
+    Text(t.uppercased()).font(.system(size: cnPt(12.5), weight: .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading)
 }
 func cnGrupoHoja<C: View>(@ViewBuilder _ c: () -> C) -> some View {
     VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
 }
 func cnDiviHoja() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 16) }
 func cnCuadroHoja(_ ic: String, _ tinte: Color) -> some View {
-    Image(systemName: ic).font(.system(size: 14, weight: .semibold)).foregroundColor(.white).frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    Image(systemName: ic).font(.system(size: cnPt(14), weight: .semibold)).foregroundColor(.white).frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 struct CNMontoCampo: View {
@@ -177,14 +177,14 @@ struct CNMontoCampo: View {
         cnGrupoHoja {
             VStack(spacing: 6) {
                 if let r = rotulo {
-                    Text(r).font(.system(size: 11, weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut)
+                    Text(r).font(.system(size: cnPt(11), weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut)
                 }
                 ZStack {
                     // El número, centrado en la tarjeta pase lo que pase.
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text("RD$").font(.system(size: 18, weight: .heavy)).foregroundColor(CNC.pmut)
+                        Text("RD$").font(.system(size: cnPt(18), weight: .heavy)).foregroundColor(CNC.pmut)
                         TextField("0", text: $monto)
-                            .font(.system(size: 38, weight: .heavy)).foregroundColor(CNC.ink)
+                            .font(.system(size: cnPt(38), weight: .heavy)).foregroundColor(CNC.ink)
                             .keyboardType(.decimalPad).multilineTextAlignment(.center)
                             .fixedSize()
                     }
@@ -210,7 +210,7 @@ struct CNPasoBoton: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             accion()
         } label: {
-            Image(systemName: icono).font(.system(size: 16, weight: .bold)).foregroundColor(CNC.ink)
+            Image(systemName: icono).font(.system(size: cnPt(16), weight: .bold)).foregroundColor(CNC.ink)
                 .frame(width: 40, height: 40).cnVidrio(Circle())
         }.buttonStyle(.plain)
     }
@@ -233,7 +233,7 @@ struct CNFichas: View {
                     } label: {
                         HStack(spacing: 7) {
                             cnGlifo(o.2, tam: 14, grosor: 2.2).foregroundColor(puesta ? cnSobre(color) : color)
-                            Text(o.1).font(.system(size: 14, weight: .semibold)).foregroundColor(puesta ? cnSobre(color) : CNC.ink)
+                            Text(o.1).font(.system(size: cnPt(14), weight: .semibold)).foregroundColor(puesta ? cnSobre(color) : CNC.ink)
                         }
                         .padding(.horizontal, 13).padding(.vertical, 9)
                         .background(
@@ -259,7 +259,7 @@ struct CNGrupoCampos: View {
             ForEach(campos.indices, id: \.self) { i in
                 if i > 0 { cnDiviHoja() }
                 TextField(campos[i].0, text: campos[i].1)
-                    .font(.system(size: 16)).foregroundColor(CNC.ink)
+                    .font(.system(size: cnPt(16))).foregroundColor(CNC.ink)
                     .keyboardType(campos[i].2)
                     .padding(.horizontal, 15).padding(.vertical, 14)
             }
@@ -278,13 +278,13 @@ struct CNFilaMonto: View {
     var body: some View {
         HStack(spacing: 12) {
             cnCuadroHoja(icono, tinte)
-            Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink)
+            Text(titulo).font(.system(size: cnPt(16))).foregroundColor(CNC.ink)
             Spacer(minLength: 8)
             HStack(spacing: 4) {
                 Spacer(minLength: 0)
-                Text("RD$").font(.system(size: 13, weight: .bold)).foregroundColor(CNC.pmut)
+                Text("RD$").font(.system(size: cnPt(13), weight: .bold)).foregroundColor(CNC.pmut)
                 TextField("0", text: $monto)
-                    .font(.system(size: 16, weight: .semibold)).foregroundColor(CNC.ink)
+                    .font(.system(size: cnPt(16), weight: .semibold)).foregroundColor(CNC.ink)
                     .keyboardType(.decimalPad).fixedSize()
             }
             .frame(width: 130)
@@ -303,10 +303,10 @@ struct CNFilaNumero: View {
     var body: some View {
         HStack(spacing: 12) {
             cnCuadroHoja(icono, tinte)
-            Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink)
+            Text(titulo).font(.system(size: cnPt(16))).foregroundColor(CNC.ink)
             Spacer(minLength: 8)
             TextField(marca, text: $texto)
-                .font(.system(size: 16, weight: .semibold)).foregroundColor(CNC.ink)
+                .font(.system(size: cnPt(16), weight: .semibold)).foregroundColor(CNC.ink)
                 .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 54)
         }
         .padding(.horizontal, 14).padding(.vertical, 11)
@@ -344,7 +344,7 @@ struct CNChipsCategoria: View {
             HStack(spacing: 7) {
                 cnGlifo(icono, tam: 14, grosor: 2.2)
                     .foregroundColor(puesta ? cnSobre(color) : color)
-                Text(nombre).font(.system(size: 14, weight: .semibold))
+                Text(nombre).font(.system(size: cnPt(14), weight: .semibold))
                     .foregroundColor(puesta ? cnSobre(color) : CNC.ink)
             }
             .padding(.horizontal, 13).padding(.vertical, 9)
@@ -361,7 +361,7 @@ struct CNCampoTexto: View {
     @Binding var texto: String
     var teclado: UIKeyboardType = .default
     var body: some View {
-        cnGrupoHoja { TextField(placeholder, text: $texto).font(.system(size: 16)).foregroundColor(CNC.ink).keyboardType(teclado).padding(.horizontal, 15).padding(.vertical, 13) }
+        cnGrupoHoja { TextField(placeholder, text: $texto).font(.system(size: cnPt(16))).foregroundColor(CNC.ink).keyboardType(teclado).padding(.horizontal, 15).padding(.vertical, 13) }
     }
 }
 
@@ -377,7 +377,7 @@ struct CNMedioFila: View {
             ForEach(datos.libreta.cuentas) { c in Button(c.nombre) { medio = "cuenta:\(c.id)" } }
             Button("Efectivo") { medio = "efectivo" }
         } label: {
-            HStack(spacing: 12) { cnCuadroHoja("banknote.fill", CNC.info); Text("De dónde sale").font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(nombre).font(.system(size: 15)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
+            HStack(spacing: 12) { cnCuadroHoja("banknote.fill", CNC.info); Text("De dónde sale").font(.system(size: cnPt(16))).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(nombre).font(.system(size: cnPt(15))).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: cnPt(11), weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
         }
     }
 }
@@ -621,7 +621,7 @@ struct CNFormTransferencia: View {
     }
 
     private func fila(_ t: String, _ ic: String, _ tinte: Color, _ val: String) -> some View {
-        HStack(spacing: 12) { cnCuadroHoja(ic, tinte); Text(t).font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(val).font(.system(size: 15)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
+        HStack(spacing: 12) { cnCuadroHoja(ic, tinte); Text(t).font(.system(size: cnPt(16))).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(val).font(.system(size: cnPt(15))).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: cnPt(11), weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
     }
     private func guardar() {
         let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
@@ -668,8 +668,8 @@ struct CNAgregar: View {
         Button(action: tap) {
             HStack(spacing: 12) {
                 cnGlifo(ic, tam: 20).foregroundColor(.white).frame(width: 42, height: 42).background(tinte).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) { Text(t).font(.system(size: 16, weight: .semibold)).foregroundColor(CNC.ink); Text(s).font(.system(size: 12.5)).foregroundColor(CNC.pmut) }
-                Spacer(minLength: 6); Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6))
+                VStack(alignment: .leading, spacing: 2) { Text(t).font(.system(size: cnPt(16), weight: .semibold)).foregroundColor(CNC.ink); Text(s).font(.system(size: cnPt(12.5))).foregroundColor(CNC.pmut) }
+                Spacer(minLength: 6); Image(systemName: "chevron.right").font(.system(size: cnPt(13), weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6))
             }.padding(14).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
         }.buttonStyle(CNPulsable())
     }
@@ -714,7 +714,7 @@ struct CNHojaWeb: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
                     if !m.texto.isEmpty {
-                        Text(m.texto).font(.system(size: 13.5)).foregroundColor(CNC.pmut)
+                        Text(m.texto).font(.system(size: cnPt(13.5))).foregroundColor(CNC.pmut)
                             .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
                     }
                     ForEach(m.campos) { c in campo(c) }
@@ -724,7 +724,7 @@ struct CNHojaWeb: View {
                     // palabras: un ✓ no dice si va a borrar o a mandar un correo.
                     if !m.conCheck {
                         Button { datos.onHojaEnviar() } label: {
-                            Text(m.boton).font(.system(size: 16, weight: .bold))
+                            Text(m.boton).font(.system(size: cnPt(16), weight: .bold))
                                 .foregroundColor(m.destruye ? .white : CNC.sobreAcc)
                                 .frame(maxWidth: .infinity).padding(.vertical, 16)
                                 .background(m.destruye ? CNC.neg : CNC.acc, in: Capsule())
@@ -738,11 +738,11 @@ struct CNHojaWeb: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(CNC.scr.ignoresSafeArea())
-        .environment(\.locale, Locale(identifier: "es_DO"))
+        .environment(\.locale, Locale(identifier: CNC.fmt.loc))
     }
 
     private func aviso(_ t: String, _ color: Color) -> some View {
-        Text(t).font(.system(size: 13)).foregroundColor(color)
+        Text(t).font(.system(size: cnPt(13))).foregroundColor(color)
             .fixedSize(horizontal: false, vertical: true)
             .padding(12).frame(maxWidth: .infinity, alignment: .leading)
             .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -788,9 +788,9 @@ struct CNHojaWeb: View {
                         }
                     } label: {
                         HStack(spacing: 8) {
-                            Text(etiqueta(c)).font(.system(size: 16)).foregroundColor(CNC.ink).lineLimit(1)
+                            Text(etiqueta(c)).font(.system(size: cnPt(16))).foregroundColor(CNC.ink).lineLimit(1)
                             Spacer(minLength: 8)
-                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold))
+                            Image(systemName: "chevron.up.chevron.down").font(.system(size: cnPt(11), weight: .semibold))
                                 .foregroundColor(CNC.pmut.opacity(0.6))
                         }
                         .padding(.horizontal, 15).padding(.vertical, 14)
@@ -808,7 +808,7 @@ struct CNHojaWeb: View {
                                 .disableAutocorrection(c.teclado == "email")
                         }
                     }
-                    .font(.system(size: 16)).foregroundColor(CNC.ink)
+                    .font(.system(size: cnPt(16))).foregroundColor(CNC.ink)
                     .padding(.horizontal, 15).padding(.vertical, 14)
                 }
             }
@@ -924,7 +924,7 @@ struct CNPeriodoHoja: View {
                     CNRejillaFija(columnas: 2, total: p.opciones.count) { i in
                         let o = p.opciones[i]
                         Button { datos.onPeriodo("opcion", o.id) } label: {
-                            Text(o.label).font(.system(size: 14.5, weight: o.puesta ? .bold : .semibold))
+                            Text(o.label).font(.system(size: cnPt(14.5), weight: o.puesta ? .bold : .semibold))
                                 .foregroundColor(o.tinta.isEmpty ? CNC.ink : cnColor(hexString: o.tinta))
                                 .frame(maxWidth: .infinity).padding(.vertical, 13)
                                 .background(o.puesta ? cnColor(hexString: o.fondo) : CNC.card,
@@ -934,7 +934,7 @@ struct CNPeriodoHoja: View {
                         }.buttonStyle(CNPulsable())
                     }
                     if !p.resumen.isEmpty {
-                        Text(p.resumen).font(.system(size: 13)).foregroundColor(CNC.pmut).padding(.horizontal, 4)
+                        Text(p.resumen).font(.system(size: cnPt(13))).foregroundColor(CNC.pmut).padding(.horizontal, 4)
                     }
                     if p.calendario { calendario(p) }
                     Color.clear.frame(height: 24)
@@ -944,7 +944,7 @@ struct CNPeriodoHoja: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(CNC.scr.ignoresSafeArea())
-        .environment(\.locale, Locale(identifier: "es_DO"))
+        .environment(\.locale, Locale(identifier: CNC.fmt.loc))
     }
 
     @ViewBuilder private func calendario(_ p: CNPeriodo) -> some View {
@@ -952,13 +952,13 @@ struct CNPeriodoHoja: View {
             HStack {
                 boton("chevron.left") { datos.onPeriodo("antes", 0) }
                 Spacer(minLength: 8)
-                Text(p.calTitulo).font(.system(size: 16, weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                Text(p.calTitulo).font(.system(size: cnPt(16), weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
                 Spacer(minLength: 8)
                 boton("chevron.right") { datos.onPeriodo("despues", 0) }
             }
             HStack(spacing: 0) {
                 ForEach(p.diasSemana.indices, id: \.self) { i in
-                    Text(p.diasSemana[i]).font(.system(size: 11, weight: .semibold))
+                    Text(p.diasSemana[i]).font(.system(size: cnPt(11), weight: .semibold))
                         .foregroundColor(CNC.pmut).frame(maxWidth: .infinity)
                 }
             }
@@ -976,12 +976,12 @@ struct CNPeriodoHoja: View {
                 }
             }
             HStack {
-                Text(p.seleccion).font(.system(size: 13.5, weight: .semibold)).foregroundColor(CNC.pmut)
+                Text(p.seleccion).font(.system(size: cnPt(13.5), weight: .semibold)).foregroundColor(CNC.pmut)
                 Spacer(minLength: 8)
             }
             Button { if p.puedeAplicar { datos.onPeriodo("aplicar", 0) } } label: {
                 Text(p.textoAplicar.isEmpty ? "Aplicar" : p.textoAplicar)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: cnPt(16), weight: .bold))
                     .foregroundColor(p.puedeAplicar ? CNC.sobreAcc : CNC.pmut)
                     .frame(maxWidth: .infinity).padding(.vertical, 15)
                     .background(p.puedeAplicar ? CNC.acc : CNC.soft, in: Capsule())
@@ -997,7 +997,7 @@ struct CNPeriodoHoja: View {
             if !d.circulo.isEmpty && d.circulo != "rgba(0,0,0,0)" {
                 Circle().fill(cnColor(hexString: d.circulo)).frame(width: 34, height: 34)
             }
-            Text("\(d.n)").font(.system(size: 14.5, weight: d.fuerte ? .semibold : .regular))
+            Text("\(d.n)").font(.system(size: cnPt(14.5), weight: d.fuerte ? .semibold : .regular))
                 .foregroundColor(d.tinta.isEmpty ? CNC.ink : cnColor(hexString: d.tinta))
         }
         .frame(height: 40).frame(maxWidth: .infinity)
@@ -1008,7 +1008,7 @@ struct CNPeriodoHoja: View {
 
     private func boton(_ ic: String, _ tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
-            Image(systemName: ic).font(.system(size: 14, weight: .bold)).foregroundColor(CNC.ink)
+            Image(systemName: ic).font(.system(size: cnPt(14), weight: .bold)).foregroundColor(CNC.ink)
                 .frame(width: 36, height: 36).background(CNC.soft, in: Circle())
         }.buttonStyle(CNPulsable())
     }
@@ -1087,13 +1087,13 @@ struct CNLibretasHoja: View {
         let m = datos.libretas ?? CNLibretas()
         return VStack(spacing: 0) {
             ZStack {
-                Text(m.titulo).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
+                Text(m.titulo).font(.system(size: cnPt(17), weight: .bold)).foregroundColor(CNC.ink)
                 HStack {
                     Button {
                         UISelectionFeedbackGenerator().selectionChanged()
                         onClose()
                     } label: {
-                        Image(systemName: "xmark").font(.system(size: 16, weight: .bold))
+                        Image(systemName: "xmark").font(.system(size: cnPt(16), weight: .bold))
                             .foregroundColor(CNC.ink).frame(width: 44, height: 44).cnVidrio(Circle())
                     }.buttonStyle(CNPulsable())
                     Spacer(minLength: 8)
@@ -1101,7 +1101,7 @@ struct CNLibretasHoja: View {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         datos.onLibreta("nueva", 0)
                     } label: {
-                        Image(systemName: "plus").font(.system(size: 17, weight: .bold))
+                        Image(systemName: "plus").font(.system(size: cnPt(17), weight: .bold))
                             .foregroundColor(CNC.sobreAcc)
                             .frame(width: 44, height: 44).cnVidrio(Circle(), tinte: CNC.acc)
                     }.buttonStyle(CNPulsable())
@@ -1117,7 +1117,7 @@ struct CNLibretasHoja: View {
                             UISelectionFeedbackGenerator().selectionChanged()
                             datos.onLibreta("gestionar", 0)
                         } label: {
-                            Text(m.textoGestionar).font(.system(size: 15, weight: .semibold))
+                            Text(m.textoGestionar).font(.system(size: cnPt(15), weight: .semibold))
                                 .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 15)
                                 .background(CNC.card, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
                                 .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous)
@@ -1147,12 +1147,12 @@ struct CNLibretasHoja: View {
                 }
                 .frame(width: 46, height: 46)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(f.nombre).font(.system(size: 16, weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
-                    Text(f.detalle).font(.system(size: 13)).foregroundColor(CNC.pmut).lineLimit(1)
+                    Text(f.nombre).font(.system(size: cnPt(16), weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                    Text(f.detalle).font(.system(size: cnPt(13))).foregroundColor(CNC.pmut).lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 if f.enUso {
-                    Text(f.rotuloEnUso.uppercased()).font(.system(size: 10.5, weight: .heavy)).tracking(0.5)
+                    Text(f.rotuloEnUso.uppercased()).font(.system(size: cnPt(10.5), weight: .heavy)).tracking(0.5)
                         .foregroundColor(CNC.pos)
                         .padding(.horizontal, 9).padding(.vertical, 5)
                         .background(CNC.pos.opacity(0.14), in: Capsule())
