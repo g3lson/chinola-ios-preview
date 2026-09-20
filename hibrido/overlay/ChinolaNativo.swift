@@ -586,11 +586,10 @@ struct CNMovs: View {
         // El vidrio sube a cubrir la barra de estado: al quedarse fijo, lo que
         // pasa por debajo tiene que pasar POR DEBAJO también ahí arriba. Sin
         // esto se veía una fila suelta entre la isla y el buscador.
-        .background(
-            Rectangle().fill(.ultraThinMaterial)
-                .overlay(Rectangle().fill(CNC.scr.opacity(0.55)))
-                .ignoresSafeArea(edges: .top)
-        )
+        // Del color de la pantalla: quieto no se nota, y al quedarse fijo tapa
+        // limpio lo que pasa por debajo. Un material encima del crema se veía
+        // como una franja gris cruzada.
+        .background(CNC.scr.ignoresSafeArea(edges: .top))
     }
 
     private func grupoDia(_ fecha: String, _ items: [CNMov]) -> some View {

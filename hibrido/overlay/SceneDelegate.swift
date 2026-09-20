@@ -84,6 +84,9 @@ class TestVC: CAPBridgeViewController {
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
         barra.pintar(activa: estado.activa, titulos: true)
+        if base == "movs-rodado" || base == "plegada" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { [weak self] in self?.rodar(320) }
+        }
         if base == "cuenta" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
                 guard let s = self else { return }
@@ -122,6 +125,18 @@ class TestVC: CAPBridgeViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         barra.ajustar()
+    }
+
+    /// Rodar la pantalla a mano: el ScrollViewReader de SwiftUI no siempre
+    /// llega, y para la captura hace falta que ruede seguro.
+    func rodar(_ cuanto: CGFloat) {
+        func buscar(_ v: UIView) -> UIScrollView? {
+            if let sc = v as? UIScrollView { return sc }
+            for h in v.subviews { if let sc = buscar(h) { return sc } }
+            return nil
+        }
+        guard let raiz = contenido, let sc = buscar(raiz) else { return }
+        sc.setContentOffset(CGPoint(x: 0, y: cuanto), animated: true)
     }
 
     private func conectarAcciones() {
