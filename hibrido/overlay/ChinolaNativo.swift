@@ -770,6 +770,15 @@ final class CNDatos: ObservableObject {
         guard let p = CNPaletaTema.desde(json: json) else { return }
         CNC.tema = p
         selloTema += 1
+        // Guardado para el próximo arranque: así la primera pantalla ya sale
+        // con el tema, la letra y la moneda del usuario, sin el parpadeo de
+        // empezar en crema y cambiar medio segundo después.
+        UserDefaults.standard.set(json, forKey: "cnTema")
+    }
+    /// Lo último que se supo del tema, para pintar desde el primer fotograma.
+    func temaGuardado() {
+        guard let j = UserDefaults.standard.string(forKey: "cnTema"), j.count > 2 else { return }
+        if let p = CNPaletaTema.desde(json: j) { CNC.tema = p }
     }
 }
 
