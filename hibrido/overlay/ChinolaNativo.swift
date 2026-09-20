@@ -535,7 +535,10 @@ struct CNMovs: View {
                             grupoDia(porDia[i].0, porDia[i].1).padding(.horizontal, 14)
                         }
                     }
-                    Color.clear.frame(height: 110).id("cnAbajo")
+                    // En el banco de pruebas hay pocos movimientos y la lista
+                    // no llega a rodar; con este hueco sí, y se puede capturar
+                    // el buscador quedándose arriba.
+                    Color.clear.frame(height: rodarAlEmpezar ? 800 : 110).id("cnAbajo")
                 }
             }
             .modifier(CNRodarSolo(activo: rodarAlEmpezar))
