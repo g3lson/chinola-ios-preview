@@ -48,8 +48,11 @@ jobs:
           cp overlay/ChinolaNativo.swift ios/App/App/ChinolaNativo.swift
           cp overlay/NativoPlugin.swift ios/App/App/NativoPlugin.swift
           cp overlay/ChinolaFormularios.swift ios/App/App/ChinolaFormularios.swift
+          # Una tipografía de la marca (variable) para comprobar que se registra
+          # y que el peso del eje «wght» llega. En la app van las diez.
+          cp -R overlay/Fuentes ios/App/App/Fuentes
           gem install xcodeproj --no-document --quiet
-          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); g=(p.main_group['App']||p.main_group); ['ChinolaNativo.swift','NativoPlugin.swift','ChinolaFormularios.swift'].each{|n| f=g.new_file(n); p.targets.first.add_file_references([f])}; p.save"
+          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); g=(p.main_group['App']||p.main_group); ['ChinolaNativo.swift','NativoPlugin.swift','ChinolaFormularios.swift'].each{|n| f=g.new_file(n); p.targets.first.add_file_references([f])}; r=g.new_reference('Fuentes'); r.set_last_known_file_type('folder'); p.targets.first.add_resources([r]); p.save"
           /usr/libexec/PlistBuddy -c "Delete :UISceneStoryboardFile" ios/App/App/Info.plist 2>/dev/null || true
           echo "=== archivos en el proyecto ==="; grep -cE "ChinolaNativo.swift|NativoPlugin.swift" ios/App/App.xcodeproj/project.pbxproj
 
@@ -80,7 +83,7 @@ jobs:
           # Una pantalla por lanzamiento: la app lee CNPANTALLA y monta esa. Así
           # cada captura es la que se pidió, sin depender de tiempos.
           n=0
-          for P in movs-rodado movs plan cuentas nuevo metas libretas menu-sin-titulos; do
+          for P in movs-rodado plan cuentas nuevo metas libretas menu-sin-titulos fuente-outfit sec-cabecera; do
             n=$((n+1))
             xcrun simctl terminate "$UDID" do.com.fente.chinolasim 2>/dev/null || true
             SIMCTL_CHILD_CNPANTALLA="$P" xcrun simctl launch "$UDID" do.com.fente.chinolasim || true

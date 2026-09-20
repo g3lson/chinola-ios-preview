@@ -21,6 +21,7 @@ class TestVC: CAPBridgeViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        CNFuentes.registrar()
 
         // El MENÚ: un UITabBar de verdad (Liquid Glass del sistema en iOS 26).
         barra.alTocar = { [weak self] id in self?.estado.activa = id; self?.barra.pintar(activa: id, titulos: CNMenuEstado.shared.titulos) }
@@ -213,6 +214,9 @@ extension TestVC {
         case "libretas":
             datos.cargarLibretas(json: TestVC.libretasDeMuestra)
             vista = AnyView(CNLibretasHoja(datos: datos, onClose: {})); estado.activa = "resumen"
+        case "fuente-outfit":
+            CNC.fmt.fuente = "outfit"
+            vista = AnyView(CNMovs(datos: datos)); estado.activa = "movs"
         case "menu-sin-titulos":
             CNMenuEstado.shared.titulos = false
             barra.pintar(activa: estado.activa, titulos: false)
@@ -404,12 +408,13 @@ extension TestVC {
             return """
             {"id":"cabecera","titulo":"Cabecera","bloques":[
               {"tipo":"opciones","titulo":"Qué se ve arriba","columnas":2,"opciones":[
-                {"label":"Automática","sub":"Se pliega al bajar","puesta":true,"accion":0},
-                {"label":"Clásica","sub":"Con balance plegable","puesta":false,"accion":1},
-                {"label":"Detallada","sub":"Todo a la vista","puesta":false,"accion":2},
-                {"label":"Fina","sub":"Una sola línea","puesta":false,"accion":3},
-                {"label":"Clara","sub":"Del color de la pantalla","puesta":false,"accion":4},
-                {"label":"Mínima","sub":"Lo justo","puesta":false,"accion":5}]},
+                {"label":"Automática","sub":"Se pliega al bajar","puesta":true,"accion":0,"vista":{"tipo":"cabecera","franja":"rgb(29,61,40)","alto":30,"bulto":true,"papel":"rgb(250,247,236)"}},
+                {"label":"Clásica","sub":"Con balance plegable","puesta":false,"accion":1,"vista":{"tipo":"cabecera","franja":"rgb(29,61,40)","alto":26,"bulto":true,"papel":"rgb(250,247,236)"}},
+                {"label":"Detallada","sub":"Todo a la vista","puesta":false,"accion":2,"vista":{"tipo":"cabecera","franja":"rgb(29,61,40)","alto":30,"bulto":false,"papel":"rgb(250,247,236)"}},
+                {"label":"Fina","sub":"Una sola línea","puesta":false,"accion":3,"vista":{"tipo":"cabecera","franja":"rgb(29,61,40)","alto":14,"bulto":false,"papel":"rgb(250,247,236)"}},
+                {"label":"Clara","sub":"Del color de la pantalla","puesta":false,"accion":4,"vista":{"tipo":"cabecera","franja":"rgb(250,247,236)","alto":14,"bulto":false,"papel":"rgb(250,247,236)"}},
+                {"label":"Mínima","sub":"Lo justo","puesta":false,"accion":5,"vista":{"tipo":"cabecera","franja":"rgb(250,247,236)","alto":12,"bulto":false,"papel":"rgb(250,247,236)"}}
+              ]},
               {"tipo":"muestras","titulo":"Color de la cabecera","colores":[
                 {"nombre":"Del tema","css":"rgb(29,61,40)","puesta":true,"accion":6},
                 {"nombre":"Chinola","css":"linear-gradient(150deg, #f7c948, #ec9a2e 55%, #3f9d54)","accion":7},
@@ -419,8 +424,8 @@ extension TestVC {
                 {"nombre":"Ciruela","css":"linear-gradient(150deg, #834fa6, #47256e)","accion":11},
                 {"nombre":"Coral","css":"linear-gradient(150deg, #ea6a52, #c0343c)","accion":12},
                 {"nombre":"Carbón","css":"linear-gradient(150deg, #2a2e2b, #141714)","accion":13}]},
-              {"tipo":"interruptor","label":"Esquinas redondeadas","pie":"La cabecera con las esquinas de abajo redondeadas, como una tarjeta","puesto":false,"accion":14},
-              {"tipo":"interruptor","label":"Nombres en el menú","pie":"El rótulo debajo de cada icono de abajo","puesto":true,"accion":15}]}
+              {"tipo":"interruptores","titulo":"","items":[{"label":"Esquinas redondeadas","sub":"Con las esquinas de abajo redondeadas, como una tarjeta","puesto":false,"accion":14},{"label":"Integrada","sub":"Sin color propio: toma el fondo de la pantalla.","puesto":false,"accion":15}]},
+              {"tipo":"interruptores","titulo":"El menú de abajo","items":[{"label":"Nombres en el menú","sub":"El rótulo debajo de cada icono","puesto":true,"accion":16}]}]}
             """
         case "seguridad":
             return """

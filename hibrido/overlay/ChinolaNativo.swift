@@ -200,6 +200,79 @@ func cnT(_ es: String, _ hueco: String) -> String {
     cnT(es).replacingOccurrences(of: "{n}", with: hueco)
 }
 
+/// Las tipografías de la marca, dentro del paquete.
+///
+/// La web las usa en .woff2, que CoreText no lee; en `ios/App/App/Fuentes/` van
+/// las MISMAS familias en .ttf variable (un archivo por familia, de la fina a
+/// la negra) y aquí se registran al arrancar. Sin esto, elegir «Plus Jakarta»
+/// o «Nunito» no cambiaba nada en las pantallas nativas.
+enum CNFuentes {
+    /// id del ajuste → nombre de la familia ya dentro del sistema.
+    static let familias: [String: String] = [
+        "jakarta": "Plus Jakarta Sans", "inter": "Inter", "outfit": "Outfit",
+        "nunito": "Nunito", "bricolage": "Bricolage Grotesque",
+        "atkinson": "Atkinson Hyperlegible Next", "source": "Source Serif 4",
+        "lora": "Lora", "fraunces": "Fraunces", "jetbrains": "JetBrains Mono"
+    ]
+    private static var registradas = false
+    static func registrar() {
+        guard !registradas else { return }
+        registradas = true
+        guard let dir = Bundle.main.url(forResource: "Fuentes", withExtension: nil),
+              let archivos = try? FileManager.default.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: nil) else { return }
+        for f in archivos where f.pathExtension.lowercased() == "ttf" {
+            CTFontManagerRegisterFontsForURL(f as CFURL, .process, nil)
+        }
+    }
+    /// Son VARIABLES: sin pedirle el peso al eje «wght», Outfit sale finísima y
+    /// Bricolage negrísima (su cara por defecto). Y se guarda lo ya construido,
+    /// que esto se llama en cada texto de cada pintado.
+    private static var cache: [String: UIFont] = [:]
+    static func fuente(_ familia: String, _ tam: CGFloat, _ peso: CGFloat) -> UIFont {
+        let clave = familia + "|" + String(format: "%.1f|%.0f", tam, peso)
+        if let f = cache[clave] { return f }
+        let eje = UIFontDescriptor.AttributeName(kCTFontVariationAttribute as String)
+        let desc = UIFontDescriptor(fontAttributes: [
+            .family: familia,
+            eje: [2003265652: peso]        // 'wght'
+        ])
+        let f = UIFont(descriptor: desc, size: tam)
+        cache[clave] = f
+        return f
+    }
+    static func numero(_ p: Font.Weight) -> CGFloat {
+        if p == .ultraLight { return 100 }
+        if p == .thin { return 200 }
+        if p == .light { return 300 }
+        if p == .medium { return 500 }
+        if p == .semibold { return 600 }
+        if p == .bold { return 700 }
+        if p == .heavy { return 800 }
+        if p == .black { return 900 }
+        return 400
+    }
+}
+
+/// La letra de un texto nativo: la del sistema, o la tipografía elegida si es
+/// una de las que viajan en el paquete. Ya escalada por el ajuste de tamaño.
+func cnLetra(_ tam: CGFloat, _ peso: Font.Weight = .regular) -> Font {
+    let t = cnPt(tam)
+    guard let familia = CNFuentes.familias[CNC.fmt.fuente] else {
+        return .system(size: t, weight: peso, design: cnDiseno)
+    }
+    return Font(CNFuentes.fuente(familia, t, CNFuentes.numero(peso)))
+}
+
+/// Lo mismo para UIKit (el menú de abajo).
+func cnUIFuente(_ tam: CGFloat, _ peso: UIFont.Weight) -> UIFont {
+    let t = cnPt(tam)
+    guard let familia = CNFuentes.familias[CNC.fmt.fuente] else {
+        return UIFont.systemFont(ofSize: t, weight: peso)
+    }
+    return CNFuentes.fuente(familia, t, peso.rawValue >= 0.5 ? 800 : (peso.rawValue >= 0.3 ? 700 : (peso.rawValue >= 0.2 ? 600 : 400)))
+}
+
 /// La forma de la letra que más se parece a la tipografía elegida en Ajustes.
 ///
 /// Las de la marca son archivos .woff2 (Plus Jakarta, Inter, Outfit…) y iOS
@@ -695,7 +768,7 @@ struct CNBotonVidrio: View {
     var body: some View {
         Button(action: accion) {
             Image(systemName: icono)
-                .font(.system(size: cnPt(17), weight: .semibold, design: cnDiseno))
+                .font(cnLetra(17, .semibold))
                 .foregroundColor(acento ? CNC.sobreAcc : .primary)
                 .frame(width: 44, height: 44)
                 .cnVidrio(Circle(), tinte: acento ? CNC.acc : nil)
@@ -813,7 +886,7 @@ struct CNMovs: View {
         HStack(spacing: 10) {
             // El título grande de iOS, tal cual: SF Pro Display Bold a 34 pt,
             // como el «Library» de Apple Music.
-            Text(cnT("Movimientos")).font(.system(size: cnPt(34), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+            Text(cnT("Movimientos")).font(cnLetra(34, .bold)).foregroundColor(CNC.ink)
                 .lineLimit(1).minimumScaleFactor(0.75)
             Spacer(minLength: 8)
             CNMenuVidrio(icono: "calendar", activo: periodo > 0) {
@@ -830,13 +903,13 @@ struct CNMovs: View {
     private var busqueda: some View {
         HStack(spacing: 9) {
             HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass").font(.system(size: cnPt(15), weight: .semibold, design: cnDiseno))
+                Image(systemName: "magnifyingglass").font(cnLetra(15, .semibold))
                     .foregroundColor(CNC.pmut)
-                TextField(cnT("Buscar movimiento…"), text: $q).font(.system(size: cnPt(15), design: cnDiseno)).foregroundColor(CNC.ink)
+                TextField(cnT("Buscar movimiento…"), text: $q).font(cnLetra(15)).foregroundColor(CNC.ink)
                     .submitLabel(.search)
                 if !q.isEmpty {
                     Button { q = "" } label: {
-                        Image(systemName: "xmark.circle.fill").font(.system(size: cnPt(15), design: cnDiseno)).foregroundColor(CNC.pmut)
+                        Image(systemName: "xmark.circle.fill").font(cnLetra(15)).foregroundColor(CNC.pmut)
                     }.buttonStyle(.plain)
                 }
             }
@@ -864,9 +937,9 @@ struct CNMovs: View {
         let total = items.reduce(0.0) { $0 + ($1.esIngreso ? abs($1.monto) : ($1.esTransfer ? 0 : -abs($1.monto))) }
         return VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(cnDiaLargo(fecha).uppercased()).font(.system(size: cnPt(11), weight: .heavy, design: cnDiseno)).tracking(0.4).foregroundColor(CNC.pmut)
+                Text(cnDiaLargo(fecha).uppercased()).font(cnLetra(11, .heavy)).tracking(0.4).foregroundColor(CNC.pmut)
                 Spacer()
-                Text((total >= 0 ? "+" : "−") + cnDinero(total)).font(.system(size: cnPt(11.5), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.pmut)
+                Text((total >= 0 ? "+" : "−") + cnDinero(total)).font(cnLetra(11.5, .heavy)).foregroundColor(CNC.pmut)
             }.padding(.horizontal, 6)
             VStack(spacing: 0) {
                 ForEach(items.indices, id: \.self) { i in
@@ -908,12 +981,12 @@ struct CNMovs: View {
                 .background(tinte.opacity(0.15))
                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(m.concepto.isEmpty ? m.categoria : m.concepto).font(.system(size: cnPt(15), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.ink)
+                    Text(m.concepto.isEmpty ? m.categoria : m.concepto).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
                         .lineLimit(1)
-                    Text("\(m.categoria) · \(medioNombre(m.medio))").font(.system(size: cnPt(11.5), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                    Text("\(m.categoria) · \(medioNombre(m.medio))").font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
                 }
                 Spacer(minLength: 6)
-                Text((entra ? "+ " : (m.esTransfer ? "" : "− ")) + cnDinero(m.monto)).font(.system(size: cnPt(15), weight: .heavy, design: cnDiseno)).foregroundColor(color)
+                Text((entra ? "+ " : (m.esTransfer ? "" : "− ")) + cnDinero(m.monto)).font(cnLetra(15, .heavy)).foregroundColor(color)
             }
             .padding(.horizontal, 14).padding(.vertical, 11)
         }
@@ -928,8 +1001,8 @@ struct CNMovs: View {
 
     private var vacio: some View {
         VStack(spacing: 6) {
-            Text(cnT("No hay movimientos")).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
-            Text(cnT("Aquí saldrá lo que anotes este mes.")).font(.system(size: cnPt(13.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+            Text(cnT("No hay movimientos")).font(cnLetra(15, .bold)).foregroundColor(CNC.ink)
+            Text(cnT("Aquí saldrá lo que anotes este mes.")).font(cnLetra(13.5)).foregroundColor(CNC.pmut)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 26)
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -947,7 +1020,7 @@ struct CNFranja<Acciones: View, Debajo: View>: View {
     var body: some View {
         VStack(spacing: 11) {
             HStack(alignment: .center, spacing: 10) {
-                Text(titulo).font(.system(size: cnPt(26), weight: .heavy, design: cnDiseno)).foregroundColor(.white)
+                Text(titulo).font(cnLetra(26, .heavy)).foregroundColor(.white)
                     .lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 8)
                 acciones()
@@ -965,7 +1038,7 @@ struct CNCirculoAcento: View {
     var accion: () -> Void
     var body: some View {
         Button(action: accion) {
-            Image(systemName: icono).font(.system(size: cnPt(20), weight: .semibold, design: cnDiseno))
+            Image(systemName: icono).font(cnLetra(20, .semibold))
                 .foregroundColor(CNC.sobreAcc)
                 .frame(width: 46, height: 46)
                 .cnVidrio(Circle(), tinte: CNC.acc)
@@ -1104,8 +1177,8 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         let ap = barra.standardAppearance
         for st in [ap.stackedLayoutAppearance, ap.inlineLayoutAppearance, ap.compactInlineLayoutAppearance] {
             if conTitulos {
-                st.normal.titleTextAttributes = [.font: UIFont.systemFont(ofSize: cnPt(11), weight: .semibold)]
-                st.selected.titleTextAttributes = [.font: UIFont.systemFont(ofSize: cnPt(11), weight: .bold)]
+                st.normal.titleTextAttributes = [.font: cnUIFuente(11, .semibold)]
+                st.selected.titleTextAttributes = [.font: cnUIFuente(11, .bold)]
             } else {
                 st.normal.titleTextAttributes = [.foregroundColor: UIColor.clear,
                                                  .font: UIFont.systemFont(ofSize: 0.1)]
@@ -1123,8 +1196,8 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
             item.accessibilityLabel = cnT(t.titulo)
             // Sin rótulo el icono se centra solo bajándolo un poco.
             item.imageInsets = conTitulos ? .zero : UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
-            item.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: cnPt(11), weight: .semibold)], for: .normal)
-            item.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: cnPt(11), weight: .bold)], for: .selected)
+            item.setTitleTextAttributes([.font: cnUIFuente(11, .semibold)], for: .normal)
+            item.setTitleTextAttributes([.font: cnUIFuente(11, .bold)], for: .selected)
             items.append(item); ids.append(t.id)
         }
         let antes = barra.selectedItem?.tag
@@ -1172,7 +1245,7 @@ struct CNBarraMenu: View {
                     VStack(spacing: 3) {
                         CNIconoTab(d: it.path).frame(height: 25)
                         if estado.titulos {
-                            Text(cnT(it.label)).font(.system(size: cnPt(10.5), weight: .semibold, design: cnDiseno))
+                            Text(cnT(it.label)).font(cnLetra(10.5, .semibold))
                         }
                     }
                     .foregroundColor(sel ? CNC.pos : .secondary)
@@ -1303,10 +1376,10 @@ struct CNTendencia: View {
         let puntos = libreta.tendencia()
         return VStack(spacing: 0) {
             ZStack {
-                Text(cnT("Tendencia")).font(.system(size: cnPt(17), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+                Text(cnT("Tendencia")).font(cnLetra(17, .bold)).foregroundColor(CNC.ink)
                 HStack {
                     Button(action: onClose) {
-                        Image(systemName: "xmark").font(.system(size: cnPt(17), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut)
+                        Image(systemName: "xmark").font(cnLetra(17, .semibold)).foregroundColor(CNC.pmut)
                             .frame(width: 44, height: 44).cnVidrio(Circle())
                             .shadow(color: .black.opacity(0.10), radius: 6, y: 2)
                     }
@@ -1316,18 +1389,18 @@ struct CNTendencia: View {
             .padding(.horizontal, 12).padding(.top, 14).padding(.bottom, 4)
 
             HStack(spacing: 16) {
-                Image(systemName: "chevron.left").font(.system(size: cnPt(13), weight: .bold, design: cnDiseno)).foregroundColor(CNC.pmut)
-                Text(cnT("Últimos 12 meses")).font(.system(size: cnPt(15), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.ink)
-                Image(systemName: "chevron.right").font(.system(size: cnPt(13), weight: .bold, design: cnDiseno)).foregroundColor(CNC.pmut)
+                Image(systemName: "chevron.left").font(cnLetra(13, .bold)).foregroundColor(CNC.pmut)
+                Text(cnT("Últimos 12 meses")).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
+                Image(systemName: "chevron.right").font(cnLetra(13, .bold)).foregroundColor(CNC.pmut)
             }.padding(.vertical, 8)
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text(cnT("Patrimonio")).font(.system(size: cnPt(14), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.info)
+                            Text(cnT("Patrimonio")).font(cnLetra(14, .semibold)).foregroundColor(CNC.info)
                             Spacer()
-                            Text(cnDinero(libreta.patrimonio)).font(.system(size: cnPt(14), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.pos)
+                            Text(cnDinero(libreta.patrimonio)).font(cnLetra(14, .heavy)).foregroundColor(CNC.pos)
                         }
                         CNArea(valores: puntos.map { $0.valor }).frame(height: 130)
                     }
@@ -1338,12 +1411,12 @@ struct CNTendencia: View {
                         let filas = Array(puntos.reversed())
                         ForEach(filas.indices, id: \.self) { i in
                             HStack {
-                                Text(filas[i].label).font(.system(size: cnPt(15), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.ink)
+                                Text(filas[i].label).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
                                 Spacer()
                                 VStack(alignment: .trailing, spacing: 1) {
-                                    Text(cnDinero(filas[i].valor)).font(.system(size: cnPt(15), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.ink)
+                                    Text(cnDinero(filas[i].valor)).font(cnLetra(15, .heavy)).foregroundColor(CNC.ink)
                                     Text((filas[i].cambio >= 0 ? "+ " : "− ") + cnDinero(filas[i].cambio))
-                                        .font(.system(size: cnPt(11.5), weight: .bold, design: cnDiseno)).foregroundColor(filas[i].cambio >= 0 ? CNC.pos : CNC.neg)
+                                        .font(cnLetra(11.5, .bold)).foregroundColor(filas[i].cambio >= 0 ? CNC.pos : CNC.neg)
                                 }
                             }
                             .padding(.vertical, 12)
@@ -1664,8 +1737,8 @@ struct CNDetCabecera: View {
                 // Atrás y ⋯ en vidrio, como el resto de botones de la app.
                 Button(action: onClose) {
                     HStack(spacing: 3) {
-                        Image(systemName: "chevron.left").font(.system(size: cnPt(15), weight: .bold, design: cnDiseno))
-                        Text(volverA).font(.system(size: cnPt(15), weight: .semibold, design: cnDiseno))
+                        Image(systemName: "chevron.left").font(cnLetra(15, .bold))
+                        Text(volverA).font(cnLetra(15, .semibold))
                     }
                     .foregroundColor(.white)
                     .padding(.leading, 10).padding(.trailing, 14).frame(height: 38)
@@ -1681,17 +1754,17 @@ struct CNDetCabecera: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: cnPt(16), weight: .bold, design: cnDiseno)).foregroundColor(.white)
+                            .font(cnLetra(16, .bold)).foregroundColor(.white)
                             .frame(width: 38, height: 38).cnVidrio(Circle())
                     }
                 }
             }
             HStack(spacing: 12) {
-                Text(inicial).font(.system(size: cnPt(15), weight: .heavy, design: cnDiseno)).foregroundColor(.white)
+                Text(inicial).font(cnLetra(15, .heavy)).foregroundColor(.white)
                     .frame(width: 44, height: 44).background(cuadro).clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(nombre).font(.system(size: cnPt(20), weight: .heavy, design: cnDiseno)).foregroundColor(.white)
-                    Text(sub).font(.system(size: cnPt(12.5), design: cnDiseno)).foregroundColor(.white.opacity(0.8))
+                    Text(nombre).font(cnLetra(20, .heavy)).foregroundColor(.white)
+                    Text(sub).font(cnLetra(12.5)).foregroundColor(.white.opacity(0.8))
                 }
                 Spacer(minLength: 0)
             }.padding(.top, 12)
@@ -1703,9 +1776,9 @@ struct CNDetCifra: View {
     let rotulo: String; let valor: String; var color: Color = CNC.ink; let cols: [(String, String, Color)]
     var body: some View {
         VStack(spacing: 14) {
-            VStack(spacing: 3) { Text(rotulo).font(.system(size: cnPt(12.5), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut); Text(valor).font(.system(size: cnPt(32), weight: .heavy, design: cnDiseno)).foregroundColor(color) }
+            VStack(spacing: 3) { Text(rotulo).font(cnLetra(12.5, .semibold)).foregroundColor(CNC.pmut); Text(valor).font(cnLetra(32, .heavy)).foregroundColor(color) }
             HStack(spacing: 0) { ForEach(cols.indices, id: \.self) { i in
-                VStack(spacing: 3) { Text(cols[i].0).font(.system(size: cnPt(11), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut); Text(cols[i].1).font(.system(size: cnPt(16), weight: .heavy, design: cnDiseno)).foregroundColor(cols[i].2) }.frame(maxWidth: .infinity)
+                VStack(spacing: 3) { Text(cols[i].0).font(cnLetra(11, .semibold)).foregroundColor(CNC.pmut); Text(cols[i].1).font(cnLetra(16, .heavy)).foregroundColor(cols[i].2) }.frame(maxWidth: .infinity)
                 if i < cols.count - 1 { Rectangle().fill(CNC.line).frame(width: 0.5, height: 30) }
             } }
         }
@@ -1717,7 +1790,7 @@ struct CNBotonAncho: View {
     let texto: String; var icono: String? = nil; var tap: () -> Void
     var body: some View {
         Button(action: tap) {
-            HStack(spacing: 6) { if let ic = icono { Image(systemName: ic).font(.system(size: cnPt(15), weight: .heavy, design: cnDiseno)) }; Text(texto).font(.system(size: cnPt(15.5), weight: .bold, design: cnDiseno)) }
+            HStack(spacing: 6) { if let ic = icono { Image(systemName: ic).font(cnLetra(15, .heavy)) }; Text(texto).font(cnLetra(15.5, .bold)) }
                 .foregroundColor(CNC.sobreAcc).frame(maxWidth: .infinity).padding(.vertical, 15)
                 .cnVidrio(Capsule(), tinte: CNC.acc)
                 .shadow(color: CNC.acc.opacity(0.35), radius: 12, y: 4)
@@ -1824,7 +1897,7 @@ struct CNDetalleVista: View {
                     if !d.datos.isEmpty { tablaDatos(d) }
                     if let b = d.barras { barras(b) }
                     if !d.rotuloLista.isEmpty {
-                        Text(d.rotuloLista.uppercased()).font(.system(size: cnPt(12), weight: .heavy, design: cnDiseno)).tracking(0.8)
+                        Text(d.rotuloLista.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8)
                             .foregroundColor(CNC.pmut).padding(.leading, 4).padding(.top, 4)
                     }
                     if !d.vacioTexto.isEmpty { cnVacioCard("Todavía nada", d.vacioTexto) }
@@ -1844,7 +1917,7 @@ struct CNDetalleVista: View {
             HStack(spacing: 6) {
                 ForEach(d.chips) { c in
                     Button { datos.onDetalleAccion("chip", c.indice) } label: {
-                        Text(c.label).font(.system(size: cnPt(13.5), weight: c.puesta ? .bold : .semibold))
+                        Text(c.label).font(cnLetra(13.5, c.puesta ? .bold : .semibold))
                             .foregroundColor(c.puesta ? cnSobre(CNC.side) : CNC.ink)
                             .padding(.horizontal, 14).padding(.vertical, 9)
                             .background(c.puesta ? CNC.side : Color.clear, in: Capsule())
@@ -1868,9 +1941,9 @@ struct CNDetalleVista: View {
                         .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(h.rotulo.uppercased()).font(.system(size: cnPt(11.5), weight: .heavy, design: cnDiseno)).tracking(0.8)
+                    Text(h.rotulo.uppercased()).font(cnLetra(11.5, .heavy)).tracking(0.8)
                         .foregroundColor(CNC.pmut).lineLimit(1)
-                    Text(h.valor).font(.system(size: cnPt(28), weight: .heavy, design: cnDiseno))
+                    Text(h.valor).font(cnLetra(28, .heavy))
                         .foregroundColor(h.color.isEmpty ? CNC.ink : cnColor(hexString: h.color))
                         .lineLimit(1).minimumScaleFactor(0.5)
                 }
@@ -1882,13 +1955,13 @@ struct CNDetalleVista: View {
             }
             if !h.pieIzq.isEmpty || !h.pieDer.isEmpty {
                 HStack {
-                    Text(h.pieIzq).font(.system(size: cnPt(12.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+                    Text(h.pieIzq).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
                     Spacer(minLength: 8)
-                    Text(h.pieDer).font(.system(size: cnPt(12.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+                    Text(h.pieDer).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
                 }
             }
             if !h.nota.isEmpty {
-                Text(h.nota).font(.system(size: cnPt(12.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+                Text(h.nota).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -1897,8 +1970,8 @@ struct CNDetalleVista: View {
 
     private func cifra(_ c: CNDetalle.Cifra) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(c.label).font(.system(size: cnPt(12.5), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
-            Text(c.valor).font(.system(size: cnPt(18), weight: .heavy, design: cnDiseno))
+            Text(c.label).font(cnLetra(12.5)).foregroundColor(CNC.pmut).lineLimit(1)
+            Text(c.valor).font(cnLetra(18, .heavy))
                 .foregroundColor(c.color.isEmpty ? CNC.ink : cnColor(hexString: c.color))
                 .lineLimit(1).minimumScaleFactor(0.6)
         }
@@ -1909,7 +1982,7 @@ struct CNDetalleVista: View {
         HStack(spacing: 12) {
             ForEach(d.botones) { b in
                 Button { datos.onDetalleAccion("boton", b.id) } label: {
-                    Text(b.label).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno))
+                    Text(b.label).font(cnLetra(15, .bold))
                         .foregroundColor(b.estilo == "acento" ? CNC.sobreAcc : CNC.ink)
                         .lineLimit(1).minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity).padding(.vertical, 15)
@@ -1924,9 +1997,9 @@ struct CNDetalleVista: View {
         VStack(spacing: 0) {
             ForEach(d.datos) { x in
                 HStack {
-                    Text(x.label).font(.system(size: cnPt(15), design: cnDiseno)).foregroundColor(CNC.pmut)
+                    Text(x.label).font(cnLetra(15)).foregroundColor(CNC.pmut)
                     Spacer(minLength: 10)
-                    Text(x.valor).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno))
+                    Text(x.valor).font(cnLetra(15, .bold))
                         .foregroundColor(x.color.isEmpty ? CNC.ink : cnColor(hexString: x.color))
                         .multilineTextAlignment(.trailing).lineLimit(2)
                 }
@@ -1946,10 +2019,10 @@ struct CNDetalleVista: View {
     private func barras(_ b: CNDetalle.Barras) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(b.titulo.uppercased()).font(.system(size: cnPt(11.5), weight: .heavy, design: cnDiseno)).tracking(0.8)
+                Text(b.titulo.uppercased()).font(cnLetra(11.5, .heavy)).tracking(0.8)
                     .foregroundColor(CNC.pmut)
                 Spacer(minLength: 8)
-                Text(b.tope).font(.system(size: cnPt(11.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+                Text(b.tope).font(cnLetra(11.5)).foregroundColor(CNC.pmut)
             }
             HStack(alignment: .bottom, spacing: 8) {
                 ForEach(b.columnas) { c in
@@ -1963,7 +2036,7 @@ struct CNDetalleVista: View {
                             }
                         }
                         .frame(height: 96)
-                        Text(c.label).font(.system(size: cnPt(10.5), weight: c.fuerte ? .bold : .regular))
+                        Text(c.label).font(cnLetra(10.5, c.fuerte ? .bold : .regular))
                             .foregroundColor(c.colorMes.isEmpty ? CNC.pmut : cnColor(hexString: c.colorMes))
                             .lineLimit(1)
                     }
@@ -1978,9 +2051,9 @@ struct CNDetalleVista: View {
         VStack(alignment: .leading, spacing: 6) {
             if !t.label.isEmpty || !t.total.isEmpty {
                 HStack {
-                    Text(t.label).font(.system(size: cnPt(12.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+                    Text(t.label).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
                     Spacer(minLength: 8)
-                    Text(t.total).font(.system(size: cnPt(12.5), weight: .bold, design: cnDiseno)).foregroundColor(CNC.pmut)
+                    Text(t.total).font(cnLetra(12.5, .bold)).foregroundColor(CNC.pmut)
                 }.padding(.horizontal, 4)
             }
             VStack(spacing: 0) {
@@ -1995,13 +2068,13 @@ struct CNDetalleVista: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(x.concepto).font(.system(size: cnPt(14.5), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
+                            Text(x.concepto).font(cnLetra(14.5, .bold)).foregroundColor(CNC.ink).lineLimit(1)
                             if !x.sub.isEmpty {
-                                Text(x.sub).font(.system(size: cnPt(11.5), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                                Text(x.sub).font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
                             }
                         }
                         Spacer(minLength: 6)
-                        Text(x.montoFmt).font(.system(size: cnPt(14.5), weight: .bold, design: cnDiseno))
+                        Text(x.montoFmt).font(cnLetra(14.5, .bold))
                             .foregroundColor(x.color.isEmpty ? CNC.ink : cnColor(hexString: x.color))
                             .lineLimit(1)
                     }
@@ -2027,16 +2100,16 @@ struct CNBarraDetalle<M: View>: View {
     var body: some View {
         HStack(spacing: 10) {
             Button(action: onVolver) {
-                Image(systemName: "chevron.left").font(.system(size: cnPt(16), weight: .bold, design: cnDiseno))
+                Image(systemName: "chevron.left").font(cnLetra(16, .bold))
                     .foregroundColor(CNC.ink).frame(width: 40, height: 40)
                     .background(CNC.soft, in: Circle())
             }.buttonStyle(CNPulsable())
             Spacer(minLength: 6)
-            Text(titulo).font(.system(size: cnPt(17), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+            Text(titulo).font(cnLetra(17, .bold)).foregroundColor(CNC.ink)
                 .lineLimit(1).truncationMode(.tail)
             Spacer(minLength: 6)
             Menu { menu() } label: {
-                Image(systemName: "ellipsis").font(.system(size: cnPt(16), weight: .bold, design: cnDiseno))
+                Image(systemName: "ellipsis").font(cnLetra(16, .bold))
                     .foregroundColor(CNC.ink).frame(width: 40, height: 40)
                     .background(CNC.soft, in: Circle())
             }
@@ -2097,12 +2170,12 @@ struct CNDetalleMov: View {
             // de color, como en la web.
             HStack(spacing: 10) {
                 Button(action: onClose) {
-                    Image(systemName: "chevron.left").font(.system(size: cnPt(16), weight: .bold, design: cnDiseno))
+                    Image(systemName: "chevron.left").font(cnLetra(16, .bold))
                         .foregroundColor(CNC.ink).frame(width: 40, height: 40)
                         .background(CNC.soft, in: Circle())
                 }.buttonStyle(CNPulsable())
                 Spacer(minLength: 6)
-                Text(m.nombre).font(.system(size: cnPt(17), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+                Text(m.nombre).font(cnLetra(17, .bold)).foregroundColor(CNC.ink)
                     .lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 6)
                 Menu {
@@ -2110,7 +2183,7 @@ struct CNDetalleMov: View {
                     Button { datos.onMovAccion("duplicar") } label: { Label(m.textoDuplicar, systemImage: "plus.square.on.square") }
                     Button(role: .destructive) { confirmarBorrar = true } label: { Label(cnT("Eliminar"), systemImage: "trash") }
                 } label: {
-                    Image(systemName: "ellipsis").font(.system(size: cnPt(16), weight: .bold, design: cnDiseno))
+                    Image(systemName: "ellipsis").font(cnLetra(16, .bold))
                         .foregroundColor(CNC.ink).frame(width: 40, height: 40)
                         .background(CNC.soft, in: Circle())
                 }
@@ -2130,9 +2203,9 @@ struct CNDetalleMov: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(m.rotulo.uppercased()).font(.system(size: cnPt(11.5), weight: .heavy, design: cnDiseno)).tracking(0.8)
+                            Text(m.rotulo.uppercased()).font(cnLetra(11.5, .heavy)).tracking(0.8)
                                 .foregroundColor(CNC.pmut)
-                            Text(m.montoFmt).font(.system(size: cnPt(30), weight: .heavy, design: cnDiseno))
+                            Text(m.montoFmt).font(cnLetra(30, .heavy))
                                 .foregroundColor(m.color.isEmpty ? CNC.ink : cnColor(hexString: m.color))
                                 .lineLimit(1).minimumScaleFactor(0.6)
                         }
@@ -2143,13 +2216,13 @@ struct CNDetalleMov: View {
                     if m.puedeEditar {
                         HStack(spacing: 12) {
                             Button { datos.onAccion("editarMov", movId) } label: {
-                                Text(m.textoEditar).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno))
+                                Text(m.textoEditar).font(cnLetra(15, .bold))
                                     .foregroundColor(CNC.sobreAcc)
                                     .frame(maxWidth: .infinity).padding(.vertical, 15)
                                     .background(CNC.acc, in: Capsule())
                             }.buttonStyle(CNPulsable())
                             Button { datos.onMovAccion("duplicar") } label: {
-                                Text(m.textoDuplicar).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno))
+                                Text(m.textoDuplicar).font(cnLetra(15, .bold))
                                     .foregroundColor(CNC.ink)
                                     .frame(maxWidth: .infinity).padding(.vertical, 15)
                                     .background(CNC.card, in: Capsule())
@@ -2161,9 +2234,9 @@ struct CNDetalleMov: View {
                     VStack(spacing: 0) {
                         ForEach(m.datos) { d in
                             HStack {
-                                Text(d.label).font(.system(size: cnPt(15), design: cnDiseno)).foregroundColor(CNC.pmut)
+                                Text(d.label).font(cnLetra(15)).foregroundColor(CNC.pmut)
                                 Spacer(minLength: 10)
-                                Text(d.valor).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+                                Text(d.valor).font(cnLetra(15, .bold)).foregroundColor(CNC.ink)
                                     .multilineTextAlignment(.trailing).lineLimit(2)
                             }
                             .padding(.horizontal, 16).padding(.vertical, 14)
@@ -2222,12 +2295,12 @@ struct CNNuevoMov: View {
                         }
                         VStack(alignment: .leading, spacing: 6) {
                             titulo("Concepto")
-                            grupo { TextField(cnT("En qué fue"), text: $concepto).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink).padding(.horizontal, 15).padding(.vertical, 14) }
+                            grupo { TextField(cnT("En qué fue"), text: $concepto).font(cnLetra(16)).foregroundColor(CNC.ink).padding(.horizontal, 15).padding(.vertical, 14) }
                         }
                         VStack(alignment: .leading, spacing: 6) {
                             titulo("Cuándo y de dónde")
                             grupo {
-                                HStack(spacing: 12) { cuadro("calendar", CNC.neg); Text(cnT("Fecha")).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink); Spacer(); DatePicker("", selection: $fecha, displayedComponents: .date).labelsHidden() }.padding(.horizontal, 14).padding(.vertical, 7)
+                                HStack(spacing: 12) { cuadro("calendar", CNC.neg); Text(cnT("Fecha")).font(cnLetra(16)).foregroundColor(CNC.ink); Spacer(); DatePicker("", selection: $fecha, displayedComponents: .date).labelsHidden() }.padding(.horizontal, 14).padding(.vertical, 7)
                                 divi()
                                 menuFila("banknote.fill", CNC.info, "Pagado con", cuentaNombre) { ForEach(datos.libreta.cuentas) { c in Button(c.nombre) { cuentaId = c.id } } }
                             }
@@ -2239,9 +2312,9 @@ struct CNNuevoMov: View {
                         grupo { HStack(spacing: 12) {
                             cuadro("repeat", cnColor(0x825eb9))
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(cnT("Repetir cada mes")).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink)
+                                Text(cnT("Repetir cada mes")).font(cnLetra(16)).foregroundColor(CNC.ink)
                                 Text(cnT("Para lo que pagas siempre: renta, luz, colegio"))
-                                    .font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(2)
+                                    .font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(2)
                             }
                             Spacer(minLength: 6)
                             Toggle("", isOn: $repetir).labelsHidden().tint(CNC.pos)
@@ -2271,7 +2344,7 @@ struct CNNuevoMov: View {
 
     private var pildoras: some View {
         HStack(spacing: 4) { ForEach(tipos.indices, id: \.self) { i in
-            Text(tipos[i]).font(.system(size: cnPt(13.5), weight: i == tipo ? .bold : .semibold))
+            Text(tipos[i]).font(cnLetra(13.5, i == tipo ? .bold : .semibold))
                 .foregroundColor(i == tipo ? CNC.sobreAcc : CNC.ink.opacity(0.7))
                 .frame(maxWidth: .infinity).padding(.vertical, 9)
                 .background(i == tipo ? AnyView(Capsule().fill(CNC.acc)) : AnyView(Color.clear))
@@ -2279,13 +2352,13 @@ struct CNNuevoMov: View {
         } }.padding(4).background(CNC.soft).clipShape(Capsule())
     }
     private var cuentaNombre: String { datos.libreta.cuentas.first { $0.id == cuentaId }?.nombre ?? "Efectivo" }
-    private func titulo(_ t: String) -> some View { Text(t.uppercased()).font(.system(size: cnPt(12.5), weight: .semibold, design: cnDiseno)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading) }
+    private func titulo(_ t: String) -> some View { Text(t.uppercased()).font(cnLetra(12.5, .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading) }
     private func grupo<C: View>(@ViewBuilder _ c: () -> C) -> some View { VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5)) }
     private func divi() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 57) }
-    private func cuadro(_ ic: String, _ tinte: Color) -> some View { Image(systemName: ic).font(.system(size: cnPt(14), weight: .semibold, design: cnDiseno)).foregroundColor(.white).frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous)) }
+    private func cuadro(_ ic: String, _ tinte: Color) -> some View { Image(systemName: ic).font(cnLetra(14, .semibold)).foregroundColor(.white).frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous)) }
     private func menuFila<M: View>(_ icono: String, _ tinte: Color, _ titulo: String, _ valor: String, @ViewBuilder _ menu: () -> M) -> some View {
         Menu { menu() } label: {
-            HStack(spacing: 12) { cuadro(icono, tinte); Text(titulo).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(valor).font(.system(size: cnPt(15), design: cnDiseno)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: cnPt(11), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
+            HStack(spacing: 12) { cuadro(icono, tinte); Text(titulo).font(cnLetra(16)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(valor).font(cnLetra(15)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(cnLetra(11, .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
         }
     }
     private func guardar() {
@@ -2415,7 +2488,7 @@ struct CNCuentas: View {
 
     private func titulo(_ m: CNCuentasModelo) -> some View {
         HStack(spacing: 10) {
-            Text(m.titulo).font(.system(size: cnPt(34), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+            Text(m.titulo).font(cnLetra(34, .bold)).foregroundColor(CNC.ink)
                 .lineLimit(1).minimumScaleFactor(0.75)
             Spacer(minLength: 8)
             CNMenuVidrio(icono: "line.3.horizontal.decrease") {
@@ -2435,16 +2508,16 @@ struct CNCuentas: View {
             datos.onCuentasAccion("plegar", grupo)
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(t.uppercased()).font(.system(size: cnPt(12), weight: .heavy, design: cnDiseno)).tracking(0.8)
+                Text(t.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8)
                     .foregroundColor(CNC.pmut)
                 if grupo >= 0 {
                     Image(systemName: plegado ? "chevron.right" : "chevron.down")
-                        .font(.system(size: cnPt(9.5), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.pmut.opacity(0.7))
+                        .font(cnLetra(9.5, .heavy)).foregroundColor(CNC.pmut.opacity(0.7))
                 }
                 Spacer(minLength: 8)
                 if !total.valor.isEmpty {
-                    Text(total.rotulo).font(.system(size: cnPt(12), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut)
-                    Text(total.valor).font(.system(size: cnPt(13.5), weight: .heavy, design: cnDiseno))
+                    Text(total.rotulo).font(cnLetra(12, .semibold)).foregroundColor(CNC.pmut)
+                    Text(total.valor).font(cnLetra(13.5, .heavy))
                         .foregroundColor(total.tinta.isEmpty ? CNC.ink : cnColor(hexString: total.tinta))
                 }
             }
@@ -2461,30 +2534,30 @@ struct CNCuentas: View {
         return VStack(spacing: 10) {
             HStack {
                 Button { datos.onCuentasAccion("ocultar", 0) } label: {
-                    Image(systemName: oculto ? "eye.slash" : "eye").font(.system(size: cnPt(15), weight: .semibold, design: cnDiseno))
+                    Image(systemName: oculto ? "eye.slash" : "eye").font(cnLetra(15, .semibold))
                         .foregroundColor(tinta).frame(width: 34, height: 34)
                         .background(Color.white.opacity(0.13), in: Circle())
                 }.buttonStyle(CNPulsable())
                 Spacer(minLength: 8)
-                Text(p.titulo).font(.system(size: cnPt(14), weight: .semibold, design: cnDiseno)).foregroundColor(tinta.opacity(0.9))
+                Text(p.titulo).font(cnLetra(14, .semibold)).foregroundColor(tinta.opacity(0.9))
                 Spacer(minLength: 8)
                 Button { datos.onTendencia() } label: {
-                    Image(systemName: "chart.line.uptrend.xyaxis").font(.system(size: cnPt(15), weight: .semibold, design: cnDiseno))
+                    Image(systemName: "chart.line.uptrend.xyaxis").font(cnLetra(15, .semibold))
                         .foregroundColor(tinta).frame(width: 34, height: 34)
                         .background(Color.white.opacity(0.13), in: Circle())
                 }.buttonStyle(CNPulsable())
             }
-            Text(p.valor).font(.system(size: cnPt(32), weight: .heavy, design: cnDiseno)).foregroundColor(tinta)
+            Text(p.valor).font(cnLetra(32, .heavy)).foregroundColor(tinta)
                 .lineLimit(1).minimumScaleFactor(0.5)
             HStack(spacing: 0) {
                 VStack(spacing: 2) {
-                    Text(p.activosLabel).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(tinta.opacity(0.75))
-                    Text(p.activos).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno)).foregroundColor(tinta)
+                    Text(p.activosLabel).font(cnLetra(12)).foregroundColor(tinta.opacity(0.75))
+                    Text(p.activos).font(cnLetra(15, .bold)).foregroundColor(tinta)
                         .lineLimit(1).minimumScaleFactor(0.7)
                 }.frame(maxWidth: .infinity)
                 VStack(spacing: 2) {
-                    Text(p.pasivosLabel).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(tinta.opacity(0.75))
-                    Text(p.pasivos).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno)).foregroundColor(tinta)
+                    Text(p.pasivosLabel).font(cnLetra(12)).foregroundColor(tinta.opacity(0.75))
+                    Text(p.pasivos).font(cnLetra(15, .bold)).foregroundColor(tinta)
                         .lineLimit(1).minimumScaleFactor(0.7)
                 }.frame(maxWidth: .infinity)
             }
@@ -2508,25 +2581,25 @@ struct CNCuentas: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(f.nombre).font(.system(size: cnPt(15.5), weight: .bold, design: cnDiseno))
+                                Text(f.nombre).font(cnLetra(15.5, .bold))
                                     .foregroundColor(CNC.ink).lineLimit(1)
                                 Spacer(minLength: 6)
-                                Text(f.valor).font(.system(size: cnPt(15.5), weight: .bold, design: cnDiseno))
+                                Text(f.valor).font(cnLetra(15.5, .bold))
                                     .foregroundColor(f.tintaValor.isEmpty ? CNC.ink : cnColor(hexString: f.tintaValor))
                                     .lineLimit(1)
                             }
                             if !f.detalle.isEmpty {
-                                Text(f.detalle).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                                Text(f.detalle).font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(1)
                             }
                             if !f.pie.isEmpty {
                                 CNBarraProgreso(parte: f.uso / 100,
                                                 color: f.usoColor.isEmpty ? CNC.pos : cnColor(hexString: f.usoColor),
                                                 alto: 5)
                                     .padding(.top, 1)
-                                Text(f.pie).font(.system(size: cnPt(11.5), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                                Text(f.pie).font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
                             }
                         }
-                        Image(systemName: "chevron.right").font(.system(size: cnPt(12), weight: .semibold, design: cnDiseno))
+                        Image(systemName: "chevron.right").font(cnLetra(12, .semibold))
                             .foregroundColor(CNC.pmut.opacity(0.5))
                     }
                     .padding(.horizontal, 14).padding(.vertical, 12).contentShape(Rectangle())
@@ -2623,7 +2696,7 @@ struct CNPlan: View {
 
     private func titulo(_ m: CNPlanModelo) -> some View {
         HStack(spacing: 10) {
-            Text(m.titulo).font(.system(size: cnPt(34), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+            Text(m.titulo).font(cnLetra(34, .bold)).foregroundColor(CNC.ink)
                 .lineLimit(1).minimumScaleFactor(0.75)
             Spacer(minLength: 8)
             CNMenuVidrio(icono: "calendar") {
@@ -2653,7 +2726,7 @@ struct CNPlan: View {
                             datos.ponerPestanaPlan(t.indice)
                             datos.onPlanAccion("tab", t.indice)
                         } label: {
-                            Text(t.label).font(.system(size: cnPt(14.5), weight: .bold, design: cnDiseno))
+                            Text(t.label).font(cnLetra(14.5, .bold))
                                 .foregroundColor(t.puesta ? CNC.sobreAcc : CNC.pmut)
                                 .frame(maxWidth: .infinity).frame(height: 38)
                                 .contentShape(Rectangle())
@@ -2674,19 +2747,19 @@ struct CNPlan: View {
         // Lo gastado del mes contra el presupuesto, con su aviso si se pasa.
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(m.presGastado).font(.system(size: cnPt(26), weight: .heavy, design: cnDiseno))
+                Text(m.presGastado).font(cnLetra(26, .heavy))
                     .foregroundColor(m.presColor.isEmpty ? CNC.ink : cnColor(hexString: m.presColor))
                     .lineLimit(1).minimumScaleFactor(0.6)
-                Text("\(m.presDe) \(m.presTotal)").font(.system(size: cnPt(13), design: cnDiseno)).foregroundColor(CNC.pmut)
+                Text("\(m.presDe) \(m.presTotal)").font(cnLetra(13)).foregroundColor(CNC.pmut)
                 Spacer(minLength: 0)
             }
             CNBarraProgreso(parte: m.presPct / 100,
                             color: m.presColor.isEmpty ? CNC.pos : cnColor(hexString: m.presColor), alto: 10)
             if !m.presNota.isEmpty {
                 HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle").font(.system(size: cnPt(13), weight: .semibold, design: cnDiseno))
+                    Image(systemName: "exclamationmark.triangle").font(cnLetra(13, .semibold))
                         .foregroundColor(m.presAvisoTinta.isEmpty ? CNC.acc : cnColor(hexString: m.presAvisoTinta))
-                    Text(m.presNota).font(.system(size: cnPt(12.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+                    Text(m.presNota).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -2695,7 +2768,7 @@ struct CNPlan: View {
 
         // Sin botón de «+ Categoría»: el «+» de arriba ya crea la que toca
         // según la pestaña, y dos botones para lo mismo estorban.
-        Text(m.tituloCategorias.uppercased()).font(.system(size: cnPt(12), weight: .heavy, design: cnDiseno)).tracking(0.8)
+        Text(m.tituloCategorias.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8)
             .foregroundColor(CNC.pmut).padding(.leading, 4).padding(.top, 4)
 
         VStack(spacing: 0) {
@@ -2710,18 +2783,18 @@ struct CNPlan: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         VStack(alignment: .leading, spacing: 5) {
                             HStack(spacing: 8) {
-                                Text(f.nombre).font(.system(size: cnPt(14.5), weight: .semibold, design: cnDiseno))
+                                Text(f.nombre).font(cnLetra(14.5, .semibold))
                                     .foregroundColor(CNC.ink).lineLimit(1)
                                 Spacer(minLength: 6)
-                                Text(f.queda).font(.system(size: cnPt(13), weight: .bold, design: cnDiseno))
+                                Text(f.queda).font(cnLetra(13, .bold))
                                     .foregroundColor(f.color.isEmpty ? CNC.pmut : cnColor(hexString: f.color))
                                     .lineLimit(1)
                             }
                             CNBarraProgreso(parte: f.pct / 100,
                                             color: f.color.isEmpty ? CNC.pos : cnColor(hexString: f.color), alto: 7)
-                            Text(f.pie).font(.system(size: cnPt(11.5), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                            Text(f.pie).font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
                         }
-                        Image(systemName: "chevron.right").font(.system(size: cnPt(12), weight: .semibold, design: cnDiseno))
+                        Image(systemName: "chevron.right").font(cnLetra(12, .semibold))
                             .foregroundColor(CNC.pmut.opacity(0.5))
                     }
                     .padding(.horizontal, 14).padding(.vertical, 12).contentShape(Rectangle())
@@ -2742,7 +2815,7 @@ struct CNPlan: View {
     }
 
     @ViewBuilder private func metas(_ m: CNPlanModelo) -> some View {
-        Text(m.tituloTusMetas.uppercased()).font(.system(size: cnPt(12), weight: .heavy, design: cnDiseno)).tracking(0.8)
+        Text(m.tituloTusMetas.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8)
             .foregroundColor(CNC.pmut).padding(.leading, 4)
         if m.metas.isEmpty {
             cnVacioCard("Sin metas", "Una meta es un ahorro con nombre y fecha. Toca + para crear la primera.")
@@ -2759,24 +2832,24 @@ struct CNPlan: View {
                             .background(g.iconoBg.isEmpty ? color.opacity(0.14) : cnColor(hexString: g.iconoBg))
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(g.nombre).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
+                            Text(g.nombre).font(cnLetra(15, .bold)).foregroundColor(CNC.ink).lineLimit(1)
                             if !g.proyeccion.isEmpty {
-                                Text(g.proyeccion).font(.system(size: cnPt(11.5), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                                Text(g.proyeccion).font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
                             }
                         }
                         Spacer(minLength: 6)
-                        Text(g.pctLabel).font(.system(size: cnPt(14), weight: .heavy, design: cnDiseno)).foregroundColor(color)
+                        Text(g.pctLabel).font(cnLetra(14, .heavy)).foregroundColor(color)
                     }.contentShape(Rectangle())
                 }.buttonStyle(CNPulsable())
                 CNBarraProgreso(parte: g.pct / 100, color: color, alto: 9)
                 HStack {
-                    Text(g.pie).font(.system(size: cnPt(11.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+                    Text(g.pie).font(cnLetra(11.5)).foregroundColor(CNC.pmut)
                     Spacer(minLength: 8)
-                    Text(g.falta).font(.system(size: cnPt(11.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+                    Text(g.falta).font(cnLetra(11.5)).foregroundColor(CNC.pmut)
                 }
                 if m.puedeRegistrar && !g.aportar.isEmpty {
                     Button { datos.onPlanAccion("aportar", g.indice) } label: {
-                        Text(g.aportar).font(.system(size: cnPt(13.5), weight: .bold, design: cnDiseno)).foregroundColor(.white)
+                        Text(g.aportar).font(cnLetra(13.5, .bold)).foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
                             .background(color, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }.buttonStyle(CNPulsable())
@@ -2816,7 +2889,7 @@ struct CNSegmentado: View {
                     UISelectionFeedbackGenerator().selectionChanged()
                     withAnimation(.easeOut(duration: 0.18)) { elegida = i }
                 } label: {
-                    Text(opciones[i]).font(.system(size: cnPt(13.5), weight: .bold, design: cnDiseno))
+                    Text(opciones[i]).font(cnLetra(13.5, .bold))
                         .foregroundColor(puesta ? CNC.sobreAcc : CNC.pmut)
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
                         .background(puesta ? AnyView(Capsule().fill(CNC.acc)) : AnyView(Color.clear))
@@ -2838,8 +2911,8 @@ func cnIniciales(_ s: String) -> String {
 /// Tarjeta de «aquí no hay nada todavía», con su porqué.
 func cnVacioCard(_ titulo: String, _ texto: String) -> some View {
     VStack(spacing: 5) {
-        Text(titulo).font(.system(size: cnPt(14.5), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
-        Text(texto).font(.system(size: cnPt(12.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+        Text(titulo).font(cnLetra(14.5, .bold)).foregroundColor(CNC.ink)
+        Text(texto).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
             .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
     }
     .frame(maxWidth: .infinity).padding(.vertical, 22).padding(.horizontal, 16)
@@ -2866,7 +2939,7 @@ struct CNLimiteHoja: View {
                onGuardar: { onGuardar(Double(texto.replacingOccurrences(of: ",", with: "")) ?? 0) }) {
             CNMontoCampo(monto: $texto, paso: 500)
             Text(cnT("Cuánto quieres gastar al mes en esta categoría. Déjalo en 0 para dejarla sin presupuesto."))
-                .font(.system(size: cnPt(12.5), design: cnDiseno)).foregroundColor(CNC.pmut)
+                .font(cnLetra(12.5)).foregroundColor(CNC.pmut)
                 .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
         }
         .onAppear { if limite > 0 { texto = String(Int(limite)) } }
@@ -3098,7 +3171,7 @@ struct CNCabeceraApp: View {
                     .stroke(style: StrokeStyle(lineWidth: 2.1, lineCap: .round, lineJoin: .round))
                     .foregroundColor(.white).padding(5)
             } else {
-                Text(c.inicial).font(.system(size: cnPt(11), weight: .bold, design: cnDiseno)).foregroundColor(.white)
+                Text(c.inicial).font(cnLetra(11, .bold)).foregroundColor(.white)
             }
         }
     }
@@ -3107,18 +3180,18 @@ struct CNCabeceraApp: View {
             .background(pastilla, in: Capsule())
     }
     private var chevron: some View {
-        Image(systemName: "chevron.down").font(.system(size: cnPt(12), weight: .bold, design: cnDiseno))
+        Image(systemName: "chevron.down").font(cnLetra(12, .bold))
             .foregroundColor(tinta.opacity(0.8))
     }
     private func flechaMes(_ ic: String, _ lado: CGFloat = 36, _ tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
-            Image(systemName: ic).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno)).foregroundColor(tinta)
+            Image(systemName: ic).font(cnLetra(15, .bold)).foregroundColor(tinta)
                 .frame(width: lado, height: lado)
                 .background(pastilla, in: Circle())
         }.buttonStyle(CNPulsable())
     }
     private var iconoCalendario: some View {
-        Image(systemName: "calendar").font(.system(size: cnPt(17), weight: .medium, design: cnDiseno))
+        Image(systemName: "calendar").font(cnLetra(17, .medium))
             .foregroundColor(tinta.opacity(0.85))
     }
 
@@ -3145,8 +3218,8 @@ struct CNCabeceraApp: View {
                         Button(action: onCalendario) {
                             HStack(spacing: 10) {
                                 VStack(alignment: .trailing, spacing: 0) {
-                                    Text(c.balanceFmt).font(.system(size: cnPt(16), weight: .bold, design: cnDiseno)).foregroundColor(balColor)
-                                    Text(c.periodoCorto).font(.system(size: cnPt(10), design: cnDiseno)).foregroundColor(tinta.opacity(0.75))
+                                    Text(c.balanceFmt).font(cnLetra(16, .bold)).foregroundColor(balColor)
+                                    Text(c.periodoCorto).font(cnLetra(10)).foregroundColor(tinta.opacity(0.75))
                                 }
                                 iconoCalendario
                             }
@@ -3159,7 +3232,7 @@ struct CNCabeceraApp: View {
                         HStack(spacing: 8) {
                             cuadroLibreta.frame(width: 24, height: 24)
                                 .background(pastillaFuerte, in: Circle())
-                            Text(c.nombre).font(.system(size: cnPt(14), weight: .semibold, design: cnDiseno)).foregroundColor(tinta)
+                            Text(c.nombre).font(cnLetra(14, .semibold)).foregroundColor(tinta)
                                 .lineLimit(1)
                             chevron
                         }
@@ -3173,9 +3246,9 @@ struct CNCabeceraApp: View {
                 }
                 VStack(spacing: 8) {
                     VStack(spacing: 2) {
-                        Text(c.balanceFmt).font(.system(size: cnPt(36), weight: .bold, design: cnDiseno)).foregroundColor(balColor)
+                        Text(c.balanceFmt).font(cnLetra(36, .bold)).foregroundColor(balColor)
                             .lineLimit(1).minimumScaleFactor(0.5)
-                        Text(c.rotulo).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(tinta.opacity(0.8))
+                        Text(c.rotulo).font(cnLetra(12)).foregroundColor(tinta.opacity(0.8))
                     }
                     .scaleEffect(blqEsc, anchor: .top)
                     tiraMeses(ancho)
@@ -3200,7 +3273,7 @@ struct CNCabeceraApp: View {
             HStack(spacing: 6) {
                 ForEach(c.meses, id: \.indice) { m in
                     Button { onMesTira(m.indice) } label: {
-                        Text(m.label).font(.system(size: cnPt(13), weight: m.puesto ? .bold : .semibold))
+                        Text(m.label).font(cnLetra(13, m.puesto ? .bold : .semibold))
                             .foregroundColor(m.fg.isEmpty ? tinta : cnColor(hexString: m.fg))
                             .padding(.horizontal, 13).padding(.vertical, 8)
                             .background(m.bg.isEmpty ? pastilla : cnColor(hexString: m.bg), in: Capsule())
@@ -3221,7 +3294,7 @@ struct CNCabeceraApp: View {
                         HStack(spacing: 7) {
                             cuadroLibreta.frame(width: 26, height: 26)
                                 .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            Text(c.nombre).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno)).foregroundColor(tinta).lineLimit(1)
+                            Text(c.nombre).font(cnLetra(15, .bold)).foregroundColor(tinta).lineLimit(1)
                             chevron
                         }
                         .padding(.leading, 7).padding(.trailing, 11).padding(.vertical, 7)
@@ -3233,7 +3306,7 @@ struct CNCabeceraApp: View {
                     flechaMes("chevron.left") { onMes(-1) }
                     Button(action: onCalendario) {
                         HStack(spacing: 6) {
-                            Text(c.mesLargo).font(.system(size: cnPt(14), weight: .semibold, design: cnDiseno)).foregroundColor(tinta).lineLimit(1)
+                            Text(c.mesLargo).font(cnLetra(14, .semibold)).foregroundColor(tinta).lineLimit(1)
                             chevron
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 8)
@@ -3242,9 +3315,9 @@ struct CNCabeceraApp: View {
                     flechaMes("chevron.right") { onMes(1) }
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(c.rotulo.uppercased()).font(.system(size: cnPt(11), weight: .bold, design: cnDiseno)).tracking(1.1)
+                    Text(c.rotulo.uppercased()).font(cnLetra(11, .bold)).tracking(1.1)
                         .foregroundColor(tinta.opacity(0.72))
-                    Text(c.balanceFmt).font(.system(size: cnPt(34), weight: .bold, design: cnDiseno)).foregroundColor(balColor)
+                    Text(c.balanceFmt).font(cnLetra(34, .bold)).foregroundColor(balColor)
                         .lineLimit(1).minimumScaleFactor(0.5)
                 }
                 if c.hayUso {
@@ -3256,7 +3329,7 @@ struct CNCabeceraApp: View {
                                     .frame(width: g.size.width * CGFloat(min(100, c.usado) / 100))
                             }
                         }.frame(height: 7)
-                        Text(c.usadoLabel).font(.system(size: cnPt(12), weight: .semibold, design: cnDiseno))
+                        Text(c.usadoLabel).font(cnLetra(12, .semibold))
                             .foregroundColor(tinta.opacity(0.85)).lineLimit(1)
                     }
                 }
@@ -3271,23 +3344,23 @@ struct CNCabeceraApp: View {
                         HStack(spacing: 8) {
                             cuadroLibreta.frame(width: 26, height: 26)
                                 .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            Text(c.nombre).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno)).foregroundColor(tinta).lineLimit(1)
+                            Text(c.nombre).font(cnLetra(15, .bold)).foregroundColor(tinta).lineLimit(1)
                         }
                         .padding(.leading, 7).padding(.trailing, 13).padding(.vertical, 7)
                         .background(pastilla, in: Capsule())
                     }.buttonStyle(CNPulsable())
                     Spacer(minLength: 6)
                     VStack(alignment: .trailing, spacing: 1) {
-                        Text(c.balanceFmt).font(.system(size: cnPt(19), weight: .bold, design: cnDiseno)).foregroundColor(balColor).lineLimit(1)
-                        Text(c.rotulo).font(.system(size: cnPt(11), design: cnDiseno)).foregroundColor(tinta.opacity(0.72)).lineLimit(1)
+                        Text(c.balanceFmt).font(cnLetra(19, .bold)).foregroundColor(balColor).lineLimit(1)
+                        Text(c.rotulo).font(cnLetra(11)).foregroundColor(tinta.opacity(0.72)).lineLimit(1)
                     }
                 }
                 HStack(spacing: 8) {
                     flechaMes("chevron.left") { onMes(-1) }
                     Button(action: onCalendario) {
                         HStack(spacing: 8) {
-                            Image(systemName: "calendar").font(.system(size: cnPt(16), weight: .medium, design: cnDiseno))
-                            Text(c.mesLargo).font(.system(size: cnPt(14), weight: .bold, design: cnDiseno)).lineLimit(1)
+                            Image(systemName: "calendar").font(cnLetra(16, .medium))
+                            Text(c.mesLargo).font(cnLetra(14, .bold)).lineLimit(1)
                         }
                         .foregroundColor(tinta)
                         .frame(maxWidth: .infinity).padding(.vertical, 9)
@@ -3301,9 +3374,9 @@ struct CNCabeceraApp: View {
     }
     private func flecha(_ ic: String, _ color: String, _ texto: String) -> some View {
         HStack(spacing: 5) {
-            Image(systemName: ic).font(.system(size: cnPt(13), weight: .heavy, design: cnDiseno))
+            Image(systemName: ic).font(cnLetra(13, .heavy))
                 .foregroundColor(color.isEmpty ? tinta : cnColor(hexString: color))
-            Text(texto).font(.system(size: cnPt(13), weight: .semibold, design: cnDiseno)).foregroundColor(tinta).lineLimit(1)
+            Text(texto).font(cnLetra(13, .semibold)).foregroundColor(tinta).lineLimit(1)
         }
     }
 
@@ -3315,7 +3388,7 @@ struct CNCabeceraApp: View {
                     HStack(spacing: 10) {
                         cuadroLibreta.frame(width: 34, height: 34)
                             .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                        Text(c.nombre).font(.system(size: cnPt(19), weight: .heavy, design: cnDiseno)).foregroundColor(tinta).lineLimit(1)
+                        Text(c.nombre).font(cnLetra(19, .heavy)).foregroundColor(tinta).lineLimit(1)
                         chevron
                         Spacer(minLength: 0)
                     }
@@ -3323,7 +3396,7 @@ struct CNCabeceraApp: View {
                 HStack(spacing: 0) {
                     flechaMesPlano("chevron.left") { onMes(-1) }
                     Button(action: onCalendario) {
-                        Text(c.periodoCorto).font(.system(size: cnPt(12), weight: .bold, design: cnDiseno)).foregroundColor(tinta)
+                        Text(c.periodoCorto).font(cnLetra(12, .bold)).foregroundColor(tinta)
                             .frame(minWidth: 66).padding(.vertical, 6)
                     }.buttonStyle(CNPulsable())
                     flechaMesPlano("chevron.right") { onMes(1) }
@@ -3334,20 +3407,20 @@ struct CNCabeceraApp: View {
             if c.abierta {
                 HStack(alignment: .bottom, spacing: 12) {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(c.balanceRotulo).font(.system(size: cnPt(11), design: cnDiseno)).foregroundColor(gris).lineLimit(1)
-                        Text(c.balanceFmt).font(.system(size: cnPt(29), weight: .heavy, design: cnDiseno)).foregroundColor(balColor)
+                        Text(c.balanceRotulo).font(cnLetra(11)).foregroundColor(gris).lineLimit(1)
+                        Text(c.balanceFmt).font(cnLetra(29, .heavy)).foregroundColor(balColor)
                             .lineLimit(1).minimumScaleFactor(0.6)
                     }
                     Spacer(minLength: 8)
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(c.ingRotulo) \(c.ingFmt)").font(.system(size: cnPt(10), design: cnDiseno))
-                        Text("\(c.gasRotulo) \(c.gasFmt)").font(.system(size: cnPt(10), design: cnDiseno))
+                        Text("\(c.ingRotulo) \(c.ingFmt)").font(cnLetra(10))
+                        Text("\(c.gasRotulo) \(c.gasFmt)").font(cnLetra(10))
                     }.foregroundColor(gris).lineLimit(1)
                 }
                 .padding(.top, 14)
             }
             Button(action: onPlegar) {
-                Image(systemName: "chevron.down").font(.system(size: cnPt(14), weight: .bold, design: cnDiseno))
+                Image(systemName: "chevron.down").font(cnLetra(14, .bold))
                     .foregroundColor(gris)
                     .rotationEffect(.degrees(c.abierta ? 0 : 180))
                     .frame(width: 64, height: 20)
@@ -3358,7 +3431,7 @@ struct CNCabeceraApp: View {
     }
     private func flechaMesPlano(_ ic: String, _ tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
-            Image(systemName: ic).font(.system(size: cnPt(13), weight: .bold, design: cnDiseno)).foregroundColor(tinta)
+            Image(systemName: ic).font(cnLetra(13, .bold)).foregroundColor(tinta)
                 .frame(width: 28, height: 34)
         }.buttonStyle(CNPulsable())
     }
@@ -3370,7 +3443,7 @@ struct CNCabeceraApp: View {
                 HStack(spacing: 9) {
                     cuadroLibreta.frame(width: 26, height: 26)
                         .background(pastillaFuerte, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    Text(c.nombre).font(.system(size: cnPt(17), weight: .bold, design: cnDiseno)).foregroundColor(tinta).lineLimit(1)
+                    Text(c.nombre).font(cnLetra(17, .bold)).foregroundColor(tinta).lineLimit(1)
                     chevron
                 }
             }.buttonStyle(CNPulsable())
@@ -3378,8 +3451,8 @@ struct CNCabeceraApp: View {
             Button(action: onCalendario) {
                 HStack(spacing: 12) {
                     VStack(alignment: .trailing, spacing: 0) {
-                        Text(c.balanceFmt).font(.system(size: cnPt(16), weight: .bold, design: cnDiseno)).foregroundColor(balColor)
-                        Text(c.periodoCorto).font(.system(size: cnPt(10), design: cnDiseno)).foregroundColor(tinta.opacity(0.75))
+                        Text(c.balanceFmt).font(cnLetra(16, .bold)).foregroundColor(balColor)
+                        Text(c.periodoCorto).font(cnLetra(10)).foregroundColor(tinta.opacity(0.75))
                     }
                     iconoCalendario
                 }
@@ -3395,13 +3468,13 @@ struct CNCabeceraApp: View {
                 HStack(spacing: 10) {
                     cuadroLibreta.frame(width: 30, height: 30)
                         .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                    Text(c.nombre).font(.system(size: cnPt(19), weight: .bold, design: cnDiseno)).foregroundColor(tinta).lineLimit(1)
+                    Text(c.nombre).font(cnLetra(19, .bold)).foregroundColor(tinta).lineLimit(1)
                     chevron
                     Spacer(minLength: 0)
                 }
             }.buttonStyle(CNPulsable())
             Button(action: onCalendario) {
-                Text("\(c.periodoCorto) ›").font(.system(size: cnPt(15), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pos)
+                Text("\(c.periodoCorto) ›").font(cnLetra(15, .semibold)).foregroundColor(CNC.pos)
             }.buttonStyle(CNPulsable())
         }
         .padding(.horizontal, 16).padding(.vertical, 10).frame(minHeight: 54)
@@ -3416,20 +3489,20 @@ struct CNCabeceraApp: View {
                 HStack(spacing: 9) {
                     cuadroLibreta.frame(width: 26, height: 26)
                         .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    Text(c.nombre).font(.system(size: cnPt(17), weight: .bold, design: cnDiseno)).foregroundColor(tinta).lineLimit(1)
+                    Text(c.nombre).font(cnLetra(17, .bold)).foregroundColor(tinta).lineLimit(1)
                     chevron
                     Spacer(minLength: 0)
                 }
             }.buttonStyle(CNPulsable())
             HStack(spacing: 2) {
                 Button { onMes(-1) } label: {
-                    Image(systemName: "chevron.left").font(.system(size: cnPt(12), weight: .bold, design: cnDiseno)).frame(width: 26, height: 30)
+                    Image(systemName: "chevron.left").font(cnLetra(12, .bold)).frame(width: 26, height: 30)
                 }
                 Button(action: onCalendario) {
-                    Text(c.periodoCorto).font(.system(size: cnPt(13), weight: .semibold, design: cnDiseno)).frame(minWidth: 66)
+                    Text(c.periodoCorto).font(cnLetra(13, .semibold)).frame(minWidth: 66)
                 }
                 Button { onMes(1) } label: {
-                    Image(systemName: "chevron.right").font(.system(size: cnPt(12), weight: .bold, design: cnDiseno)).frame(width: 26, height: 30)
+                    Image(systemName: "chevron.right").font(cnLetra(12, .bold)).frame(width: 26, height: 30)
                 }
             }
             .foregroundColor(CNC.pos).buttonStyle(CNPulsable())
@@ -3581,8 +3654,8 @@ struct CNResumen: View {
                     }
                 } label: {
                     HStack(spacing: 7) {
-                        Image(systemName: "plus").font(.system(size: cnPt(14), weight: .bold, design: cnDiseno))
-                        Text(cnT("Agregar tarjeta")).font(.system(size: cnPt(13.5), weight: .bold, design: cnDiseno))
+                        Image(systemName: "plus").font(cnLetra(14, .bold))
+                        Text(cnT("Agregar tarjeta")).font(cnLetra(13.5, .bold))
                     }
                     .foregroundColor(CNC.sobreAcc).frame(maxWidth: .infinity).padding(.vertical, 13)
                     .background(CNC.acc, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
@@ -3594,8 +3667,8 @@ struct CNResumen: View {
             } label: {
                 HStack(spacing: 7) {
                     Image(systemName: organiza ? "checkmark" : "square.grid.2x2")
-                        .font(.system(size: cnPt(13), weight: .bold, design: cnDiseno))
-                    Text(organiza ? "Listo" : "Organizar el panel").font(.system(size: cnPt(13.5), weight: .bold, design: cnDiseno))
+                        .font(cnLetra(13, .bold))
+                    Text(organiza ? "Listo" : "Organizar el panel").font(cnLetra(13.5, .bold))
                 }
                 .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 12)
                 .background(CNC.soft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
@@ -3607,11 +3680,11 @@ struct CNResumen: View {
 
     private func tarjetaVacia(_ m: CNResumenModelo) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(m.vacioTitulo).font(.system(size: cnPt(17), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.ink)
-            Text(m.vacioTexto).font(.system(size: cnPt(13), design: cnDiseno)).foregroundColor(CNC.pmut)
+            Text(m.vacioTitulo).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink)
+            Text(m.vacioTexto).font(cnLetra(13)).foregroundColor(CNC.pmut)
                 .fixedSize(horizontal: false, vertical: true)
             Button { datos.onEmpezar() } label: {
-                Text(m.vacioBoton).font(.system(size: cnPt(15), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.sobreAcc)
+                Text(m.vacioBoton).font(cnLetra(15, .heavy)).foregroundColor(CNC.sobreAcc)
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
                     .background(CNC.acc, in: Capsule())
             }.buttonStyle(CNPulsable()).padding(.top, 12)
@@ -3662,14 +3735,14 @@ struct CNTarjetaWidget: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(w.titulo).font(.system(size: cnPt(13), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                Text(w.titulo).font(cnLetra(13)).foregroundColor(CNC.pmut).lineLimit(1)
                 Spacer(minLength: 0)
                 if !w.periodo.isEmpty {
-                    Text(w.periodo).font(.system(size: cnPt(12), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut)
+                    Text(w.periodo).font(cnLetra(12, .semibold)).foregroundColor(CNC.pmut)
                 }
                 if organiza {
                     Menu { acciones } label: {
-                        Image(systemName: "ellipsis").font(.system(size: cnPt(13), weight: .bold, design: cnDiseno))
+                        Image(systemName: "ellipsis").font(cnLetra(13, .bold))
                             .foregroundColor(CNC.pmut).frame(width: 28, height: 24)
                             .background(CNC.soft, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                     }
@@ -3742,11 +3815,11 @@ struct CNTarjetaWidget: View {
                 Text(w.valor).font(.system(size: w.chica ? 21 : 26, weight: .heavy))
                     .foregroundColor(w.color.isEmpty ? CNC.ink : cnColor(hexString: w.color))
                     .lineLimit(1).minimumScaleFactor(0.5)
-                Text(w.nota).font(.system(size: cnPt(11), design: cnDiseno)).foregroundColor(CNC.pmut)
+                Text(w.nota).font(cnLetra(11)).foregroundColor(CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true)
             }
         case "texto":
-            Text(w.texto).font(.system(size: cnPt(13), design: cnDiseno)).foregroundColor(CNC.ink)
+            Text(w.texto).font(cnLetra(13)).foregroundColor(CNC.ink)
                 .fixedSize(horizontal: false, vertical: true)
         case "serie": serie
         case "barras": barras
@@ -3766,8 +3839,8 @@ struct CNTarjetaWidget: View {
                         HStack(spacing: 7) {
                             RoundedRectangle(cornerRadius: 4).fill(cnColor(hexString: s.color))
                                 .frame(width: 10, height: 10)
-                            Text(s.label).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut)
-                            Text(s.ultimo).font(.system(size: cnPt(12), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+                            Text(s.label).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                            Text(s.ultimo).font(cnLetra(12, .bold)).foregroundColor(CNC.ink)
                         }
                     }
                     Spacer(minLength: 0)
@@ -3777,7 +3850,7 @@ struct CNTarjetaWidget: View {
             if !w.etiquetas.isEmpty {
                 HStack(spacing: 0) {
                     ForEach(w.etiquetas.indices, id: \.self) { i in
-                        Text(w.etiquetas[i]).font(.system(size: cnPt(10), design: cnDiseno)).foregroundColor(CNC.pmut)
+                        Text(w.etiquetas[i]).font(cnLetra(10)).foregroundColor(CNC.pmut)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -3802,9 +3875,9 @@ struct CNTarjetaWidget: View {
                     }
                     VStack(spacing: 5) {
                         HStack {
-                            Text(r.label).font(.system(size: cnPt(12), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
+                            Text(r.label).font(cnLetra(12, .semibold)).foregroundColor(CNC.ink).lineLimit(1)
                             Spacer(minLength: 8)
-                            Text(r.valor).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut)
+                            Text(r.valor).font(cnLetra(12)).foregroundColor(CNC.pmut)
                         }
                         CNBarraProgreso(parte: r.pct / 100, color: cnColor(hexString: r.color), alto: 8)
                     }
@@ -3812,7 +3885,7 @@ struct CNTarjetaWidget: View {
             }
             if w.vaAlPresupuesto {
                 Button { datos.onVerPresupuesto() } label: {
-                    Text(w.rotuloPresupuesto).font(.system(size: cnPt(13), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+                    Text(w.rotuloPresupuesto).font(cnLetra(13, .bold)).foregroundColor(CNC.ink)
                         .frame(maxWidth: .infinity).padding(.vertical, 11)
                         .background(CNC.soft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                 }.buttonStyle(CNPulsable()).padding(.top, 4)
@@ -3839,7 +3912,7 @@ struct CNTarjetaWidget: View {
                                 columna(t.b, w.saleColor)
                             }
                             .frame(maxHeight: .infinity, alignment: .bottom)
-                            Text(t.label).font(.system(size: cnPt(10), weight: t.peso >= 700 ? .bold : .regular))
+                            Text(t.label).font(cnLetra(10, t.peso >= 700 ? .bold : .regular))
                                 .foregroundColor(cnColor(hexString: t.color)).lineLimit(1)
                         }
                         .frame(maxWidth: .infinity)
@@ -3875,7 +3948,7 @@ struct CNTarjetaWidget: View {
     private func punto(_ t: String, _ c: String) -> some View {
         HStack(spacing: 6) {
             RoundedRectangle(cornerRadius: 4).fill(cnColor(hexString: c)).frame(width: 9, height: 9)
-            Text(t).font(.system(size: cnPt(12), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut)
+            Text(t).font(cnLetra(12, .semibold)).foregroundColor(CNC.pmut)
         }
     }
 
@@ -3891,8 +3964,8 @@ struct CNTarjetaWidget: View {
                         .frame(width: 84, height: 84)
                 }
                 VStack(spacing: 0) {
-                    Text(cnT("Total")).font(.system(size: cnPt(9), design: cnDiseno)).foregroundColor(CNC.pmut)
-                    Text(w.total).font(.system(size: cnPt(12), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.ink)
+                    Text(cnT("Total")).font(cnLetra(9)).foregroundColor(CNC.pmut)
+                    Text(w.total).font(cnLetra(12, .heavy)).foregroundColor(CNC.ink)
                         .lineLimit(1).minimumScaleFactor(0.6).padding(.horizontal, 4)
                 }
                 .frame(width: 64, height: 64)
@@ -3903,9 +3976,9 @@ struct CNTarjetaWidget: View {
                     let r = w.filasDona[i]
                     HStack(spacing: 8) {
                         RoundedRectangle(cornerRadius: 3).fill(cnColor(hexString: r.color)).frame(width: 9, height: 9)
-                        Text(r.label).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.ink)
+                        Text(r.label).font(cnLetra(12)).foregroundColor(CNC.ink)
                         Spacer(minLength: 6)
-                        Text(r.valor).font(.system(size: cnPt(12), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+                        Text(r.valor).font(cnLetra(12, .bold)).foregroundColor(CNC.ink)
                     }
                 }
             }
@@ -3927,18 +4000,18 @@ struct CNTarjetaWidget: View {
                             .background(cnColor(hexString: it.fondo))
                             .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                     } else {
-                        Text(it.sigla).font(.system(size: cnPt(11), weight: .heavy, design: cnDiseno))
+                        Text(it.sigla).font(cnLetra(11, .heavy))
                             .foregroundColor(cnColor(hexString: it.siglaColor))
                             .frame(width: 34, height: 34)
                             .background(cnColor(hexString: it.fondo))
                             .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(it.titulo).font(.system(size: cnPt(13), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
-                        Text(it.detalle).font(.system(size: cnPt(11), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                        Text(it.titulo).font(cnLetra(13, .semibold)).foregroundColor(CNC.ink).lineLimit(1)
+                        Text(it.detalle).font(cnLetra(11)).foregroundColor(CNC.pmut).lineLimit(1)
                     }
                     Spacer(minLength: 6)
-                    Text(it.monto).font(.system(size: cnPt(13), weight: .bold, design: cnDiseno))
+                    Text(it.monto).font(cnLetra(13, .bold))
                         .foregroundColor(cnColor(hexString: it.montoColor))
                 }
                 .padding(.vertical, 11)
@@ -4086,7 +4159,9 @@ struct CNPerfil: View {
                     .zIndex(1)
             }
         }
-        .animation(.easeOut(duration: 0.26), value: datos.seccion?.id)
+        // Un muelle corto: entra y sale más rápido que una curva de 0,26 s y
+        // se deja interrumpir a mitad, que es lo que hace que se sienta ágil.
+        .animation(.spring(response: 0.28, dampingFraction: 0.92), value: datos.seccion?.id)
     }
 
     private func cerrar() {
@@ -4121,7 +4196,7 @@ struct CNPerfil: View {
                 Circle().fill(CNC.side).frame(width: 29, height: 29)
                 Circle().fill(CNC.acc).frame(width: 11, height: 11)
             }
-            Text("Chinola").font(.system(size: cnPt(20), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.ink)
+            Text("Chinola").font(cnLetra(20, .heavy)).foregroundColor(CNC.ink)
             Spacer(minLength: 0)
         }
         // Pegado a la isla: el margen seguro ya la esquiva, así que dejar más
@@ -4135,21 +4210,21 @@ struct CNPerfil: View {
     private func tarjetaUsuario(_ u: CNAjustes.Usuario) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 12) {
-                Text(u.inicial).font(.system(size: cnPt(17), weight: .heavy, design: cnDiseno))
+                Text(u.inicial).font(cnLetra(17, .heavy))
                     .foregroundColor(u.sobreAcento.isEmpty ? CNC.sobreAcc : cnColor(hexString: u.sobreAcento))
                     .frame(width: 50, height: 50)
                     .background(u.acento.isEmpty ? CNC.acc : cnColor(hexString: u.acento), in: Circle())
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(u.nombre).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
+                    Text(u.nombre).font(cnLetra(15, .bold)).foregroundColor(CNC.ink).lineLimit(1)
                     if !u.correo.isEmpty {
-                        Text(u.correo).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                        Text(u.correo).font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(1)
                     }
                     if !u.plan.isEmpty {
                         Button { datos.onPlan() } label: {
                             HStack(spacing: 5) {
-                                Image(systemName: "star.fill").font(.system(size: cnPt(10), design: cnDiseno))
-                                Text(u.plan).font(.system(size: cnPt(11), weight: .heavy, design: cnDiseno))
-                                Image(systemName: "chevron.right").font(.system(size: cnPt(9), weight: .bold, design: cnDiseno)).opacity(0.6)
+                                Image(systemName: "star.fill").font(cnLetra(10))
+                                Text(u.plan).font(cnLetra(11, .heavy))
+                                Image(systemName: "chevron.right").font(cnLetra(9, .bold)).opacity(0.6)
                             }
                             .foregroundColor(u.planColor.isEmpty ? CNC.pos : cnColor(hexString: u.planColor))
                         }.buttonStyle(CNPulsable()).padding(.top, 3)
@@ -4157,7 +4232,7 @@ struct CNPerfil: View {
                 }
                 Spacer(minLength: 6)
                 if !u.modoLabel.isEmpty {
-                    Text(u.modoLabel).font(.system(size: cnPt(10), weight: .bold, design: cnDiseno))
+                    Text(u.modoLabel).font(cnLetra(10, .bold))
                         .foregroundColor(u.modoFg.isEmpty ? CNC.pmut : cnColor(hexString: u.modoFg))
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(u.modoBg.isEmpty ? CNC.soft : cnColor(hexString: u.modoBg), in: Capsule())
@@ -4168,7 +4243,7 @@ struct CNPerfil: View {
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
             if !u.modoPie.isEmpty {
-                Text(u.modoPie).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut)
+                Text(u.modoPie).font(cnLetra(12)).foregroundColor(CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
             }
         }
@@ -4177,7 +4252,7 @@ struct CNPerfil: View {
     private func grupo(_ g: CNAjustes.Grupo, _ gi: Int) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             if !g.titulo.isEmpty {
-                Text(g.titulo).font(.system(size: cnPt(13), design: cnDiseno)).foregroundColor(CNC.pmut)
+                Text(g.titulo).font(cnLetra(13)).foregroundColor(CNC.pmut)
                     .padding(.horizontal, 6)
             }
             VStack(spacing: 0) {
@@ -4188,7 +4263,7 @@ struct CNPerfil: View {
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
             if !g.pie.isEmpty {
-                Text(g.pie).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut)
+                Text(g.pie).font(cnLetra(12)).foregroundColor(CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 6)
             }
         }
@@ -4228,21 +4303,21 @@ struct CNPerfil: View {
                 .background(f.bg.isEmpty ? CNC.soft : cnColor(hexString: f.bg),
                             in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(f.label).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(tinta).lineLimit(1)
+                Text(f.label).font(cnLetra(16)).foregroundColor(tinta).lineLimit(1)
                 if !f.sub.isEmpty {
-                    Text(f.sub).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut)
+                    Text(f.sub).font(cnLetra(12)).foregroundColor(CNC.pmut)
                         .lineLimit(1).truncationMode(.tail)
                 }
             }
             .layoutPriority(1)
             Spacer(minLength: 8)
             if !f.valor.isEmpty {
-                Text(f.valor).font(.system(size: cnPt(14), design: cnDiseno)).foregroundColor(CNC.pmut)
+                Text(f.valor).font(cnLetra(14)).foregroundColor(CNC.pmut)
                     .lineLimit(1).truncationMode(.tail).layoutPriority(0)
             }
             if f.entra || !f.lista.isEmpty {
                 Image(systemName: f.lista.isEmpty ? "chevron.right" : "chevron.up.chevron.down")
-                    .font(.system(size: cnPt(12), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut.opacity(0.5))
+                    .font(cnLetra(12, .semibold)).foregroundColor(CNC.pmut.opacity(0.5))
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 11)
@@ -4269,7 +4344,11 @@ struct CNSeccion {
         var label = ""; var sub = ""; var puesta = false
         var color = ""; var fondo = ""; var muestra = ""; var imagen = ""
         var accion = -1
+        /// La miniatura de la cabecera: franja, cuánto ocupa y si lleva bulto.
+        var vista = ""; var franja = ""; var alto: CGFloat = 0; var bulto = false; var papel = ""
     }
+    /// Un interruptor dentro de un bloque de varios.
+    struct Llave { var label = ""; var sub = ""; var puesto = false; var accion = -1 }
     struct Muestra { var nombre = ""; var css = ""; var puesta = false; var accion = -1 }
     struct AccionItem { var label = ""; var peligro = false; var accion = -1 }
     struct Item {
@@ -4284,6 +4363,7 @@ struct CNSeccion {
         var puesto = false; var accion = -1
         var filas: [Fila] = []; var opciones: [Opcion] = []
         var colores: [Muestra] = []; var items: [Item] = []
+        var llaves: [Llave] = []
     }
     var id = ""; var titulo = ""; var bloques: [Bloque] = []
 
@@ -4306,10 +4386,17 @@ struct CNSeccion {
                      bg: s($0, "bg"), fg: s($0, "fg"), tinta: s($0, "tinta"), entra: b($0, "entra"),
                      accion: n($0, "accion"))
             }
-            q.opciones = l(bq, "opciones").map {
-                Opcion(label: s($0, "label"), sub: s($0, "sub"), puesta: b($0, "puesta"),
-                       color: s($0, "color"), fondo: s($0, "fondo"), muestra: s($0, "muestra"),
-                       imagen: s($0, "imagen"), accion: n($0, "accion"))
+            q.opciones = l(bq, "opciones").map { o in
+                let mini = o["vista"] as? [String: Any]
+                return Opcion(label: s(o, "label"), sub: s(o, "sub"), puesta: b(o, "puesta"),
+                       color: s(o, "color"), fondo: s(o, "fondo"), muestra: s(o, "muestra"),
+                       imagen: s(o, "imagen"), accion: n(o, "accion"),
+                       vista: s(mini, "tipo"), franja: s(mini, "franja"),
+                       alto: CGFloat(((mini?["alto"] as? NSNumber)?.doubleValue) ?? 0),
+                       bulto: b(mini, "bulto"), papel: s(mini, "papel"))
+            }
+            q.llaves = l(bq, "items").map {
+                Llave(label: s($0, "label"), sub: s($0, "sub"), puesto: b($0, "puesto"), accion: n($0, "accion"))
             }
             q.colores = l(bq, "colores").map {
                 Muestra(nombre: s($0, "nombre"), css: s($0, "css"), puesta: b($0, "puesta"), accion: n($0, "accion"))
@@ -4349,12 +4436,12 @@ struct CNSeccionVista: View {
     private var cabecera: some View {
         HStack(spacing: 6) {
             Button(action: onVolver) {
-                Image(systemName: "chevron.left").font(.system(size: cnPt(17), weight: .bold, design: cnDiseno))
+                Image(systemName: "chevron.left").font(cnLetra(17, .bold))
                     .foregroundColor(CNC.ink).frame(width: 40, height: 40)
                     .background(CNC.soft, in: Circle())
             }.buttonStyle(CNPulsable())
             Spacer(minLength: 0)
-            Text(sec.titulo).font(.system(size: cnPt(17), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
+            Text(sec.titulo).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink).lineLimit(1)
             Spacer(minLength: 0)
             Color.clear.frame(width: 40, height: 40)
         }
@@ -4366,11 +4453,11 @@ struct CNSeccionVista: View {
     @ViewBuilder private func bloque(_ q: CNSeccion.Bloque) -> some View {
         switch q.tipo {
         case "texto":
-            Text(q.texto).font(.system(size: cnPt(14), design: cnDiseno)).foregroundColor(CNC.pmut)
+            Text(q.texto).font(cnLetra(14)).foregroundColor(CNC.pmut)
                 .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
         case "boton":
             Button { datos.onSeccionAccion(q.accion, nil) } label: {
-                Text(q.label).font(.system(size: cnPt(15), weight: .bold, design: cnDiseno))
+                Text(q.label).font(cnLetra(15, .bold))
                     .foregroundColor(q.estilo == "acento" ? CNC.sobreAcc : CNC.ink)
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
                     .background(q.estilo == "acento" ? CNC.acc : CNC.soft,
@@ -4384,16 +4471,16 @@ struct CNSeccionVista: View {
                     .frame(maxWidth: .infinity, alignment: .leading).padding(13)
                     .background(CNC.soft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 Button { datos.onSeccionAccion(q.accion, nil) } label: {
-                    Label(q.label, systemImage: "doc.on.doc").font(.system(size: cnPt(14), weight: .semibold, design: cnDiseno))
+                    Label(q.label, systemImage: "doc.on.doc").font(cnLetra(14, .semibold))
                         .foregroundColor(CNC.ink)
                 }.buttonStyle(CNPulsable())
             }
         case "interruptor":
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(q.label).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink)
+                    Text(q.label).font(cnLetra(16)).foregroundColor(CNC.ink)
                     if !q.titulo.isEmpty || !q.texto.isEmpty || !q.pie.isEmpty {
-                        Text(q.pie.isEmpty ? q.texto : q.pie).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut)
+                        Text(q.pie.isEmpty ? q.texto : q.pie).font(cnLetra(12)).foregroundColor(CNC.pmut)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -4403,6 +4490,7 @@ struct CNSeccionVista: View {
                     .labelsHidden().tint(CNC.acc)
             }
             .padding(14).tarjetaCN()
+        case "interruptores": llavesVista(q)
         case "opciones": opcionesVista(q)
         case "muestras": muestrasVista(q)
         case "lista": listaVista(q)
@@ -4411,7 +4499,7 @@ struct CNSeccionVista: View {
     }
 
     private func rotulo(_ t: String) -> some View {
-        Text(t).font(.system(size: cnPt(13), design: cnDiseno)).foregroundColor(CNC.pmut).padding(.horizontal, 6)
+        Text(t).font(cnLetra(13)).foregroundColor(CNC.pmut).padding(.horizontal, 6)
     }
 
     private func grupoVista(_ q: CNSeccion.Bloque) -> some View {
@@ -4431,19 +4519,19 @@ struct CNSeccionVista: View {
                                                 in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                             }
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(f.label).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
+                                Text(f.label).font(cnLetra(16)).foregroundColor(CNC.ink).lineLimit(1)
                                 if !f.sub.isEmpty {
-                                    Text(f.sub).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                                    Text(f.sub).font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(1)
                                 }
                             }.layoutPriority(1)
                             Spacer(minLength: 8)
                             if !f.valor.isEmpty {
-                                Text(f.valor).font(.system(size: cnPt(14), design: cnDiseno))
+                                Text(f.valor).font(cnLetra(14))
                                     .foregroundColor(f.tinta.isEmpty ? CNC.pmut : cnColor(hexString: f.tinta))
                                     .lineLimit(1)
                             }
                             if f.entra {
-                                Image(systemName: "chevron.right").font(.system(size: cnPt(12), weight: .semibold, design: cnDiseno))
+                                Image(systemName: "chevron.right").font(cnLetra(12, .semibold))
                                     .foregroundColor(CNC.pmut.opacity(0.5))
                             }
                         }
@@ -4464,27 +4552,92 @@ struct CNSeccionVista: View {
 
     /// Elegir entre varias: tarjetas en rejilla, con la puesta marcada en el
     /// color de la marca. Es lo que hace la web, no un menú desplegable.
+
+    /// La miniatura de una cabecera: la franja de arriba con su alto, el bulto
+    /// del saldo si lo lleva, y dos rayas de contenido debajo. Sin letras: lo
+    /// que se elige es la FORMA.
+    private func miniCabecera(_ o: CNSeccion.Opcion) -> some View {
+        let papel = o.papel.isEmpty ? CNC.scr : cnColor(hexString: o.papel)
+        let alto = max(6, min(30, o.alto))
+        return VStack(spacing: 0) {
+            ZStack {
+                Rectangle().fill(cnColor(hexString: o.franja))
+                if o.bulto {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(Color.white.opacity(0.55))
+                        .frame(width: 34, height: 7)
+                }
+            }
+            .frame(height: alto)
+            VStack(spacing: 4) {
+                RoundedRectangle(cornerRadius: 2).fill(CNC.pmut.opacity(0.22)).frame(height: 5)
+                RoundedRectangle(cornerRadius: 2).fill(CNC.pmut.opacity(0.14)).frame(height: 5)
+            }
+            .padding(.horizontal, 7).padding(.top, 7)
+            Spacer(minLength: 0)
+        }
+        .frame(height: 54)
+        .background(papel)
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(CNC.line, lineWidth: 1))
+    }
+
+    /// Varios interruptores en una sola tarjeta, con su raya entre medias. Cada
+    /// uno en la suya ocupaba media pantalla para decir dos cosas.
+    private func llavesVista(_ q: CNSeccion.Bloque) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !q.titulo.isEmpty { rotulo(q.titulo) }
+            VStack(spacing: 0) {
+                ForEach(q.llaves.indices, id: \.self) { i in
+                    let k = q.llaves[i]
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(k.label).font(cnLetra(15.5)).foregroundColor(CNC.ink)
+                            if !k.sub.isEmpty {
+                                Text(k.sub).font(cnLetra(11.5)).foregroundColor(CNC.pmut)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                        Toggle("", isOn: Binding(get: { k.puesto },
+                                                 set: { _ in datos.onSeccionAccion(k.accion, nil) }))
+                            .labelsHidden().tint(CNC.acc)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    if i < q.llaves.count - 1 {
+                        Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 14)
+                    }
+                }
+            }
+            .tarjetaCN()
+        }
+    }
+
     private func opcionesVista(_ q: CNSeccion.Bloque) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if !q.titulo.isEmpty { rotulo(q.titulo) }
             CNRejillaFija(columnas: q.columnas, total: q.opciones.count) { i in
                 let o = q.opciones[i]
                 Button { datos.onSeccionAccion(o.accion, nil) } label: {
-                    VStack(spacing: 6) {
-                        if !o.imagen.isEmpty, let img = cnImagenBase64(o.imagen) {
+                    VStack(spacing: 7) {
+                        if o.vista == "cabecera" {
+                            miniCabecera(o)
+                        } else if !o.imagen.isEmpty, let img = cnImagenBase64(o.imagen) {
                             Image(uiImage: img).resizable().scaledToFit().frame(height: 52)
                         } else if !o.muestra.isEmpty {
-                            Text(o.muestra).font(.system(size: cnPt(22), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
+                            Text(o.muestra).font(cnLetra(22, .bold)).foregroundColor(CNC.ink)
                         } else if !o.color.isEmpty {
                             Circle().fill(cnColor(hexString: o.color)).frame(width: 22, height: 22)
                         }
-                        Text(o.label).font(.system(size: cnPt(13.5), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.ink)
+                        Text(o.label).font(cnLetra(13.5, .semibold)).foregroundColor(CNC.ink)
                             .lineLimit(1).minimumScaleFactor(0.8)
-                        if !o.sub.isEmpty {
-                            Text(o.sub).font(.system(size: cnPt(11), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
+                        // Con la miniatura delante, la frase sobra: ocupaba dos
+                        // renglones para decir lo que el dibujo ya dice.
+                        if !o.sub.isEmpty && o.vista.isEmpty {
+                            Text(o.sub).font(cnLetra(11)).foregroundColor(CNC.pmut).lineLimit(1)
                         }
                     }
-                    .frame(maxWidth: .infinity).padding(.vertical, 13).padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity).padding(.vertical, 11).padding(.horizontal, 8)
                     .background(o.puesta ? CNC.soft : CNC.card,
                                 in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 14)
@@ -4531,20 +4684,20 @@ struct CNSeccionVista: View {
                                             in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         } else if !it.fondo.isEmpty {
                             Text(String(it.titulo.prefix(1)).uppercased())
-                                .font(.system(size: cnPt(12), weight: .heavy, design: cnDiseno)).foregroundColor(.white)
+                                .font(cnLetra(12, .heavy)).foregroundColor(.white)
                                 .frame(width: 32, height: 32)
                                 .background(cnColor(hexString: it.fondo),
                                             in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(it.titulo).font(.system(size: cnPt(15), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
+                            Text(it.titulo).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink).lineLimit(1)
                             if !it.detalle.isEmpty {
-                                Text(it.detalle).font(.system(size: cnPt(12), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(2)
+                                Text(it.detalle).font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(2)
                             }
                         }
                         Spacer(minLength: 8)
                         if !it.chip.isEmpty {
-                            Text(it.chip).font(.system(size: cnPt(10.5), weight: .bold, design: cnDiseno)).foregroundColor(CNC.pmut)
+                            Text(it.chip).font(cnLetra(10.5, .bold)).foregroundColor(CNC.pmut)
                                 .padding(.horizontal, 9).padding(.vertical, 5)
                                 .background(it.chipFondo.isEmpty ? CNC.soft : cnColor(hexString: it.chipFondo), in: Capsule())
                         }
@@ -4557,7 +4710,7 @@ struct CNSeccionVista: View {
                                     } label: { Text(a.label) }
                                 }
                             } label: {
-                                Image(systemName: "ellipsis").font(.system(size: cnPt(14), weight: .bold, design: cnDiseno))
+                                Image(systemName: "ellipsis").font(cnLetra(14, .bold))
                                     .foregroundColor(CNC.pmut).frame(width: 30, height: 30)
                                     .background(CNC.soft, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                             }
