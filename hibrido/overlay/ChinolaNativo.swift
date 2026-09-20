@@ -383,6 +383,9 @@ final class CNDatos: ObservableObject {
     @Published var ajustes: CNAjustes? = nil
     /// Subpantalla del perfil abierta (nativa).
     @Published var seccion: CNSeccion? = nil
+    /// Lo que lleva recorrido el dedo desde la orilla en la subpantalla de
+    /// Perfil. Lo mueve el reconocedor de UIKit; aquí solo se dibuja.
+    @Published var arrastreSec: CGFloat = 0
     /// Pide a la web el modelo de una sección; la respuesta llega por
     /// `cargarSeccion`.
     var onAbrirSeccion: (String) -> Void = { _ in }
@@ -631,13 +634,11 @@ struct CNMovs: View {
         // Pegado a la isla, como el buscador de Apple Music.
         .padding(.top, max(2, 6 - max(0, cnMargenArriba() - 56)))
         .padding(.bottom, 10)
-        // El vidrio sube a cubrir la barra de estado: al quedarse fijo, lo que
-        // pasa por debajo tiene que pasar POR DEBAJO también ahí arriba. Sin
-        // esto se veía una fila suelta entre la isla y el buscador.
-        // Del color de la pantalla: quieto no se nota, y al quedarse fijo tapa
-        // limpio lo que pasa por debajo. Un material encima del crema se veía
-        // como una franja gris cruzada.
-        .background(CNC.scr.ignoresSafeArea(edges: .top))
+        // Sin franja detrás. Tenía una del color del tema para tapar lo que
+        // pasaba por debajo, y al rodar se veía justo lo que no debe verse: un
+        // recuadro cruzando la pantalla con una fila cortada dentro. Como en
+        // Apple Music, el contenido pasa POR DETRÁS de la cápsula y se ve a los
+        // lados; lo que toca la barra de estado lo difumina CNDifuminadoArriba.
     }
 
     private func grupoDia(_ fecha: String, _ items: [CNMov]) -> some View {
@@ -1030,9 +1031,17 @@ struct CNVidrioForma<S: Shape>: ViewModifier {
             .overlay(forma.stroke(Color.white.opacity(0.35), lineWidth: 0.8))
             .shadow(color: t.opacity(0.35), radius: 10, y: 4)
         } else {
-            CNVidrioUIKit()
-                .clipShape(forma)
-                .overlay(forma.stroke(Color.white.opacity(0.22), lineWidth: 0.8))
+            // El vidrio solo se ve cuando algo pasa por detrás. Quieto sobre el
+            // crema desaparecía —de ahí los botones que casi no se distinguen—,
+            // así que lleva un velo con la tinta del tema (clara u oscura,
+            // siempre contrasta con su fondo), un filo fino y una sombra corta.
+            // Sigue refractando lo que le pasa por debajo: el velo es un 7%.
+            ZStack {
+                CNVidrioUIKit().clipShape(forma)
+                forma.fill(CNC.ink.opacity(0.07))
+            }
+            .overlay(forma.stroke(CNC.ink.opacity(0.12), lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.10), radius: 8, y: 2)
         }
     }
 }
@@ -1795,38 +1804,10 @@ struct CNBarraDetalle<M: View>: View {
     }
 }
 
-/// Una pantalla empujada: entra desde la derecha y se va arrastrando desde el
-/// filo izquierdo, como en cualquier app del teléfono.
-struct CNEmpujada<C: View>: View {
-    var onVolver: () -> Void
-    @ViewBuilder var contenido: () -> C
-    @State private var x: CGFloat = 0
-    var body: some View {
-        contenido()
-            .offset(x: x)
-            .shadow(color: .black.opacity(x > 0 ? 0.18 : 0), radius: 14, x: -4)
-            .gesture(
-                DragGesture(minimumDistance: 8, coordinateSpace: .global)
-                    .onChanged { g in
-                        guard g.startLocation.x < 28 else { return }
-                        x = max(0, g.translation.width)
-                    }
-                    .onEnded { g in
-                        guard g.startLocation.x < 28 else { return }
-                        let ancho = UIScreen.main.bounds.width
-                        // Un empujón rápido cuenta aunque no llegue a la mitad,
-                        // igual que en iOS.
-                        if x > ancho * 0.33 || g.predictedEndTranslation.width > ancho * 0.6 {
-                            withAnimation(.easeOut(duration: 0.22)) { x = ancho }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { onVolver() }
-                        } else {
-                            withAnimation(.interactiveSpring(response: 0.3, dampingFraction: 0.85)) { x = 0 }
-                        }
-                    }
-            )
-            .transition(.move(edge: .trailing))
-    }
-}
+// La pantalla empujada (el detalle) entra y se va desde UIKit: el gesto de
+// volver es un UIScreenEdgePanGestureRecognizer de verdad, en
+// ChinolaViewController. Un DragGesture de SwiftUI aquí no llegaba a
+// dispararse nunca: el ScrollView de dentro se queda con el dedo.
 
 func cnOscurecer(_ c: Color, _ cuanto: CGFloat = 0.5) -> Color {
     var h: CGFloat = 0, sa: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
@@ -3819,6 +3800,8 @@ struct CNPerfil: View {
             // La subpantalla entra desde la derecha, como en el teléfono.
             if let sec = datos.seccion {
                 CNSeccionVista(sec: sec, datos: datos, onVolver: { cerrar() })
+                    .offset(x: datos.arrastreSec)
+                    .shadow(color: .black.opacity(datos.arrastreSec > 0 ? 0.18 : 0), radius: 14, x: -4)
                     .transition(.move(edge: .trailing))
                     .zIndex(1)
             }
