@@ -525,6 +525,9 @@ extension TestVC {
      "patrimonio":{"titulo":"Patrimonio","valor":"−RD$185,000","activosLabel":"Activos","activos":"RD$151,000",
        "pasivosLabel":"Pasivos","pasivos":"RD$336,000","fondo":"rgb(41,45,43)","tinta":"rgb(245,245,230)"},
      "rotuloCuentas":"Cuentas","rotuloTarjetas":"Tarjetas de crédito","rotuloPrestamos":"Préstamos",
+     "totales":{"cuentas":{"rotulo":"Tienes","valor":"RD$105,378","tinta":"rgb(19,125,65)"},
+                "tarjetas":{"rotulo":"Debes","valor":"RD$44,496","tinta":"rgb(213,89,72)"},
+                "prestamos":{"rotulo":"Debes","valor":"RD$180,000","tinta":"rgb(213,89,72)"}},
      "cuentas":[
        {"indice":0,"nombre":"Cuenta principal","detalle":"Banreservas · 73 movs","valor":"RD$54,800",
         "iconoPath":"M4 21V9l8-6 8 6v12M9 21v-6h6v6","color":"rgb(52,110,74)","fondo":"rgba(52,110,74,0.15)"},

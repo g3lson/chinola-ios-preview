@@ -2236,6 +2236,10 @@ struct CNCuentasModelo {
     var listo = false
     var patrimonio = Patrimonio()
     var rotuloCuentas = "Cuentas"; var rotuloTarjetas = "Tarjetas de crédito"; var rotuloPrestamos = "Préstamos"
+    /// Lo que suma cada grupo, dicho en su propio rótulo: «Tienes RD$105,378»,
+    /// «Debes RD$44,496». La web lo calcula y aquí solo se escribe.
+    struct Total { var rotulo = ""; var valor = ""; var tinta = "" }
+    var totalCuentas = Total(); var totalTarjetas = Total(); var totalPrestamos = Total()
     var cuentas: [Fila] = []; var tarjetas: [Fila] = []; var prestamos: [Fila] = []
 
     static func desde(json: String) -> CNCuentasModelo? {
@@ -2263,6 +2267,12 @@ struct CNCuentasModelo {
                                   fondo: s(p, "fondo"), tinta: s(p, "tinta"))
         m.rotuloCuentas = s(r, "rotuloCuentas"); m.rotuloTarjetas = s(r, "rotuloTarjetas")
         m.rotuloPrestamos = s(r, "rotuloPrestamos")
+        let tt = r["totales"] as? [String: Any]
+        func total(_ k: String) -> Total {
+            let o = tt?[k] as? [String: Any]
+            return Total(rotulo: s(o, "rotulo"), valor: s(o, "valor"), tinta: s(o, "tinta"))
+        }
+        m.totalCuentas = total("cuentas"); m.totalTarjetas = total("tarjetas"); m.totalPrestamos = total("prestamos")
         m.cuentas = filas("cuentas"); m.tarjetas = filas("tarjetas"); m.prestamos = filas("prestamos")
         return m
     }
@@ -2279,15 +2289,15 @@ struct CNCuentas: View {
                 titulo(m)
                 patrimonio(m.patrimonio, oculto: m.oculto)
                 if !m.cuentas.isEmpty {
-                    rotulo(m.rotuloCuentas)
+                    rotulo(m.rotuloCuentas, m.totalCuentas)
                     grupo(m.cuentas, tipo: "cuenta")
                 }
                 if !m.tarjetas.isEmpty {
-                    rotulo(m.rotuloTarjetas)
+                    rotulo(m.rotuloTarjetas, m.totalTarjetas)
                     grupo(m.tarjetas, tipo: "tarjeta")
                 }
                 if !m.prestamos.isEmpty {
-                    rotulo(m.rotuloPrestamos)
+                    rotulo(m.rotuloPrestamos, m.totalPrestamos)
                     grupo(m.prestamos, tipo: "prestamo")
                 }
                 Color.clear.frame(height: 110)
@@ -2313,9 +2323,18 @@ struct CNCuentas: View {
         }
     }
 
-    private func rotulo(_ t: String) -> some View {
-        Text(t.uppercased()).font(.system(size: cnPt(12), weight: .heavy)).tracking(0.8)
-            .foregroundColor(CNC.pmut).padding(.leading, 4).padding(.top, 4)
+    private func rotulo(_ t: String, _ total: CNCuentasModelo.Total = .init()) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(t.uppercased()).font(.system(size: cnPt(12), weight: .heavy)).tracking(0.8)
+                .foregroundColor(CNC.pmut)
+            Spacer(minLength: 8)
+            if !total.valor.isEmpty {
+                Text(total.rotulo).font(.system(size: cnPt(12), weight: .semibold)).foregroundColor(CNC.pmut)
+                Text(total.valor).font(.system(size: cnPt(13.5), weight: .heavy))
+                    .foregroundColor(total.tinta.isEmpty ? CNC.ink : cnColor(hexString: total.tinta))
+            }
+        }
+        .padding(.horizontal, 4).padding(.top, 4)
     }
 
     /// La tarjeta oscura del patrimonio, con el ojo para tapar el dinero y el
