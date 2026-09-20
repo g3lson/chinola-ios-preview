@@ -2581,6 +2581,12 @@ struct CNScrollY: PreferenceKey {
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
+/// Lo que mide la cabecera, para dejarle su hueco en la lista.
+struct CNAltoCabecera: PreferenceKey {
+    static var defaultValue: CGFloat = 174
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 struct CNResumen: View {
     @ObservedObject var datos: CNDatos
     /// El mismo recorrido que la web (RECORRIDO = 90 px).
@@ -2591,77 +2597,103 @@ struct CNResumen: View {
     var organizaAlEmpezar = false
     /// Solo para el banco de pruebas: rodar la lista sola para ver el plegado.
     var rodarAlEmpezar = false
+    /// Lo que mide la cabecera ahora mismo (se encoge al rodar).
+    @State private var altoCabecera: CGFloat = 174
     private var progreso: Double { Double(max(0, min(1, rodado / 90))) }
 
     var body: some View {
         let m = datos.resumen ?? CNResumenModelo()
-        return VStack(spacing: 0) {
-            CNCabeceraApp(c: m.cabecera, progreso: m.cabecera.diseno == "auto" ? progreso : 1,
-                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
-                          onCalendario: { datos.onCalendario() },
-                          onMesTira: { datos.onMesTira($0) },
-                          onPlegar: { datos.onPlegar() })
+        let auto = m.cabecera.diseno == "auto"
+        // La cabecera va ENCIMA de la lista, no encima en la pila vertical.
+        //
+        // Estando dentro del mismo VStack, al encogerse movía la lista, y ese
+        // movimiento volvía a entrar como scroll: la medida se mordía la cola y
+        // el plegado no llegaba a verse. Ahora la lista deja un hueco del alto
+        // de la cabecera y la cabecera se dibuja sobre él, así que encogerse no
+        // mueve nada. Y mientras se pliega, el hueco crece lo que se ha rodado
+        // (como el `empuja` de la web), para que el contenido se quede pegado
+        // al borde de abajo de la cabecera en vez de subir el doble.
+        return ZStack(alignment: .top) {
             ScrollView(showsIndicators: false) {
                 ScrollViewReader { lector in
-                VStack(spacing: 13) {
+                VStack(spacing: 0) {
                     GeometryReader { g in
                         Color.clear.preference(key: CNScrollY.self, value: -g.frame(in: .named("cnResumen")).minY)
-                    }.frame(height: 0).id("cnArriba")
-                    if m.vacio { tarjetaVacia(m) }
-                    // Organizando se ven TODAS (las ocultas atenuadas), para
-                    // poder traerlas de vuelta; fuera de ahí, solo las visibles.
-                    let vistas = organiza ? m.widgets : m.widgets.filter { !$0.oculta }
-                    CNRejilla(widgets: vistas) { w in
-                        CNTarjetaWidget(w: w, modelo: m, organiza: organiza,
-                                        primera: w.indice == 0,
-                                        ultima: w.indice == m.widgets.count - 1,
-                                        datos: datos)
                     }
-                    if organiza && !m.catalogo.isEmpty {
-                        Menu {
-                            ForEach(m.catalogo, id: \.id) { o in
-                                Button(o.label) { datos.onPanel("agregar", o.id, "") }
+                    .frame(height: 0).id("cnArriba")
+                    Color.clear.frame(height: max(0, altoCabecera + (auto ? min(rodado, 90) : 0)))
+                    contenido(m)
+                        .padding(.horizontal, 16).padding(.top, 16)
+                        .onAppear {
+                            guard rodarAlEmpezar else { return }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                                withAnimation(.easeOut(duration: 0.4)) { lector.scrollTo("cnAbajo", anchor: .bottom) }
                             }
-                        } label: {
-                            HStack(spacing: 7) {
-                                Image(systemName: "plus").font(.system(size: 14, weight: .bold))
-                                Text("Agregar tarjeta").font(.system(size: 13.5, weight: .bold))
-                            }
-                            .foregroundColor(CNC.sobreAcc).frame(maxWidth: .infinity).padding(.vertical, 13)
-                            .background(CNC.acc, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                         }
-                    }
-                    Button {
-                        UISelectionFeedbackGenerator().selectionChanged()
-                        withAnimation(.easeOut(duration: 0.2)) { organiza.toggle() }
-                    } label: {
-                        HStack(spacing: 7) {
-                            Image(systemName: organiza ? "checkmark" : "square.grid.2x2")
-                                .font(.system(size: 13, weight: .bold))
-                            Text(organiza ? "Listo" : "Organizar el panel").font(.system(size: 13.5, weight: .bold))
-                        }
-                        .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(CNC.soft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                    }.buttonStyle(CNPulsable())
-                    Color.clear.frame(height: 104).id("cnAbajo")
-                }
-                .padding(.horizontal, 16).padding(.top, 16)
-                .onAppear {
-                    guard rodarAlEmpezar else { return }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
-                        withAnimation(.easeOut(duration: 0.4)) { lector.scrollTo("cnAbajo", anchor: .bottom) }
-                    }
                 }
                 }
             }
             .coordinateSpace(name: "cnResumen")
-            .onAppear { if organizaAlEmpezar { organiza = true } }
             .onPreferenceChange(CNScrollY.self) { y in
                 // Como en la web: solo se repinta cuando el cambio se nota.
-                if abs(y - rodado) > 0.5 { rodado = y }
+                if abs(y - rodado) > 0.5 { rodado = max(0, y) }
             }
+            CNCabeceraApp(c: m.cabecera, progreso: auto ? progreso : 1,
+                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
+                          onCalendario: { datos.onCalendario() },
+                          onMesTira: { datos.onMesTira($0) },
+                          onPlegar: { datos.onPlegar() })
+                .background(GeometryReader { g in
+                    Color.clear.preference(key: CNAltoCabecera.self, value: g.size.height)
+                })
+        }
+        .onPreferenceChange(CNAltoCabecera.self) { h in
+            if abs(h - altoCabecera) > 0.5 { altoCabecera = h }
         }
         .background(CNC.scr.ignoresSafeArea())
+    }
+
+    @ViewBuilder private func contenido(_ m: CNResumenModelo) -> some View {
+        VStack(spacing: 13) {
+            if m.vacio { tarjetaVacia(m) }
+            // Organizando se ven TODAS (las ocultas atenuadas), para poder
+            // traerlas de vuelta; fuera de ahí, solo las visibles.
+            let vistas = organiza ? m.widgets : m.widgets.filter { !$0.oculta }
+            CNRejilla(widgets: vistas) { w in
+                CNTarjetaWidget(w: w, modelo: m, organiza: organiza,
+                                primera: w.indice == 0,
+                                ultima: w.indice == m.widgets.count - 1,
+                                datos: datos)
+            }
+            if organiza && !m.catalogo.isEmpty {
+                Menu {
+                    ForEach(m.catalogo, id: \.id) { o in
+                        Button(o.label) { datos.onPanel("agregar", o.id, "") }
+                    }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "plus").font(.system(size: 14, weight: .bold))
+                        Text("Agregar tarjeta").font(.system(size: 13.5, weight: .bold))
+                    }
+                    .foregroundColor(CNC.sobreAcc).frame(maxWidth: .infinity).padding(.vertical, 13)
+                    .background(CNC.acc, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                }
+            }
+            Button {
+                UISelectionFeedbackGenerator().selectionChanged()
+                withAnimation(.easeOut(duration: 0.2)) { organiza.toggle() }
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: organiza ? "checkmark" : "square.grid.2x2")
+                        .font(.system(size: 13, weight: .bold))
+                    Text(organiza ? "Listo" : "Organizar el panel").font(.system(size: 13.5, weight: .bold))
+                }
+                .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 12)
+                .background(CNC.soft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            }.buttonStyle(CNPulsable())
+            Color.clear.frame(height: 104).id("cnAbajo")
+        }
+        .onAppear { if organizaAlEmpezar { organiza = true } }
     }
 
     private func tarjetaVacia(_ m: CNResumenModelo) -> some View {
