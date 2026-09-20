@@ -68,6 +68,12 @@ class TestVC: CAPBridgeViewController {
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
         barra.pintar(activa: estado.activa, titulos: true)
+        if base == "periodo" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                guard let s = self else { return }
+                s.presentar(AnyView(CNPeriodoHoja(datos: s.datos, onClose: { s.cerrar() })))
+            }
+        }
         if base == "hoja-web" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
                 guard let s = self else { return }
@@ -149,14 +155,18 @@ extension TestVC {
         switch cual {
         case "vidrio": vista = AnyView(CNPruebaColores()); estado.activa = "resumen"
         case "perfil": vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
+        case "periodo":
+            datos.cargarPeriodo(json: TestVC.periodoDeMuestra)
+            vista = AnyView(CNResumen(datos: datos)); estado.activa = "resumen"
         case "hoja-web":
             datos.cargarHojaWeb(json: TestVC.hojaDeMuestra)
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
         case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas":
             datos.cargarSeccion(json: TestVC.seccionDeMuestra(String(cual.dropFirst(4))))
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
-        case "resumen", "organiza", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
-            vista = AnyView(CNResumen(datos: datos, organizaAlEmpezar: cual == "organiza"))
+        case "resumen", "organiza", "plegada", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
+            vista = AnyView(CNResumen(datos: datos, organizaAlEmpezar: cual == "organiza",
+                                      rodarAlEmpezar: cual == "plegada"))
             estado.activa = "resumen"
         case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
         case "plan":    vista = AnyView(CNPlan(datos: datos));    estado.activa = "plan"
@@ -400,4 +410,41 @@ extension TestVC {
                   {"indice":3,"clave":"regalo","label":"Regalo","path":"M4 11h16v10H4zM2 7h20v4H2zM12 7v14M12 7S9 2 7 4s5 3 5 3M12 7s3-5 5-3-5 3-5 3"}]}
      ]}
     """
+}
+
+extension TestVC {
+    /// El periodo de ejemplo, con el calendario abierto y un rango a medias.
+    static let periodoDeMuestra: String = {
+        var dias = ""
+        // Septiembre de 2026 empieza en martes: dos huecos del mes anterior.
+        for i in 0..<35 {
+            let n = i - 1
+            let dentro = n >= 1 && n <= 30
+            let num = dentro ? n : (n < 1 ? 30 + n : n - 30)
+            let esInicio = n == 5, esFin = n == 14
+            let enRango = n > 5 && n < 14
+            let banda = (esInicio || esFin || enRango) ? "rgba(239,203,76,0.26)" : "transparent"
+            let radio = esInicio ? "999px 0 0 999px" : (esFin ? "0 999px 999px 0" : "0")
+            let circ = (esInicio || esFin) ? "rgb(239,203,76)" : "transparent"
+            let tinta = (esInicio || esFin) ? "rgb(32,24,10)" : "rgb(19,36,25)"
+            dias += (i > 0 ? "," : "")
+                + "{\"indice\":\(i),\"n\":\(num),\"banda\":\"\(banda)\",\"bandaRadio\":\"\(radio)\","
+                + "\"circulo\":\"\(circ)\",\"tinta\":\"\(tinta)\",\"fuerte\":\(esInicio || esFin),"
+                + "\"opacidad\":\(dentro ? 1 : 0.28)}"
+        }
+        return """
+        {"abierto":true,"calendario":true,"resumen":"14 movimientos en este periodo",
+         "opciones":[
+           {"indice":0,"label":"Este mes","puesta":true,"fondo":"rgb(29,61,40)","tinta":"rgb(245,245,230)","borde":"rgb(29,61,40)"},
+           {"indice":1,"label":"Mes pasado","fondo":"transparent","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
+           {"indice":2,"label":"Este año","fondo":"transparent","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
+           {"indice":3,"label":"Últimos 3 meses","fondo":"transparent","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
+           {"indice":4,"label":"Últimos 12 meses","fondo":"transparent","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
+           {"indice":5,"label":"Personalizado","fondo":"transparent","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"}],
+         "calTitulo":"Septiembre 2026",
+         "diasSemana":["D","L","M","M","J","V","S"],
+         "dias":[\(dias)],
+         "seleccion":"5 – 14 de septiembre","textoAplicar":"Aplicar","puedeAplicar":true}
+        """
+    }()
 }

@@ -357,6 +357,10 @@ final class CNDatos: ObservableObject {
     var onHojaCampo: (Int, String, String) -> Void = { _, _, _ in }
     var onHojaEnviar: () -> Void = {}
     @Published var hojaWeb: CNHojaWeb.Modelo? = nil
+    @Published var periodo: CNPeriodo? = nil
+    /// tipo: opcion · dia · antes · despues · aplicar · cerrar
+    var onPeriodo: (String, Int) -> Void = { _, _ in }
+    func cargarPeriodo(json: String) { periodo = CNPeriodo.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
@@ -2287,7 +2291,7 @@ struct CNCabeceraApp: View {
                         Text(c.rotulo).font(.system(size: 12)).foregroundColor(tinta.opacity(0.8))
                     }
                     .scaleEffect(blqEsc, anchor: .top)
-                    tiraMeses
+                    tiraMeses(ancho)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: max(0, blqAlto), alignment: .top)
@@ -2301,7 +2305,10 @@ struct CNCabeceraApp: View {
                + CNCabeceraApp.bloqueMeses * CGFloat(1 - max(0.0, min(1.0, progreso))))
     }
 
-    private var tiraMeses: some View {
+    /// La tira de meses. Va centrada mientras quepa, y solo rueda si no cabe;
+    /// dentro de un ScrollView horizontal hay que decirle el ancho a mano,
+    /// porque ahí `maxWidth: .infinity` no significa «el de la pantalla».
+    private func tiraMeses(_ ancho: CGFloat) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(c.meses, id: \.indice) { m in
@@ -2313,7 +2320,8 @@ struct CNCabeceraApp: View {
                     }.buttonStyle(CNPulsable())
                 }
             }
-            .padding(.horizontal, 14).frame(maxWidth: .infinity)
+            .padding(.horizontal, 14)
+            .frame(minWidth: max(0, ancho), alignment: .center)
         }
     }
 
@@ -2581,6 +2589,8 @@ struct CNResumen: View {
     @State private var organiza = false
     /// Solo para el banco de pruebas: arrancar ya organizando.
     var organizaAlEmpezar = false
+    /// Solo para el banco de pruebas: rodar la lista sola para ver el plegado.
+    var rodarAlEmpezar = false
     private var progreso: Double { Double(max(0, min(1, rodado / 90))) }
 
     var body: some View {
@@ -2592,10 +2602,11 @@ struct CNResumen: View {
                           onMesTira: { datos.onMesTira($0) },
                           onPlegar: { datos.onPlegar() })
             ScrollView(showsIndicators: false) {
+                ScrollViewReader { lector in
                 VStack(spacing: 13) {
                     GeometryReader { g in
                         Color.clear.preference(key: CNScrollY.self, value: -g.frame(in: .named("cnResumen")).minY)
-                    }.frame(height: 0)
+                    }.frame(height: 0).id("cnArriba")
                     if m.vacio { tarjetaVacia(m) }
                     // Organizando se ven TODAS (las ocultas atenuadas), para
                     // poder traerlas de vuelta; fuera de ahí, solo las visibles.
@@ -2632,9 +2643,16 @@ struct CNResumen: View {
                         .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 12)
                         .background(CNC.soft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                     }.buttonStyle(CNPulsable())
-                    Color.clear.frame(height: 104)
+                    Color.clear.frame(height: 104).id("cnAbajo")
                 }
                 .padding(.horizontal, 16).padding(.top, 16)
+                .onAppear {
+                    guard rodarAlEmpezar else { return }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                        withAnimation(.easeOut(duration: 0.4)) { lector.scrollTo("cnAbajo", anchor: .bottom) }
+                    }
+                }
+                }
             }
             .coordinateSpace(name: "cnResumen")
             .onAppear { if organizaAlEmpezar { organiza = true } }

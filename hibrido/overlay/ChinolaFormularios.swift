@@ -850,3 +850,176 @@ struct CNHojaWebViva: View {
         }
     }
 }
+
+// ── El periodo: atajos y calendario, en nativo ──────────────────────────────
+struct CNPeriodo {
+    struct Opcion: Identifiable { var id: Int; var label = ""; var puesta = false; var fondo = ""; var tinta = ""; var borde = "" }
+    struct Dia: Identifiable {
+        var id: Int; var n = 0
+        var banda = ""; var bandaRadio = ""; var circulo = ""; var tinta = ""
+        var fuerte = false; var opacidad: Double = 1
+    }
+    var abierto = false; var calendario = false; var resumen = ""
+    var opciones: [Opcion] = []
+    var calTitulo = ""; var diasSemana: [String] = []; var dias: [Dia] = []
+    var seleccion = ""; var textoAplicar = ""; var puedeAplicar = false
+
+    static func desde(json: String) -> CNPeriodo? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
+        func b(_ o: [String: Any]?, _ k: String) -> Bool { (o?[k] as? Bool) ?? false }
+        func n(_ o: [String: Any]?, _ k: String) -> Double { ((o?[k] as? NSNumber)?.doubleValue) ?? 0 }
+        func l(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
+        var p = CNPeriodo()
+        p.abierto = b(r, "abierto"); p.calendario = b(r, "calendario"); p.resumen = s(r, "resumen")
+        p.calTitulo = s(r, "calTitulo"); p.diasSemana = (r["diasSemana"] as? [String]) ?? []
+        p.seleccion = s(r, "seleccion"); p.textoAplicar = s(r, "textoAplicar"); p.puedeAplicar = b(r, "puedeAplicar")
+        p.opciones = l(r, "opciones").map {
+            Opcion(id: Int(n($0, "indice")), label: s($0, "label"), puesta: b($0, "puesta"),
+                   fondo: s($0, "fondo"), tinta: s($0, "tinta"), borde: s($0, "borde"))
+        }
+        p.dias = l(r, "dias").map {
+            Dia(id: Int(n($0, "indice")), n: Int(n($0, "n")), banda: s($0, "banda"),
+                bandaRadio: s($0, "bandaRadio"), circulo: s($0, "circulo"), tinta: s($0, "tinta"),
+                fuerte: b($0, "fuerte"), opacidad: n($0, "opacidad"))
+        }
+        return p
+    }
+}
+
+struct CNPeriodoHoja: View {
+    @ObservedObject var datos: CNDatos
+    var onClose: () -> Void
+    var body: some View {
+        let p = datos.periodo ?? CNPeriodo()
+        return VStack(spacing: 0) {
+            CNHojaCabecera(titulo: "Periodo", onClose: onClose)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Los atajos: este mes, el pasado, el año… y «Personalizado»,
+                    // que es el que saca el calendario.
+                    CNRejillaFija(columnas: 2, total: p.opciones.count) { i in
+                        let o = p.opciones[i]
+                        Button { datos.onPeriodo("opcion", o.id) } label: {
+                            Text(o.label).font(.system(size: 14.5, weight: o.puesta ? .bold : .semibold))
+                                .foregroundColor(o.tinta.isEmpty ? CNC.ink : cnColor(hexString: o.tinta))
+                                .frame(maxWidth: .infinity).padding(.vertical, 13)
+                                .background(o.puesta ? cnColor(hexString: o.fondo) : CNC.card,
+                                            in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 13)
+                                    .stroke(o.puesta ? Color.clear : CNC.line, lineWidth: 1))
+                        }.buttonStyle(CNPulsable())
+                    }
+                    if !p.resumen.isEmpty {
+                        Text(p.resumen).font(.system(size: 13)).foregroundColor(CNC.pmut).padding(.horizontal, 4)
+                    }
+                    if p.calendario { calendario(p) }
+                    Color.clear.frame(height: 24)
+                }
+                .padding(.horizontal, 16).padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(CNC.scr.ignoresSafeArea())
+        .environment(\.locale, Locale(identifier: "es_DO"))
+    }
+
+    @ViewBuilder private func calendario(_ p: CNPeriodo) -> some View {
+        VStack(spacing: 12) {
+            HStack {
+                boton("chevron.left") { datos.onPeriodo("antes", 0) }
+                Spacer(minLength: 8)
+                Text(p.calTitulo).font(.system(size: 16, weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                Spacer(minLength: 8)
+                boton("chevron.right") { datos.onPeriodo("despues", 0) }
+            }
+            HStack(spacing: 0) {
+                ForEach(p.diasSemana.indices, id: \.self) { i in
+                    Text(p.diasSemana[i]).font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(CNC.pmut).frame(maxWidth: .infinity)
+                }
+            }
+            // La franja del rango pasa por detrás, de borde a borde de la
+            // casilla, para que los días de en medio se unan en una sola barra.
+            let filas = (p.dias.count + 6) / 7
+            VStack(spacing: 2) {
+                ForEach(0..<max(0, filas), id: \.self) { f in
+                    HStack(spacing: 0) {
+                        ForEach(0..<7, id: \.self) { c in
+                            let i = f * 7 + c
+                            if i < p.dias.count { celda(p.dias[i]) } else { Color.clear.frame(maxWidth: .infinity) }
+                        }
+                    }
+                }
+            }
+            HStack {
+                Text(p.seleccion).font(.system(size: 13.5, weight: .semibold)).foregroundColor(CNC.pmut)
+                Spacer(minLength: 8)
+            }
+            Button { if p.puedeAplicar { datos.onPeriodo("aplicar", 0) } } label: {
+                Text(p.textoAplicar.isEmpty ? "Aplicar" : p.textoAplicar)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(p.puedeAplicar ? CNC.sobreAcc : CNC.pmut)
+                    .frame(maxWidth: .infinity).padding(.vertical, 15)
+                    .background(p.puedeAplicar ? CNC.acc : CNC.soft, in: Capsule())
+            }
+            .buttonStyle(CNPulsable()).disabled(!p.puedeAplicar)
+        }
+        .padding(14).tarjetaCN()
+    }
+
+    private func celda(_ d: CNPeriodo.Dia) -> some View {
+        ZStack {
+            CNFranjaRango(radio: d.bandaRadio).fill(cnColor(hexString: d.banda))
+            if !d.circulo.isEmpty && d.circulo != "rgba(0,0,0,0)" {
+                Circle().fill(cnColor(hexString: d.circulo)).frame(width: 34, height: 34)
+            }
+            Text("\(d.n)").font(.system(size: 14.5, weight: d.fuerte ? .semibold : .regular))
+                .foregroundColor(d.tinta.isEmpty ? CNC.ink : cnColor(hexString: d.tinta))
+        }
+        .frame(height: 40).frame(maxWidth: .infinity)
+        .opacity(d.opacidad)
+        .contentShape(Rectangle())
+        .onTapGesture { datos.onPeriodo("dia", d.id) }
+    }
+
+    private func boton(_ ic: String, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) {
+            Image(systemName: ic).font(.system(size: 14, weight: .bold)).foregroundColor(CNC.ink)
+                .frame(width: 36, height: 36).background(CNC.soft, in: Circle())
+        }.buttonStyle(CNPulsable())
+    }
+}
+
+/// La franja del rango: redonda por fuera y recta por dentro, como en la web.
+/// El radio viene escrito como en CSS: «999px 0 0 999px» redondea la izquierda,
+/// «0 999px 999px 0» la derecha, y «0» ninguna.
+struct CNFranjaRango: Shape {
+    let radio: String
+    func path(in r: CGRect) -> Path {
+        let izq = radio.hasPrefix("999")
+        let der = radio.hasPrefix("0 999")
+        let rr = min(r.height / 2, r.width / 2)
+        let ri: CGFloat = izq ? rr : 0
+        let rd: CGFloat = der ? rr : 0
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX + ri, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX - rd, y: r.minY))
+        if rd > 0 {
+            p.addArc(center: CGPoint(x: r.maxX - rd, y: r.midY), radius: rd,
+                     startAngle: .degrees(-90), endAngle: .degrees(90), clockwise: false)
+        } else {
+            p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        }
+        p.addLine(to: CGPoint(x: r.minX + ri, y: r.maxY))
+        if ri > 0 {
+            p.addArc(center: CGPoint(x: r.minX + ri, y: r.midY), radius: ri,
+                     startAngle: .degrees(90), endAngle: .degrees(270), clockwise: false)
+        } else {
+            p.addLine(to: CGPoint(x: r.minX, y: r.minY))
+        }
+        p.closeSubpath()
+        return p
+    }
+}
