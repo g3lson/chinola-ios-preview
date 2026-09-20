@@ -560,7 +560,7 @@ extension TestVC {
     {"titulo":"Plan","listo":true,"tab":"presupuesto","puedeEditar":true,"puedeRegistrar":true,
      "tabs":[{"indice":0,"label":"Presupuesto","puesta":true},{"indice":1,"label":"Metas","puesta":false}],
      "presGastado":"RD$82,400","presDe":"de","presTotal":"RD$88,000","presPct":94,"presColor":"rgb(224,169,46)",
-     "presNota":"2 categorías sobre el límite","presAvisoTinta":"rgb(224,169,46)",
+     "presNota":"2 categorías sobre el presupuesto","presAvisoTinta":"rgb(224,169,46)",
      "tituloCategorias":"Categorías","rotuloNuevaCat":"Categoría",
      "tituloTusMetas":"Tus metas","rotuloNuevaMeta":"Meta",
      "filas":[
@@ -570,7 +570,7 @@ extension TestVC {
         "color":"rgb(213,89,72)","iconoPath":"M6 3v8a3 3 0 0 0 6 0V3M9 11v10M18 3c-1.5 2-2 4-2 6v4h3v8","catColor":"rgb(196,124,44)","iconoBg":"rgba(196,124,44,0.15)"},
        {"indice":2,"nombre":"Transporte","queda":"RD$0","pie":"RD$6,000 de RD$6,000","pct":100,
         "color":"rgb(224,169,46)","iconoPath":"M5 17h14M6 17V9l2-4h8l2 4v8M7 13h10","catColor":"rgb(52,94,178)","iconoBg":"rgba(52,94,178,0.15)"},
-       {"indice":3,"nombre":"Salud","queda":"sin tope","pie":"RD$2,000 de sin tope","pct":0,
+       {"indice":3,"nombre":"Salud","queda":"","pie":"RD$2,000 · sin presupuesto","pct":0,
         "color":"rgb(81,99,86)","iconoPath":"M12 7v10M7 12h10","catColor":"rgb(20,158,140)","iconoBg":"rgba(20,158,140,0.15)"}],
      "metas":[
        {"indice":0,"nombre":"Fondo de emergencia","proyeccion":"Listo en ~33 meses","pctLabel":"13%","pct":13,
