@@ -1097,12 +1097,32 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     private func rehacer() {
         var items: [UITabBarItem] = []
         ids = []
+        // Sin nombres: además de dejar el título en nil, se le quita el color al
+        // rótulo en la apariencia y se centra el icono. Un UITabBar suelto no
+        // siempre hace caso al nil —los nombres seguían saliendo—, y esto sí,
+        // sin tocar el fondo (que es de donde sale el vidrio del sistema).
+        let ap = barra.standardAppearance
+        for st in [ap.stackedLayoutAppearance, ap.inlineLayoutAppearance, ap.compactInlineLayoutAppearance] {
+            if conTitulos {
+                st.normal.titleTextAttributes = [.font: UIFont.systemFont(ofSize: cnPt(11), weight: .semibold)]
+                st.selected.titleTextAttributes = [.font: UIFont.systemFont(ofSize: cnPt(11), weight: .bold)]
+            } else {
+                st.normal.titleTextAttributes = [.foregroundColor: UIColor.clear,
+                                                 .font: UIFont.systemFont(ofSize: 0.1)]
+                st.selected.titleTextAttributes = [.foregroundColor: UIColor.clear,
+                                                   .font: UIFont.systemFont(ofSize: 0.1)]
+            }
+        }
+        barra.standardAppearance = ap
+        if #available(iOS 15.0, *) { barra.scrollEdgeAppearance = ap }
         for (i, t) in CNTabs.todas.enumerated() {
             // Más grandes y más gruesos: en una barra de cinco, un trazo fino se
             // pierde.
             let img = cnIconoUIImage(t.path, lado: 23, grosor: 2.6).withRenderingMode(.alwaysTemplate)
             let item = UITabBarItem(title: conTitulos ? cnT(t.titulo) : nil, image: img, tag: i)
             item.accessibilityLabel = cnT(t.titulo)
+            // Sin rótulo el icono se centra solo bajándolo un poco.
+            item.imageInsets = conTitulos ? .zero : UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
             item.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: cnPt(11), weight: .semibold)], for: .normal)
             item.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: cnPt(11), weight: .bold)], for: .selected)
             items.append(item); ids.append(t.id)

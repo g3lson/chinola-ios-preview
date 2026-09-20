@@ -23,9 +23,9 @@ class TestVC: CAPBridgeViewController {
         super.viewDidLoad()
 
         // El MENÚ: un UITabBar de verdad (Liquid Glass del sistema en iOS 26).
-        barra.alTocar = { [weak self] id in self?.estado.activa = id; self?.barra.pintar(activa: id, titulos: true) }
+        barra.alTocar = { [weak self] id in self?.estado.activa = id; self?.barra.pintar(activa: id, titulos: CNMenuEstado.shared.titulos) }
         barra.montar(en: view)
-        barra.pintar(activa: estado.activa, titulos: true)
+        barra.pintar(activa: estado.activa, titulos: CNMenuEstado.shared.titulos)
         CNScrollEstado.shared.alCambiar = { [weak self] compacto in self?.barra.compactar(compacto) }
 
         // El guion lo manda el entorno (SIMCTL_CHILD_CNPANTALLA): una pantalla
@@ -82,7 +82,7 @@ class TestVC: CAPBridgeViewController {
                                   with: cual.contains("oscuro") ? "rgb(61,61,63)" : "rgb(229,225,211)"))
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
-        barra.pintar(activa: estado.activa, titulos: true)
+        barra.pintar(activa: estado.activa, titulos: CNMenuEstado.shared.titulos)
         if base == "movs-rodado" || base == "plegada" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { [weak self] in self?.rodar(320) }
         }
