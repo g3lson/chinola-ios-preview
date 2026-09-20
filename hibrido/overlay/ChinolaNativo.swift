@@ -260,6 +260,9 @@ struct CNPaletaTema {
         // ajustes que el tema.
         CNC.fmt = CNFormato.desde(o)
         if let t = o["textos"] as? [String: String] { CNTextos.mapa = t }
+        // Los nombres del menú llegan también por aquí: la llamada suelta del
+        // plugin se podía perder y el ajuste se quedaba sin efecto.
+        if let mt = o["menuTitulos"] as? Bool { CNMenuEstado.shared.titulos = mt }
         return p
     }
 }
@@ -298,16 +301,42 @@ struct CNDifuminadoArriba: View {
     var body: some View {
         ZStack {
             Rectangle().fill(.ultraThinMaterial)
-            Rectangle().fill(CNC.scr.opacity(0.7))
+            Rectangle().fill(CNC.scr.opacity(0.82))
         }
         .mask(
+            // Entero hasta bien pasada la isla y luego se va. Antes empezaba a
+            // irse a media altura y lo que pasaba junto al reloj se leía igual.
             LinearGradient(stops: [.init(color: .black, location: 0),
-                                   .init(color: .black.opacity(0.92), location: 0.62),
+                                   .init(color: .black, location: 0.72),
+                                   .init(color: .black.opacity(0.55), location: 0.88),
                                    .init(color: .clear, location: 1)],
                            startPoint: .top, endPoint: .bottom)
         )
         .frame(height: max(0, cnMargenArriba() + extra))
         .frame(maxWidth: .infinity, alignment: .top)
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
+    }
+}
+
+/// El velo que va DETRÁS de la fila del buscador cuando se queda fija.
+///
+/// El degradado de arriba no puede bajar más: pintaría por encima de la propia
+/// cápsula. Así que la fila lleva el suyo por debajo —material y un velo del
+/// color de la pantalla que se apaga hacia abajo—, y entre los dos el contenido
+/// se desvanece desde el reloj hasta el final del buscador, sin franja ni corte.
+struct CNVeloFila: View {
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.ultraThinMaterial)
+            Rectangle().fill(CNC.scr.opacity(0.62))
+        }
+        .mask(
+            LinearGradient(stops: [.init(color: .black, location: 0),
+                                   .init(color: .black.opacity(0.85), location: 0.55),
+                                   .init(color: .clear, location: 1)],
+                           startPoint: .top, endPoint: .bottom)
+        )
         .ignoresSafeArea(edges: .top)
         .allowsHitTesting(false)
     }
@@ -823,6 +852,7 @@ struct CNMovs: View {
         // Pegado a la isla, como el buscador de Apple Music.
         .padding(.top, max(2, 6 - max(0, cnMargenArriba() - 56)))
         .padding(.bottom, 10)
+        .background(CNVeloFila())
         // Sin franja detrás. Tenía una del color del tema para tapar lo que
         // pasaba por debajo, y al rodar se veía justo lo que no debe verse: un
         // recuadro cruzando la pantalla con una fila cortada dentro. Como en
@@ -1218,7 +1248,9 @@ struct CNVidrioForma<S: Shape>: ViewModifier {
                 CNVidrioUIKit().clipShape(forma).opacity(0.35)
             }
             .overlay(forma.stroke(Color.white.opacity(0.35), lineWidth: 0.8))
-            .shadow(color: t.opacity(0.35), radius: 10, y: 4)
+            // Sombra neutra y corta. Con el color del botón parecía un bombillo:
+            // el amarillo se salía del círculo y teñía lo de alrededor.
+            .shadow(color: Color.black.opacity(0.12), radius: 5, y: 2)
         } else {
             // El vidrio solo se ve cuando algo pasa por detrás. Quieto sobre el
             // crema desaparecía —de ahí los botones que casi no se distinguen—,
