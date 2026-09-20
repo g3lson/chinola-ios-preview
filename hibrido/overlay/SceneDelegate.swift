@@ -26,6 +26,7 @@ class TestVC: CAPBridgeViewController {
         barra.alTocar = { [weak self] id in self?.estado.activa = id; self?.barra.pintar(activa: id, titulos: true) }
         barra.montar(en: view)
         barra.pintar(activa: estado.activa, titulos: true)
+        CNScrollEstado.shared.alCambiar = { [weak self] compacto in self?.barra.compactar(compacto) }
 
         // El guion lo manda el entorno (SIMCTL_CHILD_CNPANTALLA): una pantalla
         // por lanzamiento, así cada captura es la que se pidió y no depende de
@@ -252,6 +253,12 @@ extension TestVC {
                {"indice":3,"label":"oct","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"},
                {"indice":4,"label":"Rango…","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"}]},
      "vacio":false,
+     "catIconos":{
+       "Salud":{"path":"M12 7v10M7 12h10","color":"rgb(20,158,140)"},
+       "Servicios":{"path":"M13 3 5 14h6l-1 7 8-11h-6z","color":"rgb(224,169,46)"},
+       "Educación":{"path":"M12 3 2 8l10 5 10-5zM6 11v5c0 1 3 2 6 2s6-1 6-2v-5","color":"rgb(130,94,185)"},
+       "Ahorro":{"path":"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M8.5 14.5a4.5 4.5 0 0 0 7 0M9 10h.01M15 10h.01","color":"rgb(52,94,178)"},
+       "Ingresos":{"path":"M4 7h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM3 11h18M7 15h3","color":"rgb(19,125,65)"}},
      "tiposGrafico":[{"id":"linea","label":"Línea"},{"id":"area","label":"Área"},
        {"id":"columnas","label":"Columnas"},{"id":"barras","label":"Barras apiladas"},{"id":"puntos","label":"Puntos"}],
      "rangosGrafico":[{"id":"3","label":"3 meses"},{"id":"6","label":"6 meses"},
