@@ -87,10 +87,11 @@ class TestVC: CAPBridgeViewController {
         if base == "movs-rodado" || base == "plegada" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { [weak self] in self?.rodar(320) }
         }
-        if base == "cuenta" {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+        if ["cuenta", "tarjeta", "categoria"].contains(base) {
+            datos.cargarDetalle(json: TestVC.detalleDeMuestra(base))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) { [weak self] in
                 guard let s = self else { return }
-                s.presentar(AnyView(CNDetalleCuenta(datos: s.datos, cuentaId: 1, onClose: { s.cerrar() })))
+                s.presentar(AnyView(CNDetalleVista(datos: s.datos, onVolver: { s.cerrar() })))
             }
         }
         if base == "periodo" {
@@ -595,4 +596,68 @@ extension TestVC {
        {"concepto":"Sueldo quincena","sub":"Ingresos · 3 sept 2026","montoFmt":"RD$40,000","color":"rgb(19,125,65)",
         "iconoPath":"M4 7h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM3 11h18M7 15h3","catColor":"rgb(19,125,65)","iconoBg":"rgba(19,125,65,0.15)"}]}]}
     """
+}
+
+extension TestVC {
+    /// Un detalle de ejemplo de cada clase, para mirarlos sin la web.
+    static func detalleDeMuestra(_ que: String) -> String {
+        let tarjeta = "M4 7h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM3 11h18M7 15h3"
+        let casa = "M4 21V9l8-6 8 6v12M9 21v-6h6v6"
+        if que == "tarjeta" {
+            return """
+            {"titulo":"Visa Clásica",
+             "hero":{"iconoPath":"\(tarjeta)","iconoColor":"rgb(52,94,178)","iconoBg":"rgba(52,94,178,0.15)",
+               "rotulo":"Debes ahora","valor":"RD$18,600","color":"rgb(213,89,72)",
+               "pct":23,"colorBarra":"rgb(19,125,65)","pieIzq":"23% del límite","pieDer":"Límite RD$80,000"},
+             "botones":[{"label":"Registrar pago","estilo":"acento"},{"label":"Gasto con ella","estilo":"contorno"}],
+             "datos":[{"label":"Banco","valor":"Banco Popular"},{"label":"Terminación","valor":"•••• 4821"},
+                      {"label":"Día de corte","valor":"día 20"},{"label":"Día de pago","valor":"día 5 · en 15 d"},
+                      {"label":"Disponible","valor":"RD$61,400","color":"rgb(19,125,65)"}],
+             "rotuloLista":"Consumos con esta tarjeta",
+             "vacioTexto":"Aquí saldrá todo lo que anotes con esta tarjeta.","tramos":[]}
+            """
+        }
+        if que == "categoria" {
+            return """
+            {"titulo":"Educación",
+             "chips":[{"indice":0,"label":"Este mes","puesta":false},{"indice":1,"label":"3 meses","puesta":false},
+                      {"indice":2,"label":"6 meses","puesta":true},{"indice":3,"label":"12 meses","puesta":false},
+                      {"indice":4,"label":"Todo","puesta":false}],
+             "hero":{"iconoPath":"M12 3 2 8l10 5 10-5zM6 11v5c0 1 3 2 6 2s6-1 6-2v-5","iconoColor":"rgb(130,94,185)",
+               "iconoBg":"rgba(130,94,185,0.15)","rotulo":"Gastado en el periodo","valor":"RD$39,000",
+               "color":"rgb(19,36,25)","pct":-1,"nota":"6 movimientos · RD$6,500 al mes de media"},
+             "botones":[{"label":"Nuevo gasto aquí","estilo":"acento"},{"label":"Cambiar límite","estilo":"contorno"}],
+             "datos":[{"label":"Movimientos","valor":"6"},{"label":"Promedio por movimiento","valor":"RD$6,500"},
+                      {"label":"Al mes de media","valor":"RD$6,500"}],
+             "barras":{"titulo":"Mes a mes","tope":"máx RD$6,500","columnas":[
+               {"label":"abr","pct":100,"color":"rgba(130,94,185,0.4)","colorMes":"rgb(81,99,86)"},
+               {"label":"may","pct":100,"color":"rgba(130,94,185,0.4)","colorMes":"rgb(81,99,86)"},
+               {"label":"jun","pct":100,"color":"rgba(130,94,185,0.4)","colorMes":"rgb(81,99,86)"},
+               {"label":"jul","pct":100,"color":"rgba(130,94,185,0.4)","colorMes":"rgb(81,99,86)"},
+               {"label":"ago","pct":100,"color":"rgba(130,94,185,0.4)","colorMes":"rgb(81,99,86)"},
+               {"label":"sep","pct":100,"fuerte":true,"color":"rgb(130,94,185)","colorMes":"rgb(19,36,25)"}]},
+             "rotuloLista":"Movimientos de la categoría","vacioTexto":"",
+             "tramos":[{"label":"Septiembre de 2026","total":"RD$6,500","items":[
+               {"concepto":"Universidad","sub":"9 sept de 2026 · cada mes","montoFmt":"RD$6,500","color":"rgb(19,36,25)"}]},
+              {"label":"Agosto de 2026","total":"RD$6,500","items":[
+               {"concepto":"Universidad","sub":"9 ago de 2026 · cada mes","montoFmt":"RD$6,500","color":"rgb(19,36,25)"}]}]}
+            """
+        }
+        return """
+        {"titulo":"Cuenta principal",
+         "hero":{"iconoPath":"\(casa)","iconoColor":"rgb(52,110,74)","iconoBg":"rgba(52,110,74,0.15)",
+           "rotulo":"Saldo disponible","valor":"RD$54,800","color":"rgb(19,36,25)","pct":-1},
+         "cifras":[{"label":"Entró este mes","valor":"RD$80,000","color":"rgb(19,125,65)"},
+                   {"label":"Salió este mes","valor":"RD$87,400","color":"rgb(213,89,72)"}],
+         "botones":[{"label":"Nuevo movimiento","estilo":"acento"},{"label":"Transferir","estilo":"contorno"}],
+         "datos":[{"label":"Banco","valor":"Banreservas"},{"label":"Movimientos","valor":"73"}],
+         "rotuloLista":"Movimientos de esta cuenta","vacioTexto":"",
+         "tramos":[{"label":"Septiembre de 2026","total":"−RD$7,400","items":[
+           {"concepto":"Fondo de emergencia","sub":"Ahorro · 14 sept 2026 · cada mes","montoFmt":"−RD$5,000",
+            "color":"rgb(213,89,72)","iconoPath":"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M8.5 14.5a4.5 4.5 0 0 0 7 0M9 10h.01M15 10h.01",
+            "catColor":"rgb(130,94,185)","iconoBg":"rgba(130,94,185,0.15)"},
+           {"concepto":"Gasolina","sub":"Transporte · 12 sept 2026","montoFmt":"−RD$6,000","color":"rgb(213,89,72)",
+            "iconoPath":"M5 17h14M6 17V9l2-4h8l2 4v8M7 13h10","catColor":"rgb(213,89,72)","iconoBg":"rgba(213,89,72,0.15)"}]}]}
+        """
+    }
 }
