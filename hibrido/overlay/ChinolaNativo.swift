@@ -378,7 +378,8 @@ final class CNDatos: ObservableObject {
     var onCuentasAccion: (String, Int) -> Void = { _, _ in }
     /// El Plan, armado por la web.
     @Published var plan: CNPlanModelo? = nil
-    var onPlan: (String, Int) -> Void = { _, _ in }
+    /// tipo: tab · categoria · meta · aportar · nuevaCat · nuevaMeta
+    var onPlanAccion: (String, Int) -> Void = { _, _ in }
     /// El detalle de una cuenta, armado por la web.
     @Published var cuentaDetalle: CNCuentaDetalle? = nil
     var onCuentaAccion: (String) -> Void = { _ in }
@@ -2189,7 +2190,7 @@ struct CNPlan: View {
     private func pestanas(_ m: CNPlanModelo) -> some View {
         HStack(spacing: 7) {
             ForEach(m.tabs) { t in
-                Button { datos.onPlan("tab", t.indice) } label: {
+                Button { datos.onPlanAccion("tab", t.indice) } label: {
                     Text(t.label).font(.system(size: 14, weight: .bold))
                         .foregroundColor(t.puesta ? CNC.sobreAcc : CNC.pmut)
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -2229,7 +2230,7 @@ struct CNPlan: View {
             HStack {
                 Text(m.tituloCategorias).font(.system(size: 14, weight: .bold)).foregroundColor(CNC.ink)
                 Spacer(minLength: 8)
-                Button { datos.onPlan("nuevaCat", 0) } label: {
+                Button { datos.onPlanAccion("nuevaCat", 0) } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "plus").font(.system(size: 12, weight: .heavy))
                         Text(m.rotuloNuevaCat).font(.system(size: 13, weight: .bold))
@@ -2243,7 +2244,7 @@ struct CNPlan: View {
 
         VStack(spacing: 0) {
             ForEach(m.filas) { f in
-                Button { datos.onPlan("categoria", f.indice) } label: {
+                Button { datos.onPlanAccion("categoria", f.indice) } label: {
                     HStack(spacing: 12) {
                         CNSVGShape(d: f.iconoPath)
                             .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
@@ -2289,7 +2290,7 @@ struct CNPlan: View {
             HStack {
                 Text(m.tituloTusMetas).font(.system(size: 14, weight: .bold)).foregroundColor(CNC.ink)
                 Spacer(minLength: 8)
-                Button { datos.onPlan("nuevaMeta", 0) } label: {
+                Button { datos.onPlanAccion("nuevaMeta", 0) } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "plus").font(.system(size: 12, weight: .heavy))
                         Text(m.rotuloNuevaMeta).font(.system(size: 13, weight: .bold))
@@ -2305,7 +2306,7 @@ struct CNPlan: View {
         ForEach(m.metas) { g in
             let color = g.color.isEmpty ? CNC.pos : cnColor(hexString: g.color)
             VStack(alignment: .leading, spacing: 10) {
-                Button { datos.onPlan("meta", g.indice) } label: {
+                Button { datos.onPlanAccion("meta", g.indice) } label: {
                     HStack(spacing: 12) {
                         CNSVGShape(d: g.iconoPath)
                             .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
@@ -2330,7 +2331,7 @@ struct CNPlan: View {
                     Text(g.falta).font(.system(size: 11.5)).foregroundColor(CNC.pmut)
                 }
                 if m.puedeRegistrar && !g.aportar.isEmpty {
-                    Button { datos.onPlan("aportar", g.indice) } label: {
+                    Button { datos.onPlanAccion("aportar", g.indice) } label: {
                         Text(g.aportar).font(.system(size: 13.5, weight: .bold)).foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
                             .background(color, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
