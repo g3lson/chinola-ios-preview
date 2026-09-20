@@ -403,7 +403,17 @@ final class CNDatos: ObservableObject {
         if let a = CNAjustes.desde(json: json) { ajustes = a }
     }
     func cargarResumen(json: String) {
-        if let m = CNResumenModelo.desde(json: json) { resumen = m }
+        guard let m = CNResumenModelo.desde(json: json) else { return }
+        if m.listo || resumen == nil {
+            resumen = m
+            return
+        }
+        // Leído desde otra pestaña: la cabecera y los iconos sí valen; las
+        // tarjetas no, y pisarlas dejaba el resumen en blanco.
+        var actual = resumen!
+        actual.cabecera = m.cabecera
+        actual.catIconos = m.catIconos
+        resumen = actual
     }
     func cargarTema(json: String) {
         guard let p = CNPaletaTema.desde(json: json) else { return }
@@ -778,18 +788,29 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     /// Hay que llamarla cuando cambie el margen seguro (al girar, al aparecer).
     func ajustar() {
         let abajo = anfitriona?.safeAreaInsets.bottom ?? 0
-        let nuevo = (compacto ? 50 : (conTitulos ? 58 : 52)) + abajo
+        let nuevo = (conTitulos ? 58 : 52) + abajo
         if altoC?.constant != nuevo { altoC?.constant = nuevo }
     }
 
-    /// Encoger o devolver la barra a su tamaño, con su animación.
+    /// Encoger la barra ENTERA al bajar y devolverla a su tamaño al subir.
+    ///
+    /// Se encoge la pieza completa —el vidrio y todo lo que lleva dentro—, no
+    /// se le quitan los rótulos: son dos cosas distintas. Se escala desde el
+    /// borde de abajo para que no se despegue del filo de la pantalla.
     func compactar(_ on: Bool) {
         guard on != compacto else { return }
         compacto = on
-        rehacer()
-        ajustar()
-        UIView.animate(withDuration: 0.24, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
-            self.anfitriona?.layoutIfNeeded()
+        let alto = barra.bounds.height
+        UIView.animate(withDuration: 0.26, delay: 0,
+                       usingSpringWithDamping: 0.9, initialSpringVelocity: 0,
+                       options: [.curveEaseOut, .allowUserInteraction]) {
+            if on {
+                let e: CGFloat = 0.84
+                self.barra.transform = CGAffineTransform(translationX: 0, y: (1 - e) * alto / 2)
+                    .scaledBy(x: e, y: e)
+            } else {
+                self.barra.transform = .identity
+            }
         }
     }
 
@@ -798,11 +819,9 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         ids = []
         for (i, t) in CNTabs.todas.enumerated() {
             // Más grandes y más gruesos: en una barra de cinco, un trazo fino se
-            // pierde. Encogida no llevan rótulo, así que ahí caben aún mejor.
-            let img = cnIconoUIImage(t.path, lado: compacto ? 26 : 23, grosor: 2.6)
-                .withRenderingMode(.alwaysTemplate)
-            let rotulo = (conTitulos && !compacto) ? t.titulo : nil
-            let item = UITabBarItem(title: rotulo, image: img, tag: i)
+            // pierde.
+            let img = cnIconoUIImage(t.path, lado: 23, grosor: 2.6).withRenderingMode(.alwaysTemplate)
+            let item = UITabBarItem(title: conTitulos ? t.titulo : nil, image: img, tag: i)
             item.accessibilityLabel = t.titulo
             item.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 11, weight: .semibold)], for: .normal)
             item.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 11, weight: .bold)], for: .selected)
@@ -2489,6 +2508,8 @@ struct CNResumenModelo {
         var items: [Item] = []
     }
     var cabecera = Cabecera()
+    /// ¿El panel viene de verdad? (la web solo lo calcula estando en el resumen)
+    var listo = false
     var vacio = false; var vacioTitulo = ""; var vacioTexto = ""; var vacioBoton = ""
     var widgets: [Widget] = []
     var tiposGrafico: [Opcion] = []; var rangosGrafico: [Opcion] = []; var catalogo: [Opcion] = []
@@ -2532,6 +2553,7 @@ struct CNResumenModelo {
                     bg: s($0, "bg"), fg: s($0, "fg"))
         }
         m.cabecera = cab
+        m.listo = b(raiz, "listo")
         m.vacio = b(raiz, "vacio"); m.vacioTitulo = s(raiz, "vacioTitulo")
         m.vacioTexto = s(raiz, "vacioTexto"); m.vacioBoton = s(raiz, "vacioBoton")
 
