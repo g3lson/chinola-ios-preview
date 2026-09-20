@@ -1548,3 +1548,343 @@ struct CNMascotaVista: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
+
+// ── La puerta: bienvenida, acceso, nombre y plan ────────────────────────────
+//
+// Todo lo de antes de entrar. La lógica —crear la cuenta, entrar, el correo de
+// confirmación, el plan— sigue siendo la de la web, la misma que en el
+// navegador; aquí solo se dibuja lo que toca y se le dice qué han tocado.
+struct CNPuerta {
+    struct Punto: Identifiable { var id: Int; var titulo = ""; var pie = ""; var iconoPath = ""; var color = ""; var fondo = "" }
+    struct Plan: Identifiable { var id: Int; var clave = ""; var nombre = ""; var para = ""; var precio = ""; var cada = ""; var items: [String] = []; var puesto = false }
+    var paso = ""
+    var rotulo = ""; var titulo = ""; var texto = ""; var boton = ""; var segundo = ""; var atras = ""
+    var chinolo = ""; var error = ""; var cargando = false; var pie = ""
+    var indice = 0; var total = 1
+    var lista: [Punto] = []
+    // Acceso
+    var registro = false
+    var labelNombre = ""; var labelCorreo = ""; var labelClave = ""; var labelClave2 = ""
+    var phCorreo = ""; var phClave2 = ""
+    var nombre = ""; var email = ""; var clave = ""; var clave2 = ""
+    var oDirecto = ""; var google = ""; var apple = ""
+    var conApple = false; var conGoogle = false
+    var olvide = ""; var cambiar = ""; var sinCuenta = ""
+    // Nombre y plan
+    var ph = ""; var valor = ""
+    var salida = ""
+    var planes: [Plan] = []
+
+    static func desde(json: String) -> CNPuerta? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
+        func b(_ o: [String: Any], _ k: String) -> Bool { (o[k] as? Bool) ?? false }
+        func n(_ o: [String: Any], _ k: String) -> Int { ((o[k] as? NSNumber)?.intValue) ?? 0 }
+        var m = CNPuerta()
+        m.paso = s(r, "paso")
+        m.rotulo = s(r, "rotulo"); m.titulo = s(r, "titulo"); m.texto = s(r, "texto")
+        m.boton = s(r, "boton"); m.segundo = s(r, "segundo"); m.atras = s(r, "atras")
+        m.chinolo = s(r, "chinolo"); m.error = s(r, "error"); m.cargando = b(r, "cargando"); m.pie = s(r, "pie")
+        m.indice = n(r, "indice"); m.total = max(1, n(r, "total"))
+        m.lista = ((r["lista"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
+            Punto(id: i, titulo: s(x, "titulo"), pie: s(x, "pie"), iconoPath: s(x, "iconoPath"),
+                  color: s(x, "color"), fondo: s(x, "fondo"))
+        }
+        m.registro = b(r, "registro")
+        m.labelNombre = s(r, "labelNombre"); m.labelCorreo = s(r, "labelCorreo")
+        m.labelClave = s(r, "labelClave"); m.labelClave2 = s(r, "labelClave2")
+        m.phCorreo = s(r, "phCorreo"); m.phClave2 = s(r, "phClave2")
+        m.nombre = s(r, "nombre"); m.email = s(r, "email"); m.clave = s(r, "clave"); m.clave2 = s(r, "clave2")
+        m.oDirecto = s(r, "oDirecto"); m.google = s(r, "google"); m.apple = s(r, "apple")
+        m.conApple = b(r, "conApple"); m.conGoogle = b(r, "conGoogle")
+        m.olvide = s(r, "olvide"); m.cambiar = s(r, "cambiar"); m.sinCuenta = s(r, "sinCuenta")
+        m.ph = s(r, "ph"); m.valor = s(r, "valor"); m.salida = s(r, "salida")
+        m.planes = ((r["planes"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
+            Plan(id: i, clave: s(x, "id"), nombre: s(x, "nombre"), para: s(x, "para"),
+                 precio: s(x, "precio"), cada: s(x, "cada"),
+                 items: (x["items"] as? [String]) ?? [], puesto: b(x, "puesto"))
+        }
+        return m
+    }
+}
+
+struct CNPuertaVista: View {
+    @ObservedObject var datos: CNDatos
+    var onAccion: (String, String) -> Void
+    @State private var nombre = ""
+    @State private var email = ""
+    @State private var clave = ""
+    @State private var clave2 = ""
+    @State private var quien = ""
+
+    var body: some View {
+        let m = datos.puerta ?? CNPuerta()
+        return ZStack {
+            CNC.scr.ignoresSafeArea()
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    switch m.paso {
+                    case "portada", "lamina", "verifica", "listo", "nombre": contarUna(m)
+                    case "auth": acceso(m)
+                    case "plan": planes(m)
+                    default: EmptyView()
+                    }
+                }
+                .padding(.horizontal, 22).padding(.top, 26).padding(.bottom, 40)
+            }
+            .cnTeclado()
+        }
+        .onAppear { nombre = m.nombre; email = m.email; clave = m.clave; clave2 = m.clave2; quien = m.valor }
+    }
+
+    // Las pantallas que solo cuentan algo y tienen uno o dos botones.
+    private func contarUna(_ m: CNPuerta) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if let img = cnImagenBase64(m.chinolo) {
+                Image(uiImage: img).resizable().scaledToFit().frame(width: 132, height: 132)
+                    .frame(maxWidth: .infinity, alignment: .center).padding(.top, 10)
+            }
+            if !m.rotulo.isEmpty {
+                Text(m.rotulo.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8).foregroundColor(CNC.pmut)
+            }
+            Text(m.titulo).font(cnLetra(29, .bold)).foregroundColor(CNC.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            if !m.texto.isEmpty {
+                Text(m.texto).font(cnLetra(15.5)).foregroundColor(CNC.pmut)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if m.paso == "nombre" {
+                CNCampoTexto(placeholder: m.ph, texto: $quien)
+                    .onChange(of: quien) { v in onAccion("nombre", v) }
+            }
+            if !m.lista.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(m.lista) { p in
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(cnColor(hexString: p.fondo)).frame(width: 40, height: 40)
+                                CNSVGShape(d: p.iconoPath)
+                                    .stroke(cnColor(hexString: p.color),
+                                            style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                                    .frame(width: 20, height: 20)
+                            }
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(p.titulo).font(cnLetra(15, .bold)).foregroundColor(CNC.ink)
+                                Text(p.pie).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, 9)
+                    }
+                }
+            }
+            if !m.error.isEmpty { aviso(m.error) }
+            if m.total > 1 && m.paso == "lamina" {
+                HStack(spacing: 6) {
+                    ForEach(0..<m.total, id: \.self) { i in
+                        Capsule().fill(i <= m.indice ? CNC.pos : CNC.line)
+                            .frame(width: i == m.indice ? 18 : 7, height: 7)
+                    }
+                }.padding(.top, 2)
+            }
+            botonGrande(m.boton) {
+                switch m.paso {
+                case "portada": onAccion("portada", "")
+                case "lamina": onAccion("lamina", "")
+                case "nombre": onAccion("nombre-seguir", "")
+                case "verifica": onAccion("verifica-reenviar", "")
+                default: onAccion("listo", "")
+                }
+            }
+            if !m.segundo.isEmpty {
+                botonSuave(m.segundo) {
+                    switch m.paso {
+                    case "portada": onAccion("ya-tengo", "")
+                    case "lamina": onAccion("lamina-2", "")
+                    default: onAccion("verifica-volver", "")
+                    }
+                }
+            }
+        }
+    }
+
+    private func acceso(_ m: CNPuerta) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if !m.rotulo.isEmpty {
+                Text(m.rotulo.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8).foregroundColor(CNC.pmut)
+                    .padding(.top, 8)
+            }
+            Text(m.titulo).font(cnLetra(29, .bold)).foregroundColor(CNC.ink)
+            if !m.texto.isEmpty {
+                Text(m.texto).font(cnLetra(15.5)).foregroundColor(CNC.pmut)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(spacing: 10) {
+                if m.registro {
+                    CNCampoTexto(placeholder: m.labelNombre, texto: $nombre)
+                        .onChange(of: nombre) { v in onAccion("campo", "nombre|" + v) }
+                }
+                CNCampoTexto(placeholder: m.phCorreo.isEmpty ? m.labelCorreo : m.phCorreo, texto: $email, teclado: .emailAddress)
+                    .onChange(of: email) { v in onAccion("campo", "correo|" + v) }
+                CNCampoClave(placeholder: m.labelClave, texto: $clave)
+                    .onChange(of: clave) { v in onAccion("campo", "clave|" + v) }
+                if m.registro {
+                    CNCampoClave(placeholder: m.phClave2.isEmpty ? m.labelClave2 : m.phClave2, texto: $clave2)
+                        .onChange(of: clave2) { v in onAccion("campo", "clave2|" + v) }
+                }
+            }
+            if !m.error.isEmpty { aviso(m.error) }
+            botonGrande(m.boton) { cnCerrarTeclado(); onAccion("entrar", "") }
+            if !m.olvide.isEmpty {
+                Button { onAccion("olvide", "") } label: {
+                    Text(m.olvide).font(cnLetra(14, .semibold)).foregroundColor(CNC.pmut)
+                        .frame(maxWidth: .infinity)
+                }.buttonStyle(CNPulsable())
+            }
+            if m.conApple || m.conGoogle {
+                HStack(spacing: 10) {
+                    Rectangle().fill(CNC.line).frame(height: 0.5)
+                    Text(m.oDirecto).font(cnLetra(12)).foregroundColor(CNC.pmut).fixedSize()
+                    Rectangle().fill(CNC.line).frame(height: 0.5)
+                }.padding(.vertical, 2)
+                HStack(spacing: 10) {
+                    if m.conApple {
+                        proveedor("apple.logo", m.apple) { onAccion("apple", "") }
+                    }
+                    if m.conGoogle {
+                        proveedor("g.circle", m.google) { onAccion("google", "") }
+                    }
+                }
+            }
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                Button { onAccion("modo", m.registro ? "login" : "registro") } label: {
+                    Text(m.cambiar).font(cnLetra(14.5, .bold)).foregroundColor(CNC.pos)
+                }.buttonStyle(CNPulsable())
+                Spacer(minLength: 0)
+            }.padding(.top, 4)
+            if !m.sinCuenta.isEmpty {
+                botonSuave(m.sinCuenta) { onAccion("sin-cuenta", "") }
+            }
+        }
+    }
+
+    private func planes(_ m: CNPuerta) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if !m.rotulo.isEmpty {
+                Text(m.rotulo.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8).foregroundColor(CNC.pmut)
+                    .padding(.top, 8)
+            }
+            Text(m.titulo).font(cnLetra(27, .bold)).foregroundColor(CNC.ink)
+            if !m.texto.isEmpty {
+                Text(m.texto).font(cnLetra(15)).foregroundColor(CNC.pmut)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(m.planes) { p in
+                Button { onAccion("plan-elegir", String(p.id)) } label: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(p.nombre).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink)
+                            Spacer(minLength: 8)
+                            Text(p.precio).font(cnLetra(16, .heavy)).foregroundColor(CNC.ink)
+                            if !p.cada.isEmpty {
+                                Text(p.cada).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                            }
+                        }
+                        if !p.para.isEmpty {
+                            Text(p.para).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(p.items.indices, id: \.self) { k in
+                                HStack(alignment: .top, spacing: 7) {
+                                    Image(systemName: "checkmark").font(cnLetra(10.5, .bold)).foregroundColor(CNC.pos)
+                                        .padding(.top, 3)
+                                    Text(p.items[k]).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(p.puesto ? CNC.soft : CNC.card,
+                                in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 18)
+                        .stroke(p.puesto ? CNC.acc : CNC.line, lineWidth: p.puesto ? 2 : 1))
+                }.buttonStyle(CNPulsable())
+            }
+            if !m.error.isEmpty { aviso(m.error) }
+            if !m.pie.isEmpty {
+                Text(m.pie).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            botonGrande(m.boton) { onAccion("plan-seguir", "") }
+            if !m.salida.isEmpty { botonSuave(m.salida) { onAccion("plan-salir", "") } }
+        }
+    }
+
+    private func aviso(_ t: String) -> some View {
+        Text(t).font(cnLetra(13.5)).foregroundColor(CNC.neg)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(CNC.neg.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func botonGrande(_ t: String, _ go: @escaping () -> Void) -> some View {
+        Button { UIImpactFeedbackGenerator(style: .medium).impactOccurred(); go() } label: {
+            Text(t).font(cnLetra(16, .bold)).foregroundColor(CNC.sobreAcc)
+                .frame(maxWidth: .infinity).padding(.vertical, 16)
+                .background(CNC.acc, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }.buttonStyle(CNPulsable()).padding(.top, 2)
+    }
+
+    private func botonSuave(_ t: String, _ go: @escaping () -> Void) -> some View {
+        Button { UISelectionFeedbackGenerator().selectionChanged(); go() } label: {
+            Text(t).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
+                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(CNC.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+        }.buttonStyle(CNPulsable())
+    }
+
+    private func proveedor(_ icono: String, _ t: String, _ go: @escaping () -> Void) -> some View {
+        Button { UISelectionFeedbackGenerator().selectionChanged(); go() } label: {
+            HStack(spacing: 7) {
+                Image(systemName: icono).font(cnLetra(16, .semibold))
+                Text(t).font(cnLetra(15, .semibold))
+            }
+            .foregroundColor(CNC.ink)
+            .frame(maxWidth: .infinity).padding(.vertical, 13)
+            .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+        }.buttonStyle(CNPulsable())
+    }
+}
+
+/// Campo de contraseña, con el ojo para verla.
+struct CNCampoClave: View {
+    let placeholder: String
+    @Binding var texto: String
+    @State private var visible = false
+    var body: some View {
+        HStack(spacing: 8) {
+            Group {
+                if visible { TextField(placeholder, text: $texto) }
+                else { SecureField(placeholder, text: $texto) }
+            }
+            .font(cnLetra(16)).foregroundColor(CNC.ink)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled(true)
+            Button { visible.toggle() } label: {
+                Image(systemName: visible ? "eye.slash" : "eye").font(cnLetra(15))
+                    .foregroundColor(CNC.pmut)
+            }.buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 14)
+        .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+    }
+}

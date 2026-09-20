@@ -696,6 +696,7 @@ final class CNDatos: ObservableObject {
     @Published var invitar: CNInvitar? = nil
     @Published var tour: CNTour? = nil
     @Published var mascota: CNMascota? = nil
+    @Published var puerta: CNPuerta? = nil
     /// tipo: opcion · dia · antes · despues · aplicar · cerrar
     var onPeriodo: (String, Int) -> Void = { _, _ in }
     /// El detalle de un movimiento, armado por la web.
@@ -737,6 +738,7 @@ final class CNDatos: ObservableObject {
     func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
     func cargarTour(json: String) { tour = CNTour.desde(json: json) }
     func cargarMascota(json: String) { mascota = CNMascota.desde(json: json) }
+    func cargarPuerta(json: String) { puerta = CNPuerta.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil

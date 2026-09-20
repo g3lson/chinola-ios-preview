@@ -214,6 +214,10 @@ extension TestVC {
         case "libretas":
             datos.cargarLibretas(json: TestVC.libretasDeMuestra)
             vista = AnyView(CNLibretasHoja(datos: datos, onClose: {})); estado.activa = "resumen"
+        case "puerta-auth", "puerta-plan", "puerta-lamina":
+            datos.cargarPuerta(json: cual == "puerta-plan" ? TestVC.puertaPlan
+                               : (cual == "puerta-lamina" ? TestVC.puertaLamina : TestVC.puertaAuth))
+            vista = AnyView(CNPuertaVista(datos: datos, onAccion: { _, _ in })); estado.activa = "resumen"
         case "mascota":
             datos.cargarMascota(json: TestVC.mascotaDeMuestra)
             vista = AnyView(ZStack { CNPerfil(datos: datos); CNMascotaVista(datos: datos, onClose: {}) })
@@ -602,6 +606,38 @@ extension TestVC {
      "datos":[{"label":"Categoría","valor":"Deudas"},{"label":"Tipo","valor":"Fijo"},
               {"label":"Fecha","valor":"11 de septiembre"},{"label":"Pagado con","valor":"Cuenta principal"},
               {"label":"Se repite","valor":"Cada mes"}]}
+    """
+}
+
+extension TestVC {
+    static let puertaAuth = """
+    {"paso":"auth","registro":true,"rotulo":"Empecemos","titulo":"Crea tu cuenta",
+     "texto":"Con cuenta respaldas tus libretas y las ves igual en la web.",
+     "labelNombre":"Nombre","labelCorreo":"Correo","labelClave":"Contraseña","labelClave2":"Repite la contraseña",
+     "phCorreo":"tucorreo@mail.com","phClave2":"La misma de arriba",
+     "nombre":"","email":"","clave":"","clave2":"","boton":"Crear mi cuenta",
+     "error":"","oDirecto":"o entra directo con","google":"Google","apple":"Apple",
+     "conApple":true,"conGoogle":true,"olvide":"","cambiar":"Ya tengo cuenta","sinCuenta":"Usar sin cuenta"}
+    """
+    static let puertaPlan = """
+    {"paso":"plan","rotulo":"Casi está","titulo":"¿Con qué plan empiezas?",
+     "texto":"Puedes cambiarlo cuando quieras desde Perfil. El gratis no caduca.",
+     "boton":"Seguir","salida":"Ahora no","error":"","pie":"",
+     "planes":[{"indice":0,"id":"gratis","nombre":"Gratis","para":"Para empezar","precio":"RD$0","cada":"",
+                "items":["Una libreta","Movimientos, cuentas, tarjetas y préstamos sin límite","Todo en este teléfono y en la web"],"puesto":true},
+               {"indice":1,"id":"pro","nombre":"Pro","para":"Para tu casa","precio":"US$3.99","cada":"al mes",
+                "items":["Libretas sin límite: la casa, el negocio, lo tuyo","Compartirlas con quien quieras, con permisos"],"puesto":false}]}
+    """
+    static let puertaLamina = """
+    {"paso":"lamina","rotulo":"Así funciona","titulo":"Anota y ya está",
+     "texto":"Un toque en el + y listo. Chinola arma los gráficos, los totales y el resto por ti.",
+     "boton":"Siguiente","segundo":"Saltar","atras":"Atrás","indice":0,"total":3,
+     "lista":[{"titulo":"Cuentas, tarjetas y fiados","pie":"Todo tu dinero en un solo lugar",
+               "iconoPath":"M3 8h18v12H3zM9 8V5h6v3M3 13h18","color":"rgb(52,94,178)","fondo":"rgba(52,94,178,0.14)"},
+              {"titulo":"Presupuesto por categoría","pie":"Con aviso cuando te pasas del presupuesto",
+               "iconoPath":"M4 20V10M10 20V4M16 20v-7M22 20H2","color":"rgb(130,94,185)","fondo":"rgba(130,94,185,0.14)"},
+              {"titulo":"Metas de ahorro","pie":"Mira cuánto falta y en cuántos meses",
+               "iconoPath":"M12 3v18M5 8h14M5 16h14","color":"rgb(19,125,65)","fondo":"rgba(19,125,65,0.14)"}]}
     """
 }
 
