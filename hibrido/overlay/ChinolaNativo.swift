@@ -2171,6 +2171,13 @@ struct CNCabeceraApp: View {
     var onPlegar: () -> Void = {}
 
     static let bloqueMeses: CGFloat = 114
+    /// Lo que se deja por encima del contenido, ADEMÁS del margen seguro.
+    ///
+    /// El margen seguro ya esquiva la isla dinámica, así que todo lo que se
+    /// ponga aquí es hueco de más: la web dejaba 10 y se veía una franja de
+    /// color vacía entre la isla y la cápsula. Con 2 el contenido sube pegado a
+    /// la isla sin tocarla, y se gana pantalla.
+    private var padArriba: CGFloat { c.tarjeta ? 10 : 2 }
     private var tinta: Color { c.tinta.isEmpty ? .white : cnColor(hexString: c.tinta) }
     private var gris: Color { c.gris.isEmpty ? tinta.opacity(0.8) : cnColor(hexString: c.gris) }
     private var pastilla: Color { c.pastilla.isEmpty ? Color.white.opacity(0.13) : cnColor(hexString: c.pastilla) }
@@ -2285,7 +2292,7 @@ struct CNCabeceraApp: View {
                     .buttonStyle(CNPulsable())
                     .frame(maxWidth: capMax, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
-                    .offset(x: capX, y: 5)
+                    .offset(x: capX, y: 1)
                 }
                 VStack(spacing: 8) {
                     VStack(spacing: 2) {
@@ -2301,10 +2308,10 @@ struct CNCabeceraApp: View {
                 .opacity(blqOpaco)
                 .clipped()
             }
-            .padding(.bottom, 10).padding(.top, c.tarjeta ? 12 : 10)
+            .padding(.bottom, 10).padding(.top, padArriba)
             .animation(.easeOut(duration: 0.2), value: progreso)
         }
-        .frame(height: 50 + 10 + (c.tarjeta ? 12 : 10)
+        .frame(height: 50 + 10 + padArriba
                + CNCabeceraApp.bloqueMeses * CGFloat(1 - max(0.0, min(1.0, progreso))))
     }
 
@@ -2413,7 +2420,7 @@ struct CNCabeceraApp: View {
                 }
             }
         }
-        .padding(.horizontal, 14).padding(.top, c.tarjeta ? 12 : 10).padding(.bottom, 14)
+        .padding(.horizontal, 14).padding(.top, padArriba).padding(.bottom, 14)
     }
     private func flecha(_ ic: String, _ color: String, _ texto: String) -> some View {
         HStack(spacing: 5) {
@@ -2469,7 +2476,7 @@ struct CNCabeceraApp: View {
                     .frame(width: 64, height: 20)
             }.buttonStyle(.plain).padding(.top, 2)
         }
-        .padding(.horizontal, 18).padding(.top, c.tarjeta ? 12 : 10).padding(.bottom, 4)
+        .padding(.horizontal, 18).padding(.top, padArriba).padding(.bottom, 4)
         .animation(.easeOut(duration: 0.22), value: c.abierta)
     }
     private func flechaMesPlano(_ ic: String, _ tap: @escaping () -> Void) -> some View {
@@ -3249,7 +3256,9 @@ struct CNPerfil: View {
             Text("Chinola").font(.system(size: 20, weight: .heavy)).foregroundColor(CNC.ink)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 16).padding(.vertical, 11).frame(minHeight: 54)
+        // Pegado a la isla: el margen seguro ya la esquiva, así que dejar más
+        // aire aquí solo es pantalla desperdiciada.
+        .padding(.horizontal, 16).padding(.top, 2).padding(.bottom, 8).frame(minHeight: 44)
         .background(CNC.scr.ignoresSafeArea(edges: .top))
     }
 
@@ -3479,7 +3488,7 @@ struct CNSeccionVista: View {
             Spacer(minLength: 0)
             Color.clear.frame(width: 40, height: 40)
         }
-        .padding(.horizontal, 16).padding(.vertical, 7).frame(minHeight: 54)
+        .padding(.horizontal, 16).padding(.top, 2).padding(.bottom, 6).frame(minHeight: 46)
         .background(CNC.scr.ignoresSafeArea(edges: .top))
     }
 
