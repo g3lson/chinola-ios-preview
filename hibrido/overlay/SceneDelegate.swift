@@ -423,9 +423,9 @@ extension TestVC {
             let num = dentro ? n : (n < 1 ? 30 + n : n - 30)
             let esInicio = n == 5, esFin = n == 14
             let enRango = n > 5 && n < 14
-            let banda = (esInicio || esFin || enRango) ? "rgba(239,203,76,0.26)" : "transparent"
+            let banda = (esInicio || esFin || enRango) ? "rgba(239,203,76,0.26)" : "rgba(0,0,0,0)"
             let radio = esInicio ? "999px 0 0 999px" : (esFin ? "0 999px 999px 0" : "0")
-            let circ = (esInicio || esFin) ? "rgb(239,203,76)" : "transparent"
+            let circ = (esInicio || esFin) ? "rgb(239,203,76)" : "rgba(0,0,0,0)"
             let tinta = (esInicio || esFin) ? "rgb(32,24,10)" : "rgb(19,36,25)"
             dias += (i > 0 ? "," : "")
                 + "{\"indice\":\(i),\"n\":\(num),\"banda\":\"\(banda)\",\"bandaRadio\":\"\(radio)\","
@@ -436,11 +436,11 @@ extension TestVC {
         {"abierto":true,"calendario":true,"resumen":"14 movimientos en este periodo",
          "opciones":[
            {"indice":0,"label":"Este mes","puesta":true,"fondo":"rgb(29,61,40)","tinta":"rgb(245,245,230)","borde":"rgb(29,61,40)"},
-           {"indice":1,"label":"Mes pasado","fondo":"transparent","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
-           {"indice":2,"label":"Este año","fondo":"transparent","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
-           {"indice":3,"label":"Últimos 3 meses","fondo":"transparent","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
-           {"indice":4,"label":"Últimos 12 meses","fondo":"transparent","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
-           {"indice":5,"label":"Personalizado","fondo":"transparent","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"}],
+           {"indice":1,"label":"Mes pasado","fondo":"rgba(0,0,0,0)","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
+           {"indice":2,"label":"Este año","fondo":"rgba(0,0,0,0)","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
+           {"indice":3,"label":"Últimos 3 meses","fondo":"rgba(0,0,0,0)","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
+           {"indice":4,"label":"Últimos 12 meses","fondo":"rgba(0,0,0,0)","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"},
+           {"indice":5,"label":"Personalizado","fondo":"rgba(0,0,0,0)","tinta":"rgb(19,36,25)","borde":"rgb(229,225,211)"}],
          "calTitulo":"Septiembre 2026",
          "diasSemana":["D","L","M","M","J","V","S"],
          "dias":[\(dias)],

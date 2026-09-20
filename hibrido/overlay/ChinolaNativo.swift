@@ -11,6 +11,9 @@ func cnColor(_ hex: UInt) -> Color {
 }
 func cnColor(hexString s: String) -> Color {
     let t = s.trimmingCharacters(in: .whitespaces)
+    // «transparent» no es un número hexadecimal: leído como tal daba 0, o sea
+    // NEGRO, y el calendario salía con bandas y círculos negros por todos lados.
+    if t.isEmpty || t == "transparent" || t == "none" { return .clear }
     // La web resuelve sus colores (var(), color-mix(), oklch()) a rgb()/rgba()
     // antes de mandarlos, así que aquí solo hay que leer los números.
     if t.hasPrefix("rgb") {
