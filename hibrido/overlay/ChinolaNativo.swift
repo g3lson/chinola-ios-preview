@@ -370,6 +370,14 @@ final class CNDatos: ObservableObject {
     @Published var periodo: CNPeriodo? = nil
     /// tipo: opcion · dia · antes · despues · aplicar · cerrar
     var onPeriodo: (String, Int) -> Void = { _, _ in }
+    /// El detalle de un movimiento, armado por la web.
+    @Published var movDetalle: CNMovDetalle? = nil
+    var onMovAccion: (String) -> Void = { _ in }
+    /// La pantalla de Cuentas, armada por la web.
+    @Published var cuentas: CNCuentasModelo? = nil
+    var onCuentasAccion: (String, Int) -> Void = { _, _ in }
+    func cargarCuentas(json: String) { cuentas = CNCuentasModelo.desde(json: json) }
+    func cargarMovDetalle(json: String) { movDetalle = CNMovDetalle.desde(json: json) }
     func cargarPeriodo(json: String) { periodo = CNPeriodo.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
@@ -491,11 +499,14 @@ struct CNMovs: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            cabecera
-            ScrollView(showsIndicators: false) {
-                LazyVStack(spacing: 12) {
-                    controles.padding(.horizontal, 14)
+        // Sin franja de color: el título va sobre el fondo de la pantalla y se
+        // va con el scroll; lo único que se queda arriba es el buscador, que es
+        // lo que de verdad hace falta a mano mientras se rueda.
+        return ScrollView(showsIndicators: false) {
+            LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
+                CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
+                titulo.padding(.horizontal, 16).padding(.top, 2)
+                Section(header: busqueda) {
                     if porDia.isEmpty {
                         vacio.padding(.horizontal, 14)
                     } else {
@@ -505,23 +516,27 @@ struct CNMovs: View {
                     }
                     Color.clear.frame(height: 110)
                 }
-                .padding(.top, 12)
             }
         }
         .background(CNC.scr.ignoresSafeArea())
     }
 
-    /// La cabecera es la MISMA de la app (libreta, mes y balance); debajo, lo
-    /// propio de esta pantalla: buscar, filtrar y anotar.
-    private var cabecera: some View {
-        CNCabeceraApp(c: datos.resumen?.cabecera ?? CNResumenModelo.Cabecera(),
-                      onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
-                      onCalendario: { datos.onCalendario() },
-                      onMesTira: { datos.onMesTira($0) },
-                      onPlegar: { datos.onPlegar() })
+    private var titulo: some View {
+        HStack(spacing: 10) {
+            Text("Movimientos").font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
+            Spacer(minLength: 8)
+            CNMenuVidrio(icono: "calendar", activo: periodo > 0) {
+                Picker("", selection: $periodo) {
+                    ForEach(CNMovs.periodos.indices, id: \.self) { i in Text(CNMovs.periodos[i]).tag(i) }
+                }
+            }
+            CNCirculoAcento(icono: "plus") { datos.onNuevoMov() }
+        }
     }
 
-    private var controles: some View {
+    /// El buscador se queda fijo arriba al rodar (`pinnedViews`), en vidrio, y
+    /// el contenido pasa por detrás.
+    private var busqueda: some View {
         HStack(spacing: 9) {
             HStack(spacing: 9) {
                 Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .semibold))
@@ -534,21 +549,16 @@ struct CNMovs: View {
                     }.buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 14).frame(height: 44)
-            .background(CNC.card, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 13).stroke(CNC.line, lineWidth: 1))
-            CNMenuVidrio(icono: "calendar", activo: periodo > 0, lado: 44) {
-                Picker("", selection: $periodo) {
-                    ForEach(CNMovs.periodos.indices, id: \.self) { i in Text(CNMovs.periodos[i]).tag(i) }
-                }
-            }
-            CNMenuVidrio(icono: "line.3.horizontal.decrease", activo: filtro > 0, lado: 44) {
+            .padding(.horizontal, 14).frame(height: 46)
+            .cnVidrio(Capsule())
+            CNMenuVidrio(icono: "line.3.horizontal.decrease", activo: filtro > 0, lado: 46) {
                 Picker("", selection: $filtro) {
                     ForEach(CNMovs.filtros.indices, id: \.self) { i in Text(CNMovs.filtros[i]).tag(i) }
                 }
             }
-            CNCirculoAcento(icono: "plus") { datos.onNuevoMov() }
         }
+        .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 10)
+        .background(CNC.scr.opacity(0.92))
     }
 
     private func grupoDia(_ fecha: String, _ items: [CNMov]) -> some View {
@@ -573,13 +583,31 @@ struct CNMovs: View {
     private func fila(_ m: CNMov) -> some View {
         let entra = m.esIngreso
         let color: Color = entra ? CNC.pos : (m.esTransfer ? CNC.ink : CNC.neg)
-        let cat = datos.libreta.categoria(m.categoria)
-        let tinte = entra ? CNC.pos : (m.esTransfer ? CNC.info : (cat != nil ? cnColor(hexString: cat!.color) : cnColor(0xe0a92e)))
-        let icono = entra ? "banknote.fill" : (m.esTransfer ? "arrow.left.arrow.right" : (cat?.icono ?? "tag.fill"))
+        // El icono y el color los manda la web (la categoría puede no tener
+        // icono propio y entonces manda su tabla por nombre): así la lista
+        // nativa enseña exactamente los mismos que la PWA.
+        let ic = datos.resumen?.catIconos[m.categoria]
+        let tinte = entra ? CNC.pos : (m.esTransfer ? CNC.info
+                                       : (ic.map { cnColor(hexString: $0.color) } ?? cnColor(0xe0a92e)))
         return Button { datos.onDetalleMov(m.id) } label: {
             HStack(spacing: 12) {
-                cnGlifo(icono, tam: 17).foregroundColor(.white)
-                    .frame(width: 34, height: 34).background(tinte).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                Group {
+                    if entra {
+                        cnGlifo("banknote.fill", tam: 17)
+                    } else if m.esTransfer {
+                        cnGlifo("arrow.left.arrow.right", tam: 17)
+                    } else if let p = ic?.path, !p.isEmpty {
+                        CNSVGShape(d: p)
+                            .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                            .frame(width: 18, height: 18)
+                    } else {
+                        cnGlifo("tag.fill", tam: 17)
+                    }
+                }
+                .foregroundColor(tinte)
+                .frame(width: 34, height: 34)
+                .background(tinte.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(m.concepto.isEmpty ? m.categoria : m.concepto).font(.system(size: 15, weight: .semibold)).foregroundColor(CNC.ink)
                         .lineLimit(1)
@@ -682,10 +710,37 @@ enum CNTabs {
 /// morfeo al hacer scroll. Una barra dibujada a mano (aunque se meta dentro de
 /// un UIVisualEffectView) NO tiene nada de eso: se ve como cristal, pero está
 /// quieta. Es la misma solución que en Batuta.
+/// Quién manda si la barra de abajo va entera o encogida.
+///
+/// Todas las pantallas nativas le cuentan cuánto se ha rodado; al bajar se
+/// encoge (los rótulos se van y queda solo el icono) y al subir vuelve a su
+/// tamaño, como hacen las apps del teléfono.
+final class CNScrollEstado {
+    static let shared = CNScrollEstado()
+    private var ultimo: CGFloat = 0
+    private(set) var compacto = false
+    var alCambiar: (Bool) -> Void = { _ in }
+
+    func mirar(_ y: CGFloat) {
+        // Arriba del todo, siempre entera.
+        if y <= 4 { poner(false); ultimo = y; return }
+        if y > ultimo + 6 { poner(true); ultimo = y }
+        else if y < ultimo - 6 { poner(false); ultimo = y }
+    }
+    func reiniciar() { ultimo = 0; poner(false) }
+    private func poner(_ v: Bool) {
+        guard v != compacto else { return }
+        compacto = v
+        alCambiar(v)
+    }
+}
+
 final class CNBarraNativa: NSObject, UITabBarDelegate {
     let barra = UITabBar()
     private var ids: [String] = []
     private var conTitulos = true
+    /// Encogida: solo iconos, y más baja.
+    private var compacto = false
     private var altoC: NSLayoutConstraint?
     private weak var anfitriona: UIView?
     var alTocar: (String) -> Void = { _ in }
@@ -714,18 +769,34 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     /// Hay que llamarla cuando cambie el margen seguro (al girar, al aparecer).
     func ajustar() {
         let abajo = anfitriona?.safeAreaInsets.bottom ?? 0
-        let nuevo = (conTitulos ? 56 : 49) + abajo
+        let nuevo = (compacto ? 50 : (conTitulos ? 58 : 52)) + abajo
         if altoC?.constant != nuevo { altoC?.constant = nuevo }
+    }
+
+    /// Encoger o devolver la barra a su tamaño, con su animación.
+    func compactar(_ on: Bool) {
+        guard on != compacto else { return }
+        compacto = on
+        rehacer()
+        ajustar()
+        UIView.animate(withDuration: 0.24, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
+            self.anfitriona?.layoutIfNeeded()
+        }
     }
 
     private func rehacer() {
         var items: [UITabBarItem] = []
         ids = []
         for (i, t) in CNTabs.todas.enumerated() {
-            // 20 pt: con rótulo debajo, un icono más alto se solapa con el texto.
-            let img = cnIconoUIImage(t.path, lado: 20, grosor: 1.8).withRenderingMode(.alwaysTemplate)
-            let item = UITabBarItem(title: conTitulos ? t.titulo : nil, image: img, tag: i)
+            // Más grandes y más gruesos: en una barra de cinco, un trazo fino se
+            // pierde. Encogida no llevan rótulo, así que ahí caben aún mejor.
+            let img = cnIconoUIImage(t.path, lado: compacto ? 26 : 23, grosor: 2.6)
+                .withRenderingMode(.alwaysTemplate)
+            let rotulo = (conTitulos && !compacto) ? t.titulo : nil
+            let item = UITabBarItem(title: rotulo, image: img, tag: i)
             item.accessibilityLabel = t.titulo
+            item.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 11, weight: .semibold)], for: .normal)
+            item.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 11, weight: .bold)], for: .selected)
             items.append(item); ids.append(t.id)
         }
         let antes = barra.selectedItem?.tag
@@ -1423,58 +1494,138 @@ func cnOscurecer(_ c: Color, _ cuanto: CGFloat = 0.5) -> Color {
     return Color(UIColor(hue: h, saturation: min(1, sa * 1.05), brightness: max(0.12, b * (1 - cuanto)), alpha: 1))
 }
 
-struct CNDetalleMov: View {
-    @ObservedObject var datos: CNDatos; let movId: String; var onClose: () -> Void
-    @State private var confirmarBorrar = false
-    /// El color del movimiento: verde si entra, y si sale, el de su categoría.
-    private func colorMov(_ m: CNMov?) -> Color {
-        guard let m = m else { return CNC.info }
-        if m.esIngreso { return CNC.pos }
-        if m.esTransfer { return CNC.info }
-        if let c = datos.libreta.categoria(m.categoria) { return cnColor(hexString: c.color) }
-        return cnColor(0xe0a92e)
+/// El detalle de un movimiento. El modelo lo arma la web (rótulo, monto, icono
+/// de la categoría y la lista de datos), así que esta pantalla y la de la PWA
+/// dicen exactamente lo mismo.
+struct CNMovDetalle {
+    struct Dato: Identifiable { var id: Int; var label = ""; var valor = "" }
+    var nombre = ""; var rotulo = ""; var montoFmt = ""; var color = ""
+    var iconoPath = ""; var iconoColor = ""; var iconoBg = ""
+    var puedeEditar = false; var textoEditar = "Editar"; var textoDuplicar = "Duplicar"
+    var datos: [Dato] = []
+
+    static func desde(json: String) -> CNMovDetalle? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
+        var m = CNMovDetalle()
+        m.nombre = s(r, "nombre"); m.rotulo = s(r, "rotulo"); m.montoFmt = s(r, "montoFmt")
+        m.color = s(r, "color"); m.iconoPath = s(r, "iconoPath")
+        m.iconoColor = s(r, "iconoColor"); m.iconoBg = s(r, "iconoBg")
+        m.puedeEditar = (r["puedeEditar"] as? Bool) ?? false
+        m.textoEditar = s(r, "textoEditar").isEmpty ? "Editar" : s(r, "textoEditar")
+        m.textoDuplicar = s(r, "textoDuplicar").isEmpty ? "Duplicar" : s(r, "textoDuplicar")
+        m.datos = ((r["datos"] as? [[String: Any]]) ?? []).enumerated().map {
+            Dato(id: $0.offset, label: s($0.element, "label"), valor: s($0.element, "valor"))
+        }
+        return m
     }
+}
+
+struct CNDetalleMov: View {
+    @ObservedObject var datos: CNDatos
+    let movId: String
+    var onClose: () -> Void
+    @State private var confirmarBorrar = false
+
     var body: some View {
-        let m = datos.libreta.tx.first { $0.id == movId }; let entra = m?.esIngreso ?? false
+        let m = datos.movDetalle ?? CNMovDetalle()
         return VStack(spacing: 0) {
-            // Sin menú ⋯: editar y eliminar están a la vista abajo, como en la web.
-            CNDetCabecera(inicial: cnInicial(m?.concepto ?? "?"), nombre: m?.concepto ?? "Movimiento", sub: "\(m?.categoria ?? "") · \(cnFechaCorta(m?.fecha ?? ""))", fondo: cnOscurecer(colorMov(m)), cuadro: colorMov(m), volverA: "Movimientos",
-                          onClose: onClose)
-            cnCuerpo {
-                VStack(spacing: 3) { Text("MONTO").font(.system(size: 11.5, weight: .semibold)).tracking(0.5).foregroundColor(CNC.pmut); Text((entra ? "+ " : "− ") + cnDinero(m?.monto ?? 0)).font(.system(size: 38, weight: .heavy)).foregroundColor(entra ? CNC.pos : CNC.neg).minimumScaleFactor(0.6).lineLimit(1) }
-                    .frame(maxWidth: .infinity).padding(.vertical, 20).padding(.horizontal, 14).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 0.5))
-                VStack(spacing: 0) {
-                    // La categoría, con SU icono y SU color (los de la libreta).
-                    filaInfo(datos.libreta.categoria(m?.categoria ?? "")?.icono ?? "tag.fill",
-                             datos.libreta.categoria(m?.categoria ?? "").map { cnColor(hexString: $0.color) } ?? cnColor(0xe0a92e),
-                             "Categoría", m?.categoria ?? ""); div()
-                    filaInfo("banknote.fill", CNC.pos, "Cuenta", datos.libreta.nombreMedio(m?.medio ?? "")); div()
-                    filaInfo("calendar", CNC.neg, "Fecha", cnFechaCorta(m?.fecha ?? "")); div()
-                    filaInfo("repeat", cnColor(0x825eb9), "Se repite", (m?.recurrente ?? false) ? "Sí" : "No")
-                }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
-                CNBotonAncho(texto: "Editar movimiento", icono: "pencil") { datos.onAccion("editarMov", movId) }
-                Button { confirmarBorrar = true } label: {
-                    HStack(spacing: 6) { Image(systemName: "trash").font(.system(size: 14, weight: .bold)); Text("Eliminar movimiento").font(.system(size: 15, weight: .semibold)) }
-                        .foregroundColor(CNC.neg).frame(maxWidth: .infinity).padding(.vertical, 14).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 13)).overlay(RoundedRectangle(cornerRadius: 13).stroke(CNC.neg.opacity(0.3), lineWidth: 1))
-                }.buttonStyle(.plain)
-                .alert("¿Eliminar movimiento?", isPresented: $confirmarBorrar) {
-                    Button("Cancelar", role: .cancel) {}
-                    Button("Eliminar", role: .destructive) { datos.onBorrarMov(movId); onClose() }
-                } message: { Text("Esto revierte su efecto en los saldos. No se puede deshacer.") }
+            // Barra de arriba sencilla: atrás, el nombre y el menú. Sin franja
+            // de color, como en la web.
+            HStack(spacing: 10) {
+                Button(action: onClose) {
+                    Image(systemName: "chevron.left").font(.system(size: 16, weight: .bold))
+                        .foregroundColor(CNC.ink).frame(width: 40, height: 40)
+                        .background(CNC.soft, in: Circle())
+                }.buttonStyle(CNPulsable())
+                Spacer(minLength: 6)
+                Text(m.nombre).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
+                    .lineLimit(1).truncationMode(.tail)
+                Spacer(minLength: 6)
+                Menu {
+                    Button { datos.onAccion("editarMov", movId) } label: { Label(m.textoEditar, systemImage: "pencil") }
+                    Button { datos.onMovAccion("duplicar") } label: { Label(m.textoDuplicar, systemImage: "plus.square.on.square") }
+                    Button(role: .destructive) { confirmarBorrar = true } label: { Label("Eliminar", systemImage: "trash") }
+                } label: {
+                    Image(systemName: "ellipsis").font(.system(size: 16, weight: .bold))
+                        .foregroundColor(CNC.ink).frame(width: 40, height: 40)
+                        .background(CNC.soft, in: Circle())
+                }
+            }
+            .padding(.horizontal, 16).padding(.top, 6).padding(.bottom, 10)
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    // Cuánto y de qué es.
+                    HStack(spacing: 14) {
+                        if !m.iconoPath.isEmpty {
+                            CNSVGShape(d: m.iconoPath)
+                                .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                                .foregroundColor(m.iconoColor.isEmpty ? CNC.pmut : cnColor(hexString: m.iconoColor))
+                                .frame(width: 22, height: 22).frame(width: 46, height: 46)
+                                .background(m.iconoBg.isEmpty ? CNC.soft : cnColor(hexString: m.iconoBg))
+                                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(m.rotulo.uppercased()).font(.system(size: 11.5, weight: .heavy)).tracking(0.8)
+                                .foregroundColor(CNC.pmut)
+                            Text(m.montoFmt).font(.system(size: 30, weight: .heavy))
+                                .foregroundColor(m.color.isEmpty ? CNC.ink : cnColor(hexString: m.color))
+                                .lineLimit(1).minimumScaleFactor(0.6)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(16).tarjetaCN()
+
+                    if m.puedeEditar {
+                        HStack(spacing: 12) {
+                            Button { datos.onAccion("editarMov", movId) } label: {
+                                Text(m.textoEditar).font(.system(size: 15, weight: .bold))
+                                    .foregroundColor(CNC.sobreAcc)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 15)
+                                    .background(CNC.acc, in: Capsule())
+                            }.buttonStyle(CNPulsable())
+                            Button { datos.onMovAccion("duplicar") } label: {
+                                Text(m.textoDuplicar).font(.system(size: 15, weight: .bold))
+                                    .foregroundColor(CNC.ink)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 15)
+                                    .background(CNC.card, in: Capsule())
+                                    .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
+                            }.buttonStyle(CNPulsable())
+                        }
+                    }
+
+                    VStack(spacing: 0) {
+                        ForEach(m.datos) { d in
+                            HStack {
+                                Text(d.label).font(.system(size: 15)).foregroundColor(CNC.pmut)
+                                Spacer(minLength: 10)
+                                Text(d.valor).font(.system(size: 15, weight: .bold)).foregroundColor(CNC.ink)
+                                    .multilineTextAlignment(.trailing).lineLimit(2)
+                            }
+                            .padding(.horizontal, 16).padding(.vertical, 14)
+                            .overlay(alignment: .bottom) {
+                                if d.id < m.datos.count - 1 {
+                                    Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.horizontal, 16)
+                                }
+                            }
+                        }
+                    }
+                    .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+                    Color.clear.frame(height: 40)
+                }
+                .padding(.horizontal, 16)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(CNC.scr.ignoresSafeArea())
+        .alert("¿Eliminar movimiento?", isPresented: $confirmarBorrar) {
+            Button("Cancelar", role: .cancel) {}
+            Button("Eliminar", role: .destructive) { datos.onBorrarMov(movId); onClose() }
+        } message: { Text("Esto revierte su efecto en los saldos. No se puede deshacer.") }
     }
-    private func filaInfo(_ icono: String, _ tinte: Color, _ titulo: String, _ valor: String) -> some View {
-        HStack(spacing: 12) {
-            // cnGlifo: sirve tanto para los iconos propios de Chinola (los de
-            // las categorías) como para un SF Symbol si no está en el catálogo.
-            cnGlifo(icono, tam: 15, grosor: 2.1).foregroundColor(.white)
-                .frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            Text(titulo).font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(minLength: 8)
-            Text(valor).font(.system(size: 15)).foregroundColor(CNC.pmut).lineLimit(1).truncationMode(.tail)
-        }.padding(.horizontal, 14).padding(.vertical, 11)
-    }
-    private func div() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 57) }
 }
 
 // ── Formulario «Nuevo movimiento» NATIVO (guarda a la web) ──────────────────
@@ -1593,194 +1744,188 @@ struct CNRedondo: Shape {
 // El mismo contenido y el mismo orden que la web: cuentas, tarjetas (con su
 // plástico) y préstamos. Lo que cambia es que la navegación, las acciones y los
 // menús son de iOS.
+/// Lo que enseña la pantalla de Cuentas, ya decorado por la web.
+struct CNCuentasModelo {
+    struct Fila: Identifiable {
+        var id: Int { indice }
+        var indice = 0; var nombre = ""; var detalle = ""; var valor = ""; var pie = ""
+        var uso: Double = 0; var usoColor = ""
+        var iconoPath = ""; var color = ""; var fondo = ""; var tintaValor = ""
+    }
+    struct Patrimonio {
+        var titulo = ""; var valor = ""
+        var activosLabel = ""; var activos = ""
+        var pasivosLabel = ""; var pasivos = ""
+        var fondo = ""; var tinta = ""
+    }
+    var titulo = "Cuentas"; var oculto = false
+    var patrimonio = Patrimonio()
+    var rotuloCuentas = "Cuentas"; var rotuloTarjetas = "Tarjetas de crédito"; var rotuloPrestamos = "Préstamos"
+    var cuentas: [Fila] = []; var tarjetas: [Fila] = []; var prestamos: [Fila] = []
+
+    static func desde(json: String) -> CNCuentasModelo? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
+        func n(_ o: [String: Any]?, _ k: String) -> Double { ((o?[k] as? NSNumber)?.doubleValue) ?? 0 }
+        func l(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
+        func filas(_ k: String) -> [Fila] {
+            l(r, k).map {
+                Fila(indice: Int(n($0, "indice")), nombre: s($0, "nombre"), detalle: s($0, "detalle"),
+                     valor: s($0, "valor"), pie: s($0, "pie"), uso: n($0, "uso"), usoColor: s($0, "usoColor"),
+                     iconoPath: s($0, "iconoPath"), color: s($0, "color"), fondo: s($0, "fondo"),
+                     tintaValor: s($0, "tintaValor"))
+            }
+        }
+        var m = CNCuentasModelo()
+        m.titulo = s(r, "titulo").isEmpty ? "Cuentas" : s(r, "titulo")
+        m.oculto = (r["oculto"] as? Bool) ?? false
+        let p = r["patrimonio"] as? [String: Any]
+        m.patrimonio = Patrimonio(titulo: s(p, "titulo"), valor: s(p, "valor"),
+                                  activosLabel: s(p, "activosLabel"), activos: s(p, "activos"),
+                                  pasivosLabel: s(p, "pasivosLabel"), pasivos: s(p, "pasivos"),
+                                  fondo: s(p, "fondo"), tinta: s(p, "tinta"))
+        m.rotuloCuentas = s(r, "rotuloCuentas"); m.rotuloTarjetas = s(r, "rotuloTarjetas")
+        m.rotuloPrestamos = s(r, "rotuloPrestamos")
+        m.cuentas = filas("cuentas"); m.tarjetas = filas("tarjetas"); m.prestamos = filas("prestamos")
+        return m
+    }
+}
+
 struct CNCuentas: View {
     @ObservedObject var datos: CNDatos
 
     var body: some View {
-        let lb = datos.libreta
-        return VStack(spacing: 0) {
-            CNCabeceraApp(c: datos.resumen?.cabecera ?? CNResumenModelo.Cabecera(),
-                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
-                          onCalendario: { datos.onCalendario() },
-                          onMesTira: { datos.onMesTira($0) },
-                          onPlegar: { datos.onPlegar() })
-            ScrollView(showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: 13) {
-                    HStack(spacing: 10) {
-                        resumen(lb)
-                        CNMenuVidrio(icono: "ellipsis", lado: 44) {
-                            Button { datos.onTendencia() } label: { Label("Ver la tendencia", systemImage: "chart.line.uptrend.xyaxis") }
-                            Button { datos.onAgregar() } label: { Label("Agregar…", systemImage: "plus") }
-                        }
-                        CNCirculoAcento(icono: "plus") { datos.onAgregar() }
-                    }
-                    rotulo("Mis cuentas")
-                    if lb.cuentas.isEmpty { cnVacioCard("Aún no hay cuentas", "Toca + para agregar la primera.") }
-                    ForEach(lb.cuentas) { c in filaCuenta(c, lb) }
-
-                    rotulo("Mis tarjetas").padding(.top, 4)
-                    if lb.tarjetas.isEmpty { cnVacioCard("Sin tarjetas", "Agrega una para seguir su deuda y sus fechas.") }
-                    ForEach(lb.tarjetas) { t in tarjeta(t) }
-
-                    if !lb.prestamos.isEmpty {
-                        rotulo("Préstamos").padding(.top, 4)
-                        prestamos(lb)
-                    }
-                    Color.clear.frame(height: 110)
+        let m = datos.cuentas ?? CNCuentasModelo()
+        return ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 14) {
+                CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
+                titulo(m)
+                patrimonio(m.patrimonio, oculto: m.oculto)
+                if !m.cuentas.isEmpty {
+                    rotulo(m.rotuloCuentas)
+                    grupo(m.cuentas, tipo: "cuenta")
                 }
-                .padding(.horizontal, 16).padding(.top, 14)
+                if !m.tarjetas.isEmpty {
+                    rotulo(m.rotuloTarjetas)
+                    grupo(m.tarjetas, tipo: "tarjeta")
+                }
+                if !m.prestamos.isEmpty {
+                    rotulo(m.rotuloPrestamos)
+                    grupo(m.prestamos, tipo: "prestamo")
+                }
+                Color.clear.frame(height: 110)
             }
+            .padding(.horizontal, 16).padding(.top, 2)
         }
         .background(CNC.scr.ignoresSafeArea())
     }
 
-    /// Patrimonio y deuda, dentro de la franja: lo primero que se quiere saber.
-    private func resumen(_ lb: CNLibreta) -> some View {
+    private func titulo(_ m: CNCuentasModelo) -> some View {
         HStack(spacing: 10) {
-            cifra("En cuentas", cnDinero(lb.totalCuentas))
-            cifra("Deuda", cnDinero(lb.deudaTotal))
-            cifra("Patrimonio", cnDinero(lb.patrimonio))
+            Text(m.titulo).font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
+            Spacer(minLength: 8)
+            CNMenuVidrio(icono: "line.3.horizontal.decrease") {
+                Button { datos.onTendencia() } label: { Label("Ver la tendencia", systemImage: "chart.line.uptrend.xyaxis") }
+                Button { datos.onCuentasAccion("ocultar", 0) } label: {
+                    Label(m.oculto ? "Enseñar el dinero" : "Ocultar el dinero", systemImage: m.oculto ? "eye" : "eye.slash")
+                }
+            }
+            CNCirculoAcento(icono: "plus") { datos.onAgregar() }
         }
-    }
-    private func cifra(_ rotulo: String, _ valor: String) -> some View {
-        VStack(spacing: 3) {
-            Text(rotulo.uppercased()).font(.system(size: 9.5, weight: .heavy)).tracking(0.5)
-                .foregroundColor(CNC.pmut)
-            Text(valor).font(.system(size: 15, weight: .heavy)).foregroundColor(CNC.ink)
-                .lineLimit(1).minimumScaleFactor(0.6)
-        }
-        .frame(maxWidth: .infinity).padding(.vertical, 10)
-        .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
     }
 
     private func rotulo(_ t: String) -> some View {
-        Text(t).font(.system(size: 14, weight: .bold)).foregroundColor(CNC.ink)
-            .padding(.leading, 2)
+        Text(t.uppercased()).font(.system(size: 12, weight: .heavy)).tracking(0.8)
+            .foregroundColor(CNC.pmut).padding(.leading, 4).padding(.top, 4)
     }
 
-    private func filaCuenta(_ c: CNCuenta, _ lb: CNLibreta) -> some View {
-        let movs = lb.movimientosDe("cuenta:\(c.id)").count
-        return Button { datos.onAbrirCuenta(c.id) } label: {
-            HStack(spacing: 12) {
-                Text(cnIniciales(c.nombre)).font(.system(size: 12.5, weight: .heavy)).foregroundColor(.white)
-                    .frame(width: 42, height: 42).background(cnColor(hexString: c.color))
-                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(c.nombre).font(.system(size: 14.5, weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
-                    Text([c.banco.isEmpty ? nil : c.banco, "\(movs) movs"].compactMap { $0 }.joined(separator: " · "))
-                        .font(.system(size: 11.5)).foregroundColor(CNC.pmut).lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                Text(cnDinero(c.saldo)).font(.system(size: 15, weight: .heavy)).foregroundColor(CNC.ink)
-            }
-            .tarjetaCN()
-        }
-        .buttonStyle(CNPulsable())
-        .contextMenu {
-            Button { datos.onAbrirCuenta(c.id) } label: { Label("Ver detalle", systemImage: "doc.text.magnifyingglass") }
-            Button { datos.onAccion("transferir", "\(c.id)") } label: { Label("Transferir", systemImage: "arrow.left.arrow.right") }
-        }
-    }
-
-    /// El «plástico» de la tarjeta y, debajo, el uso del límite.
-    private func tarjeta(_ t: CNTarjeta) -> some View {
-        let uso = t.limite > 0 ? min(1, t.saldo / t.limite) : 0
-        let color = cnColor(hexString: t.color)
-        let usoColor: Color = uso > 0.9 ? CNC.neg : (uso > 0.7 ? CNC.acc : CNC.pos)
+    /// La tarjeta oscura del patrimonio, con el ojo para tapar el dinero y el
+    /// atajo a la tendencia.
+    private func patrimonio(_ p: CNCuentasModelo.Patrimonio, oculto: Bool) -> some View {
+        let tinta = p.tinta.isEmpty ? Color.white : cnColor(hexString: p.tinta)
         return VStack(spacing: 10) {
-            Button { datos.onAbrirTarjeta(t.id) } label: {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(t.nombre).font(.system(size: 15, weight: .heavy)).foregroundColor(.white).lineLimit(1)
-                            if !t.banco.isEmpty {
-                                Text(t.banco.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(1.2)
-                                    .foregroundColor(.white.opacity(0.78)).lineLimit(1)
+            HStack {
+                Button { datos.onCuentasAccion("ocultar", 0) } label: {
+                    Image(systemName: oculto ? "eye.slash" : "eye").font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(tinta).frame(width: 34, height: 34)
+                        .background(Color.white.opacity(0.13), in: Circle())
+                }.buttonStyle(CNPulsable())
+                Spacer(minLength: 8)
+                Text(p.titulo).font(.system(size: 14, weight: .semibold)).foregroundColor(tinta.opacity(0.9))
+                Spacer(minLength: 8)
+                Button { datos.onTendencia() } label: {
+                    Image(systemName: "chart.line.uptrend.xyaxis").font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(tinta).frame(width: 34, height: 34)
+                        .background(Color.white.opacity(0.13), in: Circle())
+                }.buttonStyle(CNPulsable())
+            }
+            Text(p.valor).font(.system(size: 32, weight: .heavy)).foregroundColor(tinta)
+                .lineLimit(1).minimumScaleFactor(0.5)
+            HStack(spacing: 0) {
+                VStack(spacing: 2) {
+                    Text(p.activosLabel).font(.system(size: 12)).foregroundColor(tinta.opacity(0.75))
+                    Text(p.activos).font(.system(size: 15, weight: .bold)).foregroundColor(tinta)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                }.frame(maxWidth: .infinity)
+                VStack(spacing: 2) {
+                    Text(p.pasivosLabel).font(.system(size: 12)).foregroundColor(tinta.opacity(0.75))
+                    Text(p.pasivos).font(.system(size: 15, weight: .bold)).foregroundColor(tinta)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                }.frame(maxWidth: .infinity)
+            }
+            .padding(.top, 2)
+        }
+        .padding(16).frame(maxWidth: .infinity)
+        .background(p.fondo.isEmpty ? CNC.side : cnColor(hexString: p.fondo))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func grupo(_ filas: [CNCuentasModelo.Fila], tipo: String) -> some View {
+        VStack(spacing: 0) {
+            ForEach(filas) { f in
+                Button { datos.onCuentasAccion(tipo, f.indice) } label: {
+                    HStack(spacing: 12) {
+                        CNSVGShape(d: f.iconoPath)
+                            .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                            .foregroundColor(f.color.isEmpty ? CNC.pmut : cnColor(hexString: f.color))
+                            .frame(width: 19, height: 19).frame(width: 38, height: 38)
+                            .background(f.fondo.isEmpty ? CNC.soft : cnColor(hexString: f.fondo))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(f.nombre).font(.system(size: 15.5, weight: .bold))
+                                    .foregroundColor(CNC.ink).lineLimit(1)
+                                Spacer(minLength: 6)
+                                Text(f.valor).font(.system(size: 15.5, weight: .bold))
+                                    .foregroundColor(f.tintaValor.isEmpty ? CNC.ink : cnColor(hexString: f.tintaValor))
+                                    .lineLimit(1)
+                            }
+                            if !f.detalle.isEmpty {
+                                Text(f.detalle).font(.system(size: 12)).foregroundColor(CNC.pmut).lineLimit(1)
+                            }
+                            if !f.pie.isEmpty {
+                                CNBarraProgreso(parte: f.uso / 100,
+                                                color: f.usoColor.isEmpty ? CNC.pos : cnColor(hexString: f.usoColor),
+                                                alto: 5)
+                                    .padding(.top, 1)
+                                Text(f.pie).font(.system(size: 11.5)).foregroundColor(CNC.pmut).lineLimit(1)
                             }
                         }
-                        Spacer(minLength: 8)
-                        if t.corte > 0 {
-                            Text("Corte \(t.corte)").font(.system(size: 10, weight: .semibold)).foregroundColor(.white)
-                                .padding(.horizontal, 10).padding(.vertical, 5)
-                                .background(Color.white.opacity(0.2), in: Capsule())
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(CNC.pmut.opacity(0.5))
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 12).contentShape(Rectangle())
+                    .overlay(alignment: .bottom) {
+                        if f.indice < filas.count - 1 {
+                            Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.leading, 64)
                         }
                     }
-                    Spacer(minLength: 14)
-                    HStack(spacing: 12) {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.white.opacity(0.34))
-                            .frame(width: 36, height: 26)
-                        Text("•••• \(String(format: "%04d", t.id % 10000))")
-                            .font(.system(size: 15, weight: .semibold)).tracking(2)
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    Spacer(minLength: 14)
-                    HStack(alignment: .bottom) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("DEUDA").font(.system(size: 10, weight: .heavy)).tracking(1)
-                                .foregroundColor(.white.opacity(0.72))
-                            Text(cnDinero(t.saldo)).font(.system(size: 23, weight: .heavy)).foregroundColor(.white)
-                                .lineLimit(1).minimumScaleFactor(0.7)
-                        }
-                        Spacer(minLength: 8)
-                        if t.pago > 0 {
-                            Text("Pago \(t.pago)").font(.system(size: 10.5)).foregroundColor(.white.opacity(0.85))
-                        }
-                    }
-                }
-                .padding(17).frame(height: 196)
-                .background(
-                    LinearGradient(colors: [color, cnOscurecer(color, 0.35)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .shadow(color: color.opacity(0.32), radius: 16, y: 8)
-            }
-            .buttonStyle(CNPulsable())
-
-            VStack(spacing: 9) {
-                HStack {
-                    Text("Uso del límite").font(.system(size: 11.5)).foregroundColor(CNC.pmut)
-                    Spacer()
-                    Text("\(Int(uso * 100))% de \(cnDinero(t.limite))")
-                        .font(.system(size: 11.5, weight: .bold)).foregroundColor(usoColor)
-                }
-                CNBarraProgreso(parte: uso, color: usoColor, alto: 8)
-                if t.saldo > 0 {
-                    Button { datos.onAccion("pagoTarjeta", "\(t.id)") } label: {
-                        Text("Pagar \(cnDinero(t.saldo))").font(.system(size: 13.5, weight: .bold))
-                            .foregroundColor(CNC.sobreAcc).frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .cnVidrio(RoundedRectangle(cornerRadius: 12, style: .continuous), tinte: CNC.acc)
-                    }.buttonStyle(CNPulsable())
-                }
-            }
-            .tarjetaCN()
-        }
-    }
-
-    private func prestamos(_ lb: CNLibreta) -> some View {
-        VStack(spacing: 14) {
-            ForEach(lb.prestamos) { d in
-                Button { datos.onAbrirPrestamo(d.id) } label: {
-                    VStack(alignment: .leading, spacing: 7) {
-                        HStack {
-                            Text(d.nombre).font(.system(size: 13, weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
-                            Spacer(minLength: 8)
-                            Text(cnDinero(d.pendiente)).font(.system(size: 12.5)).foregroundColor(CNC.pmut)
-                        }
-                        CNBarraProgreso(parte: d.total > 0 ? min(1, d.pagado / d.total) : 0,
-                                        color: cnColor(hexString: d.color), alto: 8)
-                        Text(d.sentido == "debo" ? "Yo debo · pagado \(cnDinero(d.pagado))" : "Me deben · abonado \(cnDinero(d.pagado))")
-                            .font(.system(size: 11)).foregroundColor(CNC.pmut)
-                    }
-                }
-                .buttonStyle(CNPulsable())
-                .contextMenu {
-                    Button { datos.onAbrirPrestamo(d.id) } label: { Label("Ver detalle", systemImage: "doc.text.magnifyingglass") }
-                    Button { datos.onAccion("abono", "\(d.id)") } label: { Label("Registrar abono", systemImage: "plus.circle") }
-                }
+                }.buttonStyle(CNPulsable())
             }
         }
-        .tarjetaCN()
+        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
     }
 }
 
@@ -1800,6 +1945,7 @@ struct CNPlan: View {
                           onPlegar: { datos.onPlegar() })
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 12) {
+                    CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
                     HStack(spacing: 10) {
                         CNSegmentado(opciones: ["Presupuesto", "Metas"], elegida: $pestana)
                         CNCirculoAcento(icono: "plus") {
@@ -2080,6 +2226,9 @@ struct CNResumenModelo {
     var vacio = false; var vacioTitulo = ""; var vacioTexto = ""; var vacioBoton = ""
     var widgets: [Widget] = []
     var tiposGrafico: [Opcion] = []; var rangosGrafico: [Opcion] = []; var catalogo: [Opcion] = []
+    /// nombre de categoría → (trazo del icono, color). Los mismos que la web.
+    struct IconoCat { var path = ""; var color = "" }
+    var catIconos: [String: IconoCat] = [:]
 
     // Se lee a mano (no con Decodable): así un campo que falte o que cambie de
     // forma —la dona reusa «filas» con otra— no tira toda la pantalla abajo.
@@ -2120,6 +2269,9 @@ struct CNResumenModelo {
         m.vacio = b(raiz, "vacio"); m.vacioTitulo = s(raiz, "vacioTitulo")
         m.vacioTexto = s(raiz, "vacioTexto"); m.vacioBoton = s(raiz, "vacioBoton")
 
+        if let ic = raiz["catIconos"] as? [String: [String: Any]] {
+            for (k, v) in ic { m.catIconos[k] = IconoCat(path: s(v, "path"), color: s(v, "color")) }
+        }
         m.tiposGrafico = lista(raiz, "tiposGrafico").map { Opcion(id: s($0, "id"), label: s($0, "label")) }
         m.rangosGrafico = lista(raiz, "rangosGrafico").map { Opcion(id: s($0, "id"), label: s($0, "label")) }
         m.catalogo = lista(raiz, "catalogo").map { Opcion(id: s($0, "id"), label: s($0, "label")) }
@@ -2678,6 +2830,7 @@ struct CNResumen: View {
                     VStack(spacing: 0) {
                         CNEspiaScroll { y in
                             if abs(y - rodado) > 0.5 { rodado = max(0, y) }
+                            CNScrollEstado.shared.mirar(y)
                         }
                         .frame(height: 0).id("cnArriba")
                         contenido(m)
@@ -3232,6 +3385,7 @@ struct CNPerfil: View {
             cabecera
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 22) {
+                    CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
                     tarjetaUsuario(a.usuario)
                     ForEach(a.grupos.indices, id: \.self) { gi in
                         grupo(a.grupos[gi], gi)

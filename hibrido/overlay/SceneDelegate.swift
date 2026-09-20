@@ -62,6 +62,8 @@ class TestVC: CAPBridgeViewController {
         let grisCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.72)" : "rgb(214,222,205)"
         let pastCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.13)" : "rgba(255,255,255,0.13)"
         let pastF = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)"
+        datos.cargarCuentas(json: TestVC.cuentasDeMuestra)
+        datos.cargarMovDetalle(json: TestVC.movDeMuestra)
         datos.cargarAjustes(json: TestVC.ajustesDeMuestra
             .replacingOccurrences(of: "rgb(249,245,230)",
                                   with: cual.contains("oscuro") ? "rgb(43,43,45)" : "rgb(249,245,230)"))
@@ -476,5 +478,41 @@ extension TestVC {
      "borde":"rgb(61,61,63)","tinta":"rgb(240,240,243)","gris":"rgb(152,152,157)",
      "side":"rgb(0,28,11)","acento":"rgb(251,213,48)",
      "pos":"rgb(77,191,116)","neg":"rgb(239,128,111)","info":"rgb(90,160,230)","oscuro":true}
+    """
+}
+
+extension TestVC {
+    static let cuentasDeMuestra = """
+    {"titulo":"Cuentas","oculto":false,
+     "patrimonio":{"titulo":"Patrimonio","valor":"−RD$185,000","activosLabel":"Activos","activos":"RD$151,000",
+       "pasivosLabel":"Pasivos","pasivos":"RD$336,000","fondo":"rgb(41,45,43)","tinta":"rgb(245,245,230)"},
+     "rotuloCuentas":"Cuentas","rotuloTarjetas":"Tarjetas de crédito","rotuloPrestamos":"Préstamos",
+     "cuentas":[
+       {"indice":0,"nombre":"Cuenta principal","detalle":"Banreservas · 73 movs","valor":"RD$54,800",
+        "iconoPath":"M4 21V9l8-6 8 6v12M9 21v-6h6v6","color":"rgb(52,110,74)","fondo":"rgba(52,110,74,0.15)"},
+       {"indice":1,"nombre":"Ahorros","detalle":"Banco Popular · 0 movs","valor":"RD$92,000",
+        "iconoPath":"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M8.5 14.5a4.5 4.5 0 0 0 7 0M9 10h.01M15 10h.01","color":"rgb(52,94,178)","fondo":"rgba(52,94,178,0.15)"},
+       {"indice":2,"nombre":"Efectivo","detalle":"En mano · 0 movs","valor":"RD$4,200",
+        "iconoPath":"M4 7h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM3 11h18M7 15h3","color":"rgb(176,140,40)","fondo":"rgba(176,140,40,0.15)"}],
+     "tarjetas":[
+       {"indice":0,"nombre":"Visa Clásica","valor":"RD$18,600","pie":"23% del límite · pago en 16 d","uso":23,
+        "usoColor":"rgb(19,125,65)","iconoPath":"M4 7h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM3 11h18M7 15h3",
+        "color":"rgb(52,94,178)","fondo":"rgba(52,94,178,0.15)","tintaValor":"rgb(213,89,72)"},
+       {"indice":1,"nombre":"Mastercard Gold","valor":"RD$43,200","pie":"29% del límite · pago en 26 d","uso":29,
+        "usoColor":"rgb(19,125,65)","iconoPath":"M4 7h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM3 11h18M7 15h3",
+        "color":"rgb(130,94,185)","fondo":"rgba(130,94,185,0.15)","tintaValor":"rgb(213,89,72)"}],
+     "prestamos":[
+       {"indice":0,"nombre":"Préstamo del carro","valor":"RD$135,000","pie":"12 de 24 cuotas","uso":50,
+        "usoColor":"rgb(130,94,185)","iconoPath":"M3 8h13l-3-3M21 16H8l3 3","color":"rgb(130,94,185)",
+        "fondo":"rgba(130,94,185,0.15)","tintaValor":"rgb(213,89,72)"}]}
+    """
+    static let movDeMuestra = """
+    {"nombre":"Préstamo del carro","rotulo":"Salió","montoFmt":"RD$9,800","color":"rgb(213,89,72)",
+     "iconoPath":"M4 7h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM3 11h18M7 15h3",
+     "iconoColor":"rgb(213,89,72)","iconoBg":"rgba(213,89,72,0.15)","puedeEditar":true,
+     "textoEditar":"Editar","textoDuplicar":"Duplicar",
+     "datos":[{"label":"Categoría","valor":"Deudas"},{"label":"Tipo","valor":"Fijo"},
+              {"label":"Fecha","valor":"11 de septiembre"},{"label":"Pagado con","valor":"Cuenta principal"},
+              {"label":"Se repite","valor":"Cada mes"}]}
     """
 }
