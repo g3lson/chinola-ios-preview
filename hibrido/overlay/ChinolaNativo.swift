@@ -467,6 +467,8 @@ struct CNMenuVidrio<C: View>: View {
 
 struct CNMovs: View {
     @ObservedObject var datos: CNDatos
+    /// Solo para el banco de pruebas: rodar sola para ver el buscador fijo.
+    var rodarAlEmpezar = false
     @State private var q = ""
     /// Los mismos filtros de la web, pero en menús del sistema.
     @State private var filtro = 0
@@ -533,9 +535,10 @@ struct CNMovs: View {
                             grupoDia(porDia[i].0, porDia[i].1).padding(.horizontal, 14)
                         }
                     }
-                    Color.clear.frame(height: 110)
+                    Color.clear.frame(height: 110).id("cnAbajo")
                 }
             }
+            .modifier(CNRodarSolo(activo: rodarAlEmpezar))
         }
         .background(CNC.scr.ignoresSafeArea())
     }
@@ -576,8 +579,18 @@ struct CNMovs: View {
                 }
             }
         }
-        .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 10)
-        .background(CNC.scr.opacity(0.92))
+        .padding(.horizontal, 16)
+        // Pegado a la isla, como el buscador de Apple Music.
+        .padding(.top, max(2, 6 - max(0, cnMargenArriba() - 56)))
+        .padding(.bottom, 10)
+        // El vidrio sube a cubrir la barra de estado: al quedarse fijo, lo que
+        // pasa por debajo tiene que pasar POR DEBAJO también ahí arriba. Sin
+        // esto se veía una fila suelta entre la isla y el buscador.
+        .background(
+            Rectangle().fill(.ultraThinMaterial)
+                .overlay(Rectangle().fill(CNC.scr.opacity(0.55)))
+                .ignoresSafeArea(edges: .top)
+        )
     }
 
     private func grupoDia(_ fecha: String, _ items: [CNMov]) -> some View {
@@ -4199,4 +4212,23 @@ func cnFondoDeCss(_ css: String) -> CNResumenModelo.Fondo {
         return CNResumenModelo.Parada(color: color, pos: pos)
     }
     return CNResumenModelo.Fondo(tipo: "grad", color: "", angulo: angulo, paradas: paradas)
+}
+
+/// Solo para el banco de pruebas: rueda la lista sola a los dos segundos, para
+/// poder capturar cómo queda el buscador fijo arriba.
+struct CNRodarSolo: ViewModifier {
+    let activo: Bool
+    func body(content: Content) -> some View {
+        if activo {
+            ScrollViewReader { lector in
+                content.onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                        withAnimation(.easeOut(duration: 0.5)) { lector.scrollTo("cnAbajo", anchor: .bottom) }
+                    }
+                }
+            }
+        } else {
+            content
+        }
+    }
 }

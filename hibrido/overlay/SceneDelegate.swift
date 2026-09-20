@@ -186,7 +186,8 @@ extension TestVC {
         case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas":
             datos.cargarSeccion(json: TestVC.seccionDeMuestra(String(cual.dropFirst(4))))
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
-        case "tema-claro-movs", "tema-oscuro-movs": vista = AnyView(CNMovs(datos: datos)); estado.activa = "movs"
+        case "tema-claro-movs", "tema-oscuro-movs", "movs-rodado":
+            vista = AnyView(CNMovs(datos: datos, rodarAlEmpezar: cual == "movs-rodado")); estado.activa = "movs"
         case "tema-claro-perfil", "tema-oscuro-perfil": vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
         case "tema-claro", "tema-oscuro",
              "resumen", "organiza", "plegada", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
