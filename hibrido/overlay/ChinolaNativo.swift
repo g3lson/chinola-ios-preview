@@ -2576,9 +2576,48 @@ struct CNFondoCabecera: View {
 }
 
 /// Cuánto se ha rodado la lista: es lo que pliega la cabecera automática.
-struct CNScrollY: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+/// Mira cuánto se ha rodado, de verdad.
+///
+/// Medirlo con GeometryReader + preferencias NO funcionaba aquí: la lista se
+/// movía y el valor no llegaba nunca a la vista. Esto sube por las vistas hasta
+/// dar con el `UIScrollView` que SwiftUI crea por debajo y se apunta a sus
+/// cambios de posición, que es el dato que de verdad manda.
+struct CNEspiaScroll: UIViewRepresentable {
+    var alRodar: (CGFloat) -> Void
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView(frame: .zero)
+        v.isUserInteractionEnabled = false
+        v.backgroundColor = .clear
+        DispatchQueue.main.async { context.coordinator.enganchar(desde: v) }
+        return v
+    }
+    func updateUIView(_ v: UIView, context: Context) {
+        context.coordinator.alRodar = alRodar
+        if context.coordinator.scroll == nil {
+            DispatchQueue.main.async { context.coordinator.enganchar(desde: v) }
+        }
+    }
+    func makeCoordinator() -> Coordinador { Coordinador(alRodar) }
+
+    final class Coordinador: NSObject {
+        var alRodar: (CGFloat) -> Void
+        weak var scroll: UIScrollView?
+        private var obs: NSKeyValueObservation?
+        init(_ f: @escaping (CGFloat) -> Void) { alRodar = f }
+        func enganchar(desde v: UIView) {
+            var p: UIView? = v.superview
+            while let actual = p, !(actual is UIScrollView) { p = actual.superview }
+            guard let sc = p as? UIScrollView else { return }
+            scroll = sc
+            obs = sc.observe(\.contentOffset, options: [.new, .initial]) { [weak self] s, _ in
+                let y = s.contentOffset.y + s.adjustedContentInset.top
+                // Fuera del ciclo de dibujo: tocar el estado desde aquí dentro
+                // saca el aviso de «modifying state during view update».
+                DispatchQueue.main.async { self?.alRodar(y) }
+            }
+        }
+        deinit { obs?.invalidate() }
+    }
 }
 
 /// Lo que mide la cabecera, para dejarle su hueco en la lista.
@@ -2617,8 +2656,8 @@ struct CNResumen: View {
             ScrollView(showsIndicators: false) {
                 ScrollViewReader { lector in
                 VStack(spacing: 0) {
-                    GeometryReader { g in
-                        Color.clear.preference(key: CNScrollY.self, value: -g.frame(in: .named("cnResumen")).minY)
+                    CNEspiaScroll { y in
+                        if abs(y - rodado) > 0.5 { rodado = max(0, y) }
                     }
                     .frame(height: 0).id("cnArriba")
                     Color.clear.frame(height: max(0, altoCabecera + (auto ? min(rodado, 90) : 0)))
@@ -2632,11 +2671,6 @@ struct CNResumen: View {
                         }
                 }
                 }
-            }
-            .coordinateSpace(name: "cnResumen")
-            .onPreferenceChange(CNScrollY.self) { y in
-                // Como en la web: solo se repinta cuando el cambio se nota.
-                if abs(y - rodado) > 0.5 { rodado = max(0, y) }
             }
             CNCabeceraApp(c: m.cabecera, progreso: auto ? progreso : 1,
                           onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
