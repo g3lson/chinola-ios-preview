@@ -353,6 +353,11 @@ final class CNDatos: ObservableObject {
     var onAbrirSeccion: (String) -> Void = { _ in }
     /// Dispara una acción de la sección (su número) y vuelve a pedir el modelo.
     var onSeccionAccion: (Int, String?) -> Void = { _, _ in }
+    /// Las hojas de la web, dibujadas en nativo.
+    var onHojaCampo: (Int, String, String) -> Void = { _, _, _ in }
+    var onHojaEnviar: () -> Void = {}
+    @Published var hojaWeb: CNHojaWeb.Modelo? = nil
+    func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
     func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }

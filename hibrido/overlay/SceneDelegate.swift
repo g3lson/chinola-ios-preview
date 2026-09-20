@@ -68,6 +68,12 @@ class TestVC: CAPBridgeViewController {
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
         barra.pintar(activa: estado.activa, titulos: true)
+        if base == "hoja-web" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                guard let s = self else { return }
+                s.presentar(AnyView(CNHojaWebViva(datos: s.datos, onClose: { s.cerrar() })))
+            }
+        }
         if ["detalle", "nuevo", "tarjeta", "agregar"].contains(base) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
                 guard let s = self else { return }
@@ -143,6 +149,9 @@ extension TestVC {
         switch cual {
         case "vidrio": vista = AnyView(CNPruebaColores()); estado.activa = "resumen"
         case "perfil": vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
+        case "hoja-web":
+            datos.cargarHojaWeb(json: TestVC.hojaDeMuestra)
+            vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
         case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas":
             datos.cargarSeccion(json: TestVC.seccionDeMuestra(String(cual.dropFirst(4))))
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
@@ -369,4 +378,26 @@ extension TestVC {
             """
         }
     }
+}
+
+extension TestVC {
+    /// Una hoja de la web de ejemplo (nueva libreta), con sus tres tipos de
+    /// campo: texto, color e icono.
+    static let hojaDeMuestra = """
+    {"tipo":"libreta","titulo":"Nueva libreta","texto":"Una libreta para cada parte de tu vida: casa, negocio, viajes.",
+     "boton":"Crear libreta","error":"","ok":"","cargando":false,
+     "campos":[
+       {"indice":0,"label":"Nombre","tipo":"text","ph":"Casa","valor":"","teclado":"text","seguro":false},
+       {"indice":1,"label":"Para qué es","tipo":"text","ph":"","valor":"personal","teclado":"text","seguro":false,
+        "opciones":[{"id":"personal","label":"Personal"},{"id":"negocio","label":"Negocio"},{"id":"viaje","label":"Viaje"}]},
+       {"indice":2,"label":"Color","tipo":"color","valor":"","teclado":"text","seguro":false,
+        "colores":[{"indice":0,"color":"#137d41","puesta":true},{"indice":1,"color":"#2f6fd6"},{"indice":2,"color":"#825eb9"},
+                   {"indice":3,"color":"#d55948"},{"indice":4,"color":"#e0a92e"},{"indice":5,"color":"#5a7a2e"}]},
+       {"indice":3,"label":"Icono","tipo":"icono","valor":"","teclado":"text","seguro":false,
+        "iconos":[{"indice":0,"clave":"casa","label":"Casa","path":"M4 21V9l8-6 8 6v12M9 21v-6h6v6","puesta":true},
+                  {"indice":1,"clave":"banco","label":"Banco","path":"M4 7h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM3 11h18M7 15h3"},
+                  {"indice":2,"clave":"avion","label":"Viaje","path":"M12 2l3 8 7 2-7 2-3 8-3-8-7-2 7-2z"},
+                  {"indice":3,"clave":"regalo","label":"Regalo","path":"M4 11h16v10H4zM2 7h20v4H2zM12 7v14M12 7S9 2 7 4s5 3 5 3M12 7s3-5 5-3-5 3-5 3"}]}
+     ]}
+    """
 }

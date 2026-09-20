@@ -665,3 +665,188 @@ struct CNAgregar: View {
         }.buttonStyle(CNPulsable())
     }
 }
+
+// ── Las hojas de la WEB, dibujadas en nativo ────────────────────────────────
+// Cambiar la contraseña, el correo, una libreta, una clave de API… La web ya
+// sabe qué campos lleva cada una (y qué teclado sacar, qué opciones ofrecer,
+// qué colores). Aquí solo se dibujan y se devuelve lo escrito: guardar sigue
+// siendo `enviarHoja`, con toda su validación.
+
+struct CNHojaWeb: View {
+    struct Opcion: Identifiable { var id: String; var label: String }
+    struct Color2: Identifiable { var id: Int; var color: String; var puesta: Bool }
+    struct Icono: Identifiable { var id: Int; var clave: String; var label: String; var path: String; var puesta: Bool }
+    struct Campo: Identifiable {
+        var id: Int
+        var label = ""; var tipo = "text"; var ph = ""; var valor = ""
+        var teclado = "text"; var seguro = false
+        var opciones: [Opcion] = []; var colores: [Color2] = []; var iconos: [Icono] = []
+    }
+    struct Modelo {
+        var tipo = ""; var titulo = ""; var texto = ""; var boton = ""
+        var error = ""; var ok = ""; var cargando = false; var destruye = false
+        var campos: [Campo] = []
+    }
+
+    let m: Modelo
+    @ObservedObject var datos: CNDatos
+    var onClose: () -> Void
+    /// Lo que se va escribiendo, para que el campo no dé saltos mientras la web
+    /// responde con su propio valor.
+    @State private var texto: [Int: String] = [:]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            CNHojaCabecera(titulo: m.titulo, guardarTexto: m.boton.isEmpty ? "Guardar" : m.boton,
+                           guardarActivo: !m.cargando, onClose: onClose,
+                           onGuardar: { datos.onHojaEnviar() })
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    if !m.texto.isEmpty {
+                        Text(m.texto).font(.system(size: 13.5)).foregroundColor(CNC.pmut)
+                            .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
+                    }
+                    ForEach(m.campos) { c in campo(c) }
+                    if !m.error.isEmpty { aviso(m.error, CNC.neg) }
+                    if !m.ok.isEmpty { aviso(m.ok, CNC.pos) }
+                    Color.clear.frame(height: 24)
+                }
+                .padding(.horizontal, 16).padding(.top, 4)
+            }
+            .cnTeclado()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(CNC.scr.ignoresSafeArea())
+        .environment(\.locale, Locale(identifier: "es_DO"))
+    }
+
+    private func aviso(_ t: String, _ color: Color) -> some View {
+        Text(t).font(.system(size: 13)).foregroundColor(color)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    @ViewBuilder private func campo(_ c: Campo) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            cnHojaTitulo(c.label)
+            if !c.colores.isEmpty {
+                HStack(spacing: 10) {
+                    ForEach(c.colores) { x in
+                        Button { datos.onHojaCampo(c.id, String(x.id), "color") } label: {
+                            Circle().fill(cnColor(hexString: x.color)).frame(width: 32, height: 32)
+                                .overlay(Circle().stroke(CNC.ink, lineWidth: x.puesta ? 3 : 0))
+                                .overlay(Circle().stroke(CNC.line, lineWidth: 0.5))
+                        }.buttonStyle(CNPulsable())
+                    }
+                    Spacer(minLength: 0)
+                }.padding(.horizontal, 4)
+            } else if !c.iconos.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(c.iconos) { x in
+                            Button { datos.onHojaCampo(c.id, String(x.id), "icono") } label: {
+                                CNSVGShape(d: x.path)
+                                    .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                                    .foregroundColor(x.puesta ? CNC.ink : CNC.pmut)
+                                    .frame(width: 20, height: 20).frame(width: 44, height: 44)
+                                    .background(x.puesta ? CNC.soft : CNC.card,
+                                                in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: 13)
+                                        .stroke(x.puesta ? CNC.acc : CNC.line, lineWidth: x.puesta ? 2 : 1))
+                            }.buttonStyle(CNPulsable())
+                        }
+                    }.padding(.horizontal, 2).padding(.vertical, 2)
+                }
+            } else if !c.opciones.isEmpty {
+                cnGrupoHoja {
+                    Menu {
+                        Picker("", selection: Binding(get: { c.valor },
+                                                      set: { datos.onHojaCampo(c.id, $0, "") })) {
+                            ForEach(c.opciones) { o in Text(o.label).tag(o.id) }
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text(etiqueta(c)).font(.system(size: 16)).foregroundColor(CNC.ink).lineLimit(1)
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(CNC.pmut.opacity(0.6))
+                        }
+                        .padding(.horizontal, 15).padding(.vertical, 14)
+                    }
+                }
+            } else {
+                cnGrupoHoja {
+                    Group {
+                        if c.seguro {
+                            SecureField(c.ph, text: enlace(c))
+                        } else {
+                            TextField(c.ph, text: enlace(c))
+                                .keyboardType(cnTeclado(c.teclado))
+                                .textInputAutocapitalization(c.teclado == "email" ? .never : .sentences)
+                                .disableAutocorrection(c.teclado == "email")
+                        }
+                    }
+                    .font(.system(size: 16)).foregroundColor(CNC.ink)
+                    .padding(.horizontal, 15).padding(.vertical, 14)
+                }
+            }
+        }
+    }
+
+    private func etiqueta(_ c: Campo) -> String {
+        c.opciones.first { $0.id == c.valor }?.label ?? (c.ph.isEmpty ? "Elegir" : c.ph)
+    }
+    private func enlace(_ c: Campo) -> Binding<String> {
+        Binding(get: { texto[c.id] ?? c.valor },
+                set: { texto[c.id] = $0; datos.onHojaCampo(c.id, $0, "") })
+    }
+}
+
+/// El teclado que pide cada campo (lo dice la web).
+func cnTeclado(_ nombre: String) -> UIKeyboardType {
+    switch nombre {
+    case "email": return .emailAddress
+    case "decimal": return .decimalPad
+    case "tel": return .phonePad
+    case "number": return .numberPad
+    default: return .default
+    }
+}
+
+extension CNHojaWeb.Modelo {
+    static func desde(json: String) -> CNHojaWeb.Modelo? {
+        guard let d = json.data(using: .utf8),
+              let raiz = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
+        func b(_ o: [String: Any]?, _ k: String) -> Bool { (o?[k] as? Bool) ?? false }
+        func n(_ o: [String: Any]?, _ k: String) -> Int { ((o?[k] as? NSNumber)?.intValue) ?? 0 }
+        func l(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
+        var m = CNHojaWeb.Modelo()
+        m.tipo = s(raiz, "tipo"); m.titulo = s(raiz, "titulo"); m.texto = s(raiz, "texto")
+        m.boton = s(raiz, "boton"); m.error = s(raiz, "error"); m.ok = s(raiz, "ok")
+        m.cargando = b(raiz, "cargando"); m.destruye = b(raiz, "destruye")
+        m.campos = l(raiz, "campos").map { c in
+            CNHojaWeb.Campo(id: n(c, "indice"), label: s(c, "label"), tipo: s(c, "tipo"), ph: s(c, "ph"),
+                            valor: s(c, "valor"), teclado: s(c, "teclado"), seguro: b(c, "seguro"),
+                            opciones: l(c, "opciones").map { CNHojaWeb.Opcion(id: s($0, "id"), label: s($0, "label")) },
+                            colores: l(c, "colores").map { CNHojaWeb.Color2(id: n($0, "indice"), color: s($0, "color"), puesta: b($0, "puesta")) },
+                            iconos: l(c, "iconos").map { CNHojaWeb.Icono(id: n($0, "indice"), clave: s($0, "clave"), label: s($0, "label"), path: s($0, "path"), puesta: b($0, "puesta")) })
+        }
+        return m
+    }
+}
+
+/// La hoja de la web, siguiendo su modelo: al escribir o al guardar, la web
+/// contesta con el modelo nuevo (con su error, si lo hay) y esto se repinta.
+struct CNHojaWebViva: View {
+    @ObservedObject var datos: CNDatos
+    var onClose: () -> Void
+    var body: some View {
+        if let m = datos.hojaWeb {
+            CNHojaWeb(m: m, datos: datos, onClose: onClose)
+        } else {
+            Color.clear.onAppear { onClose() }
+        }
+    }
+}
