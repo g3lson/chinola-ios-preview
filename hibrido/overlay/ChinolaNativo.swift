@@ -2188,7 +2188,7 @@ struct CNCabeceraApp: View {
     /// unos pocos de aire para no pegarse a ella.
     private var padArriba: CGFloat {
         if c.tarjeta { return 10 }
-        return 2 - max(0, cnMargenArriba() - 52)
+        return 2 - max(0, cnMargenArriba() - 56)
     }
     private var tinta: Color { c.tinta.isEmpty ? .white : cnColor(hexString: c.tinta) }
     private var gris: Color { c.gris.isEmpty ? tinta.opacity(0.8) : cnColor(hexString: c.gris) }
@@ -2642,12 +2642,6 @@ struct CNEspiaScroll: UIViewRepresentable {
     }
 }
 
-/// Lo que mide la cabecera, para dejarle su hueco en la lista.
-struct CNAltoCabecera: PreferenceKey {
-    static var defaultValue: CGFloat = 174
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
 struct CNResumen: View {
     @ObservedObject var datos: CNDatos
     /// El mismo recorrido que la web (RECORRIDO = 90 px).
@@ -2658,53 +2652,46 @@ struct CNResumen: View {
     var organizaAlEmpezar = false
     /// Solo para el banco de pruebas: rodar la lista sola para ver el plegado.
     var rodarAlEmpezar = false
-    /// Lo que mide la cabecera ahora mismo (se encoge al rodar).
-    @State private var altoCabecera: CGFloat = 174
     private var progreso: Double { Double(max(0, min(1, rodado / 90))) }
 
     var body: some View {
         let m = datos.resumen ?? CNResumenModelo()
         let auto = m.cabecera.diseno == "auto"
-        // La cabecera va ENCIMA de la lista, no encima en la pila vertical.
+        // Primero se pliega la cabecera y DESPUÉS sube el contenido, como en la
+        // web: mientras se pliega, el contenido se queda pegado a su borde de
+        // abajo. Se consigue devolviéndole como relleno lo que se ha rodado
+        // (el `empuja` de allá); si no, el contenido sube dos veces —lo que
+        // rueda y lo que encoge la cabecera— y a la primera se pierden dos
+        // tarjetas.
         //
-        // Estando dentro del mismo VStack, al encogerse movía la lista, y ese
-        // movimiento volvía a entrar como scroll: la medida se mordía la cola y
-        // el plegado no llegaba a verse. Ahora la lista deja un hueco del alto
-        // de la cabecera y la cabecera se dibuja sobre él, así que encogerse no
-        // mueve nada. Y mientras se pliega, el hueco crece lo que se ha rodado
-        // (como el `empuja` de la web), para que el contenido se quede pegado
-        // al borde de abajo de la cabecera en vez de subir el doble.
-        return ZStack(alignment: .top) {
-            ScrollView(showsIndicators: false) {
-                ScrollViewReader { lector in
-                VStack(spacing: 0) {
-                    CNEspiaScroll { y in
-                        if abs(y - rodado) > 0.5 { rodado = max(0, y) }
-                    }
-                    .frame(height: 0).id("cnArriba")
-                    Color.clear.frame(height: max(0, altoCabecera + (auto ? min(rodado, 90) : 0)))
-                    contenido(m)
-                        .padding(.horizontal, 16).padding(.top, 16)
-                        .onAppear {
-                            guard rodarAlEmpezar else { return }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
-                                withAnimation(.easeOut(duration: 0.4)) { lector.scrollTo("cnAbajo", anchor: .bottom) }
-                            }
-                        }
-                }
-                }
-            }
+        // Medir la cabecera no hace falta: al ir en la pila vertical se
+        // encoge sola, y como el scroll se lee del UIScrollView (y no de dónde
+        // ha quedado el contenido), encogerse ya no se muerde la cola.
+        return VStack(spacing: 0) {
             CNCabeceraApp(c: m.cabecera, progreso: auto ? progreso : 1,
                           onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
                           onCalendario: { datos.onCalendario() },
                           onMesTira: { datos.onMesTira($0) },
                           onPlegar: { datos.onPlegar() })
-                .background(GeometryReader { g in
-                    Color.clear.preference(key: CNAltoCabecera.self, value: g.size.height)
-                })
-        }
-        .onPreferenceChange(CNAltoCabecera.self) { h in
-            if abs(h - altoCabecera) > 0.5 { altoCabecera = h }
+            ScrollView(showsIndicators: false) {
+                ScrollViewReader { lector in
+                    VStack(spacing: 0) {
+                        CNEspiaScroll { y in
+                            if abs(y - rodado) > 0.5 { rodado = max(0, y) }
+                        }
+                        .frame(height: 0).id("cnArriba")
+                        contenido(m)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16 + (auto ? min(rodado, 90) : 0))
+                            .onAppear {
+                                guard rodarAlEmpezar else { return }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                                    withAnimation(.easeOut(duration: 0.4)) { lector.scrollTo("cnAbajo", anchor: .bottom) }
+                                }
+                            }
+                    }
+                }
+            }
         }
         .background(CNC.scr.ignoresSafeArea())
     }
@@ -3270,7 +3257,7 @@ struct CNPerfil: View {
         }
         // Pegado a la isla: el margen seguro ya la esquiva, así que dejar más
         // aire aquí solo es pantalla desperdiciada.
-        .padding(.horizontal, 16).padding(.top, 2 - max(0, cnMargenArriba() - 52))
+        .padding(.horizontal, 16).padding(.top, 2 - max(0, cnMargenArriba() - 56))
         .padding(.bottom, 8).frame(minHeight: 44)
         .background(CNC.scr.ignoresSafeArea(edges: .top))
     }
@@ -3501,7 +3488,7 @@ struct CNSeccionVista: View {
             Spacer(minLength: 0)
             Color.clear.frame(width: 40, height: 40)
         }
-        .padding(.horizontal, 16).padding(.top, 2 - max(0, cnMargenArriba() - 52))
+        .padding(.horizontal, 16).padding(.top, 2 - max(0, cnMargenArriba() - 56))
         .padding(.bottom, 6).frame(minHeight: 46)
         .background(CNC.scr.ignoresSafeArea(edges: .top))
     }
