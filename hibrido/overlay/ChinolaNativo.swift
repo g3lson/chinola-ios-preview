@@ -368,7 +368,7 @@ final class CNDatos: ObservableObject {
     var onGuardarHoja: (String, [String: Any], [String: Any]?) -> Void = { _, _, _ in }
     var onSelector: () -> Void = {}
     var onVerPresupuesto: () -> Void = {}
-    var onLimiteCategoria: (String, Double) -> Void = { _, _ in }   // (categoría, límite) → web
+    var onLimiteCategoria: (String, Double) -> Void = { _, _ in }   // (categoría, presupuesto) → web
     var onMes: (Int) -> Void = { _ in }         // −1 / +1 desde la cabecera
     var onEmpezar: () -> Void = {}              // el «empieza aquí» del resumen vacío
     var onEditarPanel: () -> Void = {}          // organizar el panel (en la web)
@@ -590,7 +590,10 @@ struct CNMovs: View {
 
     private var titulo: some View {
         HStack(spacing: 10) {
-            Text("Movimientos").font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
+            // El título grande de iOS, tal cual: SF Pro Display Bold a 34 pt,
+            // como el «Library» de Apple Music.
+            Text("Movimientos").font(.system(size: 34, weight: .bold)).foregroundColor(CNC.ink)
+                .lineLimit(1).minimumScaleFactor(0.75)
             Spacer(minLength: 8)
             CNMenuVidrio(icono: "calendar", activo: periodo > 0) {
                 Picker("", selection: $periodo) {
@@ -2172,7 +2175,8 @@ struct CNCuentas: View {
 
     private func titulo(_ m: CNCuentasModelo) -> some View {
         HStack(spacing: 10) {
-            Text(m.titulo).font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
+            Text(m.titulo).font(.system(size: 34, weight: .bold)).foregroundColor(CNC.ink)
+                .lineLimit(1).minimumScaleFactor(0.75)
             Spacer(minLength: 8)
             CNMenuVidrio(icono: "line.3.horizontal.decrease") {
                 Button { datos.onTendencia() } label: { Label("Ver la tendencia", systemImage: "chart.line.uptrend.xyaxis") }
@@ -2358,7 +2362,8 @@ struct CNPlan: View {
 
     private func titulo(_ m: CNPlanModelo) -> some View {
         HStack(spacing: 10) {
-            Text(m.titulo).font(.system(size: 28, weight: .heavy)).foregroundColor(CNC.ink)
+            Text(m.titulo).font(.system(size: 34, weight: .bold)).foregroundColor(CNC.ink)
+                .lineLimit(1).minimumScaleFactor(0.75)
             Spacer(minLength: 8)
             CNMenuVidrio(icono: "calendar") {
                 Button { datos.onCalendario() } label: { Label("Cambiar el periodo", systemImage: "calendar") }
@@ -2405,7 +2410,7 @@ struct CNPlan: View {
     }
 
     @ViewBuilder private func presupuesto(_ m: CNPlanModelo) -> some View {
-        // Lo gastado del mes contra el tope, con su aviso si se pasa.
+        // Lo gastado del mes contra el presupuesto, con su aviso si se pasa.
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(m.presGastado).font(.system(size: 26, weight: .heavy))
@@ -2581,14 +2586,14 @@ func cnVacioCard(_ titulo: String, _ texto: String) -> some View {
     .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
 }
 
-/// La categoría cuyo límite se está cambiando.
+/// La categoría cuyo presupuesto se está cambiando.
 struct CNCatEnEdicion: Identifiable {
     var id: String { nombre }
     let nombre: String
     let limite: Double
 }
 
-/// Hoja pequeña para poner el límite mensual de una categoría.
+/// Hoja pequeña para poner el presupuesto mensual de una categoría.
 struct CNLimiteHoja: View {
     let nombre: String
     let limite: Double
@@ -2596,10 +2601,10 @@ struct CNLimiteHoja: View {
     var onGuardar: (Double) -> Void
     @State private var texto = ""
     var body: some View {
-        CNHoja(titulo: "Límite de \(nombre)", onClose: onClose,
+        CNHoja(titulo: "Presupuesto de \(nombre)", onClose: onClose,
                onGuardar: { onGuardar(Double(texto.replacingOccurrences(of: ",", with: "")) ?? 0) }) {
             CNMontoCampo(monto: $texto, paso: 500)
-            Text("Cuánto quieres gastar al mes en esta categoría. Déjalo en 0 para no ponerle tope.")
+            Text("Cuánto quieres gastar al mes en esta categoría. Déjalo en 0 para dejarla sin presupuesto.")
                 .font(.system(size: 12.5)).foregroundColor(CNC.pmut)
                 .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
         }
