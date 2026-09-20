@@ -211,7 +211,12 @@ extension TestVC {
             estado.activa = "resumen"
         case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
         case "plan", "metas":
-            if cual == "metas" { datos.cargarPlan(json: TestVC.planDeMuestra.replacingOccurrences(of: "\"tab\":\"presupuesto\"", with: "\"tab\":\"metas\"")) }
+            if cual == "metas" {
+                datos.cargarPlan(json: TestVC.planDeMuestra
+                    .replacingOccurrences(of: "\"tab\":\"presupuesto\"", with: "\"tab\":\"metas\"")
+                    .replacingOccurrences(of: "\"Presupuesto\",\"puesta\":true", with: "\"Presupuesto\",\"puesta\":false")
+                    .replacingOccurrences(of: "\"Metas\",\"puesta\":false", with: "\"Metas\",\"puesta\":true"))
+            }
             vista = AnyView(CNPlan(datos: datos)); estado.activa = "plan"
         default:        vista = AnyView(CNMovs(datos: datos));    estado.activa = "movs"
         }
@@ -552,7 +557,7 @@ extension TestVC {
 
 extension TestVC {
     static let planDeMuestra = """
-    {"titulo":"Plan","tab":"presupuesto","puedeEditar":true,"puedeRegistrar":true,
+    {"titulo":"Plan","listo":true,"tab":"presupuesto","puedeEditar":true,"puedeRegistrar":true,
      "tabs":[{"indice":0,"label":"Presupuesto","puesta":true},{"indice":1,"label":"Metas","puesta":false}],
      "presGastado":"RD$82,400","presDe":"de","presTotal":"RD$88,000","presPct":94,"presColor":"rgb(224,169,46)",
      "presNota":"2 categorías sobre el límite","presAvisoTinta":"rgb(224,169,46)",
