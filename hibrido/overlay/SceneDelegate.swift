@@ -215,6 +215,7 @@ extension TestVC {
             vista = AnyView(CNLibretasHoja(datos: datos, onClose: {})); estado.activa = "resumen"
         case "menu-sin-titulos":
             CNMenuEstado.shared.titulos = false
+            barra.pintar(activa: estado.activa, titulos: false)
             vista = AnyView(CNMovs(datos: datos)); estado.activa = "movs"
         case "plan", "metas":
             if cual == "metas" {
