@@ -60,7 +60,7 @@ struct CNBarraTeclado: ViewModifier {
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Listo") { cnCerrarTeclado() }.font(.system(size: cnPt(16), weight: .semibold))
+                    Button(cnT("Listo")) { cnCerrarTeclado() }.font(.system(size: cnPt(16), weight: .semibold, design: cnDiseno))
                 }
             }
     }
@@ -79,7 +79,7 @@ struct CNHojaCabecera: View {
     var onGuardar: (() -> Void)? = nil
     var body: some View {
         ZStack {
-            Text(titulo).font(.system(size: cnPt(17), weight: .bold)).foregroundColor(CNC.ink)
+            Text(titulo).font(.system(size: cnPt(17), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
                 .lineLimit(1).padding(.horizontal, 56)
             HStack {
                 // Los dos, redondos y del tamaño de siempre del teléfono (44),
@@ -88,7 +88,7 @@ struct CNHojaCabecera: View {
                     UISelectionFeedbackGenerator().selectionChanged()
                     onClose()
                 } label: {
-                    Image(systemName: "xmark").font(.system(size: cnPt(16), weight: .bold))
+                    Image(systemName: "xmark").font(.system(size: cnPt(16), weight: .bold, design: cnDiseno))
                         .foregroundColor(CNC.ink)
                         .frame(width: 44, height: 44).cnVidrio(Circle())
                 }.buttonStyle(CNPulsable())
@@ -98,7 +98,7 @@ struct CNHojaCabecera: View {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         guardar()
                     } label: {
-                        Image(systemName: "checkmark").font(.system(size: cnPt(17), weight: .bold))
+                        Image(systemName: "checkmark").font(.system(size: cnPt(17), weight: .bold, design: cnDiseno))
                             .foregroundColor(guardarActivo ? CNC.sobreAcc : CNC.pmut)
                             .frame(width: 44, height: 44)
                             .cnVidrio(Circle(), tinte: guardarActivo ? CNC.acc : nil)
@@ -128,7 +128,7 @@ struct CNBotonGuardar: View {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 accion()
             } label: {
-                Text(texto).font(.system(size: cnPt(17), weight: .bold)).foregroundColor(CNC.sobreAcc)
+                Text(texto).font(.system(size: cnPt(17), weight: .bold, design: cnDiseno)).foregroundColor(CNC.sobreAcc)
                     .frame(maxWidth: .infinity).padding(.vertical, 16)
                     .background(CNC.acc, in: Capsule())
             }
@@ -153,14 +153,14 @@ struct CNPulsable: ButtonStyle {
 enum CNPaleta { static let colores = ["#137d41", "#2f6fd6", "#3b4fd0", "#7a4fd0", "#c65f9c", "#e0822e", "#e0a92e", "#5a7a2e"] }
 
 func cnHojaTitulo(_ t: String) -> some View {
-    Text(t.uppercased()).font(.system(size: cnPt(12.5), weight: .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading)
+    Text(t.uppercased()).font(.system(size: cnPt(12.5), weight: .semibold, design: cnDiseno)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading)
 }
 func cnGrupoHoja<C: View>(@ViewBuilder _ c: () -> C) -> some View {
     VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
 }
 func cnDiviHoja() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 16) }
 func cnCuadroHoja(_ ic: String, _ tinte: Color) -> some View {
-    Image(systemName: ic).font(.system(size: cnPt(14), weight: .semibold)).foregroundColor(.white).frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    Image(systemName: ic).font(.system(size: cnPt(14), weight: .semibold, design: cnDiseno)).foregroundColor(.white).frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 struct CNMontoCampo: View {
@@ -177,14 +177,14 @@ struct CNMontoCampo: View {
         cnGrupoHoja {
             VStack(spacing: 6) {
                 if let r = rotulo {
-                    Text(r).font(.system(size: cnPt(11), weight: .semibold)).tracking(0.4).foregroundColor(CNC.pmut)
+                    Text(r).font(.system(size: cnPt(11), weight: .semibold, design: cnDiseno)).tracking(0.4).foregroundColor(CNC.pmut)
                 }
                 ZStack {
                     // El número, centrado en la tarjeta pase lo que pase.
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text("RD$").font(.system(size: cnPt(18), weight: .heavy)).foregroundColor(CNC.pmut)
+                        Text(cnSimboloMoneda).font(.system(size: cnPt(18), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.pmut)
                         TextField("0", text: $monto)
-                            .font(.system(size: cnPt(38), weight: .heavy)).foregroundColor(CNC.ink)
+                            .font(.system(size: cnPt(38), weight: .heavy, design: cnDiseno)).foregroundColor(CNC.ink)
                             .keyboardType(.decimalPad).multilineTextAlignment(.center)
                             .fixedSize()
                     }
@@ -210,7 +210,7 @@ struct CNPasoBoton: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             accion()
         } label: {
-            Image(systemName: icono).font(.system(size: cnPt(16), weight: .bold)).foregroundColor(CNC.ink)
+            Image(systemName: icono).font(.system(size: cnPt(16), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
                 .frame(width: 40, height: 40).cnVidrio(Circle())
         }.buttonStyle(.plain)
     }
@@ -233,7 +233,7 @@ struct CNFichas: View {
                     } label: {
                         HStack(spacing: 7) {
                             cnGlifo(o.2, tam: 14, grosor: 2.2).foregroundColor(puesta ? cnSobre(color) : color)
-                            Text(o.1).font(.system(size: cnPt(14), weight: .semibold)).foregroundColor(puesta ? cnSobre(color) : CNC.ink)
+                            Text(o.1).font(.system(size: cnPt(14), weight: .semibold, design: cnDiseno)).foregroundColor(puesta ? cnSobre(color) : CNC.ink)
                         }
                         .padding(.horizontal, 13).padding(.vertical, 9)
                         .background(
@@ -259,7 +259,7 @@ struct CNGrupoCampos: View {
             ForEach(campos.indices, id: \.self) { i in
                 if i > 0 { cnDiviHoja() }
                 TextField(campos[i].0, text: campos[i].1)
-                    .font(.system(size: cnPt(16))).foregroundColor(CNC.ink)
+                    .font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink)
                     .keyboardType(campos[i].2)
                     .padding(.horizontal, 15).padding(.vertical, 14)
             }
@@ -278,13 +278,13 @@ struct CNFilaMonto: View {
     var body: some View {
         HStack(spacing: 12) {
             cnCuadroHoja(icono, tinte)
-            Text(titulo).font(.system(size: cnPt(16))).foregroundColor(CNC.ink)
+            Text(titulo).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink)
             Spacer(minLength: 8)
             HStack(spacing: 4) {
                 Spacer(minLength: 0)
-                Text("RD$").font(.system(size: cnPt(13), weight: .bold)).foregroundColor(CNC.pmut)
+                Text(cnSimboloMoneda).font(.system(size: cnPt(13), weight: .bold, design: cnDiseno)).foregroundColor(CNC.pmut)
                 TextField("0", text: $monto)
-                    .font(.system(size: cnPt(16), weight: .semibold)).foregroundColor(CNC.ink)
+                    .font(.system(size: cnPt(16), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.ink)
                     .keyboardType(.decimalPad).fixedSize()
             }
             .frame(width: 130)
@@ -303,10 +303,10 @@ struct CNFilaNumero: View {
     var body: some View {
         HStack(spacing: 12) {
             cnCuadroHoja(icono, tinte)
-            Text(titulo).font(.system(size: cnPt(16))).foregroundColor(CNC.ink)
+            Text(titulo).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink)
             Spacer(minLength: 8)
             TextField(marca, text: $texto)
-                .font(.system(size: cnPt(16), weight: .semibold)).foregroundColor(CNC.ink)
+                .font(.system(size: cnPt(16), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.ink)
                 .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 54)
         }
         .padding(.horizontal, 14).padding(.vertical, 11)
@@ -344,7 +344,7 @@ struct CNChipsCategoria: View {
             HStack(spacing: 7) {
                 cnGlifo(icono, tam: 14, grosor: 2.2)
                     .foregroundColor(puesta ? cnSobre(color) : color)
-                Text(nombre).font(.system(size: cnPt(14), weight: .semibold))
+                Text(nombre).font(.system(size: cnPt(14), weight: .semibold, design: cnDiseno))
                     .foregroundColor(puesta ? cnSobre(color) : CNC.ink)
             }
             .padding(.horizontal, 13).padding(.vertical, 9)
@@ -361,7 +361,7 @@ struct CNCampoTexto: View {
     @Binding var texto: String
     var teclado: UIKeyboardType = .default
     var body: some View {
-        cnGrupoHoja { TextField(placeholder, text: $texto).font(.system(size: cnPt(16))).foregroundColor(CNC.ink).keyboardType(teclado).padding(.horizontal, 15).padding(.vertical, 13) }
+        cnGrupoHoja { TextField(placeholder, text: $texto).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink).keyboardType(teclado).padding(.horizontal, 15).padding(.vertical, 13) }
     }
 }
 
@@ -375,9 +375,9 @@ struct CNMedioFila: View {
     var body: some View {
         Menu {
             ForEach(datos.libreta.cuentas) { c in Button(c.nombre) { medio = "cuenta:\(c.id)" } }
-            Button("Efectivo") { medio = "efectivo" }
+            Button(cnT("Efectivo")) { medio = "efectivo" }
         } label: {
-            HStack(spacing: 12) { cnCuadroHoja("banknote.fill", CNC.info); Text("De dónde sale").font(.system(size: cnPt(16))).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(nombre).font(.system(size: cnPt(15))).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: cnPt(11), weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
+            HStack(spacing: 12) { cnCuadroHoja("banknote.fill", CNC.info); Text(cnT("De dónde sale")).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(nombre).font(.system(size: cnPt(15), design: cnDiseno)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: cnPt(11), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
         }
     }
 }
@@ -386,7 +386,7 @@ struct CNColorFila: View {
     @Binding var color: String
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            cnHojaTitulo("Color")
+            cnHojaTitulo(cnT("Color"))
             HStack(spacing: 10) {
                 ForEach(CNPaleta.colores, id: \.self) { hx in
                     Circle().fill(cnColor(hexString: hx)).frame(width: 30, height: 30)
@@ -409,7 +409,7 @@ struct CNMontoHoja: View {
     @State private var monto = ""
     @State private var medio = "efectivo"
 
-    private var titulo: String { tipo == "abono" ? "Registrar abono" : (tipo == "aporte" ? "Aportar a la meta" : "Pagar la tarjeta") }
+    private var titulo: String { cnT(tipo == "abono" ? "Registrar abono" : (tipo == "aporte" ? "Aportar a la meta" : "Pagar la tarjeta")) }
 
     var body: some View {
         CNHoja(titulo: titulo, onClose: onClose, onGuardar: guardar) {
@@ -440,15 +440,15 @@ struct CNFormCuenta: View {
     @State private var saldo = ""
     @State private var clase = "banco"
     @State private var color = CNPaleta.colores[0]
-    private let clases: [(String, String, String)] = [("banco", "Banco", "banco"), ("efectivo", "Efectivo", "billete"), ("billetera", "Billetera", "telefono"), ("inversion", "Inversión", "grafico"), ("ahorro", "Ahorro", "hucha")]
+    private var clases: [(String, String, String)] { [("banco", cnT("Banco"), "banco"), ("efectivo", cnT("Efectivo"), "billete"), ("billetera", cnT("Billetera"), "telefono"), ("inversion", cnT("Inversión"), "grafico"), ("ahorro", cnT("Ahorro"), "hucha")] }
 
     var body: some View {
-        CNHoja(titulo: "Nueva cuenta", guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+        CNHoja(titulo: cnT("Nueva cuenta"), guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
-            CNGrupoCampos(campos: [("Nombre (ej. Cuenta principal)", $nombre, .default),
-                                   ("Banco (opcional)", $banco, .default)])
-            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Saldo actual"); CNMontoCampo(monto: $saldo, rotulo: nil) }
-            VStack(alignment: .leading, spacing: 8) { cnHojaTitulo("Tipo"); CNFichas(opciones: clases, elegida: $clase) }
+            CNGrupoCampos(campos: [(cnT("Nombre (ej. Cuenta principal)"), $nombre, .default),
+                                   (cnT("Banco (opcional)"), $banco, .default)])
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo(cnT("Saldo actual")); CNMontoCampo(monto: $saldo, rotulo: nil) }
+            VStack(alignment: .leading, spacing: 8) { cnHojaTitulo(cnT("Tipo")); CNFichas(opciones: clases, elegida: $clase) }
             CNColorFila(color: $color)
         }
     }
@@ -474,19 +474,19 @@ struct CNFormTarjeta: View {
     @State private var color = CNPaleta.colores[3]
 
     var body: some View {
-        CNHoja(titulo: "Nueva tarjeta", guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+        CNHoja(titulo: cnT("Nueva tarjeta"), guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
-            CNGrupoCampos(campos: [("Nombre (ej. Visa Popular)", $nombre, .default),
-                                   ("Banco (opcional)", $banco, .default)])
-            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Límite"); CNMontoCampo(monto: $limite, paso: 5000, rotulo: nil) }
+            CNGrupoCampos(campos: [(cnT("Nombre (ej. Visa Popular)"), $nombre, .default),
+                                   (cnT("Banco (opcional)"), $banco, .default)])
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo(cnT("Límite")); CNMontoCampo(monto: $limite, paso: 5000, rotulo: nil) }
             VStack(alignment: .leading, spacing: 8) {
-                cnHojaTitulo("Deuda y fechas")
+                cnHojaTitulo(cnT("Deuda y fechas"))
                 cnGrupoHoja {
-                    CNFilaMonto(icono: "creditcard.fill", tinte: CNC.neg, titulo: "Deuda actual", monto: $saldo)
+                    CNFilaMonto(icono: "creditcard.fill", tinte: CNC.neg, titulo: cnT("Deuda actual"), monto: $saldo)
                     cnDiviHoja()
-                    CNFilaNumero(icono: "calendar", tinte: CNC.info, titulo: "Día de corte", marca: "20", texto: $corte)
+                    CNFilaNumero(icono: "calendar", tinte: CNC.info, titulo: cnT("Día de corte"), marca: "20", texto: $corte)
                     cnDiviHoja()
-                    CNFilaNumero(icono: "calendar.badge.clock", tinte: cnColor(0x825eb9), titulo: "Día de pago", marca: "5", texto: $pago)
+                    CNFilaNumero(icono: "calendar.badge.clock", tinte: cnColor(0x825eb9), titulo: cnT("Día de pago"), marca: "5", texto: $pago)
                 }
             }
             CNColorFila(color: $color)
@@ -512,17 +512,17 @@ struct CNFormPrestamo: View {
     @State private var color = CNPaleta.colores[2]
 
     var body: some View {
-        CNHoja(titulo: "Nuevo préstamo", guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+        CNHoja(titulo: cnT("Nuevo préstamo"), guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
             VStack(alignment: .leading, spacing: 8) {
-                cnHojaTitulo("¿Cómo es?")
+                cnHojaTitulo(cnT("¿Cómo es?"))
                 CNFichas(opciones: [("debo", "Yo debo", "mano"), ("meDeben", "Me deben", "billete")], elegida: $sentido)
             }
-            CNGrupoCampos(campos: [("Nombre (ej. Préstamo del carro)", $nombre, .default),
-                                   ("Entidad o persona (opcional)", $entidad, .default)])
-            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Monto total"); CNMontoCampo(monto: $total, paso: 1000, rotulo: nil) }
+            CNGrupoCampos(campos: [(cnT("Nombre (ej. Préstamo del carro)"), $nombre, .default),
+                                   (cnT("Entidad o persona (opcional)"), $entidad, .default)])
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo(cnT("Monto total")); CNMontoCampo(monto: $total, paso: 1000, rotulo: nil) }
             cnGrupoHoja {
-                CNFilaMonto(icono: "checkmark.circle.fill", tinte: CNC.pos, titulo: "Ya pagado", monto: $pagado)
+                CNFilaMonto(icono: "checkmark.circle.fill", tinte: CNC.pos, titulo: cnT("Ya pagado"), monto: $pagado)
             }
             CNColorFila(color: $color)
         }
@@ -547,15 +547,15 @@ struct CNFormMeta: View {
     private let iconos = ["hucha", "premio", "casa", "auto", "avion", "maleta", "birrete", "regalo", "corazon", "estrella"]
 
     var body: some View {
-        CNHoja(titulo: "Nueva meta", guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+        CNHoja(titulo: cnT("Nueva meta"), guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
             CNCampoTexto(placeholder: "Nombre (ej. Fondo de emergencia)", texto: $nombre)
-            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo("Objetivo"); CNMontoCampo(monto: $objetivo, paso: 5000, rotulo: nil) }
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo(cnT("Objetivo")); CNMontoCampo(monto: $objetivo, paso: 5000, rotulo: nil) }
             cnGrupoHoja {
-                CNFilaMonto(icono: "arrow.down.circle.fill", tinte: cnColor(hexString: color), titulo: "Aporte mensual", monto: $mensual)
+                CNFilaMonto(icono: "arrow.down.circle.fill", tinte: cnColor(hexString: color), titulo: cnT("Aporte mensual"), monto: $mensual)
             }
             VStack(alignment: .leading, spacing: 8) {
-                cnHojaTitulo("Icono")
+                cnHojaTitulo(cnT("Icono"))
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) { ForEach(iconos, id: \.self) { ic in
                         cnGlifo(ic, tam: 18).foregroundColor(icono == ic ? cnSobre(cnColor(hexString: color)) : CNC.ink)
@@ -596,12 +596,12 @@ struct CNFormTransferencia: View {
     }
 
     var body: some View {
-        CNHoja(titulo: "Transferencia", onClose: onClose, onGuardar: guardar) {
+        CNHoja(titulo: cnT("Transferencia"), onClose: onClose, onGuardar: guardar) {
             CNMontoCampo(monto: $monto)
             cnGrupoHoja {
                 Menu {
                     ForEach(datos.libreta.cuentas) { c in Button(c.nombre) { medio = "cuenta:\(c.id)" } }
-                    Button("Efectivo") { medio = "efectivo" }
+                    Button(cnT("Efectivo")) { medio = "efectivo" }
                 } label: { fila("De dónde sale", "arrow.up.right", CNC.neg, nombreDe(medio)) }
                 cnDiviHoja()
                 Menu {
@@ -621,7 +621,7 @@ struct CNFormTransferencia: View {
     }
 
     private func fila(_ t: String, _ ic: String, _ tinte: Color, _ val: String) -> some View {
-        HStack(spacing: 12) { cnCuadroHoja(ic, tinte); Text(t).font(.system(size: cnPt(16))).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(val).font(.system(size: cnPt(15))).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: cnPt(11), weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
+        HStack(spacing: 12) { cnCuadroHoja(ic, tinte); Text(t).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(val).font(.system(size: cnPt(15), design: cnDiseno)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(.system(size: cnPt(11), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
     }
     private func guardar() {
         let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
@@ -650,7 +650,7 @@ struct CNAgregar: View {
     /// sistema, y ponerle otra encima se veía como dos hojas.
     private var chooser: some View {
         VStack(spacing: 0) {
-            CNHojaCabecera(titulo: "¿Qué quieres agregar?", onClose: onClose)
+            CNHojaCabecera(titulo: cnT("¿Qué quieres agregar?"), onClose: onClose)
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 10) {
                     opcion("banco", CNC.pos, "Una cuenta", "Efectivo, banco, ahorros") { cual = "cuenta" }
@@ -668,8 +668,8 @@ struct CNAgregar: View {
         Button(action: tap) {
             HStack(spacing: 12) {
                 cnGlifo(ic, tam: 20).foregroundColor(.white).frame(width: 42, height: 42).background(tinte).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) { Text(t).font(.system(size: cnPt(16), weight: .semibold)).foregroundColor(CNC.ink); Text(s).font(.system(size: cnPt(12.5))).foregroundColor(CNC.pmut) }
-                Spacer(minLength: 6); Image(systemName: "chevron.right").font(.system(size: cnPt(13), weight: .semibold)).foregroundColor(CNC.pmut.opacity(0.6))
+                VStack(alignment: .leading, spacing: 2) { Text(t).font(.system(size: cnPt(16), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.ink); Text(s).font(.system(size: cnPt(12.5), design: cnDiseno)).foregroundColor(CNC.pmut) }
+                Spacer(minLength: 6); Image(systemName: "chevron.right").font(.system(size: cnPt(13), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut.opacity(0.6))
             }.padding(14).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
         }.buttonStyle(CNPulsable())
     }
@@ -714,7 +714,7 @@ struct CNHojaWeb: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
                     if !m.texto.isEmpty {
-                        Text(m.texto).font(.system(size: cnPt(13.5))).foregroundColor(CNC.pmut)
+                        Text(m.texto).font(.system(size: cnPt(13.5), design: cnDiseno)).foregroundColor(CNC.pmut)
                             .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
                     }
                     ForEach(m.campos) { c in campo(c) }
@@ -724,7 +724,7 @@ struct CNHojaWeb: View {
                     // palabras: un ✓ no dice si va a borrar o a mandar un correo.
                     if !m.conCheck {
                         Button { datos.onHojaEnviar() } label: {
-                            Text(m.boton).font(.system(size: cnPt(16), weight: .bold))
+                            Text(m.boton).font(.system(size: cnPt(16), weight: .bold, design: cnDiseno))
                                 .foregroundColor(m.destruye ? .white : CNC.sobreAcc)
                                 .frame(maxWidth: .infinity).padding(.vertical, 16)
                                 .background(m.destruye ? CNC.neg : CNC.acc, in: Capsule())
@@ -742,7 +742,7 @@ struct CNHojaWeb: View {
     }
 
     private func aviso(_ t: String, _ color: Color) -> some View {
-        Text(t).font(.system(size: cnPt(13))).foregroundColor(color)
+        Text(t).font(.system(size: cnPt(13), design: cnDiseno)).foregroundColor(color)
             .fixedSize(horizontal: false, vertical: true)
             .padding(12).frame(maxWidth: .infinity, alignment: .leading)
             .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -788,9 +788,9 @@ struct CNHojaWeb: View {
                         }
                     } label: {
                         HStack(spacing: 8) {
-                            Text(etiqueta(c)).font(.system(size: cnPt(16))).foregroundColor(CNC.ink).lineLimit(1)
+                            Text(etiqueta(c)).font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
                             Spacer(minLength: 8)
-                            Image(systemName: "chevron.up.chevron.down").font(.system(size: cnPt(11), weight: .semibold))
+                            Image(systemName: "chevron.up.chevron.down").font(.system(size: cnPt(11), weight: .semibold, design: cnDiseno))
                                 .foregroundColor(CNC.pmut.opacity(0.6))
                         }
                         .padding(.horizontal, 15).padding(.vertical, 14)
@@ -808,7 +808,7 @@ struct CNHojaWeb: View {
                                 .disableAutocorrection(c.teclado == "email")
                         }
                     }
-                    .font(.system(size: cnPt(16))).foregroundColor(CNC.ink)
+                    .font(.system(size: cnPt(16), design: cnDiseno)).foregroundColor(CNC.ink)
                     .padding(.horizontal, 15).padding(.vertical, 14)
                 }
             }
@@ -916,7 +916,7 @@ struct CNPeriodoHoja: View {
     var body: some View {
         let p = datos.periodo ?? CNPeriodo()
         return VStack(spacing: 0) {
-            CNHojaCabecera(titulo: "Periodo", onClose: onClose)
+            CNHojaCabecera(titulo: cnT("Periodo"), onClose: onClose)
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     // Los atajos: este mes, el pasado, el año… y «Personalizado»,
@@ -934,7 +934,7 @@ struct CNPeriodoHoja: View {
                         }.buttonStyle(CNPulsable())
                     }
                     if !p.resumen.isEmpty {
-                        Text(p.resumen).font(.system(size: cnPt(13))).foregroundColor(CNC.pmut).padding(.horizontal, 4)
+                        Text(p.resumen).font(.system(size: cnPt(13), design: cnDiseno)).foregroundColor(CNC.pmut).padding(.horizontal, 4)
                     }
                     if p.calendario { calendario(p) }
                     Color.clear.frame(height: 24)
@@ -952,13 +952,13 @@ struct CNPeriodoHoja: View {
             HStack {
                 boton("chevron.left") { datos.onPeriodo("antes", 0) }
                 Spacer(minLength: 8)
-                Text(p.calTitulo).font(.system(size: cnPt(16), weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                Text(p.calTitulo).font(.system(size: cnPt(16), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
                 Spacer(minLength: 8)
                 boton("chevron.right") { datos.onPeriodo("despues", 0) }
             }
             HStack(spacing: 0) {
                 ForEach(p.diasSemana.indices, id: \.self) { i in
-                    Text(p.diasSemana[i]).font(.system(size: cnPt(11), weight: .semibold))
+                    Text(p.diasSemana[i]).font(.system(size: cnPt(11), weight: .semibold, design: cnDiseno))
                         .foregroundColor(CNC.pmut).frame(maxWidth: .infinity)
                 }
             }
@@ -976,12 +976,12 @@ struct CNPeriodoHoja: View {
                 }
             }
             HStack {
-                Text(p.seleccion).font(.system(size: cnPt(13.5), weight: .semibold)).foregroundColor(CNC.pmut)
+                Text(p.seleccion).font(.system(size: cnPt(13.5), weight: .semibold, design: cnDiseno)).foregroundColor(CNC.pmut)
                 Spacer(minLength: 8)
             }
             Button { if p.puedeAplicar { datos.onPeriodo("aplicar", 0) } } label: {
                 Text(p.textoAplicar.isEmpty ? "Aplicar" : p.textoAplicar)
-                    .font(.system(size: cnPt(16), weight: .bold))
+                    .font(.system(size: cnPt(16), weight: .bold, design: cnDiseno))
                     .foregroundColor(p.puedeAplicar ? CNC.sobreAcc : CNC.pmut)
                     .frame(maxWidth: .infinity).padding(.vertical, 15)
                     .background(p.puedeAplicar ? CNC.acc : CNC.soft, in: Capsule())
@@ -1008,7 +1008,7 @@ struct CNPeriodoHoja: View {
 
     private func boton(_ ic: String, _ tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
-            Image(systemName: ic).font(.system(size: cnPt(14), weight: .bold)).foregroundColor(CNC.ink)
+            Image(systemName: ic).font(.system(size: cnPt(14), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
                 .frame(width: 36, height: 36).background(CNC.soft, in: Circle())
         }.buttonStyle(CNPulsable())
     }
@@ -1087,13 +1087,13 @@ struct CNLibretasHoja: View {
         let m = datos.libretas ?? CNLibretas()
         return VStack(spacing: 0) {
             ZStack {
-                Text(m.titulo).font(.system(size: cnPt(17), weight: .bold)).foregroundColor(CNC.ink)
+                Text(m.titulo).font(.system(size: cnPt(17), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink)
                 HStack {
                     Button {
                         UISelectionFeedbackGenerator().selectionChanged()
                         onClose()
                     } label: {
-                        Image(systemName: "xmark").font(.system(size: cnPt(16), weight: .bold))
+                        Image(systemName: "xmark").font(.system(size: cnPt(16), weight: .bold, design: cnDiseno))
                             .foregroundColor(CNC.ink).frame(width: 44, height: 44).cnVidrio(Circle())
                     }.buttonStyle(CNPulsable())
                     Spacer(minLength: 8)
@@ -1101,7 +1101,7 @@ struct CNLibretasHoja: View {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         datos.onLibreta("nueva", 0)
                     } label: {
-                        Image(systemName: "plus").font(.system(size: cnPt(17), weight: .bold))
+                        Image(systemName: "plus").font(.system(size: cnPt(17), weight: .bold, design: cnDiseno))
                             .foregroundColor(CNC.sobreAcc)
                             .frame(width: 44, height: 44).cnVidrio(Circle(), tinte: CNC.acc)
                     }.buttonStyle(CNPulsable())
@@ -1117,7 +1117,7 @@ struct CNLibretasHoja: View {
                             UISelectionFeedbackGenerator().selectionChanged()
                             datos.onLibreta("gestionar", 0)
                         } label: {
-                            Text(m.textoGestionar).font(.system(size: cnPt(15), weight: .semibold))
+                            Text(m.textoGestionar).font(.system(size: cnPt(15), weight: .semibold, design: cnDiseno))
                                 .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 15)
                                 .background(CNC.card, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
                                 .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous)
@@ -1147,12 +1147,12 @@ struct CNLibretasHoja: View {
                 }
                 .frame(width: 46, height: 46)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(f.nombre).font(.system(size: cnPt(16), weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
-                    Text(f.detalle).font(.system(size: cnPt(13))).foregroundColor(CNC.pmut).lineLimit(1)
+                    Text(f.nombre).font(.system(size: cnPt(16), weight: .bold, design: cnDiseno)).foregroundColor(CNC.ink).lineLimit(1)
+                    Text(f.detalle).font(.system(size: cnPt(13), design: cnDiseno)).foregroundColor(CNC.pmut).lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 if f.enUso {
-                    Text(f.rotuloEnUso.uppercased()).font(.system(size: cnPt(10.5), weight: .heavy)).tracking(0.5)
+                    Text(f.rotuloEnUso.uppercased()).font(.system(size: cnPt(10.5), weight: .heavy, design: cnDiseno)).tracking(0.5)
                         .foregroundColor(CNC.pos)
                         .padding(.horizontal, 9).padding(.vertical, 5)
                         .background(CNC.pos.opacity(0.14), in: Capsule())
