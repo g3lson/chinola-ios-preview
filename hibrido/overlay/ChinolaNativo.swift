@@ -108,6 +108,31 @@ enum CNC {
 /// La tinta que se lee encima de un color: oscura sobre claro y al revés.
 func cnSobre(_ c: Color) -> Color { cnClaro(c) ? cnColor(0x20180a) : .white }
 
+/// El difuminado de arriba: lo que sube por detrás de la hora y la batería se
+/// va desvaneciendo en vez de cruzarlas a la vista, como en las apps de Apple.
+///
+/// No es una franja opaca: es vidrio con una máscara en degradado, así que
+/// arriba tapa del todo y abajo no se nota dónde acaba.
+struct CNDifuminadoArriba: View {
+    var extra: CGFloat = 10
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.ultraThinMaterial)
+            Rectangle().fill(CNC.scr.opacity(0.7))
+        }
+        .mask(
+            LinearGradient(stops: [.init(color: .black, location: 0),
+                                   .init(color: .black.opacity(0.92), location: 0.62),
+                                   .init(color: .clear, location: 1)],
+                           startPoint: .top, endPoint: .bottom)
+        )
+        .frame(height: max(0, cnMargenArriba() + extra))
+        .frame(maxWidth: .infinity, alignment: .top)
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
+    }
+}
+
 /// El margen seguro de arriba del aparato (59 pt con isla, 47 con muesca).
 func cnMargenArriba() -> CGFloat {
     let escenas = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
@@ -560,6 +585,7 @@ struct CNMovs: View {
             .modifier(CNRodarSolo(activo: rodarAlEmpezar))
         }
         .background(CNC.scr.ignoresSafeArea())
+        .overlay(alignment: .top) { CNDifuminadoArriba() }
     }
 
     private var titulo: some View {
@@ -2141,6 +2167,7 @@ struct CNCuentas: View {
             .padding(.horizontal, 16).padding(.top, 2)
         }
         .background(CNC.scr.ignoresSafeArea())
+        .overlay(alignment: .top) { CNDifuminadoArriba() }
     }
 
     private func titulo(_ m: CNCuentasModelo) -> some View {
@@ -2326,6 +2353,7 @@ struct CNPlan: View {
             .padding(.horizontal, 16).padding(.top, 2)
         }
         .background(CNC.scr.ignoresSafeArea())
+        .overlay(alignment: .top) { CNDifuminadoArriba() }
     }
 
     private func titulo(_ m: CNPlanModelo) -> some View {
@@ -3833,6 +3861,7 @@ struct CNPerfil: View {
         .padding(.horizontal, 16).padding(.top, 2 - max(0, cnMargenArriba() - 56))
         .padding(.bottom, 8).frame(minHeight: 44)
         .background(CNC.scr.ignoresSafeArea(edges: .top))
+        .overlay(alignment: .top) { CNDifuminadoArriba(extra: 0) }
     }
 
     private func tarjetaUsuario(_ u: CNAjustes.Usuario) -> some View {
