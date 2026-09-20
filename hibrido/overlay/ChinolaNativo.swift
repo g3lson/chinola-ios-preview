@@ -1944,11 +1944,20 @@ struct CNNuevoMov: View {
                 CNHojaCabecera(titulo: editar == nil ? "Nuevo movimiento" : "Editar movimiento",
                                guardarTexto: "Guardar", onClose: onClose, onGuardar: guardar)
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 18) {
+                    // Todos los bloques igual: su rótulo encima y su tarjeta
+                    // debajo. El monto llevaba el suyo DENTRO y los demás
+                    // fuera, y la hoja se leía a saltos.
+                    VStack(alignment: .leading, spacing: 18) {
                         pildoras
-                        CNMontoCampo(monto: $monto)
-                        grupo { TextField("Descripción o concepto", text: $concepto).font(.system(size: 16)).foregroundColor(CNC.ink).padding(.horizontal, 15).padding(.vertical, 13) }
-                        VStack(spacing: 6) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            titulo("Monto")
+                            CNMontoCampo(monto: $monto, rotulo: nil)
+                        }
+                        VStack(alignment: .leading, spacing: 6) {
+                            titulo("Concepto")
+                            grupo { TextField("En qué fue", text: $concepto).font(.system(size: 16)).foregroundColor(CNC.ink).padding(.horizontal, 15).padding(.vertical, 14) }
+                        }
+                        VStack(alignment: .leading, spacing: 6) {
                             titulo("Cuándo y de dónde")
                             grupo {
                                 HStack(spacing: 12) { cuadro("calendar", CNC.neg); Text("Fecha").font(.system(size: 16)).foregroundColor(CNC.ink); Spacer(); DatePicker("", selection: $fecha, displayedComponents: .date).labelsHidden() }.padding(.horizontal, 14).padding(.vertical, 7)
@@ -1996,7 +2005,7 @@ struct CNNuevoMov: View {
     private var pildoras: some View {
         HStack(spacing: 4) { ForEach(tipos.indices, id: \.self) { i in
             Text(tipos[i]).font(.system(size: 13.5, weight: i == tipo ? .bold : .semibold))
-                .foregroundColor(i == tipo ? CNC.sobreAcc : CNC.pmut)
+                .foregroundColor(i == tipo ? CNC.sobreAcc : CNC.ink.opacity(0.7))
                 .frame(maxWidth: .infinity).padding(.vertical, 9)
                 .background(i == tipo ? AnyView(Capsule().fill(CNC.acc)) : AnyView(Color.clear))
                 .onTapGesture { UISelectionFeedbackGenerator().selectionChanged(); tipo = i }

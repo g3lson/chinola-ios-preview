@@ -72,38 +72,47 @@ struct CNHojaCabecera: View {
     let titulo: String
     var guardarTexto: String = "Guardar"
     var guardarActivo: Bool = true
+    /// `true` = un ✓ redondo (guardar sin más). `false` = botón con palabras
+    /// abajo, porque un ✓ no dice qué va a pasar (borrar, mandar un enlace…).
+    var conCheck: Bool = true
     var onClose: () -> Void
     var onGuardar: (() -> Void)? = nil
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                Text(titulo).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
-                HStack {
+        ZStack {
+            Text(titulo).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
+                .lineLimit(1).padding(.horizontal, 56)
+            HStack {
+                // Los dos, redondos y del tamaño de siempre del teléfono (44),
+                // en vidrio: así se tocan igual de bien en todas las hojas.
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    onClose()
+                } label: {
+                    Image(systemName: "xmark").font(.system(size: 16, weight: .bold))
+                        .foregroundColor(CNC.ink)
+                        .frame(width: 44, height: 44).cnVidrio(Circle())
+                }.buttonStyle(CNPulsable())
+                Spacer(minLength: 8)
+                if let guardar = onGuardar, conCheck {
                     Button {
-                        UISelectionFeedbackGenerator().selectionChanged()
-                        onClose()
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        guardar()
                     } label: {
-                        Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundColor(CNC.pmut)
-                            .frame(width: 36, height: 36).cnVidrio(Circle())
-                    }.buttonStyle(CNPulsable())
-                    Spacer()
-                    if let guardar = onGuardar {
-                        Button {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            guardar()
-                        } label: {
-                            Text(guardarTexto).font(.system(size: 15, weight: .bold))
-                                .foregroundColor(CNC.sobreAcc)
-                                .padding(.horizontal, 16).frame(height: 36)
-                                .cnVidrio(Capsule(), tinte: guardarActivo ? CNC.acc : CNC.line)
-                        }
-                        .buttonStyle(CNPulsable())
-                        .disabled(!guardarActivo)
-                        .opacity(guardarActivo ? 1 : 0.55)
+                        Image(systemName: "checkmark").font(.system(size: 17, weight: .bold))
+                            .foregroundColor(guardarActivo ? CNC.sobreAcc : CNC.pmut)
+                            .frame(width: 44, height: 44)
+                            .cnVidrio(Circle(), tinte: guardarActivo ? CNC.acc : nil)
                     }
+                    .buttonStyle(CNPulsable())
+                    .disabled(!guardarActivo)
+                    .opacity(guardarActivo ? 1 : 0.6)
+                    .accessibilityLabel(guardarTexto)
+                } else {
+                    Color.clear.frame(width: 44, height: 44)
                 }
-            }.padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 14)
+            }
         }
+        .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 12)
     }
 }
 
@@ -685,6 +694,8 @@ struct CNHojaWeb: View {
     struct Modelo {
         var tipo = ""; var titulo = ""; var texto = ""; var boton = ""
         var error = ""; var ok = ""; var cargando = false; var destruye = false
+        /// ✓ arriba (guardar sin más) o botón con palabras abajo.
+        var conCheck = true
         var campos: [Campo] = []
     }
 
@@ -698,8 +709,8 @@ struct CNHojaWeb: View {
     var body: some View {
         VStack(spacing: 0) {
             CNHojaCabecera(titulo: m.titulo, guardarTexto: m.boton.isEmpty ? "Guardar" : m.boton,
-                           guardarActivo: !m.cargando, onClose: onClose,
-                           onGuardar: { datos.onHojaEnviar() })
+                           guardarActivo: !m.cargando, conCheck: m.conCheck,
+                           onClose: onClose, onGuardar: { datos.onHojaEnviar() })
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
                     if !m.texto.isEmpty {
@@ -709,6 +720,16 @@ struct CNHojaWeb: View {
                     ForEach(m.campos) { c in campo(c) }
                     if !m.error.isEmpty { aviso(m.error, CNC.neg) }
                     if !m.ok.isEmpty { aviso(m.ok, CNC.pos) }
+                    // Lo que no es «guardar sin más» lleva su botón con
+                    // palabras: un ✓ no dice si va a borrar o a mandar un correo.
+                    if !m.conCheck {
+                        Button { datos.onHojaEnviar() } label: {
+                            Text(m.boton).font(.system(size: 16, weight: .bold))
+                                .foregroundColor(m.destruye ? .white : CNC.sobreAcc)
+                                .frame(maxWidth: .infinity).padding(.vertical, 16)
+                                .background(m.destruye ? CNC.neg : CNC.acc, in: Capsule())
+                        }.buttonStyle(CNPulsable()).padding(.top, 4)
+                    }
                     Color.clear.frame(height: 24)
                 }
                 .padding(.horizontal, 16).padding(.top, 4)
@@ -826,6 +847,7 @@ extension CNHojaWeb.Modelo {
         m.tipo = s(raiz, "tipo"); m.titulo = s(raiz, "titulo"); m.texto = s(raiz, "texto")
         m.boton = s(raiz, "boton"); m.error = s(raiz, "error"); m.ok = s(raiz, "ok")
         m.cargando = b(raiz, "cargando"); m.destruye = b(raiz, "destruye")
+        m.conCheck = (raiz["conCheck"] as? Bool) ?? true
         m.campos = l(raiz, "campos").map { c in
             CNHojaWeb.Campo(id: n(c, "indice"), label: s(c, "label"), tipo: s(c, "tipo"), ph: s(c, "ph"),
                             valor: s(c, "valor"), teclado: s(c, "teclado"), seguro: b(c, "seguro"),
