@@ -1375,3 +1375,77 @@ struct CNFormInvitar: View {
         onClose()
     }
 }
+
+// ── El recorrido de bienvenida, en nativo ───────────────────────────────────
+//
+// Cinco pasos que la web lleva contados; aquí solo se dibuja el que toca, sobre
+// la pantalla de verdad y encima del menú, para que se vea de qué se habla.
+struct CNTour {
+    var paso = 0; var total = 1; var vista = "resumen"
+    var titulo = ""; var texto = ""; var chinolo = ""
+    var textoSiguiente = "Siguiente"; var textoSaltar = "Saltar"
+
+    static func desde(json: String) -> CNTour? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
+        func n(_ o: [String: Any], _ k: String) -> Int { ((o[k] as? NSNumber)?.intValue) ?? 0 }
+        var m = CNTour()
+        m.paso = n(r, "paso"); m.total = max(1, n(r, "total")); m.vista = s(r, "vista")
+        m.titulo = s(r, "titulo"); m.texto = s(r, "texto"); m.chinolo = s(r, "chinolo")
+        if !s(r, "textoSiguiente").isEmpty { m.textoSiguiente = s(r, "textoSiguiente") }
+        if !s(r, "textoSaltar").isEmpty { m.textoSaltar = s(r, "textoSaltar") }
+        return m
+    }
+}
+
+struct CNTourVista: View {
+    @ObservedObject var datos: CNDatos
+    var onPaso: (String) -> Void
+    var body: some View {
+        let m = datos.tour ?? CNTour()
+        return ZStack(alignment: .bottom) {
+            // El telón apaga la pantalla pero la deja ver: lo que se explica
+            // está detrás.
+            Color.black.opacity(0.45).ignoresSafeArea()
+                .onTapGesture { onPaso("saltar") }
+            VStack(spacing: 0) {
+                HStack(alignment: .top, spacing: 12) {
+                    if let img = cnImagenBase64(m.chinolo) {
+                        Image(uiImage: img).resizable().scaledToFit().frame(width: 54, height: 54)
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(m.titulo).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink)
+                        Text(m.texto).font(cnLetra(14)).foregroundColor(CNC.pmut)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                HStack(spacing: 10) {
+                    HStack(spacing: 5) {
+                        ForEach(0..<m.total, id: \.self) { i in
+                            Circle().fill(i == m.paso ? CNC.acc : CNC.line)
+                                .frame(width: i == m.paso ? 7 : 5, height: i == m.paso ? 7 : 5)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    Button { onPaso("saltar") } label: {
+                        Text(m.textoSaltar).font(cnLetra(14.5, .semibold)).foregroundColor(CNC.pmut)
+                            .padding(.horizontal, 12).padding(.vertical, 9)
+                    }.buttonStyle(CNPulsable())
+                    Button { onPaso("siguiente") } label: {
+                        Text(m.textoSiguiente).font(cnLetra(14.5, .bold)).foregroundColor(CNC.sobreAcc)
+                            .padding(.horizontal, 18).padding(.vertical, 10)
+                            .background(CNC.acc, in: Capsule())
+                    }.buttonStyle(CNPulsable())
+                }
+                .padding(.top, 14)
+            }
+            .padding(16)
+            .background(CNC.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
+            .shadow(color: .black.opacity(0.18), radius: 18, y: 6)
+            .padding(.horizontal, 14)
+            .padding(.bottom, 104)
+        }
+    }
+}

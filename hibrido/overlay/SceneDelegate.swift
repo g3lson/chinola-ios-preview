@@ -214,6 +214,10 @@ extension TestVC {
         case "libretas":
             datos.cargarLibretas(json: TestVC.libretasDeMuestra)
             vista = AnyView(CNLibretasHoja(datos: datos, onClose: {})); estado.activa = "resumen"
+        case "tour":
+            datos.cargarTour(json: TestVC.tourDeMuestra)
+            vista = AnyView(ZStack { CNResumen(datos: datos); CNTourVista(datos: datos, onPaso: { _ in }) })
+            estado.activa = "resumen"
         case "invitar":
             datos.cargarInvitar(json: TestVC.invitarDeMuestra)
             vista = AnyView(CNFormInvitar(datos: datos, libreta: "1", onClose: {})); estado.activa = "perfil"
@@ -594,6 +598,14 @@ extension TestVC {
      "datos":[{"label":"Categoría","valor":"Deudas"},{"label":"Tipo","valor":"Fijo"},
               {"label":"Fecha","valor":"11 de septiembre"},{"label":"Pagado con","valor":"Cuenta principal"},
               {"label":"Se repite","valor":"Cada mes"}]}
+    """
+}
+
+extension TestVC {
+    static let tourDeMuestra = """
+    {"paso":1,"total":5,"vista":"resumen","titulo":"Anota en dos toques",
+     "texto":"El botón amarillo abre el formulario con la cuenta y la categoría que más usas ya puestas.",
+     "textoSiguiente":"Siguiente","textoSaltar":"Saltar"}
     """
 }
 

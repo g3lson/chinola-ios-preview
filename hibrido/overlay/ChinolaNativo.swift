@@ -692,6 +692,7 @@ final class CNDatos: ObservableObject {
     @Published var libretas: CNLibretas? = nil
     @Published var libretaNueva: CNLibretaNueva? = nil
     @Published var invitar: CNInvitar? = nil
+    @Published var tour: CNTour? = nil
     /// tipo: opcion · dia · antes · despues · aplicar · cerrar
     var onPeriodo: (String, Int) -> Void = { _, _ in }
     /// El detalle de un movimiento, armado por la web.
@@ -731,6 +732,7 @@ final class CNDatos: ObservableObject {
     func cargarLibretas(json: String) { libretas = CNLibretas.desde(json: json) }
     func cargarLibretaNueva(json: String) { libretaNueva = CNLibretaNueva.desde(json: json) }
     func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
+    func cargarTour(json: String) { tour = CNTour.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
@@ -4475,9 +4477,11 @@ struct CNSeccionVista: View {
         case "boton":
             Button { if q.abre.isEmpty { datos.onSeccionAccion(q.accion, nil) } else { datos.onAbrirSeccion(q.abre) } } label: {
                 Text(q.label).font(cnLetra(15, .bold))
-                    .foregroundColor(q.estilo == "acento" ? CNC.sobreAcc : CNC.ink)
+                    .foregroundColor(q.estilo == "acento" ? CNC.sobreAcc
+                                     : (q.estilo == "peligro" ? CNC.neg : CNC.ink))
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(q.estilo == "acento" ? CNC.acc : CNC.soft,
+                    .background(q.estilo == "acento" ? CNC.acc
+                                : (q.estilo == "peligro" ? CNC.neg.opacity(0.10) : CNC.soft),
                                 in: RoundedRectangle(cornerRadius: 13, style: .continuous))
             }.buttonStyle(CNPulsable())
         case "codigo":
