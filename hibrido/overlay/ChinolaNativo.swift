@@ -108,6 +108,13 @@ enum CNC {
 /// La tinta que se lee encima de un color: oscura sobre claro y al revés.
 func cnSobre(_ c: Color) -> Color { cnClaro(c) ? cnColor(0x20180a) : .white }
 
+/// El margen seguro de arriba del aparato (59 pt con isla, 47 con muesca).
+func cnMargenArriba() -> CGFloat {
+    let escenas = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    let ventana = escenas.flatMap { $0.windows }.first { $0.isKeyWindow } ?? escenas.first?.windows.first
+    return ventana?.safeAreaInsets.top ?? 47
+}
+
 /// ¿Este color es claro? (luminancia relativa, como hace la web en color.js)
 func cnClaro(_ c: Color) -> Bool {
     let u = UIColor(c); var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
@@ -2173,11 +2180,16 @@ struct CNCabeceraApp: View {
     static let bloqueMeses: CGFloat = 114
     /// Lo que se deja por encima del contenido, ADEMÁS del margen seguro.
     ///
-    /// El margen seguro ya esquiva la isla dinámica, así que todo lo que se
-    /// ponga aquí es hueco de más: la web dejaba 10 y se veía una franja de
-    /// color vacía entre la isla y la cápsula. Con 2 el contenido sube pegado a
-    /// la isla sin tocarla, y se gana pantalla.
-    private var padArriba: CGFloat { c.tarjeta ? 10 : 2 }
+    /// El margen seguro de un iPhone con isla es más alto que la isla: hay unos
+    /// diez puntos por debajo de ella que el sistema reserva y nadie usa. Ahí
+    /// se veía una franja de color vacía entre la isla y la cápsula. Esto sube
+    /// el contenido justo esos puntos —y solo en los aparatos que los tienen,
+    /// porque en los de muesca el margen acaba donde acaba la muesca—, dejando
+    /// unos pocos de aire para no pegarse a ella.
+    private var padArriba: CGFloat {
+        if c.tarjeta { return 10 }
+        return 2 - max(0, cnMargenArriba() - 52)
+    }
     private var tinta: Color { c.tinta.isEmpty ? .white : cnColor(hexString: c.tinta) }
     private var gris: Color { c.gris.isEmpty ? tinta.opacity(0.8) : cnColor(hexString: c.gris) }
     private var pastilla: Color { c.pastilla.isEmpty ? Color.white.opacity(0.13) : cnColor(hexString: c.pastilla) }
@@ -3258,7 +3270,8 @@ struct CNPerfil: View {
         }
         // Pegado a la isla: el margen seguro ya la esquiva, así que dejar más
         // aire aquí solo es pantalla desperdiciada.
-        .padding(.horizontal, 16).padding(.top, 2).padding(.bottom, 8).frame(minHeight: 44)
+        .padding(.horizontal, 16).padding(.top, 2 - max(0, cnMargenArriba() - 52))
+        .padding(.bottom, 8).frame(minHeight: 44)
         .background(CNC.scr.ignoresSafeArea(edges: .top))
     }
 
@@ -3488,7 +3501,8 @@ struct CNSeccionVista: View {
             Spacer(minLength: 0)
             Color.clear.frame(width: 40, height: 40)
         }
-        .padding(.horizontal, 16).padding(.top, 2).padding(.bottom, 6).frame(minHeight: 46)
+        .padding(.horizontal, 16).padding(.top, 2 - max(0, cnMargenArriba() - 52))
+        .padding(.bottom, 6).frame(minHeight: 46)
         .background(CNC.scr.ignoresSafeArea(edges: .top))
     }
 
