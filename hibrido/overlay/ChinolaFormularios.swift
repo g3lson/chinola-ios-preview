@@ -782,7 +782,7 @@ struct CNHojaWeb: View {
                             SecureField(c.ph, text: enlace(c))
                         } else {
                             TextField(c.ph, text: enlace(c))
-                                .keyboardType(cnTeclado(c.teclado))
+                                .keyboardType(cnTecladoDe(c.teclado))
                                 .textInputAutocapitalization(c.teclado == "email" ? .never : .sentences)
                                 .disableAutocorrection(c.teclado == "email")
                         }
@@ -804,7 +804,7 @@ struct CNHojaWeb: View {
 }
 
 /// El teclado que pide cada campo (lo dice la web).
-func cnTeclado(_ nombre: String) -> UIKeyboardType {
+func cnTecladoDe(_ nombre: String) -> UIKeyboardType {
     switch nombre {
     case "email": return .emailAddress
     case "decimal": return .decimalPad
