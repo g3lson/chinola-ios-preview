@@ -380,13 +380,28 @@ final class CNDatos: ObservableObject {
     @Published var plan: CNPlanModelo? = nil
     /// tipo: tab · categoria · meta · aportar · nuevaCat · nuevaMeta
     var onPlanAccion: (String, Int) -> Void = { _, _ in }
+    /// Cambiar de pestaña se nota al instante, sin esperar a la web.
+    func ponerPestanaPlan(_ i: Int) {
+        guard var m = plan else { return }
+        m.tab = i == 1 ? "metas" : "presupuesto"
+        m.tabs = m.tabs.map { t in var x = t; x.puesta = (t.indice == i); return x }
+        plan = m
+    }
     var onCuentaAccion: (String) -> Void = { _ in }
     /// Cualquier detalle (cuenta, tarjeta, préstamo, meta, categoría).
     @Published var detalle: CNDetalle? = nil
     var onDetalleAccion: (String, Int) -> Void = { _, _ in }
     func cargarDetalle(json: String) { detalle = CNDetalle.desde(json: json) }
-    func cargarPlan(json: String) { plan = CNPlanModelo.desde(json: json) }
-    func cargarCuentas(json: String) { cuentas = CNCuentasModelo.desde(json: json) }
+    /// Un modelo a medias (leído mientras la web repinta) NO pisa al bueno:
+    /// así la pantalla no se queda en blanco al cambiar de pestaña.
+    func cargarPlan(json: String) {
+        guard let m = CNPlanModelo.desde(json: json) else { return }
+        if m.listo || plan == nil { plan = m }
+    }
+    func cargarCuentas(json: String) {
+        guard let m = CNCuentasModelo.desde(json: json) else { return }
+        if m.listo || cuentas == nil { cuentas = m }
+    }
     func cargarMovDetalle(json: String) { movDetalle = CNMovDetalle.desde(json: json) }
     func cargarPeriodo(json: String) { periodo = CNPeriodo.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
@@ -2064,6 +2079,7 @@ struct CNCuentasModelo {
         var fondo = ""; var tinta = ""
     }
     var titulo = "Cuentas"; var oculto = false
+    var listo = false
     var patrimonio = Patrimonio()
     var rotuloCuentas = "Cuentas"; var rotuloTarjetas = "Tarjetas de crédito"; var rotuloPrestamos = "Préstamos"
     var cuentas: [Fila] = []; var tarjetas: [Fila] = []; var prestamos: [Fila] = []
@@ -2083,6 +2099,7 @@ struct CNCuentasModelo {
             }
         }
         var m = CNCuentasModelo()
+        m.listo = (r["listo"] as? Bool) ?? false
         m.titulo = s(r, "titulo").isEmpty ? "Cuentas" : s(r, "titulo")
         m.oculto = (r["oculto"] as? Bool) ?? false
         let p = r["patrimonio"] as? [String: Any]
@@ -2251,6 +2268,8 @@ struct CNPlanModelo {
         var pie = ""; var falta = ""; var aportar = ""
     }
     var titulo = "Plan"; var tab = "presupuesto"
+    /// ¿Viene de verdad? (la web solo lo arma entero estando en su pestaña)
+    var listo = false
     var tabs: [Tab] = []
     var puedeEditar = true; var puedeRegistrar = true
     var presGastado = ""; var presDe = "de"; var presTotal = ""
@@ -2268,6 +2287,7 @@ struct CNPlanModelo {
         func b(_ o: [String: Any]?, _ k: String) -> Bool { (o?[k] as? Bool) ?? false }
         func l(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
         var m = CNPlanModelo()
+        m.listo = b(r, "listo")
         m.titulo = s(r, "titulo").isEmpty ? "Plan" : s(r, "titulo")
         m.tab = s(r, "tab"); m.puedeEditar = b(r, "puedeEditar"); m.puedeRegistrar = b(r, "puedeRegistrar")
         m.tabs = l(r, "tabs").map { Tab(indice: Int(n($0, "indice")), label: s($0, "label"), puesta: b($0, "puesta")) }
@@ -2334,7 +2354,11 @@ struct CNPlan: View {
                     .shadow(color: CNC.acc.opacity(0.3), radius: 6, y: 2)
                 HStack(spacing: 0) {
                     ForEach(m.tabs) { t in
-                        Button { datos.onPlanAccion("tab", t.indice) } label: {
+                        Button {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            datos.ponerPestanaPlan(t.indice)
+                            datos.onPlanAccion("tab", t.indice)
+                        } label: {
                             Text(t.label).font(.system(size: 14.5, weight: .bold))
                                 .foregroundColor(t.puesta ? CNC.sobreAcc : CNC.pmut)
                                 .frame(maxWidth: .infinity).frame(height: 38)
