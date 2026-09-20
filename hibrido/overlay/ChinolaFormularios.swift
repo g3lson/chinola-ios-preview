@@ -1449,3 +1449,102 @@ struct CNTourVista: View {
         }
     }
 }
+
+// ── Chino, en grande ────────────────────────────────────────────────────────
+//
+// El icono del perfil es su dibujo, y se mantiene pulsado para verlo en grande;
+// por detrás, los pagos que vienen. Es la misma tarjeta de siempre: delante el
+// personaje, detrás lo que hay que pagar, y se voltea al tocarla.
+struct CNMascota {
+    struct Aviso: Identifiable { var id: Int; var titulo = ""; var detalle = ""; var color = "" }
+    var chinolo = ""
+    var tituloAvisos = ""; var verAvisos = ""; var volver = ""; var nadaTexto = ""
+    var avisos: [Aviso] = []
+
+    static func desde(json: String) -> CNMascota? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
+        var m = CNMascota()
+        m.chinolo = s(r, "chinolo"); m.tituloAvisos = s(r, "tituloAvisos")
+        m.verAvisos = s(r, "verAvisos"); m.volver = s(r, "volver"); m.nadaTexto = s(r, "nadaTexto")
+        m.avisos = ((r["avisos"] as? [[String: Any]]) ?? []).enumerated().map { i, a in
+            Aviso(id: i, titulo: s(a, "titulo"), detalle: s(a, "detalle"), color: s(a, "color"))
+        }
+        return m
+    }
+}
+
+struct CNMascotaVista: View {
+    @ObservedObject var datos: CNDatos
+    var onClose: () -> Void
+    @State private var vuelta = false
+    @State private var salto = false
+
+    var body: some View {
+        let m = datos.mascota ?? CNMascota()
+        return ZStack {
+            Color.black.opacity(0.42).ignoresSafeArea().onTapGesture { onClose() }
+            VStack(spacing: 0) {
+                if vuelta { detras(m) } else { delante(m) }
+            }
+            .frame(maxWidth: 330)
+            .padding(18)
+            .background(CNC.card, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 26).stroke(CNC.line, lineWidth: 1))
+            .shadow(color: .black.opacity(0.22), radius: 22, y: 8)
+            .rotation3DEffect(.degrees(vuelta ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+            .scaleEffect(x: vuelta ? -1 : 1, y: 1)
+            .padding(.horizontal, 20)
+            .onTapGesture {
+                UISelectionFeedbackGenerator().selectionChanged()
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { vuelta.toggle() }
+            }
+        }
+    }
+
+    private func delante(_ m: CNMascota) -> some View {
+        VStack(spacing: 12) {
+            if let img = cnImagenBase64(m.chinolo) {
+                Image(uiImage: img).resizable().scaledToFit().frame(width: 168, height: 168)
+                    // Vivo, como en la web: respira despacio.
+                    .scaleEffect(salto ? 1.045 : 0.985)
+                    .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: salto)
+                    .onAppear { salto = true }
+            }
+            if !m.verAvisos.isEmpty {
+                Text(m.verAvisos).font(cnLetra(13.5, .semibold)).foregroundColor(CNC.pmut)
+            }
+        }
+    }
+
+    private func detras(_ m: CNMascota) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(m.tituloAvisos).font(cnLetra(16, .heavy)).foregroundColor(CNC.ink)
+            if m.avisos.isEmpty {
+                Text(m.nadaTexto).font(cnLetra(14)).foregroundColor(CNC.pmut)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(m.avisos) { a in
+                        HStack(spacing: 10) {
+                            Circle().fill(cnColor(hexString: a.color)).frame(width: 8, height: 8)
+                            Text(a.titulo).font(cnLetra(14.5, .semibold)).foregroundColor(CNC.ink).lineLimit(1)
+                            Spacer(minLength: 8)
+                            Text(a.detalle).font(cnLetra(13)).foregroundColor(CNC.pmut).lineLimit(1)
+                        }
+                        .padding(.vertical, 9)
+                        if a.id < m.avisos.count - 1 {
+                            Rectangle().fill(CNC.line).frame(height: 0.5)
+                        }
+                    }
+                }
+            }
+            if !m.volver.isEmpty {
+                Text(m.volver).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
+                    .frame(maxWidth: .infinity, alignment: .center).padding(.top, 2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}

@@ -214,6 +214,10 @@ extension TestVC {
         case "libretas":
             datos.cargarLibretas(json: TestVC.libretasDeMuestra)
             vista = AnyView(CNLibretasHoja(datos: datos, onClose: {})); estado.activa = "resumen"
+        case "mascota":
+            datos.cargarMascota(json: TestVC.mascotaDeMuestra)
+            vista = AnyView(ZStack { CNPerfil(datos: datos); CNMascotaVista(datos: datos, onClose: {}) })
+            estado.activa = "perfil"
         case "tour":
             datos.cargarTour(json: TestVC.tourDeMuestra)
             vista = AnyView(ZStack { CNResumen(datos: datos); CNTourVista(datos: datos, onPaso: { _ in }) })
@@ -598,6 +602,16 @@ extension TestVC {
      "datos":[{"label":"Categoría","valor":"Deudas"},{"label":"Tipo","valor":"Fijo"},
               {"label":"Fecha","valor":"11 de septiembre"},{"label":"Pagado con","valor":"Cuenta principal"},
               {"label":"Se repite","valor":"Cada mes"}]}
+    """
+}
+
+extension TestVC {
+    static let mascotaDeMuestra = """
+    {"chinolo":"","tituloAvisos":"Lo que viene","verAvisos":"Tócame para ver los pagos",
+     "volver":"Toca para volver","nadaTexto":"No tienes pagos cerca. Todo tranquilo.",
+     "avisos":[{"titulo":"Pago Visa Clásica","detalle":"RD$18,600 · en 5 d","color":"rgb(224,169,46)"},
+               {"titulo":"Cuota Préstamo del carro","detalle":"RD$9,800 · hoy","color":"rgb(213,89,72)"},
+               {"titulo":"Pago Mastercard","detalle":"RD$4,200 · en 12 d","color":"rgb(19,125,65)"}]}
     """
 }
 

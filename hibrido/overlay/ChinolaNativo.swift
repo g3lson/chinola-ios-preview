@@ -658,6 +658,8 @@ final class CNDatos: ObservableObject {
     var onLibreta: (String, Int) -> Void = { _, _ in }
     /// Crear una libreta desde el formulario nativo.
     var onCrearLibreta: ([String: Any]) -> Void = { _ in }
+    /// Chino en grande (mantener pulsado su icono o la pestaña de Perfil).
+    var onMascota: () -> Void = {}
     /// Mandar una invitación desde el formulario nativo.
     var onInvitar: ([String: Any]) -> Void = { _ in }
     var onVerPresupuesto: () -> Void = {}
@@ -693,6 +695,7 @@ final class CNDatos: ObservableObject {
     @Published var libretaNueva: CNLibretaNueva? = nil
     @Published var invitar: CNInvitar? = nil
     @Published var tour: CNTour? = nil
+    @Published var mascota: CNMascota? = nil
     /// tipo: opcion · dia · antes · despues · aplicar · cerrar
     var onPeriodo: (String, Int) -> Void = { _, _ in }
     /// El detalle de un movimiento, armado por la web.
@@ -733,6 +736,7 @@ final class CNDatos: ObservableObject {
     func cargarLibretaNueva(json: String) { libretaNueva = CNLibretaNueva.desde(json: json) }
     func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
     func cargarTour(json: String) { tour = CNTour.desde(json: json) }
+    func cargarMascota(json: String) { mascota = CNMascota.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
@@ -1127,9 +1131,17 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     private weak var anfitriona: UIView?
     var alTocar: (String) -> Void = { _ in }
 
+    /// Mantener pulsado un botón del menú: el atajo de esa pestaña (anotar,
+    /// agregar una cuenta…) sin tener que ir a la pantalla primero.
+    var alMantener: (String) -> Void = { _ in }
+
     func montar(en vista: UIView) {
         barra.translatesAutoresizingMaskIntoConstraints = false
         barra.delegate = self
+        let largo = UILongPressGestureRecognizer(target: self, action: #selector(mantenido(_:)))
+        largo.minimumPressDuration = 0.4
+        largo.cancelsTouchesInView = false
+        barra.addGestureRecognizer(largo)
         vista.addSubview(barra)
         // El alto a mano. Una UITabBar SUELTA (fuera de un UITabBarController)
         // recibe el margen seguro de abajo pero NO lo suma a su alto: se queda
@@ -1175,6 +1187,16 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
                 self.barra.transform = .identity
             }
         }
+    }
+
+
+    @objc private func mantenido(_ g: UILongPressGestureRecognizer) {
+        guard g.state == .began, !ids.isEmpty else { return }
+        let x = g.location(in: barra).x
+        let ancho = barra.bounds.width / CGFloat(ids.count)
+        let i = min(ids.count - 1, max(0, Int(x / max(1, ancho))))
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        alMantener(ids[i])
     }
 
     private func rehacer() {
@@ -4157,6 +4179,7 @@ struct CNAjustes {
 
 struct CNPerfil: View {
     @ObservedObject var datos: CNDatos
+    @State private var respira = false
     var body: some View {
         ZStack {
             raiz
@@ -4202,9 +4225,20 @@ struct CNPerfil: View {
     /// que mirar. Lleva el nombre de la app, como en la web.
     private var cabecera: some View {
         HStack(spacing: 10) {
-            ZStack {
-                Circle().fill(CNC.side).frame(width: 29, height: 29)
-                Circle().fill(CNC.acc).frame(width: 11, height: 11)
+            // Chino, el de siempre: su dibujo, respirando, y manteniéndolo
+            // pulsado sale en grande con los pagos que vienen por detrás.
+            if let img = cnImagenBase64(datos.mascota?.chinolo ?? "") {
+                Image(uiImage: img).resizable().scaledToFit().frame(width: 34, height: 34)
+                    .scaleEffect(respira ? 1.06 : 0.97)
+                    .animation(.easeInOut(duration: 1.7).repeatForever(autoreverses: true), value: respira)
+                    .onAppear { respira = true }
+                    .onLongPressGesture(minimumDuration: 0.4) { datos.onMascota() }
+            } else {
+                ZStack {
+                    Circle().fill(CNC.side).frame(width: 29, height: 29)
+                    Circle().fill(CNC.acc).frame(width: 11, height: 11)
+                }
+                .onLongPressGesture(minimumDuration: 0.4) { datos.onMascota() }
             }
             Text("Chinola").font(cnLetra(20, .heavy)).foregroundColor(CNC.ink)
             Spacer(minLength: 0)
