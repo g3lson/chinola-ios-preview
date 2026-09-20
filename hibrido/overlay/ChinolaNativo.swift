@@ -2181,7 +2181,7 @@ struct CNPlan: View {
                 Button { datos.onCalendario() } label: { Label("Cambiar el periodo", systemImage: "calendar") }
             }
             CNCirculoAcento(icono: "plus") {
-                datos.onPlan(m.tab == "metas" ? "nuevaMeta" : "nuevaCat", 0)
+                datos.onPlanAccion(m.tab == "metas" ? "nuevaMeta" : "nuevaCat", 0)
             }
         }
     }
