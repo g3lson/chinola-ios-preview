@@ -658,6 +658,8 @@ final class CNDatos: ObservableObject {
     var onLibreta: (String, Int) -> Void = { _, _ in }
     /// Crear una libreta desde el formulario nativo.
     var onCrearLibreta: ([String: Any]) -> Void = { _ in }
+    /// Mandar una invitación desde el formulario nativo.
+    var onInvitar: ([String: Any]) -> Void = { _ in }
     var onVerPresupuesto: () -> Void = {}
     var onLimiteCategoria: (String, Double) -> Void = { _, _ in }   // (categoría, presupuesto) → web
     var onMes: (Int) -> Void = { _ in }         // −1 / +1 desde la cabecera
@@ -689,6 +691,7 @@ final class CNDatos: ObservableObject {
     @Published var periodo: CNPeriodo? = nil
     @Published var libretas: CNLibretas? = nil
     @Published var libretaNueva: CNLibretaNueva? = nil
+    @Published var invitar: CNInvitar? = nil
     /// tipo: opcion · dia · antes · despues · aplicar · cerrar
     var onPeriodo: (String, Int) -> Void = { _, _ in }
     /// El detalle de un movimiento, armado por la web.
@@ -727,6 +730,7 @@ final class CNDatos: ObservableObject {
     func cargarPeriodo(json: String) { periodo = CNPeriodo.desde(json: json) }
     func cargarLibretas(json: String) { libretas = CNLibretas.desde(json: json) }
     func cargarLibretaNueva(json: String) { libretaNueva = CNLibretaNueva.desde(json: json) }
+    func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
@@ -4358,18 +4362,23 @@ struct CNSeccion {
     struct Item {
         var titulo = ""; var detalle = ""; var icono = ""; var color = ""; var fondo = ""
         var chip = ""; var chipFondo = ""; var accion = -1
+        /// Si viene, la fila ABRE otra pantalla nativa en vez de disparar una
+        /// acción de la web («libreta:3», «hoja:invitar:3»).
+        var abre = ""
         var acciones: [AccionItem] = []
     }
     struct Bloque {
         var tipo = "grupo"
         var titulo = ""; var pie = ""; var texto = ""; var label = ""; var estilo = "suave"
         var columnas = 2
-        var puesto = false; var accion = -1
+        var puesto = false; var accion = -1; var abre = ""
         var filas: [Fila] = []; var opciones: [Opcion] = []
         var colores: [Muestra] = []; var items: [Item] = []
         var llaves: [Llave] = []
     }
     var id = ""; var titulo = ""; var bloques: [Bloque] = []
+    /// A dónde vuelve la flecha de atrás (otra sección), si no es a Perfil.
+    var volverA = ""
 
     static func desde(json: String) -> CNSeccion? {
         guard let d = json.data(using: .utf8),
@@ -4379,11 +4388,12 @@ struct CNSeccion {
         func b(_ o: [String: Any]?, _ k: String) -> Bool { (o?[k] as? Bool) ?? false }
         func l(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
         var x = CNSeccion()
-        x.id = s(raiz, "id"); x.titulo = s(raiz, "titulo")
+        x.id = s(raiz, "id"); x.titulo = s(raiz, "titulo"); x.volverA = s(raiz, "volverA")
         x.bloques = l(raiz, "bloques").map { bq in
             var q = Bloque()
             q.tipo = s(bq, "tipo"); q.titulo = s(bq, "titulo"); q.pie = s(bq, "pie")
             q.texto = s(bq, "texto"); q.label = s(bq, "label"); q.estilo = s(bq, "estilo")
+            q.abre = s(bq, "abre")
             q.columnas = max(1, n(bq, "columnas")); q.puesto = b(bq, "puesto"); q.accion = n(bq, "accion")
             q.filas = l(bq, "filas").map {
                 Fila(label: s($0, "label"), sub: s($0, "sub"), valor: s($0, "valor"), icono: s($0, "icono"),
@@ -4409,6 +4419,7 @@ struct CNSeccion {
                 Item(titulo: s(it, "titulo"), detalle: s(it, "detalle"), icono: s(it, "icono"),
                      color: s(it, "color"), fondo: s(it, "fondo"), chip: s(it, "chip"),
                      chipFondo: s(it, "chipFondo"), accion: n(it, "accion"),
+                     abre: s(it, "abre"),
                      acciones: l(it, "acciones").map {
                          AccionItem(label: s($0, "label"), peligro: b($0, "peligro"), accion: n($0, "accion"))
                      })
@@ -4439,7 +4450,9 @@ struct CNSeccionVista: View {
 
     private var cabecera: some View {
         HStack(spacing: 6) {
-            Button(action: onVolver) {
+            Button {
+                if sec.volverA.isEmpty { onVolver() } else { datos.onAbrirSeccion(sec.volverA) }
+            } label: {
                 Image(systemName: "chevron.left").font(cnLetra(17, .bold))
                     .foregroundColor(CNC.ink).frame(width: 40, height: 40)
                     .background(CNC.soft, in: Circle())
@@ -4460,7 +4473,7 @@ struct CNSeccionVista: View {
             Text(q.texto).font(cnLetra(14)).foregroundColor(CNC.pmut)
                 .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
         case "boton":
-            Button { datos.onSeccionAccion(q.accion, nil) } label: {
+            Button { if q.abre.isEmpty { datos.onSeccionAccion(q.accion, nil) } else { datos.onAbrirSeccion(q.abre) } } label: {
                 Text(q.label).font(cnLetra(15, .bold))
                     .foregroundColor(q.estilo == "acento" ? CNC.sobreAcc : CNC.ink)
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
@@ -4721,7 +4734,10 @@ struct CNSeccionVista: View {
                         }
                     }
                     .padding(.horizontal, 14).padding(.vertical, 11).contentShape(Rectangle())
-                    .onTapGesture { if it.accion >= 0 { datos.onSeccionAccion(it.accion, nil) } }
+                    .onTapGesture {
+                        if !it.abre.isEmpty { datos.onAbrirSeccion(it.abre) }
+                        else if it.accion >= 0 { datos.onSeccionAccion(it.accion, nil) }
+                    }
                     .overlay(alignment: .bottom) {
                         if i < q.items.count - 1 {
                             Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.leading, 58)

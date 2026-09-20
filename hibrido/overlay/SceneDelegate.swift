@@ -214,6 +214,12 @@ extension TestVC {
         case "libretas":
             datos.cargarLibretas(json: TestVC.libretasDeMuestra)
             vista = AnyView(CNLibretasHoja(datos: datos, onClose: {})); estado.activa = "resumen"
+        case "invitar":
+            datos.cargarInvitar(json: TestVC.invitarDeMuestra)
+            vista = AnyView(CNFormInvitar(datos: datos, libreta: "1", onClose: {})); estado.activa = "perfil"
+        case "sec-libreta":
+            datos.cargarSeccion(json: TestVC.seccionDeMuestra("libreta"))
+            vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
         case "libreta-nueva":
             datos.cargarLibretaNueva(json: TestVC.libretaNuevaDeMuestra)
             vista = AnyView(CNFormLibreta(datos: datos, onClose: {})); estado.activa = "resumen"
@@ -407,6 +413,24 @@ extension TestVC {
                 ops += (i > 0 ? "," : "") + "{\"label\":\"\(t.0)\",\"color\":\"\(t.1)\",\"puesta\":\(i == 0),\"accion\":\(i)}"
             }
             return "{\"id\":\"colores\",\"titulo\":\"Colores\",\"bloques\":[{\"tipo\":\"opciones\",\"titulo\":\"El tema de toda la app\",\"columnas\":2,\"opciones\":[\(ops)]}]}"
+        case "libreta":
+            return """
+            {"id":"libreta:1","titulo":"Familia","volverA":"libretas","bloques":[
+              {"tipo":"lista","titulo":"","items":[
+                {"titulo":"Familia","detalle":"Familiar · Dueño","color":"rgb(255,255,255)","fondo":"rgb(122,79,208)","chip":"En uso","chipFondo":"rgb(249,245,230)"}]},
+              {"tipo":"grupo","titulo":"Este mes","filas":[
+                {"label":"Balance del mes","valor":"−RD$2,400","tinta":"rgb(213,89,72)"},
+                {"label":"Ingresos del mes","valor":"RD$80,000","tinta":"rgb(19,125,65)"},
+                {"label":"Gastos del mes","valor":"RD$82,400","tinta":"rgb(213,89,72)"},
+                {"label":"Deuda total","valor":"RD$336,000","tinta":"rgb(224,169,46)"}]},
+              {"tipo":"lista","titulo":"Miembros","items":[
+                {"titulo":"Gelson (tú)","detalle":"gelson@correo.do","chip":"Dueño","chipFondo":"rgb(249,245,230)","color":"rgb(255,255,255)","fondo":"rgb(52,110,74)"},
+                {"titulo":"Ana","detalle":"ana@correo.do","chip":"Editor","chipFondo":"rgb(249,245,230)","color":"rgb(255,255,255)","fondo":"rgb(52,94,178)",
+                 "acciones":[{"label":"Hacer Registrador","accion":1},{"label":"Hacer Lector","accion":2},{"label":"Quitar de la libreta","peligro":true,"accion":3}]}]},
+              {"tipo":"boton","label":"Invitar a alguien","estilo":"acento","abre":"hoja:invitar:1","accion":-1},
+              {"tipo":"boton","label":"Abrir esta libreta","estilo":"suave","accion":4},
+              {"tipo":"boton","label":"Eliminar la libreta","estilo":"peligro","accion":5}]}
+            """
         case "cabecera":
             return """
             {"id":"cabecera","titulo":"Cabecera","bloques":[
@@ -570,6 +594,17 @@ extension TestVC {
      "datos":[{"label":"Categoría","valor":"Deudas"},{"label":"Tipo","valor":"Fijo"},
               {"label":"Fecha","valor":"11 de septiembre"},{"label":"Pagado con","valor":"Cuenta principal"},
               {"label":"Se repite","valor":"Cada mes"}]}
+    """
+}
+
+extension TestVC {
+    static let invitarDeMuestra = """
+    {"titulo":"Invitar a alguien","phEmail":"Su correo","phNombre":"Su nombre (opcional)",
+     "rotuloRol":"Permisos","boton":"Invitar",
+     "pie":"Le llega un correo con la invitación. Hasta que la acepte, no ve nada.",
+     "roles":[{"id":"Editor","label":"Editor","sub":"Puede anotar y cambiarlo todo"},
+              {"id":"Registrador","label":"Registrador","sub":"Solo puede anotar movimientos"},
+              {"id":"Lector","label":"Lector","sub":"Solo mira, no toca nada"}]}
     """
 }
 

@@ -1289,3 +1289,89 @@ struct CNFormLibreta: View {
         onClose()
     }
 }
+
+// ── Invitar a alguien a una libreta, en nativo ──────────────────────────────
+struct CNInvitar {
+    struct Rol: Identifiable { var id: String; var label: String; var sub: String }
+    var titulo = "Invitar a alguien"
+    var phEmail = ""; var phNombre = ""; var rotuloRol = ""; var pie = ""; var boton = "Invitar"
+    var roles: [Rol] = []
+
+    static func desde(json: String) -> CNInvitar? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
+        var m = CNInvitar()
+        if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
+        m.phEmail = s(r, "phEmail"); m.phNombre = s(r, "phNombre")
+        m.rotuloRol = s(r, "rotuloRol"); m.pie = s(r, "pie")
+        if !s(r, "boton").isEmpty { m.boton = s(r, "boton") }
+        m.roles = ((r["roles"] as? [[String: Any]]) ?? []).map {
+            Rol(id: s($0, "id"), label: s($0, "label"), sub: s($0, "sub"))
+        }
+        return m
+    }
+}
+
+struct CNFormInvitar: View {
+    @ObservedObject var datos: CNDatos
+    let libreta: String
+    var onClose: () -> Void
+    @State private var email = ""
+    @State private var nombre = ""
+    @State private var rol = ""
+
+    var body: some View {
+        let m = datos.invitar ?? CNInvitar()
+        return CNHoja(titulo: m.titulo, guardarTexto: m.boton,
+                      guardarActivo: email.contains("@"),
+                      onClose: onClose, onGuardar: { mandar(m) }) {
+            CNGrupoCampos(campos: [(m.phEmail, $email, .emailAddress), (m.phNombre, $nombre, .default)])
+            if !m.roles.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    cnHojaTitulo(m.rotuloRol)
+                    VStack(spacing: 0) {
+                        ForEach(m.roles.indices, id: \.self) { i in
+                            let r = m.roles[i]
+                            Button {
+                                UISelectionFeedbackGenerator().selectionChanged(); rol = r.id
+                            } label: {
+                                HStack(spacing: 10) {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(r.label).font(cnLetra(15.5, .semibold)).foregroundColor(CNC.ink)
+                                        if !r.sub.isEmpty {
+                                            Text(r.sub).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                                        }
+                                    }
+                                    Spacer(minLength: 8)
+                                    Image(systemName: rol == r.id ? "checkmark.circle.fill" : "circle")
+                                        .font(cnLetra(18)).foregroundColor(rol == r.id ? CNC.acc : CNC.line)
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 11).contentShape(Rectangle())
+                            }.buttonStyle(CNPulsable())
+                            if i < m.roles.count - 1 {
+                                Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 14)
+                            }
+                        }
+                    }
+                    .background(CNC.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
+                }
+            }
+            if !m.pie.isEmpty {
+                Text(m.pie).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
+                    .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
+            }
+        }
+        .onAppear { if rol.isEmpty { rol = m.roles.last?.id ?? "Lector" } }
+    }
+
+    private func mandar(_ m: CNInvitar) {
+        let e = email.trimmingCharacters(in: .whitespaces)
+        guard e.contains("@") else { return }
+        datos.onInvitar(["libreta": libreta, "email": e,
+                         "nombre": nombre.trimmingCharacters(in: .whitespaces), "rol": rol])
+        onClose()
+    }
+}
