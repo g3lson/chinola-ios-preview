@@ -565,9 +565,9 @@ extension TestVC {
      "tituloTusMetas":"Tus metas","rotuloNuevaMeta":"Meta",
      "filas":[
        {"indice":0,"nombre":"Vivienda","queda":"RD$1,200","pie":"RD$8,800 de RD$10,000","pct":88,
-        "color":"rgb(19,125,65)","iconoPath":"M4 21V9l8-6 8 6v12M9 21v-6h6v6","catColor":"rgb(52,110,74)","iconoBg":"rgba(52,110,74,0.15)"},
+        "color":"rgb(19,125,65)","iconoPath":"M4 21V9l8-6 8 6v12M9 21v-6h6v6","catColor":"rgb(52,110,74)","iconoBg":"oklab(0.51 -0.09 0.05 / 0.15)"},
        {"indice":1,"nombre":"Alimentación","queda":"−RD$1,400","pie":"RD$13,400 de RD$12,000","pct":100,
-        "color":"rgb(213,89,72)","iconoPath":"M6 3v8a3 3 0 0 0 6 0V3M9 11v10M18 3c-1.5 2-2 4-2 6v4h3v8","catColor":"rgb(196,124,44)","iconoBg":"rgba(196,124,44,0.15)"},
+        "color":"rgb(213,89,72)","iconoPath":"M6 3v8a3 3 0 0 0 6 0V3M9 11v10M18 3c-1.5 2-2 4-2 6v4h3v8","catColor":"rgb(196,124,44)","iconoBg":"color(srgb 0.77 0.49 0.17 / 0.15)"},
        {"indice":2,"nombre":"Transporte","queda":"RD$0","pie":"RD$6,000 de RD$6,000","pct":100,
         "color":"rgb(224,169,46)","iconoPath":"M5 17h14M6 17V9l2-4h8l2 4v8M7 13h10","catColor":"rgb(52,94,178)","iconoBg":"rgba(52,94,178,0.15)"},
        {"indice":3,"nombre":"Salud","queda":"","pie":"RD$2,000 · sin presupuesto","pct":0,

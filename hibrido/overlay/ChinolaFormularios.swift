@@ -1045,3 +1045,124 @@ struct CNFranjaRango: Shape {
         return p
     }
 }
+
+// ── El selector de libretas, en nativo ──────────────────────────────────────
+//
+// Antes era la hoja de la WEB, y para enseñarla había que enseñar la pantalla
+// web de debajo: al tocar la libreta en la cabecera, el Resumen cambiaba de
+// cara por un momento y volvía al cerrar. Ahora la lista la calcula la web
+// —los nombres, el tipo, cuánta gente y cuál está en uso— y aquí solo se
+// dibuja, encima de la pantalla nativa que ya estaba.
+struct CNLibretas {
+    struct Fila: Identifiable {
+        var id: Int { indice }
+        var indice = 0; var nombre = ""; var detalle = ""; var iconoPath = ""
+        var color = ""; var enUso = false; var rotuloEnUso = ""
+    }
+    var titulo = "Libretas"
+    var textoGestionar = ""
+    var filas: [Fila] = []
+
+    static func desde(json: String) -> CNLibretas? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
+        var m = CNLibretas()
+        if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
+        m.textoGestionar = s(r, "textoGestionar")
+        m.filas = ((r["filas"] as? [[String: Any]]) ?? []).map { f in
+            Fila(indice: (f["indice"] as? NSNumber)?.intValue ?? 0,
+                 nombre: s(f, "nombre"), detalle: s(f, "detalle"), iconoPath: s(f, "iconoPath"),
+                 color: s(f, "color"), enUso: (f["enUso"] as? Bool) ?? false,
+                 rotuloEnUso: s(f, "rotuloEnUso"))
+        }
+        return m
+    }
+}
+
+struct CNLibretasHoja: View {
+    @ObservedObject var datos: CNDatos
+    var onClose: () -> Void
+    var body: some View {
+        let m = datos.libretas ?? CNLibretas()
+        return VStack(spacing: 0) {
+            ZStack {
+                Text(m.titulo).font(.system(size: 17, weight: .bold)).foregroundColor(CNC.ink)
+                HStack {
+                    Button {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        onClose()
+                    } label: {
+                        Image(systemName: "xmark").font(.system(size: 16, weight: .bold))
+                            .foregroundColor(CNC.ink).frame(width: 44, height: 44).cnVidrio(Circle())
+                    }.buttonStyle(CNPulsable())
+                    Spacer(minLength: 8)
+                    Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        datos.onLibreta("nueva", 0)
+                    } label: {
+                        Image(systemName: "plus").font(.system(size: 17, weight: .bold))
+                            .foregroundColor(CNC.sobreAcc)
+                            .frame(width: 44, height: 44).cnVidrio(Circle(), tinte: CNC.acc)
+                    }.buttonStyle(CNPulsable())
+                }
+            }
+            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 12)
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 10) {
+                    ForEach(m.filas) { f in fila(f) }
+                    if !m.textoGestionar.isEmpty {
+                        Button {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            datos.onLibreta("gestionar", 0)
+                        } label: {
+                            Text(m.textoGestionar).font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 15)
+                                .background(CNC.card, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                    .stroke(CNC.line, lineWidth: 1))
+                        }.buttonStyle(CNPulsable()).padding(.top, 6)
+                    }
+                    Color.clear.frame(height: 20)
+                }
+                .padding(.horizontal, 16)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(CNC.scr.ignoresSafeArea())
+    }
+
+    private func fila(_ f: CNLibretas.Fila) -> some View {
+        Button {
+            UISelectionFeedbackGenerator().selectionChanged()
+            datos.onLibreta("elegir", f.indice)
+        } label: {
+            HStack(spacing: 13) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous).fill(cnColor(hexString: f.color))
+                    CNSVGShape(d: f.iconoPath)
+                        .stroke(Color.white, style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                        .frame(width: 22, height: 22)
+                }
+                .frame(width: 46, height: 46)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(f.nombre).font(.system(size: 16, weight: .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                    Text(f.detalle).font(.system(size: 13)).foregroundColor(CNC.pmut).lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                if f.enUso {
+                    Text(f.rotuloEnUso.uppercased()).font(.system(size: 10.5, weight: .heavy)).tracking(0.5)
+                        .foregroundColor(CNC.pos)
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(CNC.pos.opacity(0.14), in: Capsule())
+                }
+            }
+            .padding(12)
+            .background(f.enUso ? CNC.soft : CNC.card,
+                        in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .stroke(f.enUso ? CNC.acc.opacity(0.55) : CNC.line, lineWidth: f.enUso ? 1.6 : 1))
+        }.buttonStyle(CNPulsable())
+    }
+}

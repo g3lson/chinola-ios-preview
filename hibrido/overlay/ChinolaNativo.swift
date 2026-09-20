@@ -9,37 +9,98 @@ import UIKit
 func cnColor(_ hex: UInt) -> Color {
     Color(.sRGB, red: Double((hex >> 16) & 0xff) / 255, green: Double((hex >> 8) & 0xff) / 255, blue: Double(hex & 0xff) / 255, opacity: 1)
 }
+/// Los números de dentro de un paréntesis de CSS, en orden. Entiende comas,
+/// espacios y la barra del alfa, y devuelve los porcentajes ya en 0…1.
+///
+/// El texto que llega no siempre es `rgb()`: WebKit devuelve un
+/// `color-mix(in oklab, …)` resuelto como `oklab(…)`, y un color de otro
+/// espacio como `color(srgb …)`. Leerlos como hexadecimal daba 0 —NEGRO— y de
+/// ahí los cuadros de los iconos en negro.
+func cnNumerosCSS(_ s: String) -> [(Double, Bool)] {
+    let dentro = s.drop(while: { $0 != "(" }).dropFirst()
+    var out: [(Double, Bool)] = []
+    var actual = ""
+    func cierra(_ pct: Bool) {
+        if let v = Double(actual) { out.append((v, pct)) }
+        actual = ""
+    }
+    for ch in dentro {
+        if ch == ")" { break }
+        if ch.isNumber || ch == "." || ch == "-" || ch == "+" { actual.append(ch) }
+        else if ch == "%" { cierra(true) }
+        else { cierra(false) }
+    }
+    cierra(false)
+    return out
+}
+
 func cnColor(hexString s: String) -> Color {
-    let t = s.trimmingCharacters(in: .whitespaces)
+    let t = s.trimmingCharacters(in: .whitespaces).lowercased()
     // «transparent» no es un número hexadecimal: leído como tal daba 0, o sea
     // NEGRO, y el calendario salía con bandas y círculos negros por todos lados.
     if t.isEmpty || t == "transparent" || t == "none" { return .clear }
-    // La web resuelve sus colores (var(), color-mix(), oklch()) a rgb()/rgba()
-    // antes de mandarlos, así que aquí solo hay que leer los números.
     if t.hasPrefix("rgb") {
-        let dentro = t.drop(while: { $0 != "(" }).dropFirst().prefix(while: { $0 != ")" })
-        let n = dentro.split(whereSeparator: { " ,/".contains($0) }).compactMap { Double($0) }
+        let n = cnNumerosCSS(t)
         if n.count >= 3 {
-            return Color(.sRGB, red: n[0] / 255, green: n[1] / 255, blue: n[2] / 255,
-                         opacity: n.count > 3 ? n[3] : 1)
+            // En rgb() un porcentaje es sobre 255; el alfa, sobre 1.
+            func c(_ i: Int) -> Double { n[i].1 ? n[i].0 / 100 : n[i].0 / 255 }
+            let a = n.count > 3 ? (n[3].1 ? n[3].0 / 100 : n[3].0) : 1
+            return Color(.sRGB, red: c(0), green: c(1), blue: c(2), opacity: a)
         }
         return .clear
+    }
+    if t.hasPrefix("hsl") {
+        let n = cnNumerosCSS(t)
+        guard n.count >= 3 else { return .clear }
+        return cnDesdeHSL(n[0].0, n[1].0 / 100, n[2].0 / 100,
+                          n.count > 3 ? (n[3].1 ? n[3].0 / 100 : n[3].0) : 1)
     }
     // El diseño guarda los colores en oklch(...) (CSS). Se convierten a sRGB para
     // que las cuentas/categorías/metas se vean IGUAL que en la web y no en negro.
     if t.hasPrefix("oklch") { return cnOklch(t) }
+    if t.hasPrefix("oklab") {
+        let n = cnNumerosCSS(t)
+        guard n.count >= 3 else { return .clear }
+        // La L puede venir en porcentaje (0…100%) o en 0…1.
+        let L = n[0].1 ? n[0].0 / 100 : n[0].0
+        let a = n.count > 3 ? (n[3].1 ? n[3].0 / 100 : n[3].0) : 1
+        return cnDesdeOklab(L, n[1].0, n[2].0, a)
+    }
+    // color(srgb r g b / a) y color(display-p3 r g b / a): componentes en 0…1.
+    if t.hasPrefix("color(") {
+        let dentro = String(t.drop(while: { $0 != "(" }).dropFirst().prefix(while: { $0 != ")" }))
+        // Fuera el nombre del espacio antes de leer números: «display-p3» lleva
+        // un 3 dentro y se colaba como si fuera el primer componente.
+        let trozos = dentro.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+        let resto = trozos.count > 1 ? String(trozos[1]) : dentro
+        let n = cnNumerosCSS("(" + resto + ")")
+        guard n.count >= 3 else { return .clear }
+        func c(_ i: Int) -> Double { min(1, max(0, n[i].1 ? n[i].0 / 100 : n[i].0)) }
+        let a = n.count > 3 ? (n[3].1 ? n[3].0 / 100 : n[3].0) : 1
+        if t.contains("display-p3") { return cnDesdeP3(c(0), c(1), c(2), a) }
+        return Color(.sRGB, red: c(0), green: c(1), blue: c(2), opacity: a)
+    }
     var h = t.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
     if h.count == 3 { h = h.map { "\($0)\($0)" }.joined() }
-    let v = UInt64(h, radix: 16) ?? 0
-    return Color(.sRGB, red: Double((v >> 16) & 0xff) / 255, green: Double((v >> 8) & 0xff) / 255, blue: Double(v & 0xff) / 255, opacity: 1)
+    // #rrggbbaa: el alfa va al final, no en los bits altos.
+    if h.count == 8, let v = UInt64(h, radix: 16) {
+        return Color(.sRGB, red: Double((v >> 24) & 0xff) / 255, green: Double((v >> 16) & 0xff) / 255,
+                     blue: Double((v >> 8) & 0xff) / 255, opacity: Double(v & 0xff) / 255)
+    }
+    if let v = UInt64(h, radix: 16), h.count == 6 {
+        return Color(.sRGB, red: Double((v >> 16) & 0xff) / 255, green: Double((v >> 8) & 0xff) / 255,
+                     blue: Double(v & 0xff) / 255, opacity: 1)
+    }
+    if h == "white" { return .white }
+    if h == "black" { return .black }
+    // Lo que no se entienda, invisible. Antes salía 0, que es NEGRO, y un
+    // color que no se sabe leer se llevaba media pantalla por delante.
+    return .clear
 }
-// oklch(L C H) o oklch(L C H / a) → sRGB (fórmula de Björn Ottosson).
-func cnOklch(_ s: String) -> Color {
-    let dentro = s.drop(while: { $0 != "(" }).dropFirst().prefix(while: { $0 != ")" })
-    let n = dentro.split(whereSeparator: { " /,".contains($0) }).compactMap { Double($0) }
-    guard n.count >= 3 else { return CNC.ink }
-    let L = n[0], C = n[1], hr = n[2] * .pi / 180
-    let a = C * cos(hr), b = C * sin(hr)
+
+/// oklab → sRGB (fórmula de Björn Ottosson). El alfa se respeta: un tinte al
+/// 14% tiene que llegar al 14%, no opaco.
+func cnDesdeOklab(_ L: Double, _ a: Double, _ b: Double, _ alfa: Double) -> Color {
     let l_ = L + 0.3963377774 * a + 0.2158037573 * b
     let m_ = L - 0.1055613458 * a - 0.0638541728 * b
     let s_ = L - 0.0894841775 * a - 1.2914855480 * b
@@ -49,7 +110,47 @@ func cnOklch(_ s: String) -> Color {
     let bl = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * q
     func gam(_ c: Double) -> Double { let x = max(0, c); return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1 / 2.4) - 0.055 }
     func cl(_ c: Double) -> Double { min(1, max(0, c)) }
-    return Color(.sRGB, red: cl(gam(r)), green: cl(gam(g)), blue: cl(gam(bl)), opacity: 1)
+    return Color(.sRGB, red: cl(gam(r)), green: cl(gam(g)), blue: cl(gam(bl)),
+                 opacity: min(1, max(0, alfa)))
+}
+
+/// display-p3 → sRGB, por si algún día un color llega en ese espacio.
+func cnDesdeP3(_ r: Double, _ g: Double, _ b: Double, _ alfa: Double) -> Color {
+    func lin(_ c: Double) -> Double { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
+    func gam(_ c: Double) -> Double { let x = max(0, c); return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1 / 2.4) - 0.055 }
+    let lr = lin(r), lg = lin(g), lb = lin(b)
+    let R =  1.2249401 * lr - 0.2249404 * lg + 0.0000000 * lb
+    let G = -0.0420569 * lr + 1.0420571 * lg + 0.0000000 * lb
+    let B = -0.0196376 * lr - 0.0786361 * lg + 1.0982735 * lb
+    func cl(_ c: Double) -> Double { min(1, max(0, c)) }
+    return Color(.sRGB, red: cl(gam(R)), green: cl(gam(G)), blue: cl(gam(B)), opacity: min(1, max(0, alfa)))
+}
+
+func cnDesdeHSL(_ h: Double, _ s: Double, _ l: Double, _ alfa: Double) -> Color {
+    let c = (1 - abs(2 * l - 1)) * min(1, max(0, s))
+    let hp = (h.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360) / 60
+    let x = c * (1 - abs(hp.truncatingRemainder(dividingBy: 2) - 1))
+    var r = 0.0, g = 0.0, b = 0.0
+    switch Int(hp) {
+    case 0: (r, g, b) = (c, x, 0)
+    case 1: (r, g, b) = (x, c, 0)
+    case 2: (r, g, b) = (0, c, x)
+    case 3: (r, g, b) = (0, x, c)
+    case 4: (r, g, b) = (x, 0, c)
+    default: (r, g, b) = (c, 0, x)
+    }
+    let m = l - c / 2
+    return Color(.sRGB, red: r + m, green: g + m, blue: b + m, opacity: min(1, max(0, alfa)))
+}
+
+// oklch(L C H) o oklch(L C H / a) → sRGB.
+func cnOklch(_ s: String) -> Color {
+    let n = cnNumerosCSS(s)
+    guard n.count >= 3 else { return CNC.ink }
+    let L = n[0].1 ? n[0].0 / 100 : n[0].0
+    let C = n[1].0, hr = n[2].0 * .pi / 180
+    let alfa = n.count > 3 ? (n[3].1 ? n[3].0 / 100 : n[3].0) : 1
+    return cnDesdeOklab(L, C * cos(hr), C * sin(hr), alfa)
 }
 /// La paleta del tema que tiene puesto el usuario. La web tiene 31 temas y los
 /// pinta con variables CSS; el nativo los recibe por `__chinolaTemaJSON` y los
@@ -367,6 +468,8 @@ final class CNDatos: ObservableObject {
     // reusando toda la lógica de la web: (tipo, form, extra?) → enviarHoja.
     var onGuardarHoja: (String, [String: Any], [String: Any]?) -> Void = { _, _, _ in }
     var onSelector: () -> Void = {}
+    /// Las libretas, para la hoja nativa del selector.
+    var onLibreta: (String, Int) -> Void = { _, _ in }
     var onVerPresupuesto: () -> Void = {}
     var onLimiteCategoria: (String, Double) -> Void = { _, _ in }   // (categoría, presupuesto) → web
     var onMes: (Int) -> Void = { _ in }         // −1 / +1 desde la cabecera
@@ -396,6 +499,7 @@ final class CNDatos: ObservableObject {
     var onHojaEnviar: () -> Void = {}
     @Published var hojaWeb: CNHojaWeb.Modelo? = nil
     @Published var periodo: CNPeriodo? = nil
+    @Published var libretas: CNLibretas? = nil
     /// tipo: opcion · dia · antes · despues · aplicar · cerrar
     var onPeriodo: (String, Int) -> Void = { _, _ in }
     /// El detalle de un movimiento, armado por la web.
@@ -432,6 +536,7 @@ final class CNDatos: ObservableObject {
     }
     func cargarMovDetalle(json: String) { movDetalle = CNMovDetalle.desde(json: json) }
     func cargarPeriodo(json: String) { periodo = CNPeriodo.desde(json: json) }
+    func cargarLibretas(json: String) { libretas = CNLibretas.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
