@@ -32,7 +32,9 @@ class TestVC: CAPBridgeViewController {
         // cuánto tarde el simulador en arrancar.
         conectarAcciones()
         let cual = ProcessInfo.processInfo.environment["CNPANTALLA"] ?? "movs"
-        if cual.hasSuffix("-oscuro") {
+        if cual.hasPrefix("tema-") {
+            datos.cargarTema(json: cual.contains("oscuro") ? TestVC.temaSistemaOscuro : TestVC.temaSistemaClaro)
+        } else if cual.hasSuffix("-oscuro") {
             // Como si el usuario cambiara de tema en la web: todo lo nativo
             // tiene que repintarse con la paleta nueva.
             datos.cargarTema(json: """
@@ -50,12 +52,19 @@ class TestVC: CAPBridgeViewController {
         // para poder mirarlos todos.
         let disenoCab = ["cab-auto": "auto", "cab-clasica": "clasica", "cab-detallada": "detallada",
                          "cab-fina": "fina", "cab-clara": "clara", "cab-minima": "minima"][cual] ?? "auto"
-        let grad = cual.hasPrefix("cab-") ? TestVC.fondoDegradado : TestVC.fondoLlano
+        var grad = cual.hasPrefix("cab-") ? TestVC.fondoDegradado : TestVC.fondoLlano
+        if cual.hasPrefix("tema-") {
+            grad = cual.contains("oscuro")
+                ? "{\"tipo\":\"color\",\"color\":\"rgb(0,28,11)\"}"
+                : "{\"tipo\":\"color\",\"color\":\"rgb(6,68,37)\"}"
+        }
         let tintaCab = cual.hasPrefix("cab-") ? "rgb(43,32,16)" : "rgb(245,245,230)"
         let grisCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.72)" : "rgb(214,222,205)"
         let pastCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.13)" : "rgba(255,255,255,0.13)"
         let pastF = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)"
-        datos.cargarAjustes(json: TestVC.ajustesDeMuestra)
+        datos.cargarAjustes(json: TestVC.ajustesDeMuestra
+            .replacingOccurrences(of: "rgb(249,245,230)",
+                                  with: cual.contains("oscuro") ? "rgb(43,43,45)" : "rgb(249,245,230)"))
         datos.cargarResumen(json: TestVC.resumenDeMuestra
             .replacingOccurrences(of: "\"diseno\":\"auto\"", with: "\"diseno\":\"\(disenoCab)\"")
             .replacingOccurrences(of: "__FONDO__", with: grad)
@@ -64,7 +73,9 @@ class TestVC: CAPBridgeViewController {
             .replacingOccurrences(of: "\"pastilla\":\"rgba(255,255,255,0.13)\",\"pastillaFuerte\":\"rgba(255,255,255,0.22)\"",
                                   with: "\"pastilla\":\"\(pastCab)\",\"pastillaFuerte\":\"\(pastF)\"")
             .replacingOccurrences(of: "\"balColor\":\"rgb(255,255,255)\"",
-                                  with: cual.hasPrefix("cab-") ? "\"balColor\":\"rgb(43,32,16)\"" : "\"balColor\":\"rgb(255,255,255)\""))
+                                  with: cual.hasPrefix("cab-") ? "\"balColor\":\"rgb(43,32,16)\"" : "\"balColor\":\"rgb(255,255,255)\"")
+            .replacingOccurrences(of: "rgb(229,225,211)",
+                                  with: cual.contains("oscuro") ? "rgb(61,61,63)" : "rgb(229,225,211)"))
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
         barra.pintar(activa: estado.activa, titulos: true)
@@ -164,7 +175,10 @@ extension TestVC {
         case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas":
             datos.cargarSeccion(json: TestVC.seccionDeMuestra(String(cual.dropFirst(4))))
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
-        case "resumen", "organiza", "plegada", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
+        case "tema-claro-movs", "tema-oscuro-movs": vista = AnyView(CNMovs(datos: datos)); estado.activa = "movs"
+        case "tema-claro-perfil", "tema-oscuro-perfil": vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
+        case "tema-claro", "tema-oscuro",
+             "resumen", "organiza", "plegada", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
             vista = AnyView(CNResumen(datos: datos, organizaAlEmpezar: cual == "organiza",
                                       rodarAlEmpezar: cual == "plegada"))
             estado.activa = "resumen"
@@ -447,4 +461,20 @@ extension TestVC {
          "seleccion":"5 – 14 de septiembre","textoAplicar":"Aplicar","puedeAplicar":true}
         """
     }()
+}
+
+extension TestVC {
+    /// Los dos temas de fábrica: los grises de iOS con la marca encima.
+    static let temaSistemaClaro = """
+    {"bg":"rgb(240,240,243)","card":"rgb(255,255,255)","suave":"rgb(230,230,233)",
+     "borde":"rgb(212,212,215)","tinta":"rgb(26,26,28)","gris":"rgb(107,107,111)",
+     "side":"rgb(6,68,37)","acento":"rgb(251,213,48)",
+     "pos":"rgb(19,125,65)","neg":"rgb(213,89,72)","info":"rgb(43,126,201)","oscuro":false}
+    """
+    static let temaSistemaOscuro = """
+    {"bg":"rgb(0,0,0)","card":"rgb(26,26,28)","suave":"rgb(43,43,45)",
+     "borde":"rgb(61,61,63)","tinta":"rgb(240,240,243)","gris":"rgb(152,152,157)",
+     "side":"rgb(0,28,11)","acento":"rgb(251,213,48)",
+     "pos":"rgb(77,191,116)","neg":"rgb(239,128,111)","info":"rgb(90,160,230)","oscuro":true}
+    """
 }
