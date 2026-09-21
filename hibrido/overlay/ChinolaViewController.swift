@@ -142,6 +142,17 @@ class ChinolaViewController: CAPBridgeViewController {
             s.eval("window.__chinolaCuentasAccion && window.__chinolaCuentasAccion(\(s.comillas(tipo)),\(i))")
             s.refrescarPronto()
         }
+        // Lo que sale al deslizar una fila: marcar la cuenta de siempre,
+        // editar o eliminar. Cada una es la MISMA función de la web.
+        datos.onFilaAccion = { [weak self] i, donde in
+            guard let s = self else { return }
+            s.eval("window.__chinolaFilaAccion && window.__chinolaFilaAccion(\(i),\(s.comillas(donde)))")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                // Si lo que se abrió es una hoja (editar), se dibuja nativa.
+                s.webTemporal()
+                s.traerCuentas(); s.traerPlan(); s.traerDatos(intentos: 3)
+            }
+        }
         datos.onAbrirCuenta = { [weak self] id in self?.mostrarDetalle("cuenta", "\(id)") }
         datos.onAbrirTarjeta = { [weak self] id in self?.mostrarDetalle("tarjeta", "\(id)") }
         datos.onAbrirPrestamo = { [weak self] id in self?.mostrarDetalle("prestamo", "\(id)") }

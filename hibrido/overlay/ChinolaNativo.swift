@@ -736,6 +736,8 @@ final class CNDatos: ObservableObject {
     /// La pantalla de Cuentas, armada por la web.
     @Published var cuentas: CNCuentasModelo? = nil
     var onCuentasAccion: (String, Int) -> Void = { _, _ in }
+    /// Una acción de las que salen al deslizar una fila.
+    var onFilaAccion: (Int, String) -> Void = { _, _ in }
     /// El Plan, armado por la web.
     @Published var plan: CNPlanModelo? = nil
     /// tipo: tab · categoria · meta · aportar · nuevaCat · nuevaMeta
@@ -2562,6 +2564,9 @@ struct CNCuentasModelo {
         var indice = 0; var nombre = ""; var detalle = ""; var valor = ""; var pie = ""
         var uso: Double = 0; var usoColor = ""
         var iconoPath = ""; var color = ""; var fondo = ""; var tintaValor = ""
+        /// Lo que sale al deslizar la fila, y si es la cuenta de siempre.
+        var acciones: [CNAccionFila] = []
+        var predeterminada = false; var rotuloPred = ""
     }
     struct Patrimonio {
         var titulo = ""; var valor = ""
@@ -2593,7 +2598,15 @@ struct CNCuentasModelo {
                 Fila(indice: Int(n($0, "indice")), nombre: s($0, "nombre"), detalle: s($0, "detalle"),
                      valor: s($0, "valor"), pie: s($0, "pie"), uso: n($0, "uso"), usoColor: s($0, "usoColor"),
                      iconoPath: s($0, "iconoPath"), color: s($0, "color"), fondo: s($0, "fondo"),
-                     tintaValor: s($0, "tintaValor"))
+                     tintaValor: s($0, "tintaValor"),
+                     acciones: (($0["acciones"] as? [[String: Any]]) ?? []).map { a in
+                         CNAccionFila(label: (a["label"] as? String) ?? "",
+                                      icono: (a["icono"] as? String) ?? "",
+                                      peligro: (a["peligro"] as? Bool) ?? false,
+                                      accion: ((a["accion"] as? NSNumber)?.intValue) ?? -1)
+                     },
+                     predeterminada: ($0["predeterminada"] as? Bool) ?? false,
+                     rotuloPred: s($0, "rotuloPred"))
             }
         }
         var m = CNCuentasModelo()
@@ -2737,6 +2750,8 @@ struct CNCuentas: View {
     private func grupo(_ filas: [CNCuentasModelo.Fila], tipo: String) -> some View {
         VStack(spacing: 0) {
             ForEach(filas) { f in
+                CNDeslizable(clave: tipo + String(f.indice), acciones: f.acciones,
+                             onAccion: { datos.onFilaAccion($0, "cuentas") }) {
                 Button { datos.onCuentasAccion(tipo, f.indice) } label: {
                     HStack(spacing: 12) {
                         CNSVGShape(d: f.iconoPath)
@@ -2775,6 +2790,7 @@ struct CNCuentas: View {
                         }
                     }
                 }.buttonStyle(CNPulsable())
+                }
             }
         }
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -2791,6 +2807,8 @@ struct CNPlanModelo {
         var indice = 0; var nombre = ""; var queda = ""; var pie = ""
         var pct: Double = 0; var color = ""
         var iconoPath = ""; var catColor = ""; var iconoBg = ""
+        /// Lo que sale al deslizar la fila.
+        var acciones: [CNAccionFila] = []
     }
     struct Meta: Identifiable {
         var id: Int { indice }
@@ -2830,7 +2848,13 @@ struct CNPlanModelo {
         m.filas = l(r, "filas").map {
             Fila(indice: Int(n($0, "indice")), nombre: s($0, "nombre"), queda: s($0, "queda"),
                  pie: s($0, "pie"), pct: n($0, "pct"), color: s($0, "color"),
-                 iconoPath: s($0, "iconoPath"), catColor: s($0, "catColor"), iconoBg: s($0, "iconoBg"))
+                 iconoPath: s($0, "iconoPath"), catColor: s($0, "catColor"), iconoBg: s($0, "iconoBg"),
+                 acciones: (($0["acciones"] as? [[String: Any]]) ?? []).map { a in
+                     CNAccionFila(label: (a["label"] as? String) ?? "",
+                                  icono: (a["icono"] as? String) ?? "",
+                                  peligro: (a["peligro"] as? Bool) ?? false,
+                                  accion: ((a["accion"] as? NSNumber)?.intValue) ?? -1)
+                 })
         }
         m.metas = l(r, "metas").map {
             Meta(indice: Int(n($0, "indice")), idm: Int(n($0, "idm")), nombre: s($0, "nombre"), proyeccion: s($0, "proyeccion"),
@@ -2939,6 +2963,8 @@ struct CNPlan: View {
 
         VStack(spacing: 0) {
             ForEach(m.filas) { f in
+                CNDeslizable(clave: "cat" + String(f.indice), acciones: f.acciones,
+                             onAccion: { datos.onFilaAccion($0, "plan") }) {
                 Button { datos.onPlanAccion("categoria", f.indice) } label: {
                     HStack(spacing: 12) {
                         CNSVGShape(d: f.iconoPath)
@@ -2970,6 +2996,7 @@ struct CNPlan: View {
                         }
                     }
                 }.buttonStyle(CNPulsable())
+                }
             }
         }
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -3109,6 +3136,109 @@ struct CNLimiteHoja: View {
                 .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
         }
         .onAppear { if limite > 0 { texto = String(Int(limite)) } }
+    }
+}
+
+
+// ── Deslizar una fila para ver sus acciones ────────────────────────────────
+//
+// Como las notificaciones del teléfono: se empuja la fila a la izquierda y
+// detrás aparecen sus botones. Aquí no se puede usar `swipeActions` (eso es de
+// `List`, y estas listas son propias), así que se hace a mano: un arrastre que
+// mueve la fila y unos botones debajo.
+struct CNAccionFila: Identifiable {
+    var id: Int { accion }
+    var label = ""
+    var icono = ""
+    var peligro = false
+    var accion = -1
+}
+
+/// Solo una fila abierta a la vez en toda la app.
+final class CNDeslizada: ObservableObject {
+    static let shared = CNDeslizada()
+    @Published var abierta: String = ""
+}
+
+struct CNDeslizable<C: View>: View {
+    let clave: String
+    let acciones: [CNAccionFila]
+    var onAccion: (Int) -> Void
+    @ViewBuilder var contenido: () -> C
+    @ObservedObject private var mando = CNDeslizada.shared
+    @State private var x: CGFloat = 0
+    @State private var arrastrando = false
+
+    private var ancho: CGFloat { CGFloat(acciones.count) * 78 }
+    private var abierta: Bool { mando.abierta == clave }
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            if !acciones.isEmpty && (x < -2 || abierta) {
+                HStack(spacing: 0) {
+                    ForEach(acciones) { a in boton(a) }
+                }
+                .frame(width: ancho)
+                .padding(.trailing, 6)
+            }
+            contenido()
+                .background(CNC.card)
+                .offset(x: x)
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 14)
+                        .onChanged { g in
+                            guard !acciones.isEmpty else { return }
+                            // Solo horizontal: si el dedo va bajando, es scroll.
+                            guard abs(g.translation.width) > abs(g.translation.height) else { return }
+                            arrastrando = true
+                            if mando.abierta != clave { mando.abierta = clave }
+                            let base = abierta && !arrastrando ? -ancho : 0
+                            x = max(-ancho - 18, min(0, base + g.translation.width))
+                        }
+                        .onEnded { g in
+                            guard arrastrando else { return }
+                            arrastrando = false
+                            let va = g.predictedEndTranslation.width
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) {
+                                if x < -ancho * 0.45 || va < -120 { x = -ancho }
+                                else { x = 0; if abierta { mando.abierta = "" } }
+                            }
+                        }
+                )
+        }
+        .onChange(of: mando.abierta) { quien in
+            // Otra fila se abrió: esta se cierra.
+            if quien != clave && x != 0 {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) { x = 0 }
+            }
+        }
+    }
+
+    private func boton(_ a: CNAccionFila) -> some View {
+        let tinte = a.peligro ? CNC.neg : (a.icono == "estrella" ? CNC.acc : CNC.info)
+        // Los del sistema: en un botón redondo de 38 se leen mejor que los
+        // trazos de la app, que están pensados para ir dentro de una fila.
+        let simbolo = a.peligro ? "trash"
+            : (a.icono == "estrella" ? "star.fill" : (a.icono == "grafico" ? "slider.horizontal.3" : "pencil"))
+        return Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) { x = 0 }
+            CNDeslizada.shared.abierta = ""
+            onAccion(a.accion)
+        } label: {
+            VStack(spacing: 5) {
+                ZStack {
+                    Circle().fill(tinte).frame(width: 38, height: 38)
+                        .shadow(color: tinte.opacity(0.28), radius: 5, y: 2)
+                    Image(systemName: simbolo).font(.system(size: 15, weight: .bold))
+                        .foregroundColor(cnSobre(tinte))
+                }
+                Text(a.label).font(cnLetra(10.5, .semibold)).foregroundColor(CNC.pmut)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .frame(width: 78)
+        }.buttonStyle(CNPulsable())
     }
 }
 
