@@ -1632,6 +1632,12 @@ struct CNPuertaVista: View {
                     }
                 }
                 .padding(.horizontal, 22).padding(.top, 26).padding(.bottom, 40)
+                // La puerta de siempre, la de la web, a un toque. Si algo de
+                // aquí fallara, nadie se queda fuera de su propia app.
+                Button { onAccion("web", "") } label: {
+                    Text(cnT("Seguir en la web")).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                        .frame(maxWidth: .infinity).padding(.bottom, 26)
+                }.buttonStyle(.plain)
             }
             .cnTeclado()
         }
