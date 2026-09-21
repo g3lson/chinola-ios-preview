@@ -902,6 +902,17 @@ class ChinolaViewController: CAPBridgeViewController {
                     s.mostrarTour()
                     return
                 }
+                // ¿La categoría? También tiene su hoja nativa.
+                s.bridge?.webView?.evaluateJavaScript("(window.__chinolaCatJSON && window.__chinolaCatJSON()) || ''") { rc, _ in
+                    if let j = rc as? String, j.count > 2 {
+                        CNDatos.shared.cargarCategoria(json: j)
+                        s.presentar(AnyView(CNFormCategoria(datos: s.datos, onClose: {
+                            s.eval("window.__chinolaCat && window.__chinolaCat('cerrar','')")
+                            s.cerrar()
+                            s.traerPlan(intentos: 4); s.traerDatos(intentos: 3)
+                        })))
+                        return
+                    }
             s.bridge?.webView?.evaluateJavaScript("(window.__chinolaHojaJSON && window.__chinolaHojaJSON()) || ''") { res, _ in
                 if let json = res as? String, json.count > 2 {
                     CNDatos.shared.cargarHojaWeb(json: json)
@@ -913,6 +924,7 @@ class ChinolaViewController: CAPBridgeViewController {
                 guard !s.volviendo else { return }
                 s.volviendo = true
                 s.vigilarVuelta(200)
+            }
             }
             }
         }
@@ -1231,6 +1243,18 @@ class ChinolaViewController: CAPBridgeViewController {
         // Mantener pulsado un botón del menú: el atajo de esa pestaña, desde
         // donde sea. Anotar es el más usado, así que está en dos.
         datos.onMascota = { [weak self] in self?.abrirMascota() }
+        datos.onCategoria = { [weak self] que, valor in
+            guard let s = self else { return }
+            s.eval("window.__chinolaCat && window.__chinolaCat(\(s.comillas(que)),\(s.comillas(valor)))")
+            // Elegir icono, color o tipo cambia cómo se ve la hoja.
+            if que == "icono" || que == "color" || que == "tipo" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                    s.bridge?.webView?.evaluateJavaScript("(window.__chinolaCatJSON && window.__chinolaCatJSON()) || ''") { r, _ in
+                        if let j = r as? String, j.count > 2 { CNDatos.shared.cargarCategoria(json: j) }
+                    }
+                }
+            }
+        }
         barra.alMantener = { [weak self] id in
             guard let s = self else { return }
             switch id {

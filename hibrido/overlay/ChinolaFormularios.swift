@@ -1960,3 +1960,127 @@ struct CNCampoClave: View {
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
     }
 }
+
+// ── La categoría: crear o editar, en nativo ─────────────────────────────────
+//
+// Era lo último que obligaba a enseñar la web desde una pantalla nativa: tocar
+// «Editar» en una categoría abría su ventana de la web. Los iconos, los colores
+// y el guardado siguen siendo los de siempre.
+struct CNCategoria {
+    struct Icono: Identifiable { var id: Int; var label = ""; var path = ""; var puesto = false }
+    struct Color2: Identifiable { var id: Int; var css = ""; var puesta = false }
+    struct Tipo: Identifiable { var id: Int; var label = ""; var puesto = false }
+    var titulo = ""; var phNombre = ""; var nombre = ""
+    var rotuloTipo = ""; var rotuloIcono = ""; var rotuloColor = ""
+    var rotuloLimite = ""; var phLimite = ""; var limite = ""; var boton = "Guardar"
+    var tipos: [Tipo] = []; var iconos: [Icono] = []; var colores: [Color2] = []
+
+    static func desde(json: String) -> CNCategoria? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
+        func b(_ o: [String: Any], _ k: String) -> Bool { (o[k] as? Bool) ?? false }
+        func n(_ o: [String: Any], _ k: String) -> Int { ((o[k] as? NSNumber)?.intValue) ?? 0 }
+        var m = CNCategoria()
+        m.titulo = s(r, "titulo"); m.phNombre = s(r, "phNombre"); m.nombre = s(r, "nombre")
+        m.rotuloTipo = s(r, "rotuloTipo"); m.rotuloIcono = s(r, "rotuloIcono")
+        m.rotuloColor = s(r, "rotuloColor"); m.rotuloLimite = s(r, "rotuloLimite")
+        m.phLimite = s(r, "phLimite"); m.limite = s(r, "limite")
+        if !s(r, "boton").isEmpty { m.boton = s(r, "boton") }
+        m.tipos = ((r["tipos"] as? [[String: Any]]) ?? []).map { Tipo(id: n($0, "indice"), label: s($0, "label"), puesto: b($0, "puesto")) }
+        m.iconos = ((r["iconos"] as? [[String: Any]]) ?? []).map { Icono(id: n($0, "indice"), label: s($0, "label"), path: s($0, "path"), puesto: b($0, "puesto")) }
+        m.colores = ((r["colores"] as? [[String: Any]]) ?? []).map { Color2(id: n($0, "indice"), css: s($0, "css"), puesta: b($0, "puesta")) }
+        return m
+    }
+}
+
+struct CNFormCategoria: View {
+    @ObservedObject var datos: CNDatos
+    var onClose: () -> Void
+    @State private var nombre = ""
+    @State private var limite = ""
+    @State private var puesto = false
+
+    var body: some View {
+        let m = datos.categoria ?? CNCategoria()
+        let tinte = m.colores.first(where: { $0.puesta }).map { cnColor(hexString: $0.css) } ?? CNC.acc
+        return CNHoja(titulo: m.titulo, guardarTexto: m.boton,
+                      guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+                      onClose: onClose, onGuardar: { datos.onCategoria("guardar", ""); onClose() }) {
+            CNCampoTexto(placeholder: m.phNombre, texto: $nombre)
+                .onChange(of: nombre) { v in datos.onCategoria("nombre", v) }
+            if !m.tipos.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    cnHojaTitulo(m.rotuloTipo)
+                    HStack(spacing: 8) {
+                        ForEach(m.tipos) { t in
+                            Button {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                datos.onCategoria("tipo", String(t.id))
+                            } label: {
+                                Text(t.label).font(cnLetra(14.5, t.puesto ? .bold : .semibold))
+                                    .foregroundColor(t.puesto ? cnSobre(CNC.side) : CNC.ink)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                    .background(t.puesto ? CNC.side : CNC.card,
+                                                in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: 13)
+                                        .stroke(CNC.line, lineWidth: t.puesto ? 0 : 1))
+                            }.buttonStyle(CNPulsable())
+                        }
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                cnHojaTitulo(m.rotuloLimite)
+                CNMontoCampo(monto: $limite, paso: 500, rotulo: nil)
+                    .onChange(of: limite) { v in datos.onCategoria("limite", v) }
+                Text(m.phLimite).font(cnLetra(12)).foregroundColor(CNC.pmut).padding(.leading, 4)
+            }
+            if !m.iconos.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    cnHojaTitulo(m.rotuloIcono)
+                    CNRejillaFija(columnas: 6, total: m.iconos.count) { i in
+                        let ic = m.iconos[i]
+                        Button {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            datos.onCategoria("icono", String(ic.id))
+                        } label: {
+                            CNSVGShape(d: ic.path)
+                                .stroke(ic.puesto ? tinte : CNC.pmut,
+                                        style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                                .frame(width: 19, height: 19)
+                                .frame(height: 44).frame(maxWidth: .infinity)
+                                .background(ic.puesto ? tinte.opacity(0.16) : CNC.card,
+                                            in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 13)
+                                    .stroke(ic.puesto ? tinte : CNC.line, lineWidth: ic.puesto ? 1.6 : 0.5))
+                        }.buttonStyle(CNPulsable())
+                    }
+                }
+            }
+            if !m.colores.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    cnHojaTitulo(m.rotuloColor)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(m.colores) { c in
+                                Circle().fill(cnColor(hexString: c.css))
+                                    .frame(width: 30, height: 30)
+                                    .overlay(Circle().stroke(CNC.ink, lineWidth: c.puesta ? 2.5 : 0))
+                                    .onTapGesture {
+                                        UISelectionFeedbackGenerator().selectionChanged()
+                                        datos.onCategoria("color", String(c.id))
+                                    }
+                            }
+                        }.padding(.horizontal, 2).padding(.vertical, 2)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            guard !puesto else { return }
+            puesto = true
+            nombre = m.nombre; limite = m.limite
+        }
+    }
+}

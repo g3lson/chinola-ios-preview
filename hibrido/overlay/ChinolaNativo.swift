@@ -691,6 +691,8 @@ final class CNDatos: ObservableObject {
     var onCrearLibreta: ([String: Any]) -> Void = { _ in }
     /// Chino en grande (mantener pulsado su icono o la pestaña de Perfil).
     var onMascota: () -> Void = {}
+    /// La hoja de la categoría: escribir, elegir icono o color, guardar.
+    var onCategoria: (String, String) -> Void = { _, _ in }
     /// Mandar una invitación desde el formulario nativo.
     var onInvitar: ([String: Any]) -> Void = { _ in }
     var onVerPresupuesto: () -> Void = {}
@@ -728,6 +730,7 @@ final class CNDatos: ObservableObject {
     @Published var tour: CNTour? = nil
     @Published var mascota: CNMascota? = nil
     @Published var puerta: CNPuerta? = nil
+    @Published var categoria: CNCategoria? = nil
     /// tipo: opcion · dia · antes · despues · aplicar · cerrar
     var onPeriodo: (String, Int) -> Void = { _, _ in }
     /// El detalle de un movimiento, armado por la web.
@@ -779,6 +782,7 @@ final class CNDatos: ObservableObject {
     func cargarTour(json: String) { tour = CNTour.desde(json: json) }
     func cargarMascota(json: String) { mascota = CNMascota.desde(json: json) }
     func cargarPuerta(json: String) { puerta = CNPuerta.desde(json: json) }
+    func cargarCategoria(json: String) { categoria = CNCategoria.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
