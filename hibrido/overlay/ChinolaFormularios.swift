@@ -1966,7 +1966,7 @@ struct CNCampoClave: View {
 // Era lo último que obligaba a enseñar la web desde una pantalla nativa: tocar
 // «Editar» en una categoría abría su ventana de la web. Los iconos, los colores
 // y el guardado siguen siendo los de siempre.
-struct CNCategoria {
+struct CNHojaCategoria {
     struct Icono: Identifiable { var id: Int; var label = ""; var path = ""; var puesto = false }
     struct Color2: Identifiable { var id: Int; var css = ""; var puesta = false }
     struct Tipo: Identifiable { var id: Int; var label = ""; var puesto = false }
@@ -1975,13 +1975,13 @@ struct CNCategoria {
     var rotuloLimite = ""; var phLimite = ""; var limite = ""; var boton = "Guardar"
     var tipos: [Tipo] = []; var iconos: [Icono] = []; var colores: [Color2] = []
 
-    static func desde(json: String) -> CNCategoria? {
+    static func desde(json: String) -> CNHojaCategoria? {
         guard let d = json.data(using: .utf8),
               let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
         func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
         func b(_ o: [String: Any], _ k: String) -> Bool { (o[k] as? Bool) ?? false }
         func n(_ o: [String: Any], _ k: String) -> Int { ((o[k] as? NSNumber)?.intValue) ?? 0 }
-        var m = CNCategoria()
+        var m = CNHojaCategoria()
         m.titulo = s(r, "titulo"); m.phNombre = s(r, "phNombre"); m.nombre = s(r, "nombre")
         m.rotuloTipo = s(r, "rotuloTipo"); m.rotuloIcono = s(r, "rotuloIcono")
         m.rotuloColor = s(r, "rotuloColor"); m.rotuloLimite = s(r, "rotuloLimite")
@@ -2002,7 +2002,7 @@ struct CNFormCategoria: View {
     @State private var puesto = false
 
     var body: some View {
-        let m = datos.categoria ?? CNCategoria()
+        let m = datos.categoria ?? CNHojaCategoria()
         let tinte = m.colores.first(where: { $0.puesta }).map { cnColor(hexString: $0.css) } ?? CNC.acc
         return CNHoja(titulo: m.titulo, guardarTexto: m.boton,
                       guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
