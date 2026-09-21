@@ -43,8 +43,20 @@ class ChinolaViewController: CAPBridgeViewController {
     }
     @objc private func avisarDelModo() {
         let oscuro = traitCollection.userInterfaceStyle == .dark
+        // PRIMERO se pinta, con la paleta que la web ya mandó. Esperar a que la
+        // web reaccione era lo que obligaba a reiniciar la app: el webview no
+        // siempre vuelve a mirar `prefers-color-scheme`, y si no reacciona, no
+        // hay tema nuevo que mandar.
+        if datos.aplicarModo(oscuro: oscuro) {
+            barra.pintar(activa: menuEstado.activa, titulos: menuEstado.titulos)
+            contenedorNativo?.backgroundColor = UIColor(CNC.scr)
+            view.backgroundColor = UIColor(CNC.scr)
+        }
+        // Y se le dice a la web, que también tiene que cambiar lo suyo.
         eval("window.__chinolaSistemaOscuro && window.__chinolaSistemaOscuro(\(oscuro))")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in self?.traerTema() }
+        for t in [0.3, 0.9, 1.8] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + t) { [weak self] in self?.traerTema() }
+        }
     }
 
     override func viewDidLoad() {

@@ -218,6 +218,13 @@ extension TestVC {
             datos.cargarPuerta(json: cual == "puerta-plan" ? TestVC.puertaPlan
                                : (cual == "puerta-lamina" ? TestVC.puertaLamina : TestVC.puertaAuth))
             vista = AnyView(CNPuertaVista(datos: datos, onAccion: { _, _ in })); estado.activa = "resumen"
+        case "modo-sistema":
+            // El tema llega con sus DOS paletas y el aparato cambia a oscuro:
+            // lo nativo tiene que repintarse solo, sin web de por medio.
+            datos.cargarTema(json: TestVC.temaConPareja)
+            datos.aplicarModo(oscuro: true)
+            barra.pintar(activa: "perfil", titulos: CNMenuEstado.shared.titulos)
+            vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
         case "mascota":
             datos.cargarMascota(json: TestVC.mascotaDeMuestra)
             vista = AnyView(ZStack { CNPerfil(datos: datos); CNMascotaVista(datos: datos, onClose: {}) })
@@ -606,6 +613,21 @@ extension TestVC {
      "datos":[{"label":"Categoría","valor":"Deudas"},{"label":"Tipo","valor":"Fijo"},
               {"label":"Fecha","valor":"11 de septiembre"},{"label":"Pagado con","valor":"Cuenta principal"},
               {"label":"Se repite","valor":"Cada mes"}]}
+    """
+}
+
+extension TestVC {
+    static let temaConPareja = """
+    {"bg":"oklch(0.975 0.015 95)","card":"#fff","suave":"oklch(0.97 0.02 95)",
+     "borde":"oklch(0.91 0.02 95)","tinta":"oklch(0.24 0.03 155)","gris":"oklch(0.48 0.03 155)",
+     "side":"oklch(0.255 0.038 156)","acento":"rgb(239,203,76)","pos":"rgb(19,125,65)",
+     "neg":"rgb(213,89,72)","info":"rgb(57,138,214)","oscuro":false,
+     "pareja":{"claro":{"bg":"oklch(0.975 0.015 95)","card":"#fff","suave":"oklch(0.97 0.02 95)",
+                        "borde":"oklch(0.91 0.02 95)","tinta":"oklch(0.24 0.03 155)",
+                        "gris":"oklch(0.48 0.03 155)","side":"oklch(0.255 0.038 156)","oscuro":false},
+               "oscuro":{"bg":"oklch(0.20 0.02 155)","card":"oklch(0.25 0.025 155)","suave":"oklch(0.29 0.03 155)",
+                         "borde":"oklch(0.34 0.03 155)","tinta":"oklch(0.94 0.02 95)",
+                         "gris":"oklch(0.72 0.02 110)","side":"oklch(0.16 0.02 155)","oscuro":true}}}
     """
 }
 

@@ -164,6 +164,10 @@ struct CNFormato {
     var loc = "es-DO"
     /// La tipografía elegida (su id en la web: sistema, jakarta, nunito…).
     var fuente = "sistema"
+    /// Qué se ve en la pestaña de Perfil: «chino» o «perfil».
+    var iconoPerfil = "chino"
+    /// La inicial del usuario, para el icono redondo.
+    var inicial = ""
     /// 1 = el tamaño de siempre. La web usa 1,07 como «Normal», así que se
     /// divide entre eso: lo normal aquí tiene que seguir midiendo lo que medía.
     var letra: CGFloat = 1
@@ -174,6 +178,8 @@ struct CNFormato {
         if let c = o["centavos"] as? Bool { f.centavos = c }
         if let l = o["loc"] as? String, !l.isEmpty { f.loc = l }
         if let t = o["fuente"] as? String, !t.isEmpty { f.fuente = t }
+        if let t = o["iconoPerfil"] as? String, !t.isEmpty { f.iconoPerfil = t }
+        if let t = o["inicial"] as? String { f.inicial = t }
         if let e = o["letra"] as? NSNumber {
             let v = CGFloat(truncating: e)
             if v > 0.4 && v < 2.5 { f.letra = v }
@@ -316,6 +322,20 @@ struct CNPaletaTema {
     var info = cnColor(0x398ad6)
     var oscuro = false
 
+    /// La misma paleta con los colores de OTRO tema encima: los semánticos
+    /// (positivo, negativo, acento…) no cambian de un tema a su pareja.
+    static func pintada(_ o: [String: Any]?, base: CNPaletaTema) -> CNPaletaTema? {
+        guard let o = o else { return nil }
+        var p = base
+        func col(_ k: String, _ destino: inout Color) {
+            if let v = o[k] as? String, !v.isEmpty, !v.contains("var(") { destino = cnColor(hexString: v) }
+        }
+        col("bg", &p.scr); col("card", &p.card); col("suave", &p.soft); col("borde", &p.line)
+        col("tinta", &p.ink); col("gris", &p.pmut); col("side", &p.side)
+        p.oscuro = (o["oscuro"] as? Bool) ?? false
+        return p
+    }
+
     /// Del JSON que manda la web: { bg, card, suave, borde, tinta, gris, side,
     /// acento, pos, neg, oscuro }. Lo que falte se queda como está.
     static func desde(json: String) -> CNPaletaTema? {
@@ -329,6 +349,14 @@ struct CNPaletaTema {
         col("tinta", &p.ink); col("gris", &p.pmut); col("side", &p.side); col("acento", &p.acc)
         col("pos", &p.pos); col("neg", &p.neg); col("info", &p.info)
         p.oscuro = (o["oscuro"] as? Bool) ?? false
+        // Las dos paletas del modo automático: con ellas el cambio de claro a
+        // oscuro del teléfono se ve AL INSTANTE, sin esperar a la web.
+        if let par = o["pareja"] as? [String: Any] {
+            CNC.pareja = (CNPaletaTema.pintada(par["claro"] as? [String: Any], base: p),
+                          CNPaletaTema.pintada(par["oscuro"] as? [String: Any], base: p))
+        } else {
+            CNC.pareja = (nil, nil)
+        }
         // La moneda, los centavos, el idioma y la letra vienen en el mismo
         // paquete: es lo que decide cómo se escribe, y cambia con los mismos
         // ajustes que el tema.
@@ -346,6 +374,8 @@ struct CNPaletaTema {
 enum CNC {
     static var tema = CNPaletaTema()
     static var fmt = CNFormato()
+    /// Las paletas de día y de noche cuando se sigue al teléfono.
+    static var pareja: (claro: CNPaletaTema?, oscuro: CNPaletaTema?) = (nil, nil)
     static var scr: Color  { tema.scr }
     static var card: Color { tema.card }
     static var soft: Color { tema.soft }
@@ -776,6 +806,18 @@ final class CNDatos: ObservableObject {
         // empezar en crema y cambiar medio segundo después.
         UserDefaults.standard.set(json, forKey: "cnTema")
     }
+    /// El teléfono acaba de cambiar de claro a oscuro (o al revés): se pinta
+    /// con la paleta que toca sin preguntarle a nadie. Devuelve `true` si de
+    /// verdad cambió algo.
+    @discardableResult
+    func aplicarModo(oscuro: Bool) -> Bool {
+        guard let p = oscuro ? CNC.pareja.oscuro : CNC.pareja.claro else { return false }
+        guard p.oscuro != CNC.tema.oscuro || p.scr != CNC.tema.scr else { return false }
+        CNC.tema = p
+        selloTema += 1
+        return true
+    }
+
     /// Lo último que se supo del tema, para pintar desde el primer fotograma.
     func temaGuardado() {
         guard let j = UserDefaults.standard.string(forKey: "cnTema"), j.count > 2 else { return }
@@ -1211,17 +1253,57 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     }
 
 
-    /// El icono de Perfil es CHINO, no un monigote: apagado y en gris cuando no
-    /// es la pestaña puesta, y con su color en cuanto lo es.
+    /// El icono de Perfil: el dibujo de Chino o, si así lo elige el usuario, el
+    /// de siempre pero redondo, con su inicial —como el del perfil de otras
+    /// apps—. Apagado cuando no es la pestaña puesta, vivo en cuanto lo es.
     func ponerChinolo(_ b64: String) {
-        guard !b64.isEmpty, let d = Data(base64Encoded: b64), let img = UIImage(data: d),
-              let items = barra.items, let i = ids.firstIndex(of: "perfil"), i < items.count else { return }
-        let lado: CGFloat = 27
+        guard let items = barra.items, let i = ids.firstIndex(of: "perfil"), i < items.count else { return }
+        if CNC.fmt.iconoPerfil == "perfil" {
+            items[i].image = CNBarraNativa.redondo(CNC.fmt.inicial, puesto: false).withRenderingMode(.alwaysOriginal)
+            items[i].selectedImage = CNBarraNativa.redondo(CNC.fmt.inicial, puesto: true).withRenderingMode(.alwaysOriginal)
+            return
+        }
+        guard !b64.isEmpty, let d = Data(base64Encoded: b64), let img = UIImage(data: d) else { return }
+        // Más grande que los demás a propósito: es un dibujo, no un trazo, y
+        // con el mismo alto se veía chiquito al lado de las líneas.
+        let lado: CGFloat = 31
         let color = UIGraphicsImageRenderer(size: CGSize(width: lado, height: lado)).image { _ in
             img.draw(in: CGRect(x: 0, y: 0, width: lado, height: lado))
         }
         items[i].image = (CNBarraNativa.enGris(color) ?? color).withRenderingMode(.alwaysOriginal)
         items[i].selectedImage = color.withRenderingMode(.alwaysOriginal)
+    }
+
+    /// El icono redondo del perfil: un círculo con la inicial. Apagado es un
+    /// aro fino; puesto, el círculo relleno con el color de la marca.
+    private static func redondo(_ inicial: String, puesto: Bool) -> UIImage {
+        let lado: CGFloat = 27
+        let letra = String(inicial.prefix(1)).uppercased()
+        return UIGraphicsImageRenderer(size: CGSize(width: lado, height: lado)).image { ctx in
+            let caja = CGRect(x: 1, y: 1, width: lado - 2, height: lado - 2)
+            let circulo = UIBezierPath(ovalIn: caja)
+            if puesto {
+                UIColor(CNC.side).setFill(); circulo.fill()
+            } else {
+                UIColor(CNC.pmut).setStroke(); circulo.lineWidth = 2; circulo.stroke()
+            }
+            if letra.isEmpty {
+                // Sin nombre todavía: la silueta de siempre.
+                let p = UIBezierPath(ovalIn: CGRect(x: lado / 2 - 4, y: 7, width: 8, height: 8))
+                let cuerpo = UIBezierPath(arcCenter: CGPoint(x: lado / 2, y: 22), radius: 7,
+                                          startAngle: .pi, endAngle: 0, clockwise: true)
+                (puesto ? UIColor(CNC.sobreAcc) : UIColor(CNC.pmut)).setFill()
+                p.fill(); cuerpo.fill()
+                return
+            }
+            let atrib: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 13, weight: .bold),
+                .foregroundColor: puesto ? UIColor(cnSobre(CNC.side)) : UIColor(CNC.pmut)
+            ]
+            let tam = letra.size(withAttributes: atrib)
+            letra.draw(at: CGPoint(x: (lado - tam.width) / 2, y: (lado - tam.height) / 2), withAttributes: atrib)
+            _ = ctx
+        }
     }
     private static func enGris(_ img: UIImage) -> UIImage? {
         guard let ci = CIImage(image: img),
@@ -4224,7 +4306,6 @@ struct CNAjustes {
 
 struct CNPerfil: View {
     @ObservedObject var datos: CNDatos
-    @State private var respira = false
     var body: some View {
         let ancho = UIScreen.main.bounds.width
         let fuera = datos.seccion == nil ? CGFloat(0) : max(0, 1 - datos.arrastreSec / max(1, ancho))
@@ -4276,23 +4357,15 @@ struct CNPerfil: View {
     /// Perfil no lleva la cabecera de la libreta: aquí no hay mes ni balance
     /// que mirar. Lleva el nombre de la app, como en la web.
     private var cabecera: some View {
-        HStack(spacing: 10) {
-            // Chino, el de siempre: su dibujo, respirando, y manteniéndolo
-            // pulsado sale en grande con los pagos que vienen por detrás.
-            if let img = cnImagenBase64(datos.mascota?.chinolo ?? "") {
-                Image(uiImage: img).resizable().scaledToFit().frame(width: 34, height: 34)
-                    .scaleEffect(respira ? 1.06 : 0.97)
-                    .animation(.easeInOut(duration: 1.7).repeatForever(autoreverses: true), value: respira)
-                    .onAppear { respira = true }
-                    .onLongPressGesture(minimumDuration: 0.4) { datos.onMascota() }
-            } else {
-                ZStack {
-                    Circle().fill(CNC.side).frame(width: 29, height: 29)
-                    Circle().fill(CNC.acc).frame(width: 11, height: 11)
-                }
-                .onLongPressGesture(minimumDuration: 0.4) { datos.onMascota() }
+        HStack(spacing: 11) {
+            // La marca, como siempre —y algo mayor, que es el título de la
+            // pantalla—. Chino vive en el menú, no aquí.
+            ZStack {
+                Circle().fill(CNC.side).frame(width: 34, height: 34)
+                Circle().fill(CNC.acc).frame(width: 13, height: 13)
             }
-            Text("Chinola").font(cnLetra(20, .heavy)).foregroundColor(CNC.ink)
+            .onLongPressGesture(minimumDuration: 0.4) { datos.onMascota() }
+            Text("Chinola").font(cnLetra(24, .heavy)).foregroundColor(CNC.ink)
             Spacer(minLength: 0)
         }
         // Pegado a la isla: el margen seguro ya la esquiva, así que dejar más
