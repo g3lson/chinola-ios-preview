@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import CoreImage
 
 // Pantallas NATIVAS incrustadas en la app Capacitor. La web le pasa el JSON de
 // la libreta (el de localStorage) y aquí se decodifica y se dibuja en SwiftUI.
@@ -1132,6 +1133,15 @@ final class CNScrollEstado {
     }
 }
 
+extension UIImage {
+    /// La misma imagen, más tenue. Para el icono apagado del menú.
+    func withAlphaComponent(_ a: CGFloat) -> UIImage {
+        UIGraphicsImageRenderer(size: size).image { _ in
+            draw(in: CGRect(origin: .zero, size: size), blendMode: .normal, alpha: a)
+        }
+    }
+}
+
 final class CNBarraNativa: NSObject, UITabBarDelegate {
     let barra = UITabBar()
     private var ids: [String] = []
@@ -1200,6 +1210,30 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         }
     }
 
+
+    /// El icono de Perfil es CHINO, no un monigote: apagado y en gris cuando no
+    /// es la pestaña puesta, y con su color en cuanto lo es.
+    func ponerChinolo(_ b64: String) {
+        guard !b64.isEmpty, let d = Data(base64Encoded: b64), let img = UIImage(data: d),
+              let items = barra.items, let i = ids.firstIndex(of: "perfil"), i < items.count else { return }
+        let lado: CGFloat = 27
+        let color = UIGraphicsImageRenderer(size: CGSize(width: lado, height: lado)).image { _ in
+            img.draw(in: CGRect(x: 0, y: 0, width: lado, height: lado))
+        }
+        items[i].image = (CNBarraNativa.enGris(color) ?? color).withRenderingMode(.alwaysOriginal)
+        items[i].selectedImage = color.withRenderingMode(.alwaysOriginal)
+    }
+    private static func enGris(_ img: UIImage) -> UIImage? {
+        guard let ci = CIImage(image: img),
+              let f = CIFilter(name: "CIColorControls") else { return nil }
+        f.setValue(ci, forKey: kCIInputImageKey)
+        f.setValue(0, forKey: kCIInputSaturationKey)
+        f.setValue(-0.08, forKey: kCIInputBrightnessKey)
+        guard let salida = f.outputImage,
+              let cg = CIContext().createCGImage(salida, from: salida.extent) else { return nil }
+        return UIImage(cgImage: cg, scale: img.scale, orientation: img.imageOrientation)
+            .withAlphaComponent(0.72)
+    }
 
     @objc private func mantenido(_ g: UILongPressGestureRecognizer) {
         guard g.state == .began, !ids.isEmpty else { return }
@@ -4192,8 +4226,15 @@ struct CNPerfil: View {
     @ObservedObject var datos: CNDatos
     @State private var respira = false
     var body: some View {
-        ZStack {
+        let ancho = UIScreen.main.bounds.width
+        let fuera = datos.seccion == nil ? CGFloat(0) : max(0, 1 - datos.arrastreSec / max(1, ancho))
+        return ZStack {
+            // Lo de detrás se retira un poco y se apaga mientras hay otra
+            // pantalla encima: es lo que hace que volver se sienta como en el
+            // teléfono y no como cambiar una diapositiva.
             raiz
+                .offset(x: -ancho * 0.28 * fuera)
+                .overlay(Color.black.opacity(0.16 * Double(fuera)).ignoresSafeArea().allowsHitTesting(false))
             // La subpantalla entra desde la derecha, como en el teléfono.
             if let sec = datos.seccion {
                 CNSeccionVista(sec: sec, datos: datos, onVolver: { cerrar() })
