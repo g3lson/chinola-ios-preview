@@ -710,14 +710,15 @@ extension TestVC {
 extension TestVC {
     static let libretasDeMuestra = """
     {"titulo":"Libretas","textoGestionar":"Libretas y permisos",
+     "rotuloOtras":"Cambiar de libreta",
      "filas":[
-       {"indice":0,"nombre":"Familia","detalle":"Familiar · 2 personas","color":"oklch(0.52 0.19 300)",
+       {"indice":0,"nombre":"Familia","detalle":"Familiar · 2 personas","cifra":"−RD$2,400","cifraTinta":"rgb(213,89,72)","pie":"34 movimientos","color":"oklch(0.52 0.19 300)",
         "iconoPath":"M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M18 21a6.5 6.5 0 0 0-2-4.7",
         "enUso":false,"rotuloEnUso":"En uso"},
-       {"indice":1,"nombre":"Personal","detalle":"Personal · 1 persona","color":"rgb(19,125,65)",
+       {"indice":1,"nombre":"Personal","detalle":"Personal","cifra":"RD$24,500","cifraTinta":"rgb(19,125,65)","pie":"128 movimientos","color":"rgb(19,125,65)",
         "iconoPath":"M3 10.5L12 3l9 7.5M5 9.5V21h14V9.5M10 21v-6h4v6",
         "enUso":true,"rotuloEnUso":"En uso"},
-       {"indice":2,"nombre":"Colmado La Esquina","detalle":"Negocio · 2 personas","color":"rgb(52,94,178)",
+       {"indice":2,"nombre":"Colmado La Esquina","detalle":"Negocio · 2 personas","cifra":"RD$81,200","cifraTinta":"rgb(19,125,65)","pie":"210 movimientos","color":"rgb(52,94,178)",
         "iconoPath":"M3 8h18v12H3zM9 8V5h6v3M3 13h18",
         "enUso":false,"rotuloEnUso":"En uso"}]}
     """

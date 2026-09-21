@@ -148,6 +148,17 @@ class ChinolaViewController: CAPBridgeViewController {
         datos.onAbrirMeta = { [weak self] id in self?.mostrarDetalle("meta", "\(id)") }
         datos.onDetalleAccion = { [weak self] tipo, i in
             guard let s = self else { return }
+            // El chip se marca AQUÍ, sin esperar a la web: tocar un periodo y
+            // que no pase nada durante medio segundo es lo que hace que la
+            // pantalla se sienta lenta.
+            if tipo == "chip" {
+                CNDatos.shared.marcarChip(i)
+                s.eval("window.__chinolaDetalleAccion && window.__chinolaDetalleAccion(\(s.comillas(tipo)),\(i))")
+                for t in [0.12, 0.45] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + t) { s.refrescarDetalle() }
+                }
+                return
+            }
             s.eval("window.__chinolaDetalleAccion && window.__chinolaDetalleAccion(\(s.comillas(tipo)),\(i))")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 // Cambiar de periodo repinta la misma pantalla. Un botón abre
@@ -664,6 +675,10 @@ class ChinolaViewController: CAPBridgeViewController {
         host.view.layer.shadowOpacity = 0.18
         host.view.layer.shadowRadius = 14
         host.view.layer.shadowOffset = CGSize(width: -4, height: 0)
+        // Y las esquinas: mientras se arrastra, la pantalla es una tarjeta con
+        // las esquinas del teléfono, no un rectángulo cortado a escuadra.
+        host.view.layer.cornerRadius = 0
+        host.view.layer.cornerCurve = .continuous
         // Volver arrastrando desde la orilla izquierda. Tiene que ser un
         // reconocedor de UIKit: es el mismo que usa UINavigationController y
         // por eso gana al desplazamiento de la lista que hay dentro. El
@@ -714,6 +729,10 @@ class ChinolaViewController: CAPBridgeViewController {
         let dx = max(0, g.translation(in: view).x)
         switch g.state {
         case .began, .changed:
+            if host.view.layer.cornerRadius == 0 {
+                host.view.layer.cornerRadius = 30
+                host.view.layer.masksToBounds = true
+            }
             host.view.transform = CGAffineTransform(translationX: dx, y: 0)
             atras(1 - dx / max(1, ancho))
         case .ended, .cancelled, .failed:
@@ -725,6 +744,10 @@ class ChinolaViewController: CAPBridgeViewController {
                                initialSpringVelocity: 0, options: [.allowUserInteraction]) {
                     host.view.transform = .identity
                     self.atras(1)
+                } completion: { _ in
+                    // De vuelta en su sitio, las esquinas a escuadra otra vez.
+                    host.view.layer.cornerRadius = 0
+                    host.view.layer.masksToBounds = false
                 }
             }
         default: break

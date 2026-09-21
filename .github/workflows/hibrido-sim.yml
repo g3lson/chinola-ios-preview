@@ -88,7 +88,7 @@ jobs:
           # Una pantalla por lanzamiento: la app lee CNPANTALLA y monta esa. Así
           # cada captura es la que se pidió, sin depender de tiempos.
           n=0
-          for P in movs-rodado puerta-auth modo-sistema perfil sec-cabecera resumen cuentas plan; do
+          for P in libretas modo-sistema perfil sec-cabecera resumen cuentas plan movs; do
             n=$((n+1))
             xcrun simctl terminate "$UDID" do.com.fente.chinolasim 2>/dev/null || true
             SIMCTL_CHILD_CNPANTALLA="$P" xcrun simctl launch "$UDID" do.com.fente.chinolasim || true

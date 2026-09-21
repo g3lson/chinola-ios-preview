@@ -1058,9 +1058,12 @@ struct CNLibretas {
         var id: Int { indice }
         var indice = 0; var nombre = ""; var detalle = ""; var iconoPath = ""
         var color = ""; var enUso = false; var rotuloEnUso = ""
+        /// Lo que hay dentro: el balance del mes y cuántos movimientos lleva.
+        var cifra = ""; var cifraTinta = ""; var pie = ""
     }
     var titulo = "Libretas"
     var textoGestionar = ""
+    var rotuloOtras = ""
     var filas: [Fila] = []
 
     static func desde(json: String) -> CNLibretas? {
@@ -1070,11 +1073,13 @@ struct CNLibretas {
         var m = CNLibretas()
         if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
         m.textoGestionar = s(r, "textoGestionar")
+        m.rotuloOtras = s(r, "rotuloOtras")
         m.filas = ((r["filas"] as? [[String: Any]]) ?? []).map { f in
             Fila(indice: (f["indice"] as? NSNumber)?.intValue ?? 0,
                  nombre: s(f, "nombre"), detalle: s(f, "detalle"), iconoPath: s(f, "iconoPath"),
                  color: s(f, "color"), enUso: (f["enUso"] as? Bool) ?? false,
-                 rotuloEnUso: s(f, "rotuloEnUso"))
+                 rotuloEnUso: s(f, "rotuloEnUso"),
+                 cifra: s(f, "cifra"), cifraTinta: s(f, "cifraTinta"), pie: s(f, "pie"))
         }
         return m
     }
@@ -1085,6 +1090,8 @@ struct CNLibretasHoja: View {
     var onClose: () -> Void
     var body: some View {
         let m = datos.libretas ?? CNLibretas()
+        let puesta = m.filas.first(where: { $0.enUso })
+        let otras = m.filas.filter { !$0.enUso }
         return VStack(spacing: 0) {
             ZStack {
                 Text(m.titulo).font(cnLetra(17, .bold)).foregroundColor(CNC.ink)
@@ -1107,24 +1114,50 @@ struct CNLibretasHoja: View {
                     }.buttonStyle(CNPulsable())
                 }
             }
-            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 12)
+            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 10)
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 10) {
-                    ForEach(m.filas) { f in fila(f) }
+                VStack(spacing: 14) {
+                    // La que está puesta, en grande y arriba: es la que
+                    // contesta «¿dónde estoy anotando?».
+                    if let p = puesta { destacada(p) }
+                    if !otras.isEmpty {
+                        VStack(alignment: .leading, spacing: 7) {
+                            if !m.rotuloOtras.isEmpty {
+                                Text(m.rotuloOtras.uppercased()).font(cnLetra(11.5, .heavy)).tracking(0.8)
+                                    .foregroundColor(CNC.pmut).padding(.leading, 4)
+                            }
+                            VStack(spacing: 0) {
+                                ForEach(otras) { f in
+                                    fila(f)
+                                    if f.indice != otras.last?.indice {
+                                        Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 62)
+                                    }
+                                }
+                            }
+                            .background(CNC.card)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
+                        }
+                    }
                     if !m.textoGestionar.isEmpty {
                         Button {
                             UISelectionFeedbackGenerator().selectionChanged()
                             datos.onLibreta("gestionar", 0)
                         } label: {
-                            Text(m.textoGestionar).font(cnLetra(15, .semibold))
-                                .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 15)
-                                .background(CNC.card, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous)
-                                    .stroke(CNC.line, lineWidth: 1))
-                        }.buttonStyle(CNPulsable()).padding(.top, 6)
+                            HStack(spacing: 10) {
+                                Image(systemName: "person.2").font(cnLetra(15, .semibold)).foregroundColor(CNC.pmut)
+                                Text(m.textoGestionar).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
+                                Spacer(minLength: 8)
+                                Image(systemName: "chevron.right").font(cnLetra(12, .bold))
+                                    .foregroundColor(CNC.pmut.opacity(0.7))
+                            }
+                            .padding(.horizontal, 15).padding(.vertical, 15)
+                            .background(CNC.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+                        }.buttonStyle(CNPulsable())
                     }
-                    Color.clear.frame(height: 20)
+                    Color.clear.frame(height: 18)
                 }
                 .padding(.horizontal, 16)
             }
@@ -1133,36 +1166,69 @@ struct CNLibretasHoja: View {
         .background(CNC.scr.ignoresSafeArea())
     }
 
+    /// La libreta en uso: su color de fondo, su cifra del mes y su gente.
+    private func destacada(_ f: CNLibretas.Fila) -> some View {
+        let tinte = cnColor(hexString: f.color)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 15, style: .continuous).fill(tinte.opacity(0.18))
+                    CNSVGShape(d: f.iconoPath)
+                        .stroke(tinte, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                        .frame(width: 23, height: 23)
+                }
+                .frame(width: 48, height: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(f.nombre).font(cnLetra(19, .heavy)).foregroundColor(CNC.ink).lineLimit(1)
+                    Text(f.detalle).font(cnLetra(13)).foregroundColor(CNC.pmut).lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Text(f.rotuloEnUso.uppercased()).font(cnLetra(10, .heavy)).tracking(0.5)
+                    .foregroundColor(CNC.pos)
+                    .padding(.horizontal, 9).padding(.vertical, 5)
+                    .background(CNC.pos.opacity(0.14), in: Capsule())
+            }
+            if !f.cifra.isEmpty {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(f.cifra).font(cnLetra(24, .heavy))
+                        .foregroundColor(f.cifraTinta.isEmpty ? CNC.ink : cnColor(hexString: f.cifraTinta))
+                    Spacer(minLength: 8)
+                    Text(f.pie).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
+                }
+            }
+        }
+        .padding(15)
+        .background(CNC.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(tinte.opacity(0.45), lineWidth: 1.6))
+    }
+
     private func fila(_ f: CNLibretas.Fila) -> some View {
         Button {
             UISelectionFeedbackGenerator().selectionChanged()
             datos.onLibreta("elegir", f.indice)
         } label: {
-            HStack(spacing: 13) {
+            HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous).fill(cnColor(hexString: f.color))
+                    RoundedRectangle(cornerRadius: 13, style: .continuous).fill(cnColor(hexString: f.color))
                     CNSVGShape(d: f.iconoPath)
                         .stroke(Color.white, style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
-                        .frame(width: 22, height: 22)
+                        .frame(width: 20, height: 20)
                 }
-                .frame(width: 46, height: 46)
-                VStack(alignment: .leading, spacing: 2) {
+                .frame(width: 42, height: 42)
+                VStack(alignment: .leading, spacing: 1) {
                     Text(f.nombre).font(cnLetra(16, .bold)).foregroundColor(CNC.ink).lineLimit(1)
-                    Text(f.detalle).font(cnLetra(13)).foregroundColor(CNC.pmut).lineLimit(1)
+                    Text(f.detalle).font(cnLetra(12.5)).foregroundColor(CNC.pmut).lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                if f.enUso {
-                    Text(f.rotuloEnUso.uppercased()).font(cnLetra(10.5, .heavy)).tracking(0.5)
-                        .foregroundColor(CNC.pos)
-                        .padding(.horizontal, 9).padding(.vertical, 5)
-                        .background(CNC.pos.opacity(0.14), in: Capsule())
+                if !f.cifra.isEmpty {
+                    Text(f.cifra).font(cnLetra(14.5, .bold))
+                        .foregroundColor(f.cifraTinta.isEmpty ? CNC.pmut : cnColor(hexString: f.cifraTinta))
                 }
+                Image(systemName: "chevron.right").font(cnLetra(11.5, .bold))
+                    .foregroundColor(CNC.pmut.opacity(0.6))
             }
-            .padding(12)
-            .background(f.enUso ? CNC.soft : CNC.card,
-                        in: RoundedRectangle(cornerRadius: 17, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .stroke(f.enUso ? CNC.acc.opacity(0.55) : CNC.line, lineWidth: f.enUso ? 1.6 : 1))
+            .padding(.horizontal, 13).padding(.vertical, 11)
+            .contentShape(Rectangle())
         }.buttonStyle(CNPulsable())
     }
 }

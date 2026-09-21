@@ -751,6 +751,13 @@ final class CNDatos: ObservableObject {
     /// Cualquier detalle (cuenta, tarjeta, préstamo, meta, categoría).
     @Published var detalle: CNDetalle? = nil
     var onDetalleAccion: (String, Int) -> Void = { _, _ in }
+    /// Marca un chip del detalle sin esperar a la web: el periodo se enciende
+    /// al tocarlo y las cifras llegan un instante después.
+    func marcarChip(_ i: Int) {
+        guard var d = detalle else { return }
+        d.chips = d.chips.map { c in var x = c; x.puesta = (c.indice == i); return x }
+        detalle = d
+    }
     func cargarDetalle(json: String) { detalle = CNDetalle.desde(json: json) }
     /// Un modelo a medias (leído mientras la web repinta) NO pisa al bueno:
     /// así la pantalla no se queda en blanco al cambiar de pestaña.
