@@ -308,6 +308,8 @@ class ChinolaViewController: CAPBridgeViewController {
                     } else {
                         s.traerSeccion(id)
                         s.traerAjustes(); s.traerTema()
+                        // «Mi plan» cambia de paso sin abrir hoja: es la puerta.
+                        s.mirarPuerta(intentos: 2)
                     }
                 }
             }
