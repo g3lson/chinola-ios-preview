@@ -1067,8 +1067,12 @@ struct CNHojaAbajo<C: View>: View {
     @State private var aparecio = false
 
     var body: some View {
+        // La pila entera fuera del margen seguro: con el margen puesto, la hoja
+        // —que mide lo que mide su contenido— se alineaba al borde del margen y
+        // por debajo asomaba una franja de la pantalla de detrás. El hueco del
+        // indicador de inicio lo pone el contenido por dentro (cnMargenAbajo).
         ZStack(alignment: .bottom) {
-            Color.black.opacity(aparecio ? 0.42 : 0).ignoresSafeArea()
+            Color.black.opacity(aparecio ? 0.42 : 0)
                 .onTapGesture { cerrar() }
             contenido()
                 .frame(maxWidth: .infinity)
@@ -1084,8 +1088,8 @@ struct CNHojaAbajo<C: View>: View {
                             else { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { y = 0 } }
                         }
                 )
-                .ignoresSafeArea(edges: .bottom)
         }
+        .ignoresSafeArea()
         .onAppear { withAnimation(.spring(response: 0.4, dampingFraction: 0.88)) { aparecio = true } }
     }
 
@@ -1112,6 +1116,7 @@ struct CNLibretas {
     }
     var titulo = "Libretas"
     var textoGestionar = ""
+    var textoNueva = ""
     var rotuloOtras = ""
     var filas: [Fila] = []
 
@@ -1122,6 +1127,7 @@ struct CNLibretas {
         var m = CNLibretas()
         if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
         m.textoGestionar = s(r, "textoGestionar")
+        m.textoNueva = s(r, "textoNueva")
         m.rotuloOtras = s(r, "rotuloOtras")
         m.filas = ((r["filas"] as? [[String: Any]]) ?? []).map { f in
             Fila(indice: (f["indice"] as? NSNumber)?.intValue ?? 0,
@@ -1143,26 +1149,11 @@ struct CNLibretasHoja: View {
         let otras = m.filas.filter { !$0.enUso }
         let altoMax = UIScreen.main.bounds.height * 0.82
         return VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Text(m.titulo).font(cnLetra(22, .heavy)).foregroundColor(CNC.ink)
-                Spacer(minLength: 8)
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    datos.onLibreta("nueva", 0)
-                } label: {
-                    Image(systemName: "plus").font(cnLetra(17, .bold))
-                        .foregroundColor(CNC.sobreAcc)
-                        .frame(width: 40, height: 40).cnVidrio(Circle(), tinte: CNC.acc)
-                }.buttonStyle(CNPulsable())
-                Button {
-                    UISelectionFeedbackGenerator().selectionChanged()
-                    onClose()
-                } label: {
-                    Image(systemName: "xmark").font(cnLetra(15, .bold))
-                        .foregroundColor(CNC.ink).frame(width: 40, height: 40).cnVidrio(Circle())
-                }.buttonStyle(CNPulsable())
-            }
-            .padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 14)
+            // La misma cabecera que el periodo y los formularios: cerrar a la
+            // izquierda y el título en medio. El «+» ya no compite con ella:
+            // «Nueva libreta» es una fila más, al final de la lista.
+            CNHojaCabecera(titulo: m.titulo, onClose: onClose)
+                .padding(.top, 8)
 
             // Con pocas libretas la hoja mide lo que mide su contenido; solo si
             // son muchas se convierte en una lista que rueda.
@@ -1200,27 +1191,50 @@ struct CNLibretasHoja: View {
                             .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
                         }
                     }
-                    if !m.textoGestionar.isEmpty {
-                        Button {
-                            UISelectionFeedbackGenerator().selectionChanged()
-                            datos.onLibreta("gestionar", 0)
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: "person.2").font(cnLetra(15, .semibold)).foregroundColor(CNC.pmut)
-                                Text(m.textoGestionar).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
-                                Spacer(minLength: 8)
-                                Image(systemName: "chevron.right").font(cnLetra(12, .bold))
-                                    .foregroundColor(CNC.pmut.opacity(0.7))
+                    // Las dos acciones, juntas en una tarjeta: crear otra libreta
+                    // y gestionar las que hay.
+                    VStack(spacing: 0) {
+                        accion("plus", m.textoNueva.isEmpty ? cnT("Nueva libreta") : m.textoNueva, tinte: CNC.acc) {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            datos.onLibreta("nueva", 0)
+                        }
+                        if !m.textoGestionar.isEmpty {
+                            Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 62)
+                            accion("person.2", m.textoGestionar, tinte: nil) {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                datos.onLibreta("gestionar", 0)
                             }
-                            .padding(.horizontal, 15).padding(.vertical, 15)
-                            .background(CNC.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
-                        }.buttonStyle(CNPulsable())
+                        }
                     }
+                    .background(CNC.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
                     // Hasta debajo del indicador de inicio: la hoja llega al pie.
                     Color.clear.frame(height: 6 + cnMargenAbajo())
                 }
                 .padding(.horizontal, 16)
+    }
+
+    /// Una fila de acción: icono en su cuadro (del color de la marca si es la
+    /// de crear), el texto y la flecha. Mide igual que las filas de libreta.
+    private func accion(_ simbolo: String, _ texto: String, tinte: Color?, _ al: @escaping () -> Void) -> some View {
+        Button(action: al) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .fill(tinte.map { $0.opacity(0.16) } ?? CNC.ink.opacity(0.06))
+                    Image(systemName: simbolo).font(cnLetra(16, .bold))
+                        .foregroundColor(tinte ?? CNC.pmut)
+                }
+                .frame(width: 42, height: 42)
+                Text(texto).font(cnLetra(16, .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right").font(cnLetra(11.5, .bold))
+                    .foregroundColor(CNC.pmut.opacity(0.6))
+            }
+            .padding(.horizontal, 13).padding(.vertical, 11)
+            .contentShape(Rectangle())
+        }.buttonStyle(CNPulsable())
     }
 
     /// La libreta en uso: su color de fondo, su cifra del mes y su gente.
