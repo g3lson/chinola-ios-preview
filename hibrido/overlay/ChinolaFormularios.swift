@@ -690,6 +690,8 @@ struct CNHojaWeb: View {
         var label = ""; var tipo = "text"; var ph = ""; var valor = ""
         var teclado = "text"; var seguro = false
         var opciones: [Opcion] = []; var colores: [Color2] = []; var iconos: [Icono] = []
+        /// Para los campos que no se escriben: el texto del botón de un enlace.
+        var textoEnlace = ""
     }
     struct Modelo {
         var tipo = ""; var titulo = ""; var texto = ""; var boton = ""
@@ -751,7 +753,43 @@ struct CNHojaWeb: View {
     @ViewBuilder private func campo(_ c: Campo) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             cnHojaTitulo(c.label)
-            if !c.colores.isEmpty {
+            if c.tipo == "qr" {
+                // Un QR para escanear (la app de autenticación): siempre sobre
+                // blanco, que un lector no lee bien un QR sobre papel oscuro.
+                if let img = cnImagenBase64(c.valor) {
+                    Image(uiImage: img).resizable().interpolation(.none).scaledToFit()
+                        .frame(width: 200, height: 200).padding(6)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+                        .frame(maxWidth: .infinity)
+                }
+            } else if c.tipo == "nota" {
+                // Texto para copiar (la clave de la app, los códigos de respaldo).
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(c.valor).font(.system(size: 15, weight: .semibold, design: .monospaced))
+                        .foregroundColor(CNC.ink).lineSpacing(5).textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button {
+                        UIPasteboard.general.string = c.valor
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        CNMenuEstado.shared.alAviso(cnT("Copiado"), "")
+                    } label: {
+                        Text(cnT("Copiar")).font(cnLetra(14, .semibold)).foregroundColor(CNC.pos)
+                    }.buttonStyle(CNPulsable())
+                }
+                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+            } else if c.tipo == "enlace" {
+                Button {
+                    if let u = URL(string: c.valor) { UIApplication.shared.open(u) }
+                } label: {
+                    Text(c.textoEnlace.isEmpty ? cnT("Abrir") : c.textoEnlace).font(cnLetra(16, .bold))
+                        .foregroundColor(CNC.sobreAcc)
+                        .frame(maxWidth: .infinity).padding(.vertical, 15)
+                        .background(CNC.acc, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }.buttonStyle(CNPulsable())
+            } else if !c.colores.isEmpty {
                 HStack(spacing: 10) {
                     ForEach(c.colores) { x in
                         Button { datos.onHojaCampo(c.id, String(x.id), "color") } label: {
@@ -851,6 +889,7 @@ extension CNHojaWeb.Modelo {
         m.campos = l(raiz, "campos").map { c in
             CNHojaWeb.Campo(id: n(c, "indice"), label: s(c, "label"), tipo: s(c, "tipo"), ph: s(c, "ph"),
                             valor: s(c, "valor"), teclado: s(c, "teclado"), seguro: b(c, "seguro"),
+                            textoEnlace: s(c, "textoEnlace"),
                             opciones: l(c, "opciones").map { CNHojaWeb.Opcion(id: s($0, "id"), label: s($0, "label")) },
                             colores: l(c, "colores").map { CNHojaWeb.Color2(id: n($0, "indice"), color: s($0, "color"), puesta: b($0, "puesta")) },
                             iconos: l(c, "iconos").map { CNHojaWeb.Icono(id: n($0, "indice"), clave: s($0, "clave"), label: s($0, "label"), path: s($0, "path"), puesta: b($0, "puesta")) })
@@ -1709,6 +1748,8 @@ struct CNPuerta {
     /// Verificación en dos pasos: en vez de correo y contraseña se pide el
     /// código que llegó al correo.
     var codigo = false; var labelCodigo = ""; var valorCodigo = ""
+    struct Metodo: Identifiable { var id: Int; var label = "" }
+    var metodos: [Metodo] = []; var otrosRotulo = ""; var respaldoNota = ""
     var labelNombre = ""; var labelCorreo = ""; var labelClave = ""; var labelClave2 = ""
     var phCorreo = ""; var phClave2 = ""
     var nombre = ""; var email = ""; var clave = ""; var clave2 = ""
@@ -1739,6 +1780,8 @@ struct CNPuerta {
         }
         m.registro = b(r, "registro")
         m.codigo = b(r, "codigo"); m.labelCodigo = s(r, "labelCodigo"); m.valorCodigo = s(r, "valorCodigo")
+        m.metodos = ((r["metodos"] as? [[String: Any]]) ?? []).enumerated().map { i, x in Metodo(id: i, label: s(x, "label")) }
+        m.otrosRotulo = s(r, "otrosRotulo"); m.respaldoNota = s(r, "respaldoNota")
         m.labelNombre = s(r, "labelNombre"); m.labelCorreo = s(r, "labelCorreo")
         m.labelClave = s(r, "labelClave"); m.labelClave2 = s(r, "labelClave2")
         m.phCorreo = s(r, "phCorreo"); m.phClave2 = s(r, "phClave2")
@@ -1896,9 +1939,33 @@ struct CNPuertaVista: View {
             VStack(spacing: 10) {
                 if m.codigo {
                     // El código de dos pasos, y nada más: correo y contraseña
-                    // ya se dieron.
-                    CNCampoTexto(placeholder: m.labelCodigo, texto: $codigo, teclado: .numberPad)
+                    // ya se dieron. El teclado normal: un código de respaldo
+                    // lleva letras.
+                    CNCampoTexto(placeholder: m.labelCodigo, texto: $codigo, teclado: .asciiCapable)
                         .onChange(of: codigo) { v in onAccion("campo", "codigo|" + v) }
+                    if !m.metodos.isEmpty {
+                        // Los otros métodos que tiene: pedir el código por otro lado.
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(m.otrosRotulo).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
+                            HStack(spacing: 8) {
+                                ForEach(m.metodos) { x in
+                                    Button {
+                                        UISelectionFeedbackGenerator().selectionChanged()
+                                        onAccion("metodo", String(x.id))
+                                    } label: {
+                                        Text(x.label).font(cnLetra(12.5, .bold)).foregroundColor(CNC.ink)
+                                            .padding(.horizontal, 12).padding(.vertical, 8)
+                                            .background(CNC.card, in: Capsule())
+                                            .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
+                                    }.buttonStyle(CNPulsable())
+                                }
+                                Spacer(minLength: 0)
+                            }
+                        }.padding(.top, 2)
+                    }
+                    if !m.respaldoNota.isEmpty {
+                        Text(m.respaldoNota).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                    }
                 } else {
                 if m.registro {
                     CNCampoTexto(placeholder: m.labelNombre, texto: $nombre)

@@ -4894,6 +4894,8 @@ struct CNSeccion {
         var label = ""; var sub = ""; var valor = ""
         var icono = ""; var bg = ""; var fg = ""; var tinta = ""
         var entra = false; var accion = -1
+        /// Una fila puede abrir OTRA sección en vez de disparar una acción.
+        var abre = ""
     }
     struct Opcion {
         var label = ""; var sub = ""; var puesta = false
@@ -4945,7 +4947,7 @@ struct CNSeccion {
             q.filas = l(bq, "filas").map {
                 Fila(label: s($0, "label"), sub: s($0, "sub"), valor: s($0, "valor"), icono: s($0, "icono"),
                      bg: s($0, "bg"), fg: s($0, "fg"), tinta: s($0, "tinta"), entra: b($0, "entra"),
-                     accion: n($0, "accion"))
+                     accion: n($0, "accion"), abre: s($0, "abre"))
             }
             q.opciones = l(bq, "opciones").map { o in
                 let mini = o["vista"] as? [String: Any]
@@ -5074,7 +5076,7 @@ struct CNSeccionVista: View {
             VStack(spacing: 0) {
                 ForEach(q.filas.indices, id: \.self) { i in
                     let f = q.filas[i]
-                    Button { datos.onSeccionAccion(f.accion, nil) } label: {
+                    Button { if f.abre.isEmpty { datos.onSeccionAccion(f.accion, nil) } else { datos.onAbrirSeccion(f.abre) } } label: {
                         HStack(spacing: 13) {
                             if !f.icono.isEmpty {
                                 CNSVGShape(d: f.icono)
