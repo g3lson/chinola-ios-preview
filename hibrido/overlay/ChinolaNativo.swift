@@ -3888,6 +3888,10 @@ struct CNResumen: View {
     @State private var rodado: CGFloat = 0
     /// Modo «organizar»: cada tarjeta enseña su ⋯ y se puede agregar.
     @State private var organiza = false
+    /// La tarjeta que se lleva el dedo, dónde está cada una y cuánto se movió.
+    @State private var llevada = ""
+    @State private var marcos: [String: CGRect] = [:]
+    @State private var desplaza: CGSize = .zero
     /// Solo para el banco de pruebas: arrancar ya organizando.
     var organizaAlEmpezar = false
     /// Solo para el banco de pruebas: rodar la lista sola para ver el plegado.
@@ -3948,7 +3952,20 @@ struct CNResumen: View {
                                 primera: w.indice == 0,
                                 ultima: w.indice == m.widgets.count - 1,
                                 datos: datos)
+                    // Dónde está cada tarjeta, para saber encima de cuál se suelta.
+                    .background(GeometryReader { g in
+                        Color.clear.preference(key: CNMarcosPanel.self,
+                                               value: [w.wid: g.frame(in: .named("panel"))])
+                    })
+                    .offset(llevada == w.wid ? desplaza : .zero)
+                    .scaleEffect(llevada == w.wid ? 1.04 : 1)
+                    .shadow(color: .black.opacity(llevada == w.wid ? 0.22 : 0), radius: 16, y: 8)
+                    .zIndex(llevada == w.wid ? 10 : 0)
+                    .animation(.spring(response: 0.28, dampingFraction: 0.85), value: llevada)
+                    .gesture(organiza ? arrastre(w, en: vistas) : nil)
             }
+            .coordinateSpace(name: "panel")
+            .onPreferenceChange(CNMarcosPanel.self) { marcos = $0 }
             if organiza && !m.catalogo.isEmpty {
                 Menu {
                     ForEach(m.catalogo, id: \.id) { o in
@@ -3980,6 +3997,34 @@ struct CNResumen: View {
         .onAppear { if organizaAlEmpezar { organiza = true } }
     }
 
+    /// Mantener pulsada y arrastrar. Al soltar, la tarjeta ocupa el sitio de la
+    /// que tenga debajo el dedo (su índice en el panel de la web).
+    private func arrastre(_ w: CNResumenModelo.Widget, en vistas: [CNResumenModelo.Widget]) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.22)
+            .sequenced(before: DragGesture(minimumDistance: 4, coordinateSpace: .named("panel")))
+            .onChanged { valor in
+                switch valor {
+                case .first(true):
+                    if llevada != w.wid {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        llevada = w.wid; desplaza = .zero
+                    }
+                case .second(true, let d?):
+                    desplaza = d.translation
+                default: break
+                }
+            }
+            .onEnded { valor in
+                defer { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { llevada = ""; desplaza = .zero } }
+                guard case .second(true, let d?) = valor, let mio = marcos[w.wid] else { return }
+                let centro = CGPoint(x: mio.midX + d.translation.width, y: mio.midY + d.translation.height)
+                guard let destino = vistas.first(where: { $0.wid != w.wid && (marcos[$0.wid]?.contains(centro) ?? false) })
+                else { return }
+                UISelectionFeedbackGenerator().selectionChanged()
+                datos.onPanel("mover", w.wid, String(destino.indice))
+            }
+    }
+
     private func tarjetaVacia(_ m: CNResumenModelo) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(m.vacioTitulo).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink)
@@ -4000,6 +4045,20 @@ struct CNResumen: View {
 
 /// Coloca las tarjetas como la web: las anchas ocupan la fila entera y las
 /// chicas van de dos en dos, en el orden en que vienen.
+
+// ── Arrastrar las tarjetas del panel con el dedo ────────────────────────────
+//
+// En «organizar», una tarjeta se mantiene pulsada, se levanta y se suelta
+// encima de otra: ocupa su sitio. El orden lo guarda la web (`mover`), aquí
+// solo se mide dónde cayó. Sin reflujo en vivo a propósito: levantar, ver y
+// soltar es lo que se entiende de un vistazo, y no hace temblar la lista.
+struct CNMarcosPanel: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
 struct CNRejilla<C: View>: View {
     let widgets: [CNResumenModelo.Widget]
     @ViewBuilder var celda: (CNResumenModelo.Widget) -> C

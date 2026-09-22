@@ -1,6 +1,7 @@
 import UIKit
 import SwiftUI
 import Capacitor
+import UniformTypeIdentifiers
 
 /**
  * Base: la WEB de Capacitor. Encima, lo NATIVO:
@@ -280,6 +281,7 @@ class ChinolaViewController: CAPBridgeViewController {
             guard let s = self else { return }
             // Una «sección» que empieza por «hoja:» no es una pantalla de
             // ajustes: es un formulario nativo. Hoy solo invitar.
+            if id == "importar" { s.pedirCsv(); return }
             if id.hasPrefix("hoja:invitar:") {
                 let lid = String(id.dropFirst("hoja:invitar:".count))
                 s.bridge?.webView?.evaluateJavaScript("(window.__chinolaInvitarJSON && window.__chinolaInvitarJSON()) || ''") { res, _ in
@@ -948,6 +950,19 @@ class ChinolaViewController: CAPBridgeViewController {
         }
     }
 
+    // MARK: importar un CSV con el selector de archivos del sistema
+    //
+    // El <input type=file> de la web no abre nada desde una llamada nuestra
+    // (WKWebView exige un toque de verdad). El selector lo abre el sistema y el
+    // texto se le pasa a la MISMA función de la web que lo lee.
+    fileprivate func pedirCsv() {
+        let tipos: [UTType] = [.commaSeparatedText, .plainText, .text]
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: tipos, asCopy: true)
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        present(picker, animated: true)
+    }
+
     // MARK: avisos cortos («Guardado», «Avisos puestos»)
     //
     // Los de la web no los veía nadie: está tapada por las pantallas nativas.
@@ -1357,5 +1372,19 @@ extension ChinolaViewController: UIGestureRecognizerDelegate {
     func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
         guard g is UIScreenEdgePanGestureRecognizer else { return true }
         return datos.seccion != nil && detalleVC == nil
+    }
+}
+
+extension ChinolaViewController: UIDocumentPickerDelegate {
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let u = urls.first else { return }
+        let acceso = u.startAccessingSecurityScopedResource()
+        defer { if acceso { u.stopAccessingSecurityScopedResource() } }
+        guard let datos = try? Data(contentsOf: u) else { return }
+        // UTF-8 o, si no, Latin-1: los bancos exportan de las dos maneras.
+        let texto = String(data: datos, encoding: .utf8) ?? String(data: datos, encoding: .isoLatin1) ?? ""
+        guard !texto.isEmpty else { return }
+        eval("window.__chinolaImportaCsv && window.__chinolaImportaCsv(\(comillas(texto)))")
+        refrescarPronto()
     }
 }
