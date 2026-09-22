@@ -1024,7 +1024,7 @@ class ChinolaViewController: CAPBridgeViewController {
     // (WKWebView exige un toque de verdad). El selector lo abre el sistema y el
     // texto se le pasa a la MISMA función de la web que lo lee.
     fileprivate func pedirCsv() {
-        let tipos: [UTType] = [.commaSeparatedText, .plainText, .text]
+        let tipos: [UTType] = [.commaSeparatedText, .plainText, .text, .json]
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: tipos, asCopy: true)
         picker.delegate = self
         picker.allowsMultipleSelection = false
@@ -1499,6 +1499,10 @@ class ChinolaViewController: CAPBridgeViewController {
         menuEstado.alRepintar = { [weak self] in
             guard let s = self else { return }
             s.barra.pintar(activa: s.menuEstado.activa, titulos: s.menuEstado.titulos)
+            // El icono de Perfil (Chino o la silueta) se vuelve a poner con el
+            // tema: es aquí donde llega el cambio de ajuste, y antes no se veía
+            // hasta cambiar de pestaña.
+            s.barra.ponerChinolo(CNDatos.shared.mascota?.chinolo ?? "")
         }
     }
 
@@ -1530,6 +1534,12 @@ extension ChinolaViewController: UIDocumentPickerDelegate {
         let texto = String(data: datos, encoding: .utf8) ?? String(data: datos, encoding: .isoLatin1) ?? ""
         guard !texto.isEmpty else { return }
         eval("window.__chinolaImportaCsv && window.__chinolaImportaCsv(\(comillas(texto)))")
-        refrescarPronto()
+        // Un archivo de Chinola abre la hoja de «qué traer»: se dibuja nativa.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            guard let s = self else { return }
+            s.bridge?.webView?.evaluateJavaScript("!!(window.__chinolaHayHoja && window.__chinolaHayHoja())") { r, _ in
+                if (r as? Bool) == true { s.presentarHojaWeb() } else { s.refrescarPronto() }
+            }
+        }
     }
 }

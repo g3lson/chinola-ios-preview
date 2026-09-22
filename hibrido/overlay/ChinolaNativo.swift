@@ -1335,14 +1335,17 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     func ponerChinolo(_ b64: String) {
         guard let items = barra.items, let i = ids.firstIndex(of: "perfil"), i < items.count else { return }
         if CNC.fmt.iconoPerfil == "perfil" {
+            items[i].imageInsets = conTitulos ? .zero : UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
             items[i].image = CNBarraNativa.redondo(CNC.fmt.inicial, puesto: false).withRenderingMode(.alwaysOriginal)
             items[i].selectedImage = CNBarraNativa.redondo(CNC.fmt.inicial, puesto: true).withRenderingMode(.alwaysOriginal)
             return
         }
         guard !b64.isEmpty, let d = Data(base64Encoded: b64), let img = UIImage(data: d) else { return }
         // Más grande que los demás a propósito: es un dibujo, no un trazo, y
-        // con el mismo alto se veía chiquito al lado de las líneas.
-        let lado: CGFloat = 31
+        // con el mismo alto se veía chiquito al lado de las líneas. Solo él:
+        // el resto de la barra se queda como está.
+        let lado: CGFloat = 36
+        items[i].imageInsets = UIEdgeInsets(top: conTitulos ? -2 : 4, left: 0, bottom: conTitulos ? 2 : -4, right: 0)
         let color = UIGraphicsImageRenderer(size: CGSize(width: lado, height: lado)).image { _ in
             img.draw(in: CGRect(x: 0, y: 0, width: lado, height: lado))
         }
@@ -1350,35 +1353,23 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         items[i].selectedImage = color.withRenderingMode(.alwaysOriginal)
     }
 
-    /// El icono redondo del perfil: un círculo con la inicial. Apagado es un
-    /// aro fino; puesto, el círculo relleno con el color de la marca.
+    /// El icono redondo del perfil: la silueta dentro de un aro, como el de
+    /// otras apps. Apagado, aro y silueta finos en gris; puesto, el aro y la
+    /// silueta gruesos, del color del tema. Del tamaño de los demás iconos.
     private static func redondo(_ inicial: String, puesto: Bool) -> UIImage {
-        let lado: CGFloat = 27
-        let letra = String(inicial.prefix(1)).uppercased()
-        return UIGraphicsImageRenderer(size: CGSize(width: lado, height: lado)).image { ctx in
-            let caja = CGRect(x: 1, y: 1, width: lado - 2, height: lado - 2)
-            let circulo = UIBezierPath(ovalIn: caja)
-            if puesto {
-                UIColor(CNC.side).setFill(); circulo.fill()
-            } else {
-                UIColor(CNC.pmut).setStroke(); circulo.lineWidth = 2; circulo.stroke()
-            }
-            if letra.isEmpty {
-                // Sin nombre todavía: la silueta de siempre.
-                let p = UIBezierPath(ovalIn: CGRect(x: lado / 2 - 4, y: 7, width: 8, height: 8))
-                let cuerpo = UIBezierPath(arcCenter: CGPoint(x: lado / 2, y: 22), radius: 7,
-                                          startAngle: .pi, endAngle: 0, clockwise: true)
-                (puesto ? UIColor(CNC.sobreAcc) : UIColor(CNC.pmut)).setFill()
-                p.fill(); cuerpo.fill()
-                return
-            }
-            let atrib: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 13, weight: .bold),
-                .foregroundColor: puesto ? UIColor(cnSobre(CNC.side)) : UIColor(CNC.pmut)
-            ]
-            let tam = letra.size(withAttributes: atrib)
-            letra.draw(at: CGPoint(x: (lado - tam.width) / 2, y: (lado - tam.height) / 2), withAttributes: atrib)
-            _ = ctx
+        let lado: CGFloat = 26
+        return UIGraphicsImageRenderer(size: CGSize(width: lado, height: lado)).image { _ in
+            let tinta = puesto ? UIColor(CNC.pos) : UIColor(CNC.pmut)
+            let grosor: CGFloat = puesto ? 2.6 : 2.2
+            let aro = UIBezierPath(ovalIn: CGRect(x: 1.5, y: 1.5, width: lado - 3, height: lado - 3))
+            aro.lineWidth = grosor; tinta.setStroke(); aro.stroke()
+            // La cabeza.
+            let cabeza = UIBezierPath(ovalIn: CGRect(x: lado / 2 - 3.6, y: 6.2, width: 7.2, height: 7.2))
+            cabeza.lineWidth = grosor; cabeza.stroke()
+            // Los hombros: un arco que se recorta contra el aro.
+            let hombros = UIBezierPath(arcCenter: CGPoint(x: lado / 2, y: lado - 4.2), radius: 6.6,
+                                       startAngle: .pi * 1.12, endAngle: .pi * 1.88, clockwise: true)
+            hombros.lineWidth = grosor; hombros.lineCapStyle = .round; hombros.stroke()
         }
     }
     private static func enGris(_ img: UIImage) -> UIImage? {
@@ -5120,6 +5111,8 @@ struct CNSeccion {
     struct Opcion {
         var label = ""; var sub = ""; var puesta = false
         var color = ""; var fondo = ""; var muestra = ""; var imagen = ""
+        /// Un trazo (SVG) para enseñar en vez de una imagen o una muestra.
+        var icono = ""
         var accion = -1
         /// La miniatura de la cabecera: franja, cuánto ocupa y si lleva bulto.
         var vista = ""; var franja = ""; var alto: CGFloat = 0; var bulto = false; var papel = ""
@@ -5194,7 +5187,7 @@ struct CNSeccion {
                 let noche = mini?["noche"] as? [String: Any]
                 var op = Opcion(label: s(o, "label"), sub: s(o, "sub"), puesta: b(o, "puesta"),
                        color: s(o, "color"), fondo: s(o, "fondo"), muestra: s(o, "muestra"),
-                       imagen: s(o, "imagen"), accion: n(o, "accion"),
+                       imagen: s(o, "imagen"), icono: s(o, "icono"), accion: n(o, "accion"),
                        vista: s(mini, "tipo"), franja: s(mini, "franja"),
                        alto: CGFloat(((mini?["alto"] as? NSNumber)?.doubleValue) ?? 0),
                        bulto: b(mini, "bulto"), papel: s(mini, "papel"))
@@ -5564,6 +5557,11 @@ struct CNSeccionVista: View {
                             miniCabecera(o)
                         } else if !o.imagen.isEmpty, let img = cnImagenBase64(o.imagen) {
                             Image(uiImage: img).resizable().scaledToFit().frame(height: 66)
+                        } else if !o.icono.isEmpty {
+                            CNSVGShape(d: o.icono)
+                                .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                                .foregroundColor(o.puesta ? CNC.pos : CNC.pmut)
+                                .frame(width: 34, height: 34).frame(height: 66)
                         } else if !o.muestra.isEmpty {
                             Text(o.muestra).font(cnLetra(22, .bold)).foregroundColor(CNC.ink)
                         } else if !o.color.isEmpty {

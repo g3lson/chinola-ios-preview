@@ -694,6 +694,8 @@ struct CNHojaWeb: View {
         var textoEnlace = ""
         /// Si el campo se puede bajar como archivo: su nombre y su contenido.
         var descarga = ""; var archivo = ""
+        /// Una casilla que se marca (exportar/importar: qué partes van).
+        var casilla = false; var marcada = false; var pista = ""
     }
     struct Modelo {
         var tipo = ""; var titulo = ""; var texto = ""; var boton = ""
@@ -753,6 +755,36 @@ struct CNHojaWeb: View {
     }
 
     @ViewBuilder private func campo(_ c: Campo) -> some View {
+        if c.casilla {
+            // La casilla: una fila que se marca y se desmarca, con lo que trae
+            // a la derecha («128 movimientos»).
+            Button {
+                UISelectionFeedbackGenerator().selectionChanged()
+                datos.onHojaCampo(c.id, "", "casilla")
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .fill(c.marcada ? CNC.acc : Color.clear)
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .stroke(c.marcada ? CNC.acc : CNC.line, lineWidth: 1.5)
+                        if c.marcada {
+                            Image(systemName: "checkmark").font(cnLetra(12, .heavy)).foregroundColor(CNC.sobreAcc)
+                        }
+                    }
+                    .frame(width: 22, height: 22)
+                    Text(c.label).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
+                    Spacer(minLength: 8)
+                    if !c.pista.isEmpty {
+                        Text(c.pista).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                    }
+                }
+                .padding(.horizontal, 14).padding(.vertical, 13)
+                .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+                .contentShape(Rectangle())
+            }.buttonStyle(CNPulsable())
+        } else {
         VStack(alignment: .leading, spacing: 8) {
             cnHojaTitulo(c.label)
             if c.tipo == "qr" {
@@ -865,6 +897,7 @@ struct CNHojaWeb: View {
                 }
             }
         }
+        }
     }
 
     private func etiqueta(_ c: Campo) -> String {
@@ -906,7 +939,8 @@ extension CNHojaWeb.Modelo {
                             opciones: l(c, "opciones").map { CNHojaWeb.Opcion(id: s($0, "id"), label: s($0, "label")) },
                             colores: l(c, "colores").map { CNHojaWeb.Color2(id: n($0, "indice"), color: s($0, "color"), puesta: b($0, "puesta")) },
                             iconos: l(c, "iconos").map { CNHojaWeb.Icono(id: n($0, "indice"), clave: s($0, "clave"), label: s($0, "label"), path: s($0, "path"), puesta: b($0, "puesta")) },
-                            textoEnlace: s(c, "textoEnlace"), descarga: s(c, "descarga"), archivo: s(c, "archivo"))
+                            textoEnlace: s(c, "textoEnlace"), descarga: s(c, "descarga"), archivo: s(c, "archivo"),
+                            casilla: b(c, "casilla"), marcada: b(c, "marcada"), pista: s(c, "pista"))
         }
         return m
     }
@@ -1819,17 +1853,39 @@ struct CNMascotaVista: View {
     }
 
     private func delante(_ m: CNMascota) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             if let img = cnImagenBase64(m.chinolo) {
-                Image(uiImage: img).resizable().scaledToFit().frame(width: 168, height: 168)
+                Image(uiImage: img).resizable().scaledToFit().frame(width: 150, height: 150)
                     // Vivo, como en la web: respira despacio.
                     .scaleEffect(salto ? 1.045 : 0.985)
                     .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: salto)
                     .onAppear { salto = true }
             }
-            if !m.verAvisos.isEmpty {
-                Text(m.verAvisos).font(cnLetra(13.5, .semibold)).foregroundColor(CNC.pmut)
+            // Lo que viene, a la vista, como en la PWA: no hay que voltear
+            // nada para saber qué toca pagar.
+            VStack(alignment: .leading, spacing: 8) {
+                Text(m.tituloAvisos).font(cnLetra(13, .heavy)).foregroundColor(CNC.pmut).tracking(0.6)
+                if m.avisos.isEmpty {
+                    Text(m.nadaTexto).font(cnLetra(14)).foregroundColor(CNC.pmut)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(m.avisos.prefix(4)) { a in
+                            HStack(spacing: 10) {
+                                Circle().fill(cnColor(hexString: a.color)).frame(width: 8, height: 8)
+                                Text(a.titulo).font(cnLetra(14.5, .semibold)).foregroundColor(CNC.ink).lineLimit(1)
+                                Spacer(minLength: 8)
+                                Text(a.detalle).font(cnLetra(13)).foregroundColor(CNC.pmut).lineLimit(1)
+                            }
+                            .padding(.vertical, 8)
+                            if a.id < min(4, m.avisos.count) - 1 {
+                                Rectangle().fill(CNC.line).frame(height: 0.5)
+                            }
+                        }
+                    }
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
