@@ -710,6 +710,19 @@ final class CNDatos: ObservableObject {
     var onMes: (Int) -> Void = { _ in }         // −1 / +1 desde la cabecera
     var onEmpezar: () -> Void = {}              // el «empieza aquí» del resumen vacío
     var onEditarPanel: () -> Void = {}          // organizar el panel (en la web)
+    /// El resumen entra en «organizar» cuando esto se pone a true (desde
+    /// Perfil, desde el menú de una tarjeta…); el resumen lo vuelve a false.
+    @Published var organizarPanel = false
+    /// Dónde está cada cosa que el tour señala (en coordenadas de la
+    /// pantalla): las pestañas las mide el controlador, lo demás se apunta
+    /// solo desde las vistas con `cnAncla`.
+    @Published var anclas: [String: CGRect] = [:]
+    func apuntaAncla(_ id: String, _ r: CGRect) {
+        guard let v = anclas[id], abs(v.minX - r.minX) < 0.5, abs(v.minY - r.minY) < 0.5,
+              abs(v.width - r.width) < 0.5, abs(v.height - r.height) < 0.5 else { anclas[id] = r; return }
+    }
+    /// Avisa al controlador de que se está organizando (atenúa el menú).
+    var onOrganizando: (Bool) -> Void = { _ in }
     var onCalendario: () -> Void = {}           // abrir el calendario / periodo
     var onMesTira: (Int) -> Void = { _ in }     // saltar a un mes de la tira
     var onPlegar: () -> Void = {}               // plegar la cabecera clásica
@@ -3624,7 +3637,7 @@ struct CNCabeceraApp: View {
                         HStack(spacing: 8) {
                             cuadroLibreta.frame(width: 24, height: 24)
                                 .background(pastillaFuerte, in: Circle())
-                            Text(c.nombre).font(cnLetra(14, .semibold)).foregroundColor(tinta)
+                            Text(c.nombre).font(cnLetra(14, .semibold)).foregroundColor(tinta).cnAncla("libreta")
                                 .lineLimit(1)
                             chevron
                         }
@@ -3643,7 +3656,7 @@ struct CNCabeceraApp: View {
                         Text(c.rotulo).font(cnLetra(12)).foregroundColor(tinta.opacity(0.8))
                     }
                     .scaleEffect(blqEsc, anchor: .top)
-                    tiraMeses(ancho)
+                    tiraMeses(ancho).cnAncla("meses")
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: max(0, blqAlto), alignment: .top)
@@ -3689,7 +3702,7 @@ struct CNCabeceraApp: View {
             HStack(spacing: 8) {
                 Button(action: onLibreta) {
                     HStack(spacing: 6) {
-                        Text(c.nombre).font(cnLetra(19, .bold)).foregroundColor(tinta).lineLimit(1)
+                        Text(c.nombre).font(cnLetra(19, .bold)).foregroundColor(tinta).lineLimit(1).cnAncla("libreta")
                         Image(systemName: "chevron.down").font(cnLetra(12, .bold)).foregroundColor(gris)
                     }
                 }.buttonStyle(CNPulsable())
@@ -3757,7 +3770,7 @@ struct CNCabeceraApp: View {
                         HStack(spacing: 7) {
                             cuadroLibreta.frame(width: 26, height: 26)
                                 .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            Text(c.nombre).font(cnLetra(15, .bold)).foregroundColor(tinta).lineLimit(1)
+                            Text(c.nombre).font(cnLetra(15, .bold)).foregroundColor(tinta).lineLimit(1).cnAncla("libreta")
                             chevron
                         }
                         .padding(.leading, 7).padding(.trailing, 11).padding(.vertical, 7)
@@ -3807,7 +3820,7 @@ struct CNCabeceraApp: View {
                         HStack(spacing: 8) {
                             cuadroLibreta.frame(width: 26, height: 26)
                                 .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            Text(c.nombre).font(cnLetra(15, .bold)).foregroundColor(tinta).lineLimit(1)
+                            Text(c.nombre).font(cnLetra(15, .bold)).foregroundColor(tinta).lineLimit(1).cnAncla("libreta")
                         }
                         .padding(.leading, 7).padding(.trailing, 13).padding(.vertical, 7)
                         .background(pastilla, in: Capsule())
@@ -3851,7 +3864,7 @@ struct CNCabeceraApp: View {
                     HStack(spacing: 10) {
                         cuadroLibreta.frame(width: 34, height: 34)
                             .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                        Text(c.nombre).font(cnLetra(19, .heavy)).foregroundColor(tinta).lineLimit(1)
+                        Text(c.nombre).font(cnLetra(19, .heavy)).foregroundColor(tinta).lineLimit(1).cnAncla("libreta")
                         chevron
                         Spacer(minLength: 0)
                     }
@@ -3906,7 +3919,7 @@ struct CNCabeceraApp: View {
                 HStack(spacing: 9) {
                     cuadroLibreta.frame(width: 26, height: 26)
                         .background(pastillaFuerte, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    Text(c.nombre).font(cnLetra(17, .bold)).foregroundColor(tinta).lineLimit(1)
+                    Text(c.nombre).font(cnLetra(17, .bold)).foregroundColor(tinta).lineLimit(1).cnAncla("libreta")
                     chevron
                 }
             }.buttonStyle(CNPulsable())
@@ -3931,7 +3944,7 @@ struct CNCabeceraApp: View {
                 HStack(spacing: 10) {
                     cuadroLibreta.frame(width: 30, height: 30)
                         .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                    Text(c.nombre).font(cnLetra(19, .bold)).foregroundColor(tinta).lineLimit(1)
+                    Text(c.nombre).font(cnLetra(19, .bold)).foregroundColor(tinta).lineLimit(1).cnAncla("libreta")
                     chevron
                     Spacer(minLength: 0)
                 }
@@ -3952,7 +3965,7 @@ struct CNCabeceraApp: View {
                 HStack(spacing: 9) {
                     cuadroLibreta.frame(width: 26, height: 26)
                         .background(cnColor(hexString: c.color), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    Text(c.nombre).font(cnLetra(17, .bold)).foregroundColor(tinta).lineLimit(1)
+                    Text(c.nombre).font(cnLetra(17, .bold)).foregroundColor(tinta).lineLimit(1).cnAncla("libreta")
                     chevron
                     Spacer(minLength: 0)
                 }
@@ -4074,11 +4087,19 @@ struct CNResumen: View {
         // encoge sola, y como el scroll se lee del UIScrollView (y no de dónde
         // ha quedado el contenido), encogerse ya no se muerde la cola.
         return VStack(spacing: 0) {
-            CNCabeceraApp(c: m.cabecera, progreso: auto ? progreso : 1,
-                          onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
-                          onCalendario: { datos.onCalendario() },
-                          onMesTira: { datos.onMesTira($0) },
-                          onPlegar: { datos.onPlegar() })
+            if organiza {
+                // Organizando, la cabecera se aparta: lo que importa son las
+                // tarjetas, y así entran más en pantalla.
+                barraOrganiza
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            } else {
+                CNCabeceraApp(c: m.cabecera, progreso: auto ? progreso : 1,
+                              onLibreta: { datos.onSelector() }, onMes: { datos.onMes($0) },
+                              onCalendario: { datos.onCalendario() },
+                              onMesTira: { datos.onMesTira($0) },
+                              onPlegar: { datos.onPlegar() })
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
             ScrollView(showsIndicators: false) {
                 ScrollViewReader { lector in
                     VStack(spacing: 0) {
@@ -4101,6 +4122,36 @@ struct CNResumen: View {
             }
         }
         .background(CNC.scr.ignoresSafeArea())
+        .onChange(of: organiza) { on in datos.onOrganizando(on) }
+        .onChange(of: datos.organizarPanel) { pedido in
+            if pedido {
+                withAnimation(.easeOut(duration: 0.22)) { organiza = true }
+                datos.organizarPanel = false
+            }
+        }
+    }
+
+    /// La barra de arriba mientras se organiza: qué se está haciendo y «Listo».
+    private var barraOrganiza: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(cnT("Organiza tu panel")).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink)
+                Text(cnT("Arrastra para mover · pellizca para cambiar el tamaño"))
+                    .font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(2)
+            }
+            Spacer(minLength: 8)
+            Button {
+                UISelectionFeedbackGenerator().selectionChanged()
+                withAnimation(.easeOut(duration: 0.22)) { organiza = false }
+            } label: {
+                Text(cnT("Listo")).font(cnLetra(15, .bold)).foregroundColor(CNC.sobreAcc)
+                    .padding(.horizontal, 18).padding(.vertical, 10)
+                    .background(CNC.acc, in: Capsule())
+            }.buttonStyle(CNPulsable())
+        }
+        .padding(.horizontal, 16).padding(.top, 8 + max(0, cnMargenArriba() - 44)).padding(.bottom, 10)
+        .frame(maxWidth: .infinity)
+        .background(CNC.scr.ignoresSafeArea(edges: .top))
     }
 
     @ViewBuilder private func contenido(_ m: CNResumenModelo) -> some View {
@@ -4113,18 +4164,25 @@ struct CNResumen: View {
                 CNTarjetaWidget(w: w, modelo: m, organiza: organiza,
                                 primera: w.indice == 0,
                                 ultima: w.indice == m.widgets.count - 1,
-                                datos: datos)
+                                datos: datos,
+                                onOrganizar: { withAnimation(.easeOut(duration: 0.22)) { organiza = true } })
                     // Dónde está cada tarjeta, para saber encima de cuál se suelta.
                     .background(GeometryReader { g in
                         Color.clear.preference(key: CNMarcosPanel.self,
                                                value: [w.wid: g.frame(in: .named("panel"))])
                     })
+                    // El meneo: la señal de «esto se puede mover», como en el
+                    // teléfono. Cada tarjeta empieza para un lado distinto.
+                    .modifier(CNMeneo(activo: organiza && llevada != w.wid, lado: w.indice % 2 == 0))
                     .offset(llevada == w.wid ? desplaza : .zero)
                     .scaleEffect(llevada == w.wid ? 1.04 : 1)
                     .shadow(color: .black.opacity(llevada == w.wid ? 0.22 : 0), radius: 16, y: 8)
                     .zIndex(llevada == w.wid ? 10 : 0)
                     .animation(.spring(response: 0.28, dampingFraction: 0.85), value: llevada)
                     .gesture(organiza ? arrastre(w, en: vistas) : nil)
+                    // Pellizcar: abrir los dedos la hace ancha, juntarlos la
+                    // hace media. Solo las que pueden ser medias.
+                    .simultaneousGesture(organiza && w.puedeChica ? pellizco(w) : nil)
             }
             .coordinateSpace(name: "panel")
             .onPreferenceChange(CNMarcosPanel.self) { marcos = $0 }
@@ -4161,6 +4219,19 @@ struct CNResumen: View {
 
     /// Mantener pulsada y arrastrar. Al soltar, la tarjeta ocupa el sitio de la
     /// que tenga debajo el dedo (su índice en el panel de la web).
+    private func pellizco(_ w: CNResumenModelo.Widget) -> some Gesture {
+        MagnificationGesture()
+            .onEnded { escala in
+                if escala > 1.22 && w.ancho == 1 {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    datos.onPanel("ancho", w.wid, "2")
+                } else if escala < 0.82 && w.ancho == 2 {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    datos.onPanel("ancho", w.wid, "1")
+                }
+            }
+    }
+
     private func arrastre(_ w: CNResumenModelo.Widget, en vistas: [CNResumenModelo.Widget]) -> some Gesture {
         LongPressGesture(minimumDuration: 0.22)
             .sequenced(before: DragGesture(minimumDistance: 4, coordinateSpace: .named("panel")))
@@ -4214,6 +4285,43 @@ struct CNResumen: View {
 // encima de otra: ocupa su sitio. El orden lo guarda la web (`mover`), aquí
 // solo se mide dónde cayó. Sin reflujo en vivo a propósito: levantar, ver y
 // soltar es lo que se entiende de un vistazo, y no hace temblar la lista.
+/// El meneo de las tarjetas mientras se organiza el panel: un vaivén de un
+/// grado, cada una a su ritmo, como los iconos del teléfono.
+struct CNMeneo: ViewModifier {
+    var activo: Bool
+    var lado: Bool
+    @State private var vaiven = false
+    func body(content: Content) -> some View {
+        content
+            .rotationEffect(.degrees(activo ? (vaiven ? 1.1 : -1.1) * (lado ? 1 : -1) : 0))
+            .onChange(of: activo) { on in
+                if on {
+                    withAnimation(.easeInOut(duration: 0.13).repeatForever(autoreverses: true)) { vaiven = true }
+                } else {
+                    withAnimation(.easeOut(duration: 0.15)) { vaiven = false }
+                }
+            }
+            .onAppear {
+                if activo { withAnimation(.easeInOut(duration: 0.13).repeatForever(autoreverses: true)) { vaiven = true } }
+            }
+    }
+}
+
+/// Apunta dónde está una vista, para que el tour la pueda señalar.
+struct CNAncla: ViewModifier {
+    let id: String
+    func body(content: Content) -> some View {
+        content.background(GeometryReader { g in
+            Color.clear
+                .onAppear { CNDatos.shared.apuntaAncla(id, g.frame(in: .global)) }
+                .onChange(of: g.frame(in: .global)) { r in CNDatos.shared.apuntaAncla(id, r) }
+        })
+    }
+}
+extension View {
+    func cnAncla(_ id: String) -> some View { modifier(CNAncla(id: id)) }
+}
+
 struct CNMarcosPanel: PreferenceKey {
     static var defaultValue: [String: CGRect] = [:]
     static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
@@ -4255,6 +4363,8 @@ struct CNTarjetaWidget: View {
     var primera: Bool = false
     var ultima: Bool = false
     @ObservedObject var datos: CNDatos
+    /// Entrar en «organizar» desde el menú de la propia tarjeta.
+    var onOrganizar: () -> Void = {}
     /// Con «tarjetas con color» puesto, las de cifra van del color de su cifra.
     private var conVida: Bool { CNC.fmt.panelVivo && w.clase == "cifra" && !w.color.isEmpty }
     private var tinteVida: Color { cnColor(hexString: w.color) }
@@ -4299,6 +4409,12 @@ struct CNTarjetaWidget: View {
     /// Todo lo que se puede hacer con una tarjeta, en el menú del sistema: lo
     /// mismo que la web deja hacer arrastrando y estirando.
     @ViewBuilder private var acciones: some View {
+        if !organiza {
+            Button { onOrganizar() } label: {
+                Label(cnT("Organizar el panel"), systemImage: "square.grid.2x2")
+            }
+            Divider()
+        }
         if w.clase == "serie" {
             Menu("Tipo de gráfica") {
                 Picker("", selection: Binding(get: { w.cfgGrafico },
@@ -4369,30 +4485,50 @@ struct CNTarjetaWidget: View {
     // MARK: gráfica de series (mismo lienzo 100×42 de la web)
     private var serie: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if !w.leyenda.isEmpty {
-                HStack(spacing: 14) {
-                    ForEach(w.leyenda.indices, id: \.self) { i in
-                        let s = w.leyenda[i]
-                        HStack(spacing: 7) {
-                            RoundedRectangle(cornerRadius: 4).fill(cnColor(hexString: s.color))
-                                .frame(width: 10, height: 10)
-                            Text(s.label).font(cnLetra(12)).foregroundColor(CNC.pmut)
-                            Text(s.ultimo).font(cnLetra(12, .bold)).foregroundColor(CNC.ink)
-                        }
-                    }
-                    Spacer(minLength: 0)
-                }
-            }
             CNLienzoSerie(w: w).frame(height: 170)
             if !w.etiquetas.isEmpty {
+                // Como mucho seis rótulos en el eje, repartidos: con veinticuatro
+                // meses cada uno tenía dos letras de ancho y se partía en tres
+                // renglones. Los que se enseñan van en un solo renglón.
+                let idx = ejeVisible(w.etiquetas.count)
                 HStack(spacing: 0) {
-                    ForEach(w.etiquetas.indices, id: \.self) { i in
+                    ForEach(idx, id: \.self) { i in
                         Text(w.etiquetas[i]).font(cnLetra(10)).foregroundColor(CNC.pmut)
+                            .lineLimit(1).minimumScaleFactor(0.7)
                             .frame(maxWidth: .infinity)
                     }
                 }
             }
+            if !w.leyenda.isEmpty {
+                // La leyenda debajo de la gráfica y en rejilla de dos: cinco
+                // series con su cifra no caben en una fila, y apretadas se
+                // leían a una letra por renglón.
+                let cols = w.leyenda.count <= 2 ? w.leyenda.count : 2
+                CNRejillaFija(columnas: cols, total: w.leyenda.count) { i in
+                    let s = w.leyenda[i]
+                    HStack(spacing: 7) {
+                        Circle().fill(cnColor(hexString: s.color)).frame(width: 9, height: 9)
+                        Text(s.label).font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text(s.ultimo).font(cnLetra(12, .bold)).foregroundColor(CNC.ink)
+                            .lineLimit(1).minimumScaleFactor(0.75)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 7)
+                    .background(CNC.soft.opacity(0.7), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .padding(.top, 2)
+            }
         }
+    }
+
+    /// Qué rótulos del eje se enseñan: todos si son pocos, y si no seis
+    /// repartidos (siempre el primero y el último).
+    private func ejeVisible(_ n: Int) -> [Int] {
+        guard n > 6 else { return Array(0..<n) }
+        let paso = Double(n - 1) / 5
+        var out = (0..<6).map { Int((Double($0) * paso).rounded()) }
+        out[5] = n - 1
+        return Array(Set(out)).sorted()
     }
 
     // MARK: barras por categoría
@@ -5226,7 +5362,7 @@ struct CNSeccionVista: View {
                         if o.vista == "cabecera" {
                             miniCabecera(o)
                         } else if !o.imagen.isEmpty, let img = cnImagenBase64(o.imagen) {
-                            Image(uiImage: img).resizable().scaledToFit().frame(height: 52)
+                            Image(uiImage: img).resizable().scaledToFit().frame(height: 66)
                         } else if !o.muestra.isEmpty {
                             Text(o.muestra).font(cnLetra(22, .bold)).foregroundColor(CNC.ink)
                         } else if !o.color.isEmpty {

@@ -688,7 +688,7 @@ extension TestVC {
 
 extension TestVC {
     static let tourDeMuestra = """
-    {"paso":1,"total":5,"vista":"resumen","titulo":"Anota en dos toques",
+    {"paso":1,"total":5,"vista":"resumen","ancla":"libreta","titulo":"Anota en dos toques",
      "texto":"El botón amarillo abre el formulario con la cuenta y la categoría que más usas ya puestas.",
      "textoSiguiente":"Siguiente","textoSaltar":"Saltar"}
     """

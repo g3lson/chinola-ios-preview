@@ -134,6 +134,21 @@ class ChinolaViewController: CAPBridgeViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         barra.ajustar()
+        apuntarPestanas()
+    }
+
+    /// Dónde está cada pestaña, para que el tour las señale. Los botones de
+    /// la UITabBar no tienen nombre público: se cogen por su clase y se
+    /// ordenan de izquierda a derecha, que es el orden de las pestañas.
+    private func apuntarPestanas() {
+        let botones = barra.barra.subviews
+            .filter { String(describing: type(of: $0)).contains("TabBarButton") }
+            .sorted { $0.frame.minX < $1.frame.minX }
+        guard botones.count == CNTabs.todas.count else { return }
+        for (i, b) in botones.enumerated() {
+            let r = view.convert(b.frame, from: barra.barra)
+            CNDatos.shared.apuntaAncla("tab-" + CNTabs.todas[i].id, r)
+        }
     }
 
     // MARK: acciones de las pantallas nativas
@@ -284,7 +299,15 @@ class ChinolaViewController: CAPBridgeViewController {
             self?.refrescarPronto()
         }
         datos.onEmpezar = { [weak self] in self?.webTemporal(); self?.eval("window.__chinolaEmpezar && window.__chinolaEmpezar()") }
-        datos.onEditarPanel = { [weak self] in self?.webTemporal(); self?.eval("window.__chinolaEditarPanel && window.__chinolaEditarPanel()") }
+        // Organizar el panel es nativo: se va al resumen y entra en «organizar».
+        datos.onEditarPanel = { [weak self] in self?.irAOrganizar() }
+        // Mientras se organiza, el menú de abajo se atenúa y no responde: lo
+        // que hay en pantalla es el panel, y solo el panel.
+        datos.onOrganizando = { [weak self] on in
+            guard let s = self else { return }
+            UIView.animate(withDuration: 0.2) { s.barra.barra.alpha = on ? 0.35 : 1 }
+            s.barra.barra.isUserInteractionEnabled = !on
+        }
         // Perfil: la fila se dispara por su sitio en la lista y, si abre una
         // sección, se enseña la web (esas pantallas siguen allí).
         datos.onAjuste = { [weak self] g, f, valor in
@@ -304,6 +327,7 @@ class ChinolaViewController: CAPBridgeViewController {
             // Una «sección» que empieza por «hoja:» no es una pantalla de
             // ajustes: es un formulario nativo. Hoy solo invitar.
             if id == "importar" { s.pedirCsv(); return }
+            if id == "organizar" { s.irAOrganizar(); return }
             // Editar una libreta: la web la deja preparada y el mismo
             // formulario de «nueva» se abre con sus valores.
             if id.hasPrefix("hoja:libreta:") {
@@ -1206,6 +1230,14 @@ class ChinolaViewController: CAPBridgeViewController {
         default: break
         }
     }
+    /// Al resumen, organizando: desde Perfil o desde donde sea.
+    private func irAOrganizar() {
+        menuEstado.activa = "resumen"; barra.pintar(activa: "resumen", titulos: menuEstado.titulos)
+        eval("window.__chinolaMenu && window.__chinolaMenu('resumen')")
+        mostrarNativo("resumen")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { CNDatos.shared.organizarPanel = true }
+    }
+
     private func puertaAccion(_ que: String, _ valor: String) {
         // Los DOS argumentos, en su sitio. Mandarlos dentro de un objeto —que
         // es lo que hace `aWeb`— dejaba `que` como un objeto y ningún botón de

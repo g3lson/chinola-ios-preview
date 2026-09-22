@@ -1582,6 +1582,8 @@ struct CNFormInvitar: View {
 struct CNTour {
     var paso = 0; var total = 1; var vista = "resumen"
     var titulo = ""; var texto = ""; var chinolo = ""
+    /// Qué señala el paso («tab-perfil», «libreta», «meses»…); vacío = nada.
+    var ancla = ""
     var textoSiguiente = "Siguiente"; var textoSaltar = "Saltar"
 
     static func desde(json: String) -> CNTour? {
@@ -1592,6 +1594,7 @@ struct CNTour {
         var m = CNTour()
         m.paso = n(r, "paso"); m.total = max(1, n(r, "total")); m.vista = s(r, "vista")
         m.titulo = s(r, "titulo"); m.texto = s(r, "texto"); m.chinolo = s(r, "chinolo")
+        m.ancla = s(r, "ancla")
         if !s(r, "textoSiguiente").isEmpty { m.textoSiguiente = s(r, "textoSiguiente") }
         if !s(r, "textoSaltar").isEmpty { m.textoSaltar = s(r, "textoSaltar") }
         return m
@@ -1601,17 +1604,101 @@ struct CNTour {
 struct CNTourVista: View {
     @ObservedObject var datos: CNDatos
     var onPaso: (String) -> Void
+    /// Chino sube y baja mientras habla; el globo entra con un brinco.
+    @State private var flota = false
+    @State private var brinco = false
+    @State private var altoGlobo: CGFloat = 220
+
     var body: some View {
         let m = datos.tour ?? CNTour()
-        return ZStack(alignment: .bottom) {
-            // El telón apaga la pantalla pero la deja ver: lo que se explica
-            // está detrás.
-            Color.black.opacity(0.45).ignoresSafeArea()
-                .onTapGesture { onPaso("saltar") }
+        return GeometryReader { g in
+            let W = g.size.width, H = g.size.height
+            let origen = g.frame(in: .global).origin
+            // El foco: lo que señala el paso, con un poco de aire alrededor.
+            let caja: CGRect? = datos.anclas[m.ancla].map { r in
+                r.offsetBy(dx: -origen.x, dy: -origen.y).insetBy(dx: -8, dy: -6)
+            }
+            let anchoG = min(330, W - 28)
+            let geo = sitio(caja: caja, W: W, H: H, anchoG: anchoG)
+            ZStack(alignment: .topLeading) {
+                // El telón, con el hueco del foco: lo que se explica se ve
+                // tal cual, y todo lo demás se apaga.
+                Color.black.opacity(0.55)
+                    .mask(
+                        ZStack {
+                            Rectangle()
+                            if let c = caja {
+                                RoundedRectangle(cornerRadius: min(22, c.height / 2), style: .continuous)
+                                    .frame(width: c.width, height: c.height)
+                                    .position(x: c.midX, y: c.midY)
+                                    .blendMode(.destinationOut)
+                            }
+                        }
+                        .compositingGroup()
+                    )
+                    .ignoresSafeArea()
+                    .onTapGesture { onPaso("saltar") }
+                if let c = caja {
+                    // Un aro del color de la marca alrededor del foco.
+                    RoundedRectangle(cornerRadius: min(22, c.height / 2), style: .continuous)
+                        .stroke(CNC.acc, lineWidth: 2.5)
+                        .frame(width: c.width, height: c.height)
+                        .position(x: c.midX, y: c.midY)
+                        .shadow(color: CNC.acc.opacity(0.6), radius: 10)
+                }
+                globo(m, anchoG: anchoG, picoX: geo.picoX, picoArriba: geo.picoArriba, picoAbajo: geo.picoAbajo)
+                    .frame(width: anchoG)
+                    .background(GeometryReader { gg in
+                        Color.clear.preference(key: CNAltoGlobo.self, value: gg.size.height)
+                    })
+                    .offset(x: geo.gx, y: geo.gy)
+                    .scaleEffect(brinco ? 1 : 0.96, anchor: geo.picoArriba ? .top : .bottom)
+                    .opacity(brinco ? 1 : 0)
+            }
+            .onPreferenceChange(CNAltoGlobo.self) { altoGlobo = $0 }
+            // Al cambiar de paso, el foco y el globo se van al sitio nuevo
+            // con un muelle; no aparecen de golpe.
+            .animation(.spring(response: 0.5, dampingFraction: 0.82), value: caja)
+            .animation(.spring(response: 0.5, dampingFraction: 0.82), value: m.paso)
+            .animation(.spring(response: 0.5, dampingFraction: 0.82), value: altoGlobo)
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.7).delay(0.05)) { brinco = true }
+            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) { flota = true }
+        }
+        .onChange(of: m.paso) { _ in
+            brinco = false
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.7).delay(0.12)) { brinco = true }
+        }
+    }
+
+    private struct Sitio { var gx: CGFloat; var gy: CGFloat; var picoX: CGFloat; var picoArriba: Bool; var picoAbajo: Bool }
+
+    /// Dónde va el globo: debajo del foco si cabe, si no encima; sin foco, en
+    /// medio. Nunca tapa lo que señala.
+    private func sitio(caja: CGRect?, W: CGFloat, H: CGFloat, anchoG: CGFloat) -> Sitio {
+        let margen: CGFloat = 14
+        let alto = altoGlobo
+        guard let c = caja else {
+            return Sitio(gx: (W - anchoG) / 2, gy: max(margen, H / 2 - alto / 2 - 40), picoX: 0, picoArriba: false, picoAbajo: false)
+        }
+        let debajo = c.maxY + 14 + alto < H - 40
+        let gy = debajo ? c.maxY + 14 : max(margen, c.minY - 14 - alto)
+        let gx = max(margen, min(W - margen - anchoG, c.midX - anchoG / 2))
+        let picoX = max(18, min(anchoG - 34, c.midX - gx - 8))
+        return Sitio(gx: gx, gy: gy, picoX: picoX, picoArriba: debajo, picoAbajo: !debajo)
+    }
+
+    private func globo(_ m: CNTour, anchoG: CGFloat, picoX: CGFloat, picoArriba: Bool, picoAbajo: Bool) -> some View {
+        VStack(spacing: 0) {
+            if picoArriba { pico(x: picoX).rotationEffect(.degrees(180)) }
             VStack(spacing: 0) {
                 HStack(alignment: .top, spacing: 12) {
                     if let img = cnImagenBase64(m.chinolo) {
-                        Image(uiImage: img).resizable().scaledToFit().frame(width: 54, height: 54)
+                        Image(uiImage: img).resizable().scaledToFit().frame(width: 58, height: 58)
+                            .offset(y: flota ? -4 : 3)
+                            .rotationEffect(.degrees(flota ? -3 : 3))
                     }
                     VStack(alignment: .leading, spacing: 5) {
                         Text(m.titulo).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink)
@@ -1622,8 +1709,8 @@ struct CNTourVista: View {
                 HStack(spacing: 10) {
                     HStack(spacing: 5) {
                         ForEach(0..<m.total, id: \.self) { i in
-                            Circle().fill(i == m.paso ? CNC.acc : CNC.line)
-                                .frame(width: i == m.paso ? 7 : 5, height: i == m.paso ? 7 : 5)
+                            Capsule().fill(i == m.paso ? CNC.acc : CNC.line)
+                                .frame(width: i == m.paso ? 16 : 5, height: 5)
                         }
                     }
                     Spacer(minLength: 8)
@@ -1631,7 +1718,10 @@ struct CNTourVista: View {
                         Text(m.textoSaltar).font(cnLetra(14.5, .semibold)).foregroundColor(CNC.pmut)
                             .padding(.horizontal, 12).padding(.vertical, 9)
                     }.buttonStyle(CNPulsable())
-                    Button { onPaso("siguiente") } label: {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        onPaso("siguiente")
+                    } label: {
                         Text(m.textoSiguiente).font(cnLetra(14.5, .bold)).foregroundColor(CNC.sobreAcc)
                             .padding(.horizontal, 18).padding(.vertical, 10)
                             .background(CNC.acc, in: Capsule())
@@ -1642,11 +1732,37 @@ struct CNTourVista: View {
             .padding(16)
             .background(CNC.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
-            .shadow(color: .black.opacity(0.18), radius: 18, y: 6)
-            .padding(.horizontal, 14)
-            .padding(.bottom, 104)
+            .shadow(color: .black.opacity(0.22), radius: 18, y: 6)
+            if picoAbajo { pico(x: picoX) }
         }
     }
+
+    /// La puntita del globo, mirando al foco.
+    private func pico(x: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            Color.clear.frame(width: x, height: 1)
+            Triangulo().fill(CNC.card).frame(width: 18, height: 9)
+                .overlay(Triangulo().stroke(CNC.line, lineWidth: 1))
+            Spacer(minLength: 0)
+        }
+        .frame(height: 9)
+    }
+
+    private struct Triangulo: Shape {
+        func path(in r: CGRect) -> Path {
+            var p = Path()
+            p.move(to: CGPoint(x: r.minX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+            p.closeSubpath()
+            return p
+        }
+    }
+}
+
+private struct CNAltoGlobo: PreferenceKey {
+    static var defaultValue: CGFloat = 220
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 // ── Chino, en grande ────────────────────────────────────────────────────────
