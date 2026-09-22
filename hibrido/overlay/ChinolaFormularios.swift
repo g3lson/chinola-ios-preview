@@ -1706,6 +1706,9 @@ struct CNPuerta {
     var lista: [Punto] = []
     // Acceso
     var registro = false
+    /// Verificación en dos pasos: en vez de correo y contraseña se pide el
+    /// código que llegó al correo.
+    var codigo = false; var labelCodigo = ""; var valorCodigo = ""
     var labelNombre = ""; var labelCorreo = ""; var labelClave = ""; var labelClave2 = ""
     var phCorreo = ""; var phClave2 = ""
     var nombre = ""; var email = ""; var clave = ""; var clave2 = ""
@@ -1735,6 +1738,7 @@ struct CNPuerta {
                   color: s(x, "color"), fondo: s(x, "fondo"))
         }
         m.registro = b(r, "registro")
+        m.codigo = b(r, "codigo"); m.labelCodigo = s(r, "labelCodigo"); m.valorCodigo = s(r, "valorCodigo")
         m.labelNombre = s(r, "labelNombre"); m.labelCorreo = s(r, "labelCorreo")
         m.labelClave = s(r, "labelClave"); m.labelClave2 = s(r, "labelClave2")
         m.phCorreo = s(r, "phCorreo"); m.phClave2 = s(r, "phClave2")
@@ -1760,6 +1764,7 @@ struct CNPuertaVista: View {
     @State private var clave = ""
     @State private var clave2 = ""
     @State private var quien = ""
+    @State private var codigo = ""
 
     var body: some View {
         let m = datos.puerta ?? CNPuerta()
@@ -1889,6 +1894,12 @@ struct CNPuertaVista: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             VStack(spacing: 10) {
+                if m.codigo {
+                    // El código de dos pasos, y nada más: correo y contraseña
+                    // ya se dieron.
+                    CNCampoTexto(placeholder: m.labelCodigo, texto: $codigo, teclado: .numberPad)
+                        .onChange(of: codigo) { v in onAccion("campo", "codigo|" + v) }
+                } else {
                 if m.registro {
                     CNCampoTexto(placeholder: m.labelNombre, texto: $nombre)
                         .onChange(of: nombre) { v in onAccion("campo", "nombre|" + v) }
@@ -1901,16 +1912,17 @@ struct CNPuertaVista: View {
                     CNCampoClave(placeholder: m.phClave2.isEmpty ? m.labelClave2 : m.phClave2, texto: $clave2)
                         .onChange(of: clave2) { v in onAccion("campo", "clave2|" + v) }
                 }
+                }
             }
             if !m.error.isEmpty { aviso(m.error) }
             botonGrande(m.boton, cargando: m.cargando) { cnCerrarTeclado(); onAccion("entrar", "") }
-            if !m.olvide.isEmpty {
+            if !m.olvide.isEmpty && !m.codigo {
                 Button { onAccion("olvide", "") } label: {
                     Text(m.olvide).font(cnLetra(14, .semibold)).foregroundColor(CNC.pmut)
                         .frame(maxWidth: .infinity)
                 }.buttonStyle(CNPulsable())
             }
-            if m.conApple || m.conGoogle {
+            if (m.conApple || m.conGoogle) && !m.codigo {
                 HStack(spacing: 10) {
                     Rectangle().fill(CNC.line).frame(height: 0.5)
                     Text(m.oDirecto).font(cnLetra(12)).foregroundColor(CNC.pmut).fixedSize()
@@ -1925,6 +1937,7 @@ struct CNPuertaVista: View {
                     }
                 }
             }
+            if !m.codigo {
             HStack(spacing: 6) {
                 Spacer(minLength: 0)
                 Button { onAccion("modo", m.registro ? "login" : "registro") } label: {
@@ -1932,7 +1945,8 @@ struct CNPuertaVista: View {
                 }.buttonStyle(CNPulsable())
                 Spacer(minLength: 0)
             }.padding(.top, 4)
-            if !m.sinCuenta.isEmpty {
+            }
+            if !m.sinCuenta.isEmpty && !m.codigo {
                 botonSuave(m.sinCuenta) { onAccion("sin-cuenta", "") }
             }
         }
