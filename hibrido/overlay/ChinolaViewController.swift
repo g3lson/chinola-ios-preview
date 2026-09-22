@@ -564,8 +564,9 @@ class ChinolaViewController: CAPBridgeViewController {
         guard libretasVC == nil else { return }
         // Hoja propia, de orilla a orilla y pegada al pie: la del sistema sale
         // flotando con márgenes en iOS 26.
+        let d = datos
         let host = UIHostingController(rootView: CNHojaAbajo(onClose: { [weak self] in self?.cerrarLibretas() }) {
-            CNLibretasHoja(datos: self.datos, onClose: { [weak self] in self?.cerrarLibretas() })
+            CNLibretasHoja(datos: d, onClose: { [weak self] in self?.cerrarLibretas() })
         })
         host.view.backgroundColor = .clear
         host.modalPresentationStyle = .overFullScreen
