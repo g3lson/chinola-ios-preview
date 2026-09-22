@@ -53,15 +53,25 @@ class TestVC: CAPBridgeViewController {
         // La cabecera de la muestra cambia de diseño según la pantalla pedida,
         // para poder mirarlos todos.
         let disenoCab = ["cab-auto": "auto", "cab-clasica": "clasica", "cab-detallada": "detallada",
-                         "cab-fina": "fina", "cab-clara": "clara", "cab-minima": "minima"][cual] ?? "auto"
+                         "cab-fina": "fina", "cab-clara": "clara", "cab-minima": "minima",
+                         "cab-viva": "viva", "cab-viva-plegada": "viva"][cual] ?? "auto"
+        // La viva lleva su frase y sus cuatro fichas; la paleta es de papel.
+        let fichasViva = disenoCab == "viva" ? """
+            ,"frase":"Gastos y ahorro juntos pasaron lo que entró","fichas":[
+             {"clave":"entro","label":"Entró","valor":"RD$80,000","nota":"3 ingresos","icono":"arrow.up","color":"rgb(19,125,65)","fondo":"rgba(19,125,65,0.13)"},
+             {"clave":"gastos","label":"Gastos","valor":"RD$82,400","nota":"103% de lo que entró","icono":"arrow.down","color":"rgb(213,89,72)","fondo":"rgba(213,89,72,0.13)"},
+             {"clave":"ahorro","label":"Ahorro","valor":"RD$5,000","nota":"Fondo de emergencia","icono":"hucha","color":"rgb(90,72,200)","fondo":"rgba(90,72,200,0.13)"},
+             {"clave":"debes","label":"Debes","valor":"RD$336,000","nota":"2 tarjetas · 1 préstamo","icono":"tarjeta","color":"rgb(196,124,44)","fondo":"rgba(196,124,44,0.13)"}]
+            """ : ""
         var grad = cual.hasPrefix("cab-") ? TestVC.fondoDegradado : TestVC.fondoLlano
         if cual.hasPrefix("tema-") {
             grad = cual.contains("oscuro")
                 ? "{\"tipo\":\"color\",\"color\":\"rgb(0,28,11)\"}"
                 : "{\"tipo\":\"color\",\"color\":\"rgb(6,68,37)\"}"
         }
-        let tintaCab = cual.hasPrefix("cab-") ? "rgb(43,32,16)" : "rgb(245,245,230)"
-        let grisCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.72)" : "rgb(214,222,205)"
+        if disenoCab == "viva" { grad = "{\"tipo\":\"color\",\"color\":\"rgb(255,255,255)\"}" }
+        let tintaCab = disenoCab == "viva" ? "rgb(19,36,25)" : (cual.hasPrefix("cab-") ? "rgb(43,32,16)" : "rgb(245,245,230)")
+        let grisCab = disenoCab == "viva" ? "rgb(81,99,86)" : (cual.hasPrefix("cab-") ? "rgba(0,0,0,0.72)" : "rgb(214,222,205)")
         let pastCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.13)" : "rgba(255,255,255,0.13)"
         let pastF = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)"
         datos.cargarCuentas(json: TestVC.cuentasDeMuestra)
@@ -71,7 +81,7 @@ class TestVC: CAPBridgeViewController {
             .replacingOccurrences(of: "rgb(249,245,230)",
                                   with: cual.contains("oscuro") ? "rgb(43,43,45)" : "rgb(249,245,230)"))
         datos.cargarResumen(json: TestVC.resumenDeMuestra
-            .replacingOccurrences(of: "\"diseno\":\"auto\"", with: "\"diseno\":\"\(disenoCab)\"")
+            .replacingOccurrences(of: "\"diseno\":\"auto\"", with: "\"diseno\":\"\(disenoCab)\"" + fichasViva)
             .replacingOccurrences(of: "__FONDO__", with: grad)
             .replacingOccurrences(of: "\"tinta\":\"rgb(245,245,230)\"", with: "\"tinta\":\"\(tintaCab)\"")
             .replacingOccurrences(of: "\"gris\":\"rgb(214,222,205)\"", with: "\"gris\":\"\(grisCab)\"")
@@ -84,7 +94,7 @@ class TestVC: CAPBridgeViewController {
         let base = cual.replacingOccurrences(of: "-oscuro", with: "")
         mostrar(base)
         barra.pintar(activa: estado.activa, titulos: CNMenuEstado.shared.titulos)
-        if base == "movs-rodado" || base == "plegada" {
+        if base == "movs-rodado" || base == "plegada" || base == "cab-viva-plegada" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { [weak self] in self?.rodar(320) }
         }
         if ["cuenta", "tarjeta", "categoria"].contains(base) {
@@ -206,9 +216,9 @@ extension TestVC {
             vista = AnyView(CNMovs(datos: datos, rodarAlEmpezar: cual == "movs-rodado")); estado.activa = "movs"
         case "tema-claro-perfil", "tema-oscuro-perfil": vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
         case "tema-claro", "tema-oscuro",
-             "resumen", "organiza", "plegada", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima":
+             "resumen", "organiza", "plegada", "cab-auto", "cab-clasica", "cab-detallada", "cab-fina", "cab-clara", "cab-minima", "cab-viva", "cab-viva-plegada":
             vista = AnyView(CNResumen(datos: datos, organizaAlEmpezar: cual == "organiza",
-                                      rodarAlEmpezar: cual == "plegada"))
+                                      rodarAlEmpezar: cual == "plegada" || cual == "cab-viva-plegada"))
             estado.activa = "resumen"
         case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
         case "libretas":

@@ -2585,8 +2585,11 @@ struct CNCuentasModelo {
         var titulo = ""; var valor = ""
         var activosLabel = ""; var activos = ""
         var pasivosLabel = ""; var pasivos = ""
-        var fondo = ""; var tinta = ""
+        var fondo = ""; var tinta = ""; var gris = ""
+        /// El fondo entero (puede ser un degradado, como la cabecera).
+        var fondoObj = CNResumenModelo.Fondo()
     }
+    struct ColorTarjeta: Identifiable { var id: String; var nombre = ""; var puesta = false }
     var titulo = "Cuentas"; var oculto = false
     var listo = false
     var patrimonio = Patrimonio()
@@ -2599,6 +2602,7 @@ struct CNCuentasModelo {
     /// web (es un ajuste más), así que aquí solo se dibuja.
     var plegadoCuentas = false; var plegadoTarjetas = false; var plegadoPrestamos = false
     var cuentas: [Fila] = []; var tarjetas: [Fila] = []; var prestamos: [Fila] = []
+    var coloresTarjeta: [ColorTarjeta] = []
 
     static func desde(json: String) -> CNCuentasModelo? {
         guard let d = json.data(using: .utf8),
@@ -2630,7 +2634,16 @@ struct CNCuentasModelo {
         m.patrimonio = Patrimonio(titulo: s(p, "titulo"), valor: s(p, "valor"),
                                   activosLabel: s(p, "activosLabel"), activos: s(p, "activos"),
                                   pasivosLabel: s(p, "pasivosLabel"), pasivos: s(p, "pasivos"),
-                                  fondo: s(p, "fondo"), tinta: s(p, "tinta"))
+                                  fondo: s(p, "fondo"), tinta: s(p, "tinta"), gris: s(p, "gris"))
+        if let f = p?["fondoObj"] as? [String: Any] {
+            m.patrimonio.fondoObj = CNResumenModelo.Fondo(
+                tipo: s(f, "tipo"), color: s(f, "color"), angulo: n(f, "angulo"),
+                paradas: ((f["paradas"] as? [[String: Any]]) ?? []).map {
+                    CNResumenModelo.Parada(color: s($0, "color"), pos: n($0, "pos")) })
+        }
+        m.coloresTarjeta = l(r, "coloresTarjeta").map {
+            ColorTarjeta(id: s($0, "id"), nombre: s($0, "nombre"), puesta: ($0["puesta"] as? Bool) ?? false)
+        }
         m.rotuloCuentas = s(r, "rotuloCuentas"); m.rotuloTarjetas = s(r, "rotuloTarjetas")
         m.rotuloPrestamos = s(r, "rotuloPrestamos")
         let tt = r["totales"] as? [String: Any]
@@ -2687,6 +2700,18 @@ struct CNCuentas: View {
                 Button { datos.onTendencia() } label: { Label(cnT("Ver la tendencia"), systemImage: "chart.line.uptrend.xyaxis") }
                 Button { datos.onCuentasAccion("ocultar", 0) } label: {
                     Label(m.oculto ? "Enseñar el dinero" : "Ocultar el dinero", systemImage: m.oculto ? "eye" : "eye.slash")
+                }
+                if !m.coloresTarjeta.isEmpty {
+                    // El color de la tarjeta de Patrimonio: el del tema, el mismo
+                    // de la cabecera del resumen, o uno de sus colores.
+                    Menu {
+                        ForEach(m.coloresTarjeta.indices, id: \.self) { i in
+                            let c = m.coloresTarjeta[i]
+                            Button { datos.onCuentasAccion("color", i) } label: {
+                                Label(c.nombre, systemImage: c.puesta ? "checkmark.circle.fill" : "circle")
+                            }
+                        }
+                    } label: { Label(cnT("Color de la tarjeta"), systemImage: "paintpalette") }
                 }
             }
             CNCirculoAcento(icono: "plus") { datos.onAgregar() }
@@ -2756,7 +2781,7 @@ struct CNCuentas: View {
             .padding(.top, 2)
         }
         .padding(16).frame(maxWidth: .infinity)
-        .background(p.fondo.isEmpty ? CNC.side : cnColor(hexString: p.fondo))
+        .background(CNFondoCabecera(f: p.fondoObj, respaldo: p.fondo.isEmpty ? CNC.side : cnColor(hexString: p.fondo)))
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
@@ -3279,6 +3304,14 @@ struct CNResumenModelo {
         var abierta = true
         var positivo = ""; var negativo = ""
         var meses: [MesTira] = []
+        /// La «viva»: la frase bajo el balance y las cuatro cifras en color.
+        var frase = ""
+        var fichas: [Ficha] = []
+    }
+    struct Ficha: Identifiable {
+        var id: String { clave }
+        var clave = ""; var label = ""; var valor = ""; var nota = ""; var icono = ""
+        var color = ""; var fondo = ""
     }
     struct Punto { var x: Double = 0; var y: Double = 0; var color = "" }
     struct Barra { var x: Double = 0; var y: Double = 0; var w: Double = 0; var h: Double = 0; var color = "" }
@@ -3358,6 +3391,11 @@ struct CNResumenModelo {
         cab.meses = ((c?["meses"] as? [[String: Any]]) ?? []).map {
             MesTira(indice: Int(n($0, "indice")), label: s($0, "label"), puesto: b($0, "puesto"),
                     bg: s($0, "bg"), fg: s($0, "fg"))
+        }
+        cab.frase = s(c, "frase")
+        cab.fichas = ((c?["fichas"] as? [[String: Any]]) ?? []).map {
+            Ficha(clave: s($0, "clave"), label: s($0, "label"), valor: s($0, "valor"), nota: s($0, "nota"),
+                  icono: s($0, "icono"), color: s($0, "color"), fondo: s($0, "fondo"))
         }
         m.cabecera = cab
         m.listo = b(raiz, "listo")
@@ -3463,6 +3501,7 @@ struct CNCabeceraApp: View {
 
     @ViewBuilder private var contenido: some View {
         switch c.diseno {
+        case "viva": viva
         case "detallada": detallada
         case "clasica": clasica
         case "fina": fina
@@ -3592,6 +3631,84 @@ struct CNCabeceraApp: View {
             .padding(.horizontal, 14)
             .frame(minWidth: max(0, ancho), alignment: .center)
         }
+    }
+
+    // MARK: viva — el nombre arriba, el balance con su frase, y las cuatro
+    // cifras del mes cada una en su color. Al rodar se pliega el balance y se
+    // quedan las fichas, que son lo que se consulta.
+    static let bloqueViva: CGFloat = 96
+    private var viva: some View {
+        let p: CGFloat = CGFloat(max(0.0, min(1.0, progreso)))
+        let blqAlto: CGFloat = CNCabeceraApp.bloqueViva * (1 - p)
+        let blqOpaco: Double = Double(max(0, 1 - p * 1.6))
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Button(action: onLibreta) {
+                    HStack(spacing: 6) {
+                        Text(c.nombre).font(cnLetra(19, .bold)).foregroundColor(tinta).lineLimit(1)
+                        Image(systemName: "chevron.down").font(cnLetra(12, .bold)).foregroundColor(gris)
+                    }
+                }.buttonStyle(CNPulsable())
+                Spacer(minLength: 8)
+                Button(action: onCalendario) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "calendar").font(cnLetra(13, .semibold))
+                        Text(c.periodoCorto).font(cnLetra(13, .semibold))
+                    }
+                    .foregroundColor(tinta.opacity(0.85))
+                    .padding(.horizontal, 11).padding(.vertical, 7)
+                    .background(pastilla, in: Capsule())
+                }.buttonStyle(CNPulsable())
+            }
+            .frame(height: 44)
+            VStack(alignment: .leading, spacing: 3) {
+                Button(action: onCalendario) {
+                    HStack(spacing: 4) {
+                        Text(c.mesLargo).font(cnLetra(14, .semibold)).foregroundColor(gris)
+                        Image(systemName: "chevron.down").font(cnLetra(10, .bold)).foregroundColor(gris.opacity(0.8))
+                    }
+                }.buttonStyle(CNPulsable())
+                Text(c.balanceFmt).font(cnLetra(38, .bold)).foregroundColor(balColor)
+                    .lineLimit(1).minimumScaleFactor(0.5)
+                Text(c.frase).font(cnLetra(13)).foregroundColor(gris).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: max(0, blqAlto), alignment: .top)
+            .opacity(blqOpaco)
+            .clipped()
+            if c.fichas.count >= 4 {
+                VStack(spacing: 10) {
+                    HStack(spacing: 10) { ficha(c.fichas[0]); ficha(c.fichas[1]) }
+                    HStack(spacing: 10) { ficha(c.fichas[2]); ficha(c.fichas[3]) }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding(.horizontal, 16).padding(.top, padArriba).padding(.bottom, 12)
+        .animation(.easeOut(duration: 0.2), value: progreso)
+        .frame(height: padArriba + 44 + 12 + 4 + 2 * 92 + 10 + blqAlto)
+    }
+
+    /// Una ficha de la viva: el color le da vida, la nota le da contexto.
+    private func ficha(_ f: CNResumenModelo.Ficha) -> some View {
+        let color = f.color.isEmpty ? CNC.ink : cnColor(hexString: f.color)
+        let fondo = f.fondo.isEmpty ? color.opacity(0.13) : cnColor(hexString: f.fondo)
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 7) {
+                ZStack {
+                    Circle().fill(color.opacity(0.18)).frame(width: 24, height: 24)
+                    cnGlifo(f.icono, tam: 12, grosor: 2.2).foregroundColor(color)
+                }
+                Text(f.label).font(cnLetra(13, .semibold)).foregroundColor(color).lineLimit(1)
+            }
+            Text(f.valor).font(cnLetra(21, .heavy)).foregroundColor(color)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(f.nota).font(cnLetra(11.5)).foregroundColor(color.opacity(0.85)).lineLimit(1)
+        }
+        .padding(13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 92)
+        .background(fondo, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     // MARK: detallada (no se pliega; entera en el resumen, corta en el resto)
@@ -3907,7 +4024,8 @@ struct CNResumen: View {
 
     var body: some View {
         let m = datos.resumen ?? CNResumenModelo()
-        let auto = m.cabecera.diseno == "auto"
+        // Las que se pliegan al rodar: la automática y la viva.
+        let auto = m.cabecera.diseno == "auto" || m.cabecera.diseno == "viva"
         // Primero se pliega la cabecera y DESPUÉS sube el contenido, como en la
         // web: mientras se pliega, el contenido se queda pegado a su borde de
         // abajo. Se consigue devolviéndole como relleno lo que se ha rodado
@@ -4580,7 +4698,9 @@ struct CNPerfil: View {
         }
         // Pegado a la isla: el margen seguro ya la esquiva, así que dejar más
         // aire aquí solo es pantalla desperdiciada.
-        .padding(.horizontal, 16).padding(.top, 2 - max(0, cnMargenArriba() - 56))
+        // A la misma altura que el título de las otras pantallas (que llevan
+        // el hueco de la lista más 2): que «Chinola» no salga pegado a la isla.
+        .padding(.horizontal, 16).padding(.top, 14)
         .padding(.bottom, 8).frame(minHeight: 44)
         .background(CNC.scr.ignoresSafeArea(edges: .top))
         .overlay(alignment: .top) { CNDifuminadoArriba(extra: 0) }
