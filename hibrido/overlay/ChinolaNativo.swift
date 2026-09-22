@@ -786,6 +786,24 @@ final class CNDatos: ObservableObject {
     }
     func cargarMovDetalle(json: String) { movDetalle = CNMovDetalle.desde(json: json) }
     func cargarPeriodo(json: String) { periodo = CNPeriodo.desde(json: json) }
+    /// Marca una opción, una muestra o un interruptor de una subpantalla EN EL
+    /// ACTO, sin esperar a que la web conteste. Es lo que hace que tocar se
+    /// sienta como tocar y no como pedir: la web confirma un instante después.
+    func marcarEnSeccion(bloque bi: Int, opcion: Int? = nil, muestra: Int? = nil, llave: Int? = nil) {
+        guard var sec = seccion, bi >= 0, bi < sec.bloques.count else { return }
+        var q = sec.bloques[bi]
+        if let i = opcion, i < q.opciones.count {
+            for k in q.opciones.indices { q.opciones[k].puesta = (k == i) }
+        }
+        if let i = muestra, i < q.colores.count {
+            for k in q.colores.indices { q.colores[k].puesta = (k == i) }
+        }
+        if let i = llave, i < q.llaves.count {
+            q.llaves[i].puesto.toggle()
+        }
+        sec.bloques[bi] = q
+        seccion = sec
+    }
     func cargarLibretas(json: String) { libretas = CNLibretas.desde(json: json) }
     func cargarLibretaNueva(json: String) { libretaNueva = CNLibretaNueva.desde(json: json) }
     func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
@@ -4959,7 +4977,7 @@ struct CNSeccionVista: View {
             cabecera
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
-                    ForEach(sec.bloques.indices, id: \.self) { i in bloque(sec.bloques[i]) }
+                    ForEach(sec.bloques.indices, id: \.self) { i in bloque(sec.bloques[i], i) }
                     Color.clear.frame(height: 104)
                 }
                 .padding(.horizontal, 16).padding(.top, 14)
@@ -4987,7 +5005,7 @@ struct CNSeccionVista: View {
         .background(CNC.scr.ignoresSafeArea(edges: .top))
     }
 
-    @ViewBuilder private func bloque(_ q: CNSeccion.Bloque) -> some View {
+    @ViewBuilder private func bloque(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
         switch q.tipo {
         case "texto":
             Text(q.texto).font(cnLetra(14)).foregroundColor(CNC.pmut)
@@ -5029,9 +5047,9 @@ struct CNSeccionVista: View {
                     .labelsHidden().tint(CNC.acc)
             }
             .padding(14).tarjetaCN()
-        case "interruptores": llavesVista(q)
-        case "opciones": opcionesVista(q)
-        case "muestras": muestrasVista(q)
+        case "interruptores": llavesVista(q, bi)
+        case "opciones": opcionesVista(q, bi)
+        case "muestras": muestrasVista(q, bi)
         case "lista": listaVista(q)
         default: grupoVista(q)
         }
@@ -5123,7 +5141,7 @@ struct CNSeccionVista: View {
 
     /// Varios interruptores en una sola tarjeta, con su raya entre medias. Cada
     /// uno en la suya ocupaba media pantalla para decir dos cosas.
-    private func llavesVista(_ q: CNSeccion.Bloque) -> some View {
+    private func llavesVista(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if !q.titulo.isEmpty { rotulo(q.titulo) }
             VStack(spacing: 0) {
@@ -5139,7 +5157,11 @@ struct CNSeccionVista: View {
                         }
                         Spacer(minLength: 8)
                         Toggle("", isOn: Binding(get: { k.puesto },
-                                                 set: { _ in datos.onSeccionAccion(k.accion, nil) }))
+                                                 set: { _ in
+                                                     UISelectionFeedbackGenerator().selectionChanged()
+                                                     datos.marcarEnSeccion(bloque: bi, llave: i)
+                                                     datos.onSeccionAccion(k.accion, nil)
+                                                 }))
                             .labelsHidden().tint(CNC.acc)
                     }
                     .padding(.horizontal, 14).padding(.vertical, 10)
@@ -5152,12 +5174,16 @@ struct CNSeccionVista: View {
         }
     }
 
-    private func opcionesVista(_ q: CNSeccion.Bloque) -> some View {
+    private func opcionesVista(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if !q.titulo.isEmpty { rotulo(q.titulo) }
             CNRejillaFija(columnas: q.columnas, total: q.opciones.count) { i in
                 let o = q.opciones[i]
-                Button { datos.onSeccionAccion(o.accion, nil) } label: {
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    withAnimation(.easeOut(duration: 0.16)) { datos.marcarEnSeccion(bloque: bi, opcion: i) }
+                    datos.onSeccionAccion(o.accion, nil)
+                } label: {
                     VStack(spacing: 7) {
                         if o.vista == "cabecera" {
                             miniCabecera(o)
@@ -5186,14 +5212,18 @@ struct CNSeccionVista: View {
         }
     }
 
-    private func muestrasVista(_ q: CNSeccion.Bloque) -> some View {
+    private func muestrasVista(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if !q.titulo.isEmpty { rotulo(q.titulo) }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     ForEach(q.colores.indices, id: \.self) { i in
                         let c = q.colores[i]
-                        Button { datos.onSeccionAccion(c.accion, nil) } label: {
+                        Button {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            withAnimation(.easeOut(duration: 0.16)) { datos.marcarEnSeccion(bloque: bi, muestra: i) }
+                            datos.onSeccionAccion(c.accion, nil)
+                        } label: {
                             CNFondoCabecera(f: cnFondoDeCss(c.css), respaldo: CNC.side)
                                 .frame(width: 44, height: 44)
                                 .clipShape(Circle())
