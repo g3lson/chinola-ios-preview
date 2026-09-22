@@ -448,7 +448,9 @@ extension TestVC {
             return "{\"id\":\"colores\",\"titulo\":\"Colores\",\"bloques\":[{\"tipo\":\"opciones\",\"titulo\":\"El tema de toda la app\",\"columnas\":2,\"opciones\":[\(ops)]}]}"
         case "libreta":
             return """
-            {"id":"libreta:1","titulo":"Familia","volverA":"libretas","bloques":[
+            {"id":"libreta:1","titulo":"Familia","volverA":"libretas",
+             "menu":[{"label":"Abrir","accion":4},{"label":"Editar","abre":"hoja:libreta:1","accion":-1},{"label":"Invitar a alguien","abre":"hoja:invitar:1","accion":-1},{"label":"Eliminar la libreta","peligro":true,"accion":5}],
+             "bloques":[
               {"tipo":"lista","titulo":"","items":[
                 {"titulo":"Familia","detalle":"Familiar · Dueño","color":"rgb(255,255,255)","fondo":"rgb(122,79,208)","chip":"En uso","chipFondo":"rgb(249,245,230)"}]},
               {"tipo":"grupo","titulo":"Este mes","filas":[
@@ -456,13 +458,10 @@ extension TestVC {
                 {"label":"Ingresos del mes","valor":"RD$80,000","tinta":"rgb(19,125,65)"},
                 {"label":"Gastos del mes","valor":"RD$82,400","tinta":"rgb(213,89,72)"},
                 {"label":"Deuda total","valor":"RD$336,000","tinta":"rgb(224,169,46)"}]},
-              {"tipo":"lista","titulo":"Miembros","items":[
+              {"tipo":"lista","titulo":"Miembros · 2 personas","botones":[{"label":"Abrir","estilo":"acento","accion":4},{"label":"+ Invitar","estilo":"suave","abre":"hoja:invitar:1","accion":-1}],"items":[
                 {"titulo":"Gelson (tú)","detalle":"gelson@correo.do","chip":"Dueño","chipFondo":"rgb(249,245,230)","color":"rgb(255,255,255)","fondo":"rgb(52,110,74)"},
                 {"titulo":"Ana","detalle":"ana@correo.do","chip":"Editor","chipFondo":"rgb(249,245,230)","color":"rgb(255,255,255)","fondo":"rgb(52,94,178)",
-                 "acciones":[{"label":"Hacer Registrador","accion":1},{"label":"Hacer Lector","accion":2},{"label":"Quitar de la libreta","peligro":true,"accion":3}]}]},
-              {"tipo":"boton","label":"Invitar a alguien","estilo":"acento","abre":"hoja:invitar:1","accion":-1},
-              {"tipo":"boton","label":"Abrir esta libreta","estilo":"suave","accion":4},
-              {"tipo":"boton","label":"Eliminar la libreta","estilo":"peligro","accion":5}]}
+                 "acciones":[{"label":"Hacer Registrador","accion":1},{"label":"Hacer Lector","accion":2},{"label":"Quitar de la libreta","peligro":true,"accion":3}]}]}]}
             """
         case "cabecera":
             return """

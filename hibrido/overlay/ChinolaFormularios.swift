@@ -1355,6 +1355,8 @@ struct CNLibretaNueva {
     struct Tipo: Identifiable { var id: String; var label: String }
     struct Icono: Identifiable { var id: String; var label: String; var path: String }
     var titulo = "Nueva libreta"
+    /// Editando: lo que tiene puesto (color = índice en `coloresId`, -1 si es nueva).
+    var nombre = ""; var tipo = ""; var icono = ""; var color = -1
     var rotuloNombre = "Nombre"; var phNombre = ""
     var rotuloTipo = "Tipo"; var rotuloIcono = "Icono"
     var tipos: [Tipo] = []
@@ -1368,6 +1370,8 @@ struct CNLibretaNueva {
         func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
         var m = CNLibretaNueva()
         if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
+        m.nombre = s(r, "nombre"); m.tipo = s(r, "tipo"); m.icono = s(r, "icono")
+        m.color = ((r["color"] as? NSNumber)?.intValue) ?? -1
         m.rotuloNombre = s(r, "rotuloNombre"); m.phNombre = s(r, "phNombre")
         m.rotuloTipo = s(r, "rotuloTipo"); m.rotuloIcono = s(r, "rotuloIcono")
         m.tipos = ((r["tipos"] as? [[String: Any]]) ?? []).map { Tipo(id: s($0, "id"), label: s($0, "label")) }
@@ -1450,8 +1454,11 @@ struct CNFormLibreta: View {
             }
         }
         .onAppear {
-            if tipo.isEmpty { tipo = m.tipos.first?.id ?? "Personal" }
-            if icono.isEmpty { icono = m.iconos.first?.id ?? "casa" }
+            // Editando, se empieza con lo que tiene la libreta.
+            if nombre.isEmpty && !m.nombre.isEmpty { nombre = m.nombre }
+            if tipo.isEmpty { tipo = m.tipo.isEmpty ? (m.tipos.first?.id ?? "Personal") : m.tipo }
+            if icono.isEmpty { icono = m.icono.isEmpty ? (m.iconos.first?.id ?? "casa") : m.icono }
+            if m.color >= 0 && m.color < m.colores.count { color = m.color }
         }
     }
 

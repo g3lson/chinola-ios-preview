@@ -304,6 +304,28 @@ class ChinolaViewController: CAPBridgeViewController {
             // Una «sección» que empieza por «hoja:» no es una pantalla de
             // ajustes: es un formulario nativo. Hoy solo invitar.
             if id == "importar" { s.pedirCsv(); return }
+            // Editar una libreta: la web la deja preparada y el mismo
+            // formulario de «nueva» se abre con sus valores.
+            if id.hasPrefix("hoja:libreta:") {
+                let lid = String(id.dropFirst("hoja:libreta:".count))
+                s.eval("window.__chinolaEditarLibreta && window.__chinolaEditarLibreta(\(s.comillas(lid)))")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                    s.bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretaNuevaJSON && window.__chinolaLibretaNuevaJSON()) || ''") { res, _ in
+                        if let json = res as? String, json.count > 2 { CNDatos.shared.cargarLibretaNueva(json: json) }
+                        s.presentar(AnyView(CNFormLibreta(datos: s.datos, onClose: {
+                            // Al cerrar (guardado o no) la web suelta la edición y
+                            // la pantalla de la libreta se repinta con lo nuevo.
+                            s.eval("window.__chinolaEditarLibreta && window.__chinolaEditarLibreta('')")
+                            s.cerrar()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                if let sid = CNDatos.shared.seccion?.id { s.traerSeccion(sid) }
+                                s.traerDatos(intentos: 2)
+                            }
+                        })))
+                    }
+                }
+                return
+            }
             if id.hasPrefix("hoja:invitar:") {
                 let lid = String(id.dropFirst("hoja:invitar:".count))
                 s.bridge?.webView?.evaluateJavaScript("(window.__chinolaInvitarJSON && window.__chinolaInvitarJSON()) || ''") { res, _ in

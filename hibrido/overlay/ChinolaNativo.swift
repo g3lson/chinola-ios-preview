@@ -4907,7 +4907,9 @@ struct CNSeccion {
     /// Un interruptor dentro de un bloque de varios.
     struct Llave { var label = ""; var sub = ""; var puesto = false; var accion = -1 }
     struct Muestra { var nombre = ""; var css = ""; var puesta = false; var accion = -1 }
-    struct AccionItem { var label = ""; var peligro = false; var accion = -1 }
+    struct AccionItem { var label = ""; var peligro = false; var accion = -1; var abre = "" }
+    /// Un botón chico en la fila del rótulo de una lista («Abrir», «+ Invitar»).
+    struct Boton { var label = ""; var estilo = "suave"; var accion = -1; var abre = "" }
     struct Item {
         var titulo = ""; var detalle = ""; var icono = ""; var color = ""; var fondo = ""
         var chip = ""; var chipFondo = ""; var accion = -1
@@ -4924,10 +4926,13 @@ struct CNSeccion {
         var filas: [Fila] = []; var opciones: [Opcion] = []
         var colores: [Muestra] = []; var items: [Item] = []
         var llaves: [Llave] = []
+        var botones: [Boton] = []
     }
     var id = ""; var titulo = ""; var bloques: [Bloque] = []
     /// A dónde vuelve la flecha de atrás (otra sección), si no es a Perfil.
     var volverA = ""
+    /// El menú ⋯ de la cabecera (editar, invitar, eliminar…), si la pantalla lo tiene.
+    var menu: [AccionItem] = []
 
     static func desde(json: String) -> CNSeccion? {
         guard let d = json.data(using: .utf8),
@@ -4938,6 +4943,9 @@ struct CNSeccion {
         func l(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
         var x = CNSeccion()
         x.id = s(raiz, "id"); x.titulo = s(raiz, "titulo"); x.volverA = s(raiz, "volverA")
+        x.menu = l(raiz, "menu").map {
+            AccionItem(label: s($0, "label"), peligro: b($0, "peligro"), accion: n($0, "accion"), abre: s($0, "abre"))
+        }
         x.bloques = l(raiz, "bloques").map { bq in
             var q = Bloque()
             q.tipo = s(bq, "tipo"); q.titulo = s(bq, "titulo"); q.pie = s(bq, "pie")
@@ -4972,6 +4980,9 @@ struct CNSeccion {
                      acciones: l(it, "acciones").map {
                          AccionItem(label: s($0, "label"), peligro: b($0, "peligro"), accion: n($0, "accion"))
                      })
+            }
+            q.botones = l(bq, "botones").map {
+                Boton(label: s($0, "label"), estilo: s($0, "estilo"), accion: n($0, "accion"), abre: s($0, "abre"))
             }
             return q
         }
@@ -5009,7 +5020,23 @@ struct CNSeccionVista: View {
             Spacer(minLength: 0)
             Text(sec.titulo).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink).lineLimit(1)
             Spacer(minLength: 0)
-            Color.clear.frame(width: 40, height: 40)
+            if sec.menu.isEmpty {
+                Color.clear.frame(width: 40, height: 40)
+            } else {
+                // Los tres puntos: lo que se hace con esta pantalla entera.
+                Menu {
+                    ForEach(sec.menu.indices, id: \.self) { k in
+                        let a = sec.menu[k]
+                        Button(role: a.peligro ? .destructive : nil) {
+                            if a.abre.isEmpty { datos.onSeccionAccion(a.accion, nil) } else { datos.onAbrirSeccion(a.abre) }
+                        } label: { Text(a.label) }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis").font(cnLetra(17, .bold))
+                        .foregroundColor(CNC.ink).frame(width: 40, height: 40)
+                        .background(CNC.soft, in: Circle())
+                }
+            }
         }
         .padding(.horizontal, 16).padding(.top, 2 - max(0, cnMargenArriba() - 56))
         .padding(.bottom, 6).frame(minHeight: 46)
@@ -5249,8 +5276,30 @@ struct CNSeccionVista: View {
     }
 
     private func listaVista(_ q: CNSeccion.Bloque) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            if !q.titulo.isEmpty { rotulo(q.titulo) }
+        // Si alguna fila lleva el ⋯, todas reservan su hueco: así las
+        // insignias de rol quedan en la misma columna, tenga o no menú la fila.
+        let conMenu = q.items.contains { !$0.acciones.isEmpty }
+        return VStack(alignment: .leading, spacing: 7) {
+            if !q.titulo.isEmpty || !q.botones.isEmpty {
+                HStack(alignment: .center, spacing: 8) {
+                    if !q.titulo.isEmpty { rotulo(q.titulo) }
+                    Spacer(minLength: 8)
+                    ForEach(q.botones.indices, id: \.self) { k in
+                        let bt = q.botones[k]
+                        Button {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            if bt.abre.isEmpty { datos.onSeccionAccion(bt.accion, nil) } else { datos.onAbrirSeccion(bt.abre) }
+                        } label: {
+                            Text(bt.label).font(cnLetra(13, .bold))
+                                .foregroundColor(bt.estilo == "acento" ? CNC.sobreAcc : CNC.ink)
+                                .padding(.horizontal, 13).padding(.vertical, 8)
+                                .background(bt.estilo == "acento" ? CNC.acc : CNC.card, in: Capsule())
+                                .overlay(Capsule().stroke(bt.estilo == "acento" ? Color.clear : CNC.line, lineWidth: 1))
+                        }.buttonStyle(CNPulsable())
+                    }
+                }
+                .padding(.bottom, q.botones.isEmpty ? 0 : 2)
+            }
             VStack(spacing: 0) {
                 ForEach(q.items.indices, id: \.self) { i in
                     let it = q.items[i]
@@ -5294,6 +5343,8 @@ struct CNSeccionVista: View {
                                     .foregroundColor(CNC.pmut).frame(width: 30, height: 30)
                                     .background(CNC.soft, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                             }
+                        } else if conMenu {
+                            Color.clear.frame(width: 30, height: 30)
                         }
                     }
                     .padding(.horizontal, 14).padding(.vertical, 11).contentShape(Rectangle())
