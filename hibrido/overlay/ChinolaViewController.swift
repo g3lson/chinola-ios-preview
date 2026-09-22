@@ -919,13 +919,81 @@ class ChinolaViewController: CAPBridgeViewController {
                     s.presentarHojaWeb()
                     return
                 }
-                alIrALaWeb?()
-                s.mostrarWeb()
-                guard !s.volviendo else { return }
-                s.volviendo = true
-                s.vigilarVuelta(200)
+                // ¿La puerta (cambiar de plan, poner el nombre, cerrar sesión)?
+                s.bridge?.webView?.evaluateJavaScript("(window.__chinolaPuertaJSON && window.__chinolaPuertaJSON()) || ''") { rp, _ in
+                    if let j = rp as? String, j.count > 2, let m = CNPuerta.desde(json: j), m.paso != "app" {
+                        CNDatos.shared.cargarPuerta(json: j)
+                        s.abrirPuerta()
+                        return
+                    }
+                    // Nada de eso. Solo si la web tiene de verdad algo abierto
+                    // que no sabemos dibujar se enseña la web; si la acción no
+                    // abrió nada (un interruptor, exportar, un aviso), nos
+                    // quedamos en nativo. Antes se enseñaba la web por defecto,
+                    // y eso era «todo es web» y los cuelgues.
+                    s.bridge?.webView?.evaluateJavaScript("!!(window.__chinolaHayHoja && window.__chinolaHayHoja())") { rh, _ in
+                        guard (rh as? Bool) == true else { return }
+                        alIrALaWeb?()
+                        s.mostrarWeb()
+                        guard !s.volviendo else { return }
+                        s.volviendo = true
+                        s.vigilarVuelta(200)
+                    }
+                }
             }
             }
+            }
+        }
+    }
+
+    // MARK: avisos cortos («Guardado», «Avisos puestos»)
+    //
+    // Los de la web no los veía nadie: está tapada por las pantallas nativas.
+    // Este baja desde arriba, se lee y se va solo.
+    private var avisoVista: UIView?
+    private func mostrarAviso(_ titulo: String, _ texto: String) {
+        avisoVista?.removeFromSuperview()
+        let tarjeta = UIView()
+        tarjeta.backgroundColor = UIColor(CNC.card)
+        tarjeta.layer.cornerRadius = 18
+        tarjeta.layer.cornerCurve = .continuous
+        tarjeta.layer.borderWidth = 1
+        tarjeta.layer.borderColor = UIColor(CNC.line).cgColor
+        tarjeta.layer.shadowColor = UIColor.black.cgColor
+        tarjeta.layer.shadowOpacity = 0.16
+        tarjeta.layer.shadowRadius = 14
+        tarjeta.layer.shadowOffset = CGSize(width: 0, height: 6)
+        let t = UILabel()
+        t.text = titulo; t.font = cnUIFuente(15, .bold); t.textColor = UIColor(CNC.ink); t.numberOfLines = 2
+        let x = UILabel()
+        x.text = texto; x.font = cnUIFuente(13, .regular); x.textColor = UIColor(CNC.pmut); x.numberOfLines = 3
+        x.isHidden = texto.isEmpty
+        let pila = UIStackView(arrangedSubviews: [t, x])
+        pila.axis = .vertical; pila.spacing = 3
+        pila.translatesAutoresizingMaskIntoConstraints = false
+        tarjeta.addSubview(pila)
+        tarjeta.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(tarjeta)
+        NSLayoutConstraint.activate([
+            pila.topAnchor.constraint(equalTo: tarjeta.topAnchor, constant: 12),
+            pila.bottomAnchor.constraint(equalTo: tarjeta.bottomAnchor, constant: -12),
+            pila.leadingAnchor.constraint(equalTo: tarjeta.leadingAnchor, constant: 16),
+            pila.trailingAnchor.constraint(equalTo: tarjeta.trailingAnchor, constant: -16),
+            tarjeta.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            tarjeta.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            tarjeta.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8)
+        ])
+        avisoVista = tarjeta
+        tarjeta.alpha = 0
+        tarjeta.transform = CGAffineTransform(translationX: 0, y: -24)
+        UIView.animate(withDuration: 0.32, delay: 0, usingSpringWithDamping: 0.85, initialSpringVelocity: 0) {
+            tarjeta.alpha = 1; tarjeta.transform = .identity
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) { [weak self, weak tarjeta] in
+            guard let tj = tarjeta, self?.avisoVista === tj else { return }
+            UIView.animate(withDuration: 0.25, animations: { tj.alpha = 0; tj.transform = CGAffineTransform(translationX: 0, y: -16) }) { _ in
+                tj.removeFromSuperview()
+                if self?.avisoVista === tj { self?.avisoVista = nil }
             }
         }
     }
@@ -1265,6 +1333,7 @@ class ChinolaViewController: CAPBridgeViewController {
             default: break
             }
         }
+        menuEstado.alAviso = { [weak self] titulo, texto in self?.mostrarAviso(titulo, texto) }
         menuEstado.alRepintar = { [weak self] in
             guard let s = self else { return }
             s.barra.pintar(activa: s.menuEstado.activa, titulos: s.menuEstado.titulos)

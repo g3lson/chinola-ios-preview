@@ -19,7 +19,8 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "menuActiva", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "menuTitulos", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "datos", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "tema", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "tema", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "aviso", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -53,6 +54,13 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func menuActiva(_ call: CAPPluginCall) {
         let id = call.getString("id") ?? "resumen"
         DispatchQueue.main.async { CNMenuEstado.shared.activa = id; CNMenuEstado.shared.alRepintar(); call.resolve() }
+    }
+
+    // Un aviso corto de la web, dibujado en nativo.
+    @objc func aviso(_ call: CAPPluginCall) {
+        let titulo = call.getString("titulo") ?? ""
+        let texto = call.getString("texto") ?? ""
+        DispatchQueue.main.async { CNMenuEstado.shared.alAviso(titulo, texto); call.resolve() }
     }
 
     // Mostrar u ocultar los títulos del menú (ajuste de la app).

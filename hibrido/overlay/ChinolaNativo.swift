@@ -1142,6 +1142,8 @@ final class CNMenuEstado: ObservableObject {
     /// Lo pone el contenedor: repinta la barra de UIKit cuando la web avisa de
     /// un cambio (pestaña activa, títulos, tema).
     var alRepintar: () -> Void = {}
+    /// Un aviso corto de la web, para dibujarlo en nativo.
+    var alAviso: (String, String) -> Void = { _, _ in }
 }
 
 /// Las 5 pestañas, en un solo sitio (las usa la barra nativa UITabBar).
@@ -4502,11 +4504,12 @@ struct CNPerfil: View {
             // La marca, como siempre —y algo mayor, que es el título de la
             // pantalla—. Chino vive en el menú, no aquí.
             ZStack {
-                Circle().fill(CNC.side).frame(width: 34, height: 34)
-                Circle().fill(CNC.acc).frame(width: 13, height: 13)
+                Circle().fill(CNC.side).frame(width: 38, height: 38)
+                Circle().fill(CNC.acc).frame(width: 14, height: 14)
             }
             .onLongPressGesture(minimumDuration: 0.4) { datos.onMascota() }
-            Text("Chinola").font(cnLetra(24, .heavy)).foregroundColor(CNC.ink)
+            // Del tamaño del título de las otras pantallas: es el título de esta.
+            Text("Chinola").font(cnLetra(34, .bold)).foregroundColor(CNC.ink)
             Spacer(minLength: 0)
         }
         // Pegado a la isla: el margen seguro ya la esquiva, así que dejar más
