@@ -405,14 +405,14 @@ struct CNDifuminadoArriba: View {
     var body: some View {
         ZStack {
             Rectangle().fill(.ultraThinMaterial)
-            Rectangle().fill(CNC.scr.opacity(0.82))
+            // Un velo ligero: lo que manda es el desenfoque. Con el velo al
+            // 82 % era una franja del color de la pantalla, no un difuminado.
+            Rectangle().fill(CNC.scr.opacity(0.42))
         }
         .mask(
-            // Entero hasta bien pasada la isla y luego se va. Antes empezaba a
-            // irse a media altura y lo que pasaba junto al reloj se leía igual.
             LinearGradient(stops: [.init(color: .black, location: 0),
-                                   .init(color: .black, location: 0.72),
-                                   .init(color: .black.opacity(0.55), location: 0.88),
+                                   .init(color: .black, location: 0.55),
+                                   .init(color: .black.opacity(0.6), location: 0.8),
                                    .init(color: .clear, location: 1)],
                            startPoint: .top, endPoint: .bottom)
         )
@@ -838,6 +838,16 @@ final class CNDatos: ObservableObject {
         return true
     }
 
+    /// Una línea para el pie de Perfil: compilación, modo del teléfono y si
+    /// llegó la pareja de paletas. Sirve para saber, sin adivinar.
+    static func diagnostico() -> String {
+        let v = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "?"
+        let b = (Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? "?"
+        let modo = UITraitCollection.current.userInterfaceStyle == .dark ? "oscuro" : "claro"
+        let pareja = CNC.pareja.oscuro != nil ? "sí" : "no"
+        return "v\(v) (\(b)) · sistema \(modo) · paleta \(CNC.tema.oscuro ? "oscura" : "clara") · pareja \(pareja)"
+    }
+
     /// Lo último que se supo del tema, para pintar desde el primer fotograma.
     func temaGuardado() {
         guard let j = UserDefaults.standard.string(forKey: "cnTema"), j.count > 2 else { return }
@@ -991,19 +1001,20 @@ struct CNMovs: View {
     private var busqueda: some View {
         HStack(spacing: 9) {
             HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass").font(cnLetra(15, .semibold))
-                    .foregroundColor(CNC.pmut)
-                TextField(cnT("Buscar movimiento…"), text: $q).font(cnLetra(15)).foregroundColor(CNC.ink)
+                Image(systemName: "magnifyingglass").font(cnLetra(16, .semibold))
+                    .foregroundColor(CNC.pmut.opacity(0.9))
+                TextField(cnT("Buscar movimiento…"), text: $q).font(cnLetra(16)).foregroundColor(CNC.ink)
                     .submitLabel(.search)
+                    .autocorrectionDisabled(true)
                 if !q.isEmpty {
                     Button { q = "" } label: {
                         Image(systemName: "xmark.circle.fill").font(cnLetra(15)).foregroundColor(CNC.pmut)
                     }.buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 14).frame(height: 46)
+            .padding(.horizontal, 15).frame(height: 44)
             .cnVidrio(Capsule())
-            CNMenuVidrio(icono: "line.3.horizontal.decrease", activo: filtro > 0, lado: 46) {
+            CNMenuVidrio(icono: "line.3.horizontal.decrease", activo: filtro > 0, lado: 44) {
                 Picker("", selection: $filtro) {
                     ForEach(CNMovs.filtros.indices, id: \.self) { i in Text(cnT(CNMovs.filtros[i])).tag(i) }
                 }
@@ -4673,6 +4684,11 @@ struct CNPerfil: View {
                     ForEach(a.grupos.indices, id: \.self) { gi in
                         grupo(a.grupos[gi], gi)
                     }
+                    // Lo que hace falta saber cuando algo no cuadra: qué
+                    // compilación es, qué modo tiene el teléfono ahora mismo y
+                    // si la app tiene la pareja de paletas para seguirlo.
+                    Text(CNDatos.diagnostico()).font(cnLetra(11)).foregroundColor(CNC.pmut.opacity(0.7))
+                        .frame(maxWidth: .infinity, alignment: .center).padding(.top, 4)
                     Color.clear.frame(height: 104)
                 }
                 .padding(.horizontal, 16).padding(.top, 14)

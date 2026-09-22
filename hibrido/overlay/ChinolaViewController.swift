@@ -42,8 +42,25 @@ class ChinolaViewController: CAPBridgeViewController {
         guard traitCollection.userInterfaceStyle != previo?.userInterfaceStyle else { return }
         avisarDelModo()
     }
+    /// El modo del teléfono, leído de la ventana: es la que lo recibe primero.
+    private var sistemaOscuro: Bool {
+        let w = view.window ?? UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }.flatMap { $0.windows }.first
+        return (w?.traitCollection ?? traitCollection).userInterfaceStyle == .dark
+    }
+    /// Y por si ningún aviso llega: cada dos segundos se comprueba que la
+    /// paleta puesta sea la del modo del teléfono. Es una comparación, no
+    /// cuesta nada, y cierra la puerta a «hay que reiniciar».
+    private var vigiaModo: Timer?
+    private func vigilarModo() {
+        vigiaModo?.invalidate()
+        vigiaModo = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            guard let s = self, CNC.pareja.oscuro != nil else { return }
+            if s.sistemaOscuro != CNC.tema.oscuro { s.avisarDelModo() }
+        }
+    }
     @objc private func avisarDelModo() {
-        let oscuro = traitCollection.userInterfaceStyle == .dark
+        let oscuro = sistemaOscuro
         // PRIMERO se pinta, con la paleta que la web ya mandó. Esperar a que la
         // web reaccione era lo que obligaba a reiniciar la app: el webview no
         // siempre vuelve a mirar `prefers-color-scheme`, y si no reacciona, no
@@ -99,6 +116,7 @@ class ChinolaViewController: CAPBridgeViewController {
         }
 
         montarBarra()
+        vigilarModo()
         // Lo NATIVO desde el primer fotograma. Sin esto, al abrir se veía el
         // tablero de la WEB hasta que se tocaba una pestaña: la app empezaba
         // enseñando justo lo que ya no usa.
