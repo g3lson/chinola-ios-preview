@@ -2041,7 +2041,7 @@ struct CNDetalle {
         m.chips = l(r, "chips").map { Chip(indice: Int(n($0, "indice")), label: s($0, "label"), puesta: b($0, "puesta")) }
         let h = r["hero"] as? [String: Any]
         m.hero = Hero(iconoPath: s(h, "iconoPath"), iconoColor: s(h, "iconoColor"), iconoBg: s(h, "iconoBg"),
-                      rotulo: s(h, "rotulo"), valor: s(h, "valor"), icono: s(h, "icono"), color: s(h, "color"),
+                      rotulo: s(h, "rotulo"), valor: s(h, "valor"), color: s(h, "color"),
                       pct: (h?["pct"] as? NSNumber)?.doubleValue ?? -1,
                       colorBarra: s(h, "colorBarra"), pieIzq: s(h, "pieIzq"), pieDer: s(h, "pieDer"),
                       nota: s(h, "nota"))
@@ -3433,6 +3433,7 @@ struct CNResumenModelo {
             x.series = lista(w, "series").map { SerieCfg(id: s($0, "id"), label: s($0, "label"),
                                                         color: s($0, "color"), puesta: b($0, "puesta")) }
             x.valor = s(w, "valor"); x.nota = s(w, "nota"); x.color = s(w, "color"); x.texto = s(w, "texto")
+            x.icono = s(w, "icono")
             x.leyenda = lista(w, "leyenda").map { Serie(label: s($0, "label"), color: s($0, "color"), ultimo: s($0, "ultimo")) }
             x.guias = lista(w, "guias").map { Guia(y: n($0, "y"), color: s($0, "color")) }
             x.areas = lista(w, "areas").map { Traza(puntos: s($0, "puntos"), color: s($0, "color")) }
@@ -3692,17 +3693,10 @@ struct CNCabeceraApp: View {
             .frame(height: max(0, blqAlto), alignment: .top)
             .opacity(blqOpaco)
             .clipped()
-            if c.fichas.count >= 4 {
-                VStack(spacing: 10) {
-                    HStack(spacing: 10) { ficha(c.fichas[0]); ficha(c.fichas[1]) }
-                    HStack(spacing: 10) { ficha(c.fichas[2]); ficha(c.fichas[3]) }
-                }
-                .padding(.top, 4)
-            }
         }
-        .padding(.horizontal, 16).padding(.top, padArriba).padding(.bottom, 12)
+        .padding(.horizontal, 16).padding(.top, padArriba).padding(.bottom, 10)
         .animation(.easeOut(duration: 0.2), value: progreso)
-        .frame(height: padArriba + 44 + 12 + 4 + 2 * 92 + 10 + blqAlto)
+        .frame(height: padArriba + 44 + 10 + blqAlto)
     }
 
     /// Una ficha de la viva: el color le da vida, la nota le da contexto.
