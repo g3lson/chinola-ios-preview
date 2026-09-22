@@ -1164,7 +1164,19 @@ struct CNLibretasHoja: View {
             }
             .padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 14)
 
-            ScrollView(showsIndicators: false) {
+            // Con pocas libretas la hoja mide lo que mide su contenido; solo si
+            // son muchas se convierte en una lista que rueda.
+            if m.filas.count > 5 {
+                ScrollView(showsIndicators: false) { cuerpo(m, puesta: puesta, otras: otras) }
+                    .frame(maxHeight: altoMax)
+            } else {
+                cuerpo(m, puesta: puesta, otras: otras)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func cuerpo(_ m: CNLibretas, puesta: CNLibretas.Fila?, otras: [CNLibretas.Fila]) -> some View {
                 VStack(spacing: 14) {
                     // La que está puesta, en grande y arriba: es la que
                     // contesta «¿dónde estoy anotando?».
@@ -1206,14 +1218,9 @@ struct CNLibretasHoja: View {
                         }.buttonStyle(CNPulsable())
                     }
                     // Hasta debajo del indicador de inicio: la hoja llega al pie.
-                    Color.clear.frame(height: 34 + cnMargenAbajo())
+                    Color.clear.frame(height: 6 + cnMargenAbajo())
                 }
                 .padding(.horizontal, 16)
-            }
-            .frame(maxHeight: altoMax)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity)
     }
 
     /// La libreta en uso: su color de fondo, su cifra del mes y su gente.
