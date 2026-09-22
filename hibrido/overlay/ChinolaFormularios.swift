@@ -692,6 +692,8 @@ struct CNHojaWeb: View {
         var opciones: [Opcion] = []; var colores: [Color2] = []; var iconos: [Icono] = []
         /// Para los campos que no se escriben: el texto del botón de un enlace.
         var textoEnlace = ""
+        /// Si el campo se puede bajar como archivo: su nombre y su contenido.
+        var descarga = ""; var archivo = ""
     }
     struct Modelo {
         var tipo = ""; var titulo = ""; var texto = ""; var boton = ""
@@ -769,13 +771,25 @@ struct CNHojaWeb: View {
                     Text(c.valor).font(.system(size: 15, weight: .semibold, design: .monospaced))
                         .foregroundColor(CNC.ink).lineSpacing(5).textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
-                    Button {
-                        UIPasteboard.general.string = c.valor
-                        UINotificationFeedbackGenerator().notificationOccurred(.success)
-                        CNMenuEstado.shared.alAviso(cnT("Copiado"), "")
-                    } label: {
-                        Text(cnT("Copiar")).font(cnLetra(14, .semibold)).foregroundColor(CNC.pos)
-                    }.buttonStyle(CNPulsable())
+                    HStack(spacing: 18) {
+                        if !c.descarga.isEmpty {
+                            // Como archivo: la hoja de compartir del sistema, que
+                            // deja guardarlo en Archivos, en iCloud o mandarlo.
+                            Button {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                cnCompartirTexto(nombre: c.descarga, texto: c.archivo.isEmpty ? c.valor : c.archivo)
+                            } label: {
+                                Text(cnT("Guardar archivo")).font(cnLetra(14, .semibold)).foregroundColor(CNC.pos)
+                            }.buttonStyle(CNPulsable())
+                        }
+                        Button {
+                            UIPasteboard.general.string = c.valor
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            CNMenuEstado.shared.alAviso(cnT("Copiado"), "")
+                        } label: {
+                            Text(cnT("Copiar")).font(cnLetra(14, .semibold)).foregroundColor(CNC.pos)
+                        }.buttonStyle(CNPulsable())
+                    }
                 }
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
                 .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -892,7 +906,7 @@ extension CNHojaWeb.Modelo {
                             opciones: l(c, "opciones").map { CNHojaWeb.Opcion(id: s($0, "id"), label: s($0, "label")) },
                             colores: l(c, "colores").map { CNHojaWeb.Color2(id: n($0, "indice"), color: s($0, "color"), puesta: b($0, "puesta")) },
                             iconos: l(c, "iconos").map { CNHojaWeb.Icono(id: n($0, "indice"), clave: s($0, "clave"), label: s($0, "label"), path: s($0, "path"), puesta: b($0, "puesta")) },
-                            textoEnlace: s(c, "textoEnlace"))
+                            textoEnlace: s(c, "textoEnlace"), descarga: s(c, "descarga"), archivo: s(c, "archivo"))
         }
         return m
     }
@@ -2291,4 +2305,20 @@ struct CNFormCategoria: View {
             nombre = m.nombre; limite = m.limite
         }
     }
+}
+
+/// Escribe un texto en un archivo temporal y abre la hoja de compartir del
+/// sistema con él: «Guardar en Archivos», AirDrop, correo… lo que la persona
+/// quiera hacer con sus códigos.
+func cnCompartirTexto(nombre: String, texto: String) {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(nombre)
+    do { try texto.write(to: url, atomically: true, encoding: .utf8) } catch { return }
+    let hoja = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    let escenas = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    let ventana = escenas.flatMap { $0.windows }.first { $0.isKeyWindow }
+    var arriba = ventana?.rootViewController
+    while let p = arriba?.presentedViewController { arriba = p }
+    hoja.popoverPresentationController?.sourceView = arriba?.view
+    hoja.popoverPresentationController?.sourceRect = CGRect(x: (arriba?.view.bounds.midX ?? 0), y: (arriba?.view.bounds.midY ?? 0), width: 1, height: 1)
+    arriba?.present(hoja, animated: true)
 }
