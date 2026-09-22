@@ -213,7 +213,7 @@ extension TestVC {
         case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
         case "libretas":
             datos.cargarLibretas(json: TestVC.libretasDeMuestra)
-            vista = AnyView(CNLibretasHoja(datos: datos, onClose: {})); estado.activa = "resumen"
+            vista = AnyView(ZStack { CNResumen(datos: datos); CNHojaAbajo(onClose: {}) { CNLibretasHoja(datos: datos, onClose: {}) } }); estado.activa = "resumen"
         case "puerta-auth", "puerta-plan", "puerta-lamina":
             datos.cargarPuerta(json: cual == "puerta-plan" ? TestVC.puertaPlan
                                : (cual == "puerta-lamina" ? TestVC.puertaLamina : TestVC.puertaAuth))

@@ -446,6 +446,13 @@ struct CNVeloFila: View {
     }
 }
 
+/// El margen seguro de abajo (34 con indicador de inicio, 0 con botón).
+func cnMargenAbajo() -> CGFloat {
+    let escenas = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    let ventana = escenas.flatMap { $0.windows }.first { $0.isKeyWindow } ?? escenas.first?.windows.first
+    return ventana?.safeAreaInsets.bottom ?? 0
+}
+
 /// El margen seguro de arriba del aparato (59 pt con isla, 47 con muesca).
 func cnMargenArriba() -> CGFloat {
     let escenas = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }

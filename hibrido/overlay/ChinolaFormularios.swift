@@ -1046,6 +1046,55 @@ struct CNFranjaRango: Shape {
     }
 }
 
+
+// ── Una hoja de abajo, dibujada por nosotros ────────────────────────────────
+//
+// La del sistema (`pageSheet`) sale con márgenes a los lados y por abajo en
+// iOS 26, como flotando. Esta va de orilla a orilla, pegada al pie, con las
+// esquinas de arriba redondeadas y se cierra tirando de ella o tocando fuera.
+struct CNEsquinasArriba: Shape {
+    var radio: CGFloat = 30
+    func path(in r: CGRect) -> Path {
+        Path(UIBezierPath(roundedRect: r, byRoundingCorners: [.topLeft, .topRight],
+                          cornerRadii: CGSize(width: radio, height: radio)).cgPath)
+    }
+}
+
+struct CNHojaAbajo<C: View>: View {
+    var onClose: () -> Void
+    @ViewBuilder var contenido: () -> C
+    @State private var y: CGFloat = 0
+    @State private var aparecio = false
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(aparecio ? 0.42 : 0).ignoresSafeArea()
+                .onTapGesture { cerrar() }
+            contenido()
+                .frame(maxWidth: .infinity)
+                .background(CNC.scr)
+                .clipShape(CNEsquinasArriba(radio: 30))
+                .shadow(color: .black.opacity(0.18), radius: 24, y: -4)
+                .offset(y: aparecio ? max(0, y) : 900)
+                .gesture(
+                    DragGesture(minimumDistance: 10)
+                        .onChanged { g in if g.translation.height > 0 { y = g.translation.height } }
+                        .onEnded { g in
+                            if g.translation.height > 110 || g.predictedEndTranslation.height > 260 { cerrar() }
+                            else { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { y = 0 } }
+                        }
+                )
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .onAppear { withAnimation(.spring(response: 0.4, dampingFraction: 0.88)) { aparecio = true } }
+    }
+
+    private func cerrar() {
+        withAnimation(.easeIn(duration: 0.2)) { aparecio = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { onClose() }
+    }
+}
+
 // ── El selector de libretas, en nativo ──────────────────────────────────────
 //
 // Antes era la hoja de la WEB, y para enseñarla había que enseñar la pantalla
@@ -1092,29 +1141,28 @@ struct CNLibretasHoja: View {
         let m = datos.libretas ?? CNLibretas()
         let puesta = m.filas.first(where: { $0.enUso })
         let otras = m.filas.filter { !$0.enUso }
+        let altoMax = UIScreen.main.bounds.height * 0.82
         return VStack(spacing: 0) {
-            ZStack {
-                Text(m.titulo).font(cnLetra(17, .bold)).foregroundColor(CNC.ink)
-                HStack {
-                    Button {
-                        UISelectionFeedbackGenerator().selectionChanged()
-                        onClose()
-                    } label: {
-                        Image(systemName: "xmark").font(cnLetra(16, .bold))
-                            .foregroundColor(CNC.ink).frame(width: 44, height: 44).cnVidrio(Circle())
-                    }.buttonStyle(CNPulsable())
-                    Spacer(minLength: 8)
-                    Button {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        datos.onLibreta("nueva", 0)
-                    } label: {
-                        Image(systemName: "plus").font(cnLetra(17, .bold))
-                            .foregroundColor(CNC.sobreAcc)
-                            .frame(width: 44, height: 44).cnVidrio(Circle(), tinte: CNC.acc)
-                    }.buttonStyle(CNPulsable())
-                }
+            HStack(spacing: 10) {
+                Text(m.titulo).font(cnLetra(22, .heavy)).foregroundColor(CNC.ink)
+                Spacer(minLength: 8)
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    datos.onLibreta("nueva", 0)
+                } label: {
+                    Image(systemName: "plus").font(cnLetra(17, .bold))
+                        .foregroundColor(CNC.sobreAcc)
+                        .frame(width: 40, height: 40).cnVidrio(Circle(), tinte: CNC.acc)
+                }.buttonStyle(CNPulsable())
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    onClose()
+                } label: {
+                    Image(systemName: "xmark").font(cnLetra(15, .bold))
+                        .foregroundColor(CNC.ink).frame(width: 40, height: 40).cnVidrio(Circle())
+                }.buttonStyle(CNPulsable())
             }
-            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 10)
+            .padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 14)
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
@@ -1157,13 +1205,15 @@ struct CNLibretasHoja: View {
                             .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
                         }.buttonStyle(CNPulsable())
                     }
-                    Color.clear.frame(height: 18)
+                    // Hasta debajo del indicador de inicio: la hoja llega al pie.
+                    Color.clear.frame(height: 34 + cnMargenAbajo())
                 }
                 .padding(.horizontal, 16)
             }
+            .frame(maxHeight: altoMax)
+            .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(CNC.scr.ignoresSafeArea())
+        .frame(maxWidth: .infinity)
     }
 
     /// La libreta en uso: su color de fondo, su cifra del mes y su gente.
@@ -1197,9 +1247,11 @@ struct CNLibretasHoja: View {
                 }
             }
         }
-        .padding(15)
-        .background(CNC.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(tinte.opacity(0.45), lineWidth: 1.6))
+        .padding(16)
+        .background(
+            LinearGradient(colors: [tinte.opacity(0.16), tinte.opacity(0.06)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing),
+            in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     private func fila(_ f: CNLibretas.Fila) -> some View {

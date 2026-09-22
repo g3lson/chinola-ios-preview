@@ -562,23 +562,18 @@ class ChinolaViewController: CAPBridgeViewController {
     private func abrirLibretas() {
         refrescarLibretas()
         guard libretasVC == nil else { return }
-        let host = UIHostingController(rootView: CNLibretasHoja(datos: datos,
-                                                                onClose: { [weak self] in self?.cerrarLibretas() }))
-        host.modalPresentationStyle = .pageSheet
-        if let hoja = host.sheetPresentationController {
-            if #available(iOS 16.0, *) {
-                hoja.detents = [.custom { _ in 430 }, .large()]
-            } else {
-                hoja.detents = [.medium(), .large()]
-            }
-            hoja.prefersGrabberVisible = false
-            hoja.preferredCornerRadius = 28
-        }
+        // Hoja propia, de orilla a orilla y pegada al pie: la del sistema sale
+        // flotando con márgenes en iOS 26.
+        let host = UIHostingController(rootView: CNHojaAbajo(onClose: { [weak self] in self?.cerrarLibretas() }) {
+            CNLibretasHoja(datos: self.datos, onClose: { [weak self] in self?.cerrarLibretas() })
+        })
+        host.view.backgroundColor = .clear
+        host.modalPresentationStyle = .overFullScreen
         libretasVC = host
         if let actual = presentedViewController {
-            actual.dismiss(animated: true) { [weak self] in self?.present(host, animated: true) }
+            actual.dismiss(animated: true) { [weak self] in self?.present(host, animated: false) }
         } else {
-            present(host, animated: true)
+            present(host, animated: false)
         }
     }
     private func refrescarLibretas(intentos: Int = 4) {
@@ -594,7 +589,8 @@ class ChinolaViewController: CAPBridgeViewController {
         }
     }
     private func cerrarLibretas() {
-        libretasVC?.dismiss(animated: true)
+        // La hoja ya se ha ido animando sola; aquí solo se retira.
+        libretasVC?.dismiss(animated: false)
         libretasVC = nil
     }
 
