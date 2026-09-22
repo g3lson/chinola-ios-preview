@@ -889,10 +889,10 @@ extension CNHojaWeb.Modelo {
         m.campos = l(raiz, "campos").map { c in
             CNHojaWeb.Campo(id: n(c, "indice"), label: s(c, "label"), tipo: s(c, "tipo"), ph: s(c, "ph"),
                             valor: s(c, "valor"), teclado: s(c, "teclado"), seguro: b(c, "seguro"),
-                            textoEnlace: s(c, "textoEnlace"),
                             opciones: l(c, "opciones").map { CNHojaWeb.Opcion(id: s($0, "id"), label: s($0, "label")) },
                             colores: l(c, "colores").map { CNHojaWeb.Color2(id: n($0, "indice"), color: s($0, "color"), puesta: b($0, "puesta")) },
-                            iconos: l(c, "iconos").map { CNHojaWeb.Icono(id: n($0, "indice"), clave: s($0, "clave"), label: s($0, "label"), path: s($0, "path"), puesta: b($0, "puesta")) })
+                            iconos: l(c, "iconos").map { CNHojaWeb.Icono(id: n($0, "indice"), clave: s($0, "clave"), label: s($0, "label"), path: s($0, "path"), puesta: b($0, "puesta")) },
+                            textoEnlace: s(c, "textoEnlace"))
         }
         return m
     }
