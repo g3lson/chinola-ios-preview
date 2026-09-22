@@ -168,6 +168,8 @@ struct CNFormato {
     var iconoPerfil = "chino"
     /// La inicial del usuario, para el icono redondo.
     var inicial = ""
+    /// Las tarjetas de cifras del panel, cada una del color de su cifra.
+    var panelVivo = false
     /// 1 = el tamaño de siempre. La web usa 1,07 como «Normal», así que se
     /// divide entre eso: lo normal aquí tiene que seguir midiendo lo que medía.
     var letra: CGFloat = 1
@@ -180,6 +182,7 @@ struct CNFormato {
         if let t = o["fuente"] as? String, !t.isEmpty { f.fuente = t }
         if let t = o["iconoPerfil"] as? String, !t.isEmpty { f.iconoPerfil = t }
         if let t = o["inicial"] as? String { f.inicial = t }
+        if let v = o["panelVivo"] as? Bool { f.panelVivo = v }
         if let e = o["letra"] as? NSNumber {
             let v = CGFloat(truncating: e)
             if v > 0.4 && v < 2.5 { f.letra = v }
@@ -2038,7 +2041,7 @@ struct CNDetalle {
         m.chips = l(r, "chips").map { Chip(indice: Int(n($0, "indice")), label: s($0, "label"), puesta: b($0, "puesta")) }
         let h = r["hero"] as? [String: Any]
         m.hero = Hero(iconoPath: s(h, "iconoPath"), iconoColor: s(h, "iconoColor"), iconoBg: s(h, "iconoBg"),
-                      rotulo: s(h, "rotulo"), valor: s(h, "valor"), color: s(h, "color"),
+                      rotulo: s(h, "rotulo"), valor: s(h, "valor"), icono: s(h, "icono"), color: s(h, "color"),
                       pct: (h?["pct"] as? NSNumber)?.doubleValue ?? -1,
                       colorBarra: s(h, "colorBarra"), pieIzq: s(h, "pieIzq"), pieDer: s(h, "pieDer"),
                       nota: s(h, "nota"))
@@ -3348,6 +3351,8 @@ struct CNResumenModelo {
         var cfgGrafico = "linea"; var cfgRango = "12"; var series: [SerieCfg] = []
         var clase = "texto"
         var valor = ""; var nota = ""; var color = ""
+        /// El icono de la tarjeta de cifra (para el panel con color).
+        var icono = ""
         var texto = ""
         var leyenda: [Serie] = []; var guias: [Guia] = []; var areas: [Traza] = []
         var lineas: [Traza] = []; var barras: [Barra] = []; var puntos: [Punto] = []
@@ -4229,10 +4234,23 @@ struct CNTarjetaWidget: View {
     var primera: Bool = false
     var ultima: Bool = false
     @ObservedObject var datos: CNDatos
+    /// Con «tarjetas con color» puesto, las de cifra van del color de su cifra.
+    private var conVida: Bool { CNC.fmt.panelVivo && w.clase == "cifra" && !w.color.isEmpty }
+    private var tinteVida: Color { cnColor(hexString: w.color) }
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(w.titulo).font(cnLetra(13)).foregroundColor(CNC.pmut).lineLimit(1)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if conVida {
+                    // El chip con el icono: es lo que hace que cada tarjeta se
+                    // reconozca de un vistazo antes de leer nada.
+                    ZStack {
+                        Circle().fill(tinteVida.opacity(0.18)).frame(width: 22, height: 22)
+                        cnGlifo(w.icono.isEmpty ? "grafico" : w.icono, tam: 11, grosor: 2.2).foregroundColor(tinteVida)
+                    }
+                    .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 5 }
+                }
+                Text(w.titulo).font(cnLetra(13, conVida ? .semibold : .regular))
+                    .foregroundColor(conVida ? tinteVida : CNC.pmut).lineLimit(1)
                 Spacer(minLength: 0)
                 if !w.periodo.isEmpty {
                     Text(w.periodo).font(cnLetra(12, .semibold)).foregroundColor(CNC.pmut)
@@ -4249,8 +4267,9 @@ struct CNTarjetaWidget: View {
             cuerpo
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+        .background(conVida ? tinteVida.opacity(0.13) : CNC.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: conVida ? 0 : 1))
         .opacity(w.oculta ? 0.42 : 1)
         // Mantener pulsado: lo mismo, sin tener que entrar en «organizar».
         .contextMenu { acciones }
@@ -4312,7 +4331,7 @@ struct CNTarjetaWidget: View {
                 Text(w.valor).font(.system(size: w.chica ? 21 : 26, weight: .heavy))
                     .foregroundColor(w.color.isEmpty ? CNC.ink : cnColor(hexString: w.color))
                     .lineLimit(1).minimumScaleFactor(0.5)
-                Text(w.nota).font(cnLetra(11)).foregroundColor(CNC.pmut)
+                Text(w.nota).font(cnLetra(11)).foregroundColor(conVida ? tinteVida.opacity(0.85) : CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true)
             }
         case "texto":

@@ -253,6 +253,9 @@ extension TestVC {
         case "libreta-nueva":
             datos.cargarLibretaNueva(json: TestVC.libretaNuevaDeMuestra)
             vista = AnyView(CNFormLibreta(datos: datos, onClose: {})); estado.activa = "resumen"
+        case "panel-vivo":
+            CNC.fmt.panelVivo = true
+            vista = AnyView(CNResumen(datos: datos)); estado.activa = "resumen"
         case "fuente-outfit":
             CNC.fmt.fuente = "outfit"
             vista = AnyView(CNMovs(datos: datos)); estado.activa = "movs"
