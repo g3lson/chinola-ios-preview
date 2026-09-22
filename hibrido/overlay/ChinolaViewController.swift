@@ -316,10 +316,13 @@ class ChinolaViewController: CAPBridgeViewController {
         }
         datos.onSeccionAccion = { [weak self] i, valor in
             guard let s = self, let id = CNDatos.shared.seccion?.id else { return }
+            // Con el id de la sección: la web guarda las acciones por sección
+            // y así el número apunta a la fila que se tocó, no a la de la
+            // última sección que se pidió.
             if let v = valor {
-                s.eval("window.__chinolaSeccionAccion && window.__chinolaSeccionAccion(\(i),\(s.comillas(v)))")
+                s.eval("window.__chinolaSeccionAccion && window.__chinolaSeccionAccion(\(i),\(s.comillas(v)),\(s.comillas(id)))")
             } else {
-                s.eval("window.__chinolaSeccionAccion && window.__chinolaSeccionAccion(\(i))")
+                s.eval("window.__chinolaSeccionAccion && window.__chinolaSeccionAccion(\(i),undefined,\(s.comillas(id)))")
             }
             // Algunas acciones abren una hoja de la web (cambiar la clave, crear
             // una libreta…): se enseña la web y se cierra lo nativo.
@@ -1112,7 +1115,74 @@ class ChinolaViewController: CAPBridgeViewController {
         addChild(host); view.addSubview(host.view); host.didMove(toParent: self)
         host.view.frame = view.bounds
         host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        host.view.layer.cornerCurve = .continuous
+        // Volver deslizando desde la orilla, como en los detalles: el mismo
+        // reconocedor de UIKit, que gana a la lista de dentro.
+        let orilla = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(arrastrarPuerta(_:)))
+        orilla.edges = .left
+        host.view.addGestureRecognizer(orilla)
         puertaVC = host
+        // Y se vuelve a mirar cada poco mientras esté puesta: la web cambia de
+        // paso por su cuenta (la caja de Apple que se cierra, el correo que se
+        // verifica, un error) y antes solo se miraba unas veces tras un toque;
+        // lo que pasara después se quedaba sin pintar («Un momento…» eterno).
+        puertaReloj?.invalidate()
+        puertaReloj = Timer.scheduledTimer(withTimeInterval: 0.7, repeats: true) { [weak self] _ in
+            guard let s = self, s.puertaVC != nil, !s.puertaRendida else { return }
+            s.mirarPuerta(intentos: 1)
+        }
+    }
+    private var puertaReloj: Timer?
+
+    /// El arrastre desde la orilla en la puerta: la pantalla sigue al dedo y,
+    /// si se suelta lejos o con prisa, hace lo mismo que la flecha de atrás
+    /// del paso (si el paso no tiene atrás, solo vuelve a su sitio).
+    @objc private func arrastrarPuerta(_ g: UIScreenEdgePanGestureRecognizer) {
+        guard let host = puertaVC else { return }
+        let ancho = view.bounds.width
+        let dx = max(0, g.translation(in: view).x)
+        let volver = CNDatos.shared.puerta?.volver ?? ""
+        switch g.state {
+        case .began, .changed:
+            guard !volver.isEmpty else { return }
+            if host.view.layer.cornerRadius == 0 {
+                host.view.layer.cornerRadius = 30
+                host.view.layer.masksToBounds = true
+            }
+            host.view.transform = CGAffineTransform(translationX: dx, y: 0)
+        case .ended, .cancelled, .failed:
+            guard !volver.isEmpty else { return }
+            let prisa = g.velocity(in: view).x
+            if dx > ancho * 0.33 || prisa > 800 {
+                UISelectionFeedbackGenerator().selectionChanged()
+                UIView.animate(withDuration: 0.18, delay: 0, options: [.curveEaseOut]) {
+                    host.view.transform = CGAffineTransform(translationX: ancho, y: 0)
+                } completion: { _ in
+                    // Se le pide a la web el paso de antes y, en cuanto lo
+                    // dibuja, la pantalla entra desde la izquierda.
+                    self.puertaAccion(volver, "")
+                    host.view.transform = CGAffineTransform(translationX: -ancho * 0.25, y: 0)
+                    host.view.alpha = 0
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.mirarPuerta(intentos: 3) }
+                    UIView.animate(withDuration: 0.26, delay: 0.3, options: [.curveEaseOut, .allowUserInteraction]) {
+                        host.view.transform = .identity
+                        host.view.alpha = 1
+                    } completion: { _ in
+                        host.view.layer.cornerRadius = 0
+                        host.view.layer.masksToBounds = false
+                    }
+                }
+            } else {
+                UIView.animate(withDuration: 0.28, delay: 0, usingSpringWithDamping: 0.9,
+                               initialSpringVelocity: 0, options: [.allowUserInteraction]) {
+                    host.view.transform = .identity
+                } completion: { _ in
+                    host.view.layer.cornerRadius = 0
+                    host.view.layer.masksToBounds = false
+                }
+            }
+        default: break
+        }
     }
     private func puertaAccion(_ que: String, _ valor: String) {
         // Los DOS argumentos, en su sitio. Mandarlos dentro de un objeto —que
@@ -1131,6 +1201,7 @@ class ChinolaViewController: CAPBridgeViewController {
     private func puertaALaWeb() {
         barra.barra.isHidden = true
         quitarCortina()
+        puertaReloj?.invalidate(); puertaReloj = nil
         if let host = puertaVC {
             puertaVC = nil
             host.willMove(toParent: nil); host.view.removeFromSuperview(); host.removeFromParent()
@@ -1149,6 +1220,7 @@ class ChinolaViewController: CAPBridgeViewController {
     private func cerrarPuerta() {
         barra.barra.isHidden = false
         quitarCortina()
+        puertaReloj?.invalidate(); puertaReloj = nil
         guard let host = puertaVC else { return }
         puertaVC = nil
         UIView.animate(withDuration: 0.25) { host.view.alpha = 0 } completion: { _ in

@@ -1700,6 +1700,9 @@ struct CNPuerta {
     var rotulo = ""; var titulo = ""; var texto = ""; var boton = ""; var segundo = ""; var atras = ""
     var chinolo = ""; var error = ""; var cargando = false; var pie = ""
     var indice = 0; var total = 1
+    /// La acción de «atrás» de este paso (vacía si no hay): la flecha de arriba
+    /// y el deslizar desde la orilla hacen las dos lo mismo.
+    var volver = ""
     var lista: [Punto] = []
     // Acceso
     var registro = false
@@ -1726,6 +1729,7 @@ struct CNPuerta {
         m.boton = s(r, "boton"); m.segundo = s(r, "segundo"); m.atras = s(r, "atras")
         m.chinolo = s(r, "chinolo"); m.error = s(r, "error"); m.cargando = b(r, "cargando"); m.pie = s(r, "pie")
         m.indice = n(r, "indice"); m.total = max(1, n(r, "total"))
+        m.volver = s(r, "volver")
         m.lista = ((r["lista"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
             Punto(id: i, titulo: s(x, "titulo"), pie: s(x, "pie"), iconoPath: s(x, "iconoPath"),
                   color: s(x, "color"), fondo: s(x, "fondo"))
@@ -1761,6 +1765,23 @@ struct CNPuertaVista: View {
         let m = datos.puerta ?? CNPuerta()
         return ZStack {
             CNC.scr.ignoresSafeArea()
+            VStack(spacing: 0) {
+            // La flecha de atrás, la misma de los detalles, en todos los pasos
+            // que tienen un «antes». Deslizar desde la orilla hace lo mismo.
+            if !m.volver.isEmpty {
+                HStack {
+                    Button {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        onAccion(m.volver, "")
+                    } label: {
+                        Image(systemName: "chevron.left").font(cnLetra(16, .bold))
+                            .foregroundColor(CNC.ink).frame(width: 40, height: 40)
+                            .background(CNC.soft, in: Circle())
+                    }.buttonStyle(CNPulsable())
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 16).padding(.top, 6)
+            }
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     switch m.paso {
@@ -1770,7 +1791,7 @@ struct CNPuertaVista: View {
                     default: EmptyView()
                     }
                 }
-                .padding(.horizontal, 22).padding(.top, 26).padding(.bottom, 40)
+                .padding(.horizontal, 22).padding(.top, m.volver.isEmpty ? 26 : 10).padding(.bottom, 40)
                 // La puerta de siempre, la de la web, a un toque. Si algo de
                 // aquí fallara, nadie se queda fuera de su propia app.
                 Button { onAccion("web", "") } label: {
@@ -1779,6 +1800,7 @@ struct CNPuertaVista: View {
                 }.buttonStyle(.plain)
             }
             .cnTeclado()
+            }
         }
         .onAppear { nombre = m.nombre; email = m.email; clave = m.clave; clave2 = m.clave2; quien = m.valor }
     }
@@ -1881,7 +1903,7 @@ struct CNPuertaVista: View {
                 }
             }
             if !m.error.isEmpty { aviso(m.error) }
-            botonGrande(m.boton) { cnCerrarTeclado(); onAccion("entrar", "") }
+            botonGrande(m.boton, cargando: m.cargando) { cnCerrarTeclado(); onAccion("entrar", "") }
             if !m.olvide.isEmpty {
                 Button { onAccion("olvide", "") } label: {
                     Text(m.olvide).font(cnLetra(14, .semibold)).foregroundColor(CNC.pmut)
@@ -1928,18 +1950,33 @@ struct CNPuertaVista: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             ForEach(m.planes) { p in
-                Button { onAccion("plan-elegir", String(p.id)) } label: {
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    onAccion("plan-elegir", String(p.id))
+                } label: {
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        HStack(alignment: .center, spacing: 10) {
+                            // La marca de elegido, como una opción de iOS: se ve
+                            // cuál está puesto sin leer el borde.
+                            ZStack {
+                                Circle().stroke(p.puesto ? CNC.acc : CNC.line, lineWidth: p.puesto ? 0 : 1.5)
+                                if p.puesto {
+                                    Circle().fill(CNC.acc)
+                                    Image(systemName: "checkmark").font(cnLetra(11, .heavy)).foregroundColor(CNC.sobreAcc)
+                                }
+                            }
+                            .frame(width: 22, height: 22)
                             Text(p.nombre).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink)
                             Spacer(minLength: 8)
-                            Text(p.precio).font(cnLetra(16, .heavy)).foregroundColor(CNC.ink)
-                            if !p.cada.isEmpty {
-                                Text(p.cada).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                            VStack(alignment: .trailing, spacing: 0) {
+                                Text(p.precio).font(cnLetra(16, .heavy)).foregroundColor(CNC.ink)
+                                if !p.cada.isEmpty {
+                                    Text(p.cada).font(cnLetra(11.5)).foregroundColor(CNC.pmut)
+                                }
                             }
                         }
                         if !p.para.isEmpty {
-                            Text(p.para).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                            Text(p.para).font(cnLetra(13)).foregroundColor(CNC.pmut).padding(.leading, 32)
                         }
                         VStack(alignment: .leading, spacing: 4) {
                             ForEach(p.items.indices, id: \.self) { k in
@@ -1951,6 +1988,7 @@ struct CNPuertaVista: View {
                                 }
                             }
                         }
+                        .padding(.leading, 32)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
@@ -1965,7 +2003,7 @@ struct CNPuertaVista: View {
                 Text(m.pie).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            botonGrande(m.boton) { onAccion("plan-seguir", "") }
+            botonGrande(m.boton, cargando: m.cargando) { onAccion("plan-seguir", "") }
             if !m.salida.isEmpty { botonSuave(m.salida) { onAccion("plan-salir", "") } }
         }
     }
@@ -1978,12 +2016,21 @@ struct CNPuertaVista: View {
             .background(CNC.neg.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
-    private func botonGrande(_ t: String, _ go: @escaping () -> Void) -> some View {
+    /// Mientras `cargando` (la caja de Apple, el servidor) el botón da vueltas
+    /// y no responde: dos toques no compran dos veces.
+    private func botonGrande(_ t: String, cargando: Bool = false, _ go: @escaping () -> Void) -> some View {
         Button { UIImpactFeedbackGenerator(style: .medium).impactOccurred(); go() } label: {
-            Text(t).font(cnLetra(16, .bold)).foregroundColor(CNC.sobreAcc)
-                .frame(maxWidth: .infinity).padding(.vertical, 16)
-                .background(CNC.acc, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }.buttonStyle(CNPulsable()).padding(.top, 2)
+            HStack(spacing: 8) {
+                if cargando {
+                    ProgressView().progressViewStyle(CircularProgressViewStyle(tint: CNC.sobreAcc))
+                }
+                Text(t).font(cnLetra(16, .bold)).foregroundColor(CNC.sobreAcc)
+            }
+            .frame(maxWidth: .infinity).padding(.vertical, 16)
+            .background(CNC.acc, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(CNPulsable()).padding(.top, 2)
+        .disabled(cargando).opacity(cargando ? 0.75 : 1)
     }
 
     private func botonSuave(_ t: String, _ go: @escaping () -> Void) -> some View {

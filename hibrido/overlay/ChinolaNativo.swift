@@ -809,7 +809,16 @@ final class CNDatos: ObservableObject {
     func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
     func cargarTour(json: String) { tour = CNTour.desde(json: json) }
     func cargarMascota(json: String) { mascota = CNMascota.desde(json: json) }
-    func cargarPuerta(json: String) { puerta = CNPuerta.desde(json: json) }
+    /// La puerta se vuelve a pedir cada poco mientras está puesta; si la web
+    /// contesta lo mismo, no se repinta (lo que se escribe en un campo no se
+    /// mueve). Con la puerta quitada, el mismo JSON de antes SÍ vale: es una
+    /// puerta nueva.
+    private var puertaCruda = ""
+    func cargarPuerta(json: String) {
+        guard json != puertaCruda || puerta == nil else { return }
+        puertaCruda = json
+        puerta = CNPuerta.desde(json: json)
+    }
     func cargarCategoria(json: String) { categoria = CNHojaCategoria.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
