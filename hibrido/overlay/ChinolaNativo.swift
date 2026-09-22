@@ -4322,6 +4322,90 @@ extension View {
     func cnAncla(_ id: String) -> some View { modifier(CNAncla(id: id)) }
 }
 
+/// Un teléfono en miniatura pintado con lo que la opción propone: el fondo,
+/// la franja de arriba, dos tarjetas, la píldora del acento y el menú.
+struct CNTelefonoMini: View {
+    let o: CNSeccion.Opcion
+    private func c(_ css: String, _ siNo: Color) -> Color { css.isEmpty ? siNo : cnColor(hexString: css) }
+    var body: some View {
+        let fondo = c(o.fondo, CNC.scr)
+        let tarjeta = c(o.tarjeta, CNC.card)
+        let franja = c(o.franja, CNC.side)
+        let acento = c(o.acento, CNC.acc)
+        let raya = o.oscuro ? Color.white.opacity(0.22) : Color.black.opacity(0.14)
+        ZStack {
+            pantalla(fondo: fondo, tarjeta: tarjeta, franja: franja, acento: acento, raya: raya)
+            if o.vista == "modo" && o.valor == "auto" && !o.nocheFondo.isEmpty {
+                // Automático: la mitad de noche, en diagonal.
+                pantalla(fondo: c(o.nocheFondo, .black), tarjeta: c(o.nocheTarjeta, .gray),
+                         franja: c(o.nocheFranja, .black), acento: acento, raya: Color.white.opacity(0.22))
+                    .clipShape(Diagonal())
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func pantalla(fondo: Color, tarjeta: Color, franja: Color, acento: Color, raya: Color) -> some View {
+        VStack(spacing: 0) {
+            // La franja de arriba: la cabecera (o solo la isla, si no hay).
+            ZStack(alignment: .top) {
+                Rectangle().fill(o.vista == "cabecera" || o.vista == "tema" || o.vista == "modo" ? franja : fondo)
+                    .frame(height: o.vista == "cabecera" ? max(14, min(46, o.alto * 1.4)) : 34)
+                Capsule().fill(Color.black.opacity(0.75)).frame(width: 18, height: 4).padding(.top, 5)
+                if o.vista == "cabecera" && o.bulto {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(Color.white.opacity(0.6))
+                        .frame(width: 30, height: 6).padding(.top, 16)
+                }
+            }
+            VStack(spacing: 6) {
+                if o.vista == "paleta" && o.puntos.count >= 3 {
+                    // Las cifras de colores: tres tarjetas, cada una con su color.
+                    ForEach(0..<3, id: \.self) { k in
+                        HStack(spacing: 4) {
+                            RoundedRectangle(cornerRadius: 2).fill(cnColor(hexString: o.puntos[k])).frame(width: 22, height: 5)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(7).frame(maxWidth: .infinity)
+                        .background(tarjeta, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        RoundedRectangle(cornerRadius: 2).fill(raya).frame(width: 30, height: 4)
+                        RoundedRectangle(cornerRadius: 2).fill(acento).frame(width: 22, height: 5)
+                    }
+                    .padding(7).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(tarjeta, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    HStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous).fill(tarjeta).frame(height: 22)
+                        RoundedRectangle(cornerRadius: 5, style: .continuous).fill(tarjeta).frame(height: 22)
+                    }
+                    RoundedRectangle(cornerRadius: 5, style: .continuous).fill(tarjeta).frame(height: 26)
+                }
+                Spacer(minLength: 0)
+                // El menú de abajo, con el acento en la pestaña activa.
+                HStack(spacing: 5) {
+                    Circle().fill(acento).frame(width: 5, height: 5)
+                    ForEach(0..<3, id: \.self) { _ in Circle().fill(raya).frame(width: 4, height: 4) }
+                }
+                .padding(.bottom, 5)
+            }
+            .padding(6)
+        }
+        .background(fondo)
+    }
+
+    private struct Diagonal: Shape {
+        func path(in r: CGRect) -> Path {
+            var p = Path()
+            p.move(to: CGPoint(x: r.maxX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+            p.closeSubpath()
+            return p
+        }
+    }
+}
+
 struct CNMarcosPanel: PreferenceKey {
     static var defaultValue: [String: CGRect] = [:]
     static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
@@ -5039,6 +5123,11 @@ struct CNSeccion {
         var accion = -1
         /// La miniatura de la cabecera: franja, cuánto ocupa y si lleva bulto.
         var vista = ""; var franja = ""; var alto: CGFloat = 0; var bulto = false; var papel = ""
+        /// El teléfono en miniatura: con qué se pinta (tema, modo, paleta).
+        var tarjeta = ""; var acento = ""; var tinta = ""; var oscuro = false; var valor = ""
+        var puntos: [String] = []
+        /// Para el modo automático: la mitad de noche.
+        var nocheFondo = ""; var nocheFranja = ""; var nocheTarjeta = ""
     }
     /// Un interruptor dentro de un bloque de varios.
     struct Llave { var label = ""; var sub = ""; var puesto = false; var accion = -1 }
@@ -5063,6 +5152,10 @@ struct CNSeccion {
         var colores: [Muestra] = []; var items: [Item] = []
         var llaves: [Llave] = []
         var botones: [Boton] = []
+        /// La muestra de la letra: con qué escala y qué tres cosas enseña.
+        var escala: Double = 1; var muestraTitulo = ""; var muestraTexto = ""; var muestraCifra = ""
+        /// El selector: lo que hay puesto ahora, con nombre.
+        var valor = ""
     }
     var id = ""; var titulo = ""; var bloques: [Bloque] = []
     /// A dónde vuelve la flecha de atrás (otra sección), si no es a Perfil.
@@ -5088,6 +5181,9 @@ struct CNSeccion {
             q.texto = s(bq, "texto"); q.label = s(bq, "label"); q.estilo = s(bq, "estilo")
             q.abre = s(bq, "abre")
             q.columnas = max(1, n(bq, "columnas")); q.puesto = b(bq, "puesto"); q.accion = n(bq, "accion")
+            q.valor = s(bq, "valor")
+            q.escala = ((bq["escala"] as? NSNumber)?.doubleValue) ?? 1
+            q.muestraTitulo = s(bq, "muestraTitulo"); q.muestraTexto = s(bq, "muestraTexto"); q.muestraCifra = s(bq, "muestraCifra")
             q.filas = l(bq, "filas").map {
                 Fila(label: s($0, "label"), sub: s($0, "sub"), valor: s($0, "valor"), icono: s($0, "icono"),
                      bg: s($0, "bg"), fg: s($0, "fg"), tinta: s($0, "tinta"), entra: b($0, "entra"),
@@ -5095,12 +5191,21 @@ struct CNSeccion {
             }
             q.opciones = l(bq, "opciones").map { o in
                 let mini = o["vista"] as? [String: Any]
-                return Opcion(label: s(o, "label"), sub: s(o, "sub"), puesta: b(o, "puesta"),
+                let noche = mini?["noche"] as? [String: Any]
+                var op = Opcion(label: s(o, "label"), sub: s(o, "sub"), puesta: b(o, "puesta"),
                        color: s(o, "color"), fondo: s(o, "fondo"), muestra: s(o, "muestra"),
                        imagen: s(o, "imagen"), accion: n(o, "accion"),
                        vista: s(mini, "tipo"), franja: s(mini, "franja"),
                        alto: CGFloat(((mini?["alto"] as? NSNumber)?.doubleValue) ?? 0),
                        bulto: b(mini, "bulto"), papel: s(mini, "papel"))
+                if let m = mini {
+                    if op.fondo.isEmpty { op.fondo = s(m, "fondo") }
+                    op.tarjeta = s(m, "tarjeta"); op.acento = s(m, "acento"); op.tinta = s(m, "tinta")
+                    op.oscuro = b(m, "oscuro"); op.valor = s(m, "modo")
+                    op.puntos = (m["puntos"] as? [String]) ?? []
+                    op.nocheFondo = s(noche, "fondo"); op.nocheFranja = s(noche, "franja"); op.nocheTarjeta = s(noche, "tarjeta")
+                }
+                return op
             }
             q.llaves = l(bq, "items").map {
                 Llave(label: s($0, "label"), sub: s($0, "sub"), puesto: b($0, "puesto"), accion: n($0, "accion"))
@@ -5222,6 +5327,9 @@ struct CNSeccionVista: View {
             }
             .padding(14).tarjetaCN()
         case "interruptores": llavesVista(q, bi)
+        case "previa": previaVista(q)
+        case "selector": selectorVista(q, bi)
+        case "telefonos": telefonosVista(q, bi)
         case "opciones": opcionesVista(q, bi)
         case "muestras": muestrasVista(q, bi)
         case "lista": listaVista(q)
@@ -5345,6 +5453,99 @@ struct CNSeccionVista: View {
                 }
             }
             .tarjetaCN()
+        }
+    }
+
+    /// Teléfonos en miniatura, en fila: cada opción tal como quedará la app.
+    /// El elegido lleva el aro del color de la marca y su nombre en negrita.
+    private func telefonosVista(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !q.titulo.isEmpty { rotulo(q.titulo) }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(q.opciones.indices, id: \.self) { i in
+                        let o = q.opciones[i]
+                        Button {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            withAnimation(.easeOut(duration: 0.18)) { datos.marcarEnSeccion(bloque: bi, opcion: i) }
+                            datos.onSeccionAccion(o.accion, nil)
+                        } label: {
+                            VStack(spacing: 8) {
+                                CNTelefonoMini(o: o)
+                                    .frame(width: 74, height: 148)
+                                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(o.puesta ? CNC.acc : CNC.line, lineWidth: o.puesta ? 2.5 : 1))
+                                Text(o.label).font(cnLetra(12.5, o.puesta ? .bold : .regular))
+                                    .foregroundColor(o.puesta ? CNC.ink : CNC.pmut)
+                                    .lineLimit(1).minimumScaleFactor(0.8)
+                            }
+                            .frame(width: 84)
+                        }.buttonStyle(CNPulsable())
+                    }
+                }
+                .padding(.horizontal, 14).padding(.vertical, 14)
+            }
+            .background(CNC.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+            if !q.pie.isEmpty { rotulo(q.pie) }
+        }
+    }
+
+    /// La muestra del tamaño de letra: un título, un texto y una cifra a la
+    /// escala elegida, dentro de una tarjeta como las del resumen.
+    private func previaVista(_ q: CNSeccion.Bloque) -> some View {
+        let e = CGFloat(q.escala) / CGFloat(max(0.5, CNC.fmt.letra))   // relativa a la que ya aplica cnLetra
+        return VStack(alignment: .leading, spacing: 8) {
+            if !q.titulo.isEmpty { rotulo(q.titulo) }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(q.muestraTitulo).font(cnLetra(13 * e)).foregroundColor(CNC.pmut)
+                Text(q.muestraCifra).font(cnLetra(26 * e, .heavy)).foregroundColor(CNC.ink)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text(q.muestraTexto).font(cnLetra(14 * e)).foregroundColor(CNC.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+            .background(CNC.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+            .animation(.easeOut(duration: 0.18), value: q.escala)
+        }
+    }
+
+    /// Una lista dentro de un solo botón: el nombre de lo puesto y, al tocar,
+    /// el menú del sistema con las opciones (cada una con su pista).
+    private func selectorVista(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !q.titulo.isEmpty { rotulo(q.titulo) }
+            Menu {
+                ForEach(q.opciones.indices, id: \.self) { i in
+                    let o = q.opciones[i]
+                    Button {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        datos.marcarEnSeccion(bloque: bi, opcion: i)
+                        datos.onSeccionAccion(o.accion, nil)
+                    } label: {
+                        if o.puesta {
+                            Label(o.sub.isEmpty ? o.label : o.label + " · " + o.sub, systemImage: "checkmark")
+                        } else {
+                            Text(o.sub.isEmpty ? o.label : o.label + " · " + o.sub)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Text(q.opciones.first { $0.puesta }?.label ?? q.valor)
+                        .font(cnLetra(16, .semibold)).foregroundColor(CNC.ink).lineLimit(1)
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.up.chevron.down").font(cnLetra(12, .semibold))
+                        .foregroundColor(CNC.pmut.opacity(0.7))
+                }
+                .padding(.horizontal, 15).padding(.vertical, 14)
+                .background(CNC.card)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+            }
         }
     }
 

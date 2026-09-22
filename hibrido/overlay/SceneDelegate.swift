@@ -437,15 +437,30 @@ extension TestVC {
     static func seccionDeMuestra(_ id: String) -> String {
         switch id {
         case "colores":
-            var ops = ""
-            let temas = [("Chinola", "rgb(239,203,76)"), ("Hoja", "rgb(63,157,84)"), ("Semillas", "rgb(140,106,26)"),
-                         ("Tinta", "rgb(40,40,40)"), ("Niebla", "rgb(120,140,165)"), ("Flor de chinola", "rgb(170,110,190)"),
-                         ("Pulpa", "rgb(230,150,60)"), ("Cáscara", "rgb(120,160,60)"), ("Coral", "rgb(224,120,100)"),
-                         ("Índigo", "rgb(90,100,200)"), ("Noche", "rgb(60,70,80)"), ("Carbón", "rgb(45,45,45)")]
-            for (i, t) in temas.enumerated() {
-                ops += (i > 0 ? "," : "") + "{\"label\":\"\(t.0)\",\"color\":\"\(t.1)\",\"puesta\":\(i == 0),\"accion\":\(i)}"
+            let tema = { (n: String, bg: String, fr: String, card: String, ac: String, osc: Bool, puesta: Bool) -> String in
+                "{\"label\":\"\(n)\",\"puesta\":\(puesta),\"accion\":1,\"vista\":{\"tipo\":\"tema\",\"fondo\":\"\(bg)\",\"franja\":\"\(fr)\",\"tarjeta\":\"\(card)\",\"acento\":\"\(ac)\",\"oscuro\":\(osc)}}"
             }
-            return "{\"id\":\"colores\",\"titulo\":\"Colores\",\"bloques\":[{\"tipo\":\"opciones\",\"titulo\":\"El tema de toda la app\",\"columnas\":2,\"opciones\":[\(ops)]}]}"
+            let claros = [tema("Chinola", "rgb(250,247,236)", "rgb(37,58,44)", "rgb(255,255,255)", "rgb(239,203,76)", false, true),
+                          tema("Claro", "rgb(253,253,253)", "rgb(60,70,64)", "rgb(255,255,255)", "rgb(63,157,84)", false, false),
+                          tema("Hoja", "rgb(239,246,239)", "rgb(48,86,58)", "rgb(255,255,255)", "rgb(63,157,84)", false, false),
+                          tema("Océano", "rgb(238,244,251)", "rgb(40,70,110)", "rgb(255,255,255)", "rgb(70,140,220)", false, false),
+                          tema("Menta", "rgb(236,248,243)", "rgb(35,90,70)", "rgb(255,255,255)", "rgb(60,170,140)", false, false)].joined(separator: ",")
+            let oscuros = [tema("Noche", "rgb(28,36,30)", "rgb(18,24,20)", "rgb(40,50,43)", "rgb(239,203,76)", true, true),
+                           tema("Carbón", "rgb(30,30,32)", "rgb(18,18,20)", "rgb(44,44,48)", "rgb(180,185,195)", true, false),
+                           tema("Medianoche", "rgb(26,32,48)", "rgb(16,20,34)", "rgb(38,46,66)", "rgb(120,150,220)", true, false)].joined(separator: ",")
+            return """
+            {"id":"colores","titulo":"Colores","bloques":[
+              {"tipo":"telefonos","titulo":"Modo","pie":"Automático sigue el modo claro u oscuro del teléfono.","opciones":[
+                {"label":"Automático","puesta":true,"accion":1,"vista":{"tipo":"modo","modo":"auto","fondo":"rgb(250,247,236)","franja":"rgb(37,58,44)","tarjeta":"rgb(255,255,255)","acento":"rgb(239,203,76)","noche":{"fondo":"rgb(28,36,30)","franja":"rgb(18,24,20)","tarjeta":"rgb(40,50,43)"}}},
+                {"label":"Claro","puesta":false,"accion":2,"vista":{"tipo":"modo","modo":"claro","fondo":"rgb(250,247,236)","franja":"rgb(37,58,44)","tarjeta":"rgb(255,255,255)","acento":"rgb(239,203,76)"}},
+                {"label":"Oscuro","puesta":false,"accion":3,"vista":{"tipo":"modo","modo":"oscuro","fondo":"rgb(28,36,30)","franja":"rgb(18,24,20)","tarjeta":"rgb(40,50,43)","acento":"rgb(239,203,76)","oscuro":true}}]},
+              {"tipo":"telefonos","titulo":"Tema de día","opciones":[\(claros)]},
+              {"tipo":"telefonos","titulo":"Tema de noche","opciones":[\(oscuros)]},
+              {"tipo":"telefonos","titulo":"Colores de las cifras","pie":"Lo que entra, lo que sale y lo que apartas.","opciones":[
+                {"label":"Clásica","puesta":true,"accion":4,"vista":{"tipo":"paleta","fondo":"rgb(250,247,236)","tarjeta":"rgb(255,255,255)","puntos":["rgb(40,130,70)","rgb(210,90,60)","rgb(120,90,200)"]}},
+                {"label":"Azul y naranja","puesta":false,"accion":5,"vista":{"tipo":"paleta","fondo":"rgb(250,247,236)","tarjeta":"rgb(255,255,255)","puntos":["rgb(50,120,200)","rgb(230,130,50)","rgb(110,100,190)"]}},
+                {"label":"Sobria","puesta":false,"accion":6,"vista":{"tipo":"paleta","fondo":"rgb(250,247,236)","tarjeta":"rgb(255,255,255)","puntos":["rgb(90,130,100)","rgb(160,110,100)","rgb(120,110,150)"]}}]}]}
+            """
         case "libreta":
             return """
             {"id":"libreta:1","titulo":"Familia","volverA":"libretas",
