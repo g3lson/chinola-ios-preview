@@ -846,7 +846,7 @@ final class CNDatos: ObservableObject {
     static func diagnostico() -> String {
         let v = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "?"
         let b = (Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? "?"
-        let modo = UITraitCollection.current.userInterfaceStyle == .dark ? "oscuro" : "claro"
+        let modo = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? "oscuro" : "claro"
         let pareja = CNC.pareja.oscuro != nil ? "sí" : "no"
         return "v\(v) (\(b)) · sistema \(modo) · paleta \(CNC.tema.oscuro ? "oscura" : "clara") · pareja \(pareja)"
     }
