@@ -377,6 +377,7 @@ class ChinolaViewController: CAPBridgeViewController {
                 }
                 return
             }
+            s.datos.seccionPedida = id
             s.traerSeccion(id)
         }
         datos.onSeccionAccion = { [weak self] i, valor in
@@ -1698,6 +1699,13 @@ class ChinolaViewController: CAPBridgeViewController {
             // tema: es aquí donde llega el cambio de ajuste, y antes no se veía
             // hasta cambiar de pestaña.
             s.barra.ponerChinolo(CNDatos.shared.mascota?.chinolo ?? "")
+            // Y el modo claro/oscuro del sistema (vidrio, menús, barra de
+            // estado) en la MISMA pasada que los colores: antes llegaba por
+            // otro camino, un rato después, y el cambio de tema se veía en dos
+            // tiempos.
+            s.view.window?.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
+            s.contenedorNativo?.backgroundColor = UIColor(CNC.scr)
+            s.setNeedsStatusBarAppearanceUpdate()
         }
     }
 

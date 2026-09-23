@@ -457,6 +457,21 @@ func cnMargenAbajo() -> CGFloat {
 }
 
 /// El margen seguro de arriba del aparato (59 pt con isla, 47 con muesca).
+/// Las esquinas de la pantalla del aparato (0 en los de esquinas rectas).
+/// Se usa para que una pantalla que entra o sale lleve el mismo redondeo que
+/// el cristal, como las del sistema.
+func cnRadioPantalla() -> CGFloat {
+    let s = UIScreen.main
+    guard s.responds(to: Selector(("_displayCornerRadius"))) else { return 0 }
+    return (s.value(forKey: "_displayCornerRadius") as? CGFloat) ?? 0
+}
+
+/// Los nombres de las categorías de fábrica, para que el diccionario los tenga:
+/// se guardan en español en la libreta y se enseñan en el idioma de la app.
+let CN_CATEGORIAS_BASE = [cnT("Ingresos"), cnT("Vivienda"), cnT("Alimentación"), cnT("Servicios"), cnT("Transporte"),
+                          cnT("Educación"), cnT("Salud"), cnT("Donaciones"), cnT("Entretenimiento"), cnT("Deudas"),
+                          cnT("Personal"), cnT("Ahorro"), cnT("Otros")]
+
 func cnMargenArriba() -> CGFloat {
     let escenas = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
     let ventana = escenas.flatMap { $0.windows }.first { $0.isKeyWindow } ?? escenas.first?.windows.first
@@ -529,6 +544,12 @@ struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = "
 
 struct CNMov: Decodable, Identifiable {
     var id: String = ""; var concepto: String = ""; var categoria: String = ""
+    /// Cuándo se anotó: el id empieza por los milisegundos del alta. Dentro
+    /// del mismo día, la última anotada va arriba.
+    var alta: Double { Double(String(id.prefix(13))) ?? 0 }
+    static func masNuevaPrimero(_ a: CNMov, _ b: CNMov) -> Bool {
+        a.fecha != b.fecha ? a.fecha > b.fecha : a.alta > b.alta
+    }
     var tipo: String = ""; var monto: Double = 0; var fecha: String = ""; var medio: String = ""; var destino: String = ""; var recurrente: Bool = false
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         // id puede venir como número o texto.
@@ -577,7 +598,7 @@ struct CNLibreta: Decodable {
     var ingresosMes: Double { tx.filter { $0.esIngreso && $0.fecha.hasPrefix(mesActual) }.reduce(0) { $0 + abs($1.monto) } }
     var gastosMes: Double { tx.filter { $0.esGasto && $0.fecha.hasPrefix(mesActual) }.reduce(0) { $0 + abs($1.monto) } }
     var balanceMes: Double { ingresosMes - gastosMes }
-    func movimientosDe(_ medio: String) -> [CNMov] { tx.filter { $0.medio == medio || $0.destino == medio }.sorted { $0.fecha > $1.fecha } }
+    func movimientosDe(_ medio: String) -> [CNMov] { tx.filter { $0.medio == medio || $0.destino == medio }.sorted(by: CNMov.masNuevaPrimero) }
     func nombreMedio(_ medio: String) -> String {
         if medio.hasPrefix("cuenta:"), let id = Int(medio.dropFirst(7)), let c = cuentas.first(where: { $0.id == id }) { return c.nombre }
         if medio.hasPrefix("tarjeta:"), let id = Int(medio.dropFirst(8)), let t = tarjetas.first(where: { $0.id == id }) { return t.nombre }
@@ -632,21 +653,21 @@ func cnDinero(_ n: Double) -> String {
 func cnFechaCorta(_ iso: String) -> String {
     let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
     guard let d = f.date(from: iso) else { return iso }
-    let o = DateFormatter(); o.locale = Locale(identifier: CNC.fmt.loc); o.dateFormat = "d MMM"
+    let o = DateFormatter(); o.locale = Locale(identifier: CNC.fmt.loc); o.setLocalizedDateFormatFromTemplate("d MMM")
     return o.string(from: d)
 }
 /// "7 SEPTIEMBRE" — el formato que usa la app en las cabeceras de día.
 func cnDiaCorto(_ iso: String) -> String {
     let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
     guard let d = f.date(from: iso) else { return iso }
-    let o = DateFormatter(); o.locale = Locale(identifier: CNC.fmt.loc); o.dateFormat = "d MMMM"
+    let o = DateFormatter(); o.locale = Locale(identifier: CNC.fmt.loc); o.setLocalizedDateFormatFromTemplate("d MMMM")
     return o.string(from: d).uppercased()
 }
 
 func cnDiaLargo(_ iso: String) -> String {
     let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
     guard let d = f.date(from: iso) else { return iso }
-    let o = DateFormatter(); o.locale = Locale(identifier: CNC.fmt.loc); o.dateFormat = "EEEE d 'de' MMMM"
+    let o = DateFormatter(); o.locale = Locale(identifier: CNC.fmt.loc); o.setLocalizedDateFormatFromTemplate("EEEE d MMMM")
     return o.string(from: d).capitalized
 }
 
@@ -733,7 +754,14 @@ final class CNDatos: ObservableObject {
     var onPlan: () -> Void = {}
     @Published var ajustes: CNAjustes? = nil
     /// Subpantalla del perfil abierta (nativa).
-    @Published var seccion: CNSeccion? = nil
+    @Published var seccion: CNSeccion? = nil {
+        // Cerrada = «-»: cualquier JSON que llegue tarde (un refresco de la
+        // anterior) se descarta hasta que se pida otra.
+        didSet { if seccion == nil { seccionPedida = "-" } }
+    }
+    /// La última subpantalla pedida. Un JSON de otra (uno que llegó tarde) se
+    /// tira: era lo que hacía que, al tocar una opción, saliera otra cosa.
+    var seccionPedida = ""
     /// Lo que lleva recorrido el dedo desde la orilla en la subpantalla de
     /// Perfil. Lo mueve el reconocedor de UIKit; aquí solo se dibuja.
     @Published var arrastreSec: CGFloat = 0
@@ -847,7 +875,9 @@ final class CNDatos: ObservableObject {
     /// con los colores nuevos (los de CNC son calculados).
     @Published var selloTema = 0
     func cargarSeccion(json: String) {
-        if let x = CNSeccion.desde(json: json) { seccion = x }
+        guard let x = CNSeccion.desde(json: json) else { return }
+        if !seccionPedida.isEmpty && x.id != seccionPedida { return }
+        seccion = x
     }
     func cargarAjustes(json: String) {
         if let a = CNAjustes.desde(json: json) { ajustes = a }
@@ -958,7 +988,7 @@ struct CNMovs: View {
     private static let periodos = ["Todo", "Este mes", "Mes pasado", "Últimos 3 meses"]
 
     private var movimientos: [CNMov] {
-        var t = datos.libreta.tx.sorted { $0.fecha > $1.fecha }
+        var t = datos.libreta.tx.sorted(by: CNMov.masNuevaPrimero)
         switch filtro {
         case 1: t = t.filter { $0.esIngreso }
         case 2: t = t.filter { !$0.esIngreso && !$0.esTransfer }
@@ -1128,9 +1158,9 @@ struct CNMovs: View {
                 .background(tinte.opacity(0.15))
                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(m.concepto.isEmpty ? m.categoria : m.concepto).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
+                    Text(m.concepto.isEmpty ? cnT(m.categoria) : m.concepto).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
                         .lineLimit(1)
-                    Text("\(m.categoria) · \(medioNombre(m.medio))").font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
+                    Text("\(cnT(m.categoria)) · \(medioNombre(m.medio))").font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
                 }
                 Spacer(minLength: 6)
                 Text((entra ? "+ " : (m.esTransfer ? "" : "− ")) + cnDinero(m.monto)).font(cnLetra(15, .heavy)).foregroundColor(color)
@@ -4929,8 +4959,17 @@ struct CNPerfil: View {
                 .overlay(Color.black.opacity(0.16 * Double(fuera)).ignoresSafeArea().allowsHitTesting(false))
             // La subpantalla entra desde la derecha, como en el teléfono.
             if let sec = datos.seccion {
-                CNSeccionVista(sec: sec, datos: datos, onVolver: { cerrar() })
-                    .offset(x: datos.arrastreSec)
+                // A pantalla completa (por eso el margen de arriba va a mano) y
+                // recortada con el redondeo del cristal: al entrar, al salir y
+                // al arrastrarla se ven sus esquinas como las del sistema.
+                ZStack(alignment: .top) {
+                    CNC.scr
+                    CNSeccionVista(sec: sec, datos: datos, onVolver: { cerrar() })
+                        .padding(.top, cnMargenArriba())
+                }
+                .ignoresSafeArea()
+                .clipShape(RoundedRectangle(cornerRadius: cnRadioPantalla(), style: .continuous))
+                .offset(x: datos.arrastreSec)
                     .shadow(color: .black.opacity(datos.arrastreSec > 0 ? 0.18 : 0), radius: 14, x: -4)
                     .transition(.move(edge: .trailing))
                     .zIndex(1)

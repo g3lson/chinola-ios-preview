@@ -355,7 +355,7 @@ struct CNChipsCategoria: View {
             HStack(spacing: 7) {
                 cnGlifo(icono, tam: 14, grosor: 2.2)
                     .foregroundColor(puesta ? cnSobre(color) : color)
-                Text(nombre).font(cnLetra(14, .semibold))
+                Text(cnT(nombre)).font(cnLetra(14, .semibold))
                     .foregroundColor(puesta ? cnSobre(color) : CNC.ink)
             }
             .padding(.horizontal, 13).padding(.vertical, 9)
