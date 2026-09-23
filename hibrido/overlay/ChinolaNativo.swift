@@ -4950,11 +4950,15 @@ struct CNPerfil: View {
     var body: some View {
         let ancho = UIScreen.main.bounds.width
         let fuera = datos.seccion == nil ? CGFloat(0) : max(0, 1 - datos.arrastreSec / max(1, ancho))
+        // El ZStack va a pantalla completa (sin margen seguro): así la
+        // subpantalla se recorta con las esquinas del cristal de verdad, y la
+        // raíz se pone su margen de arriba a mano.
         return ZStack {
             // Lo de detrás se retira un poco y se apaga mientras hay otra
             // pantalla encima: es lo que hace que volver se sienta como en el
             // teléfono y no como cambiar una diapositiva.
             raiz
+                .padding(.top, cnMargenArriba())
                 .offset(x: -ancho * 0.28 * fuera)
                 .overlay(Color.black.opacity(0.16 * Double(fuera)).ignoresSafeArea().allowsHitTesting(false))
             // La subpantalla entra desde la derecha, como en el teléfono.
@@ -4967,7 +4971,6 @@ struct CNPerfil: View {
                     CNSeccionVista(sec: sec, datos: datos, onVolver: { cerrar() })
                         .padding(.top, cnMargenArriba())
                 }
-                .ignoresSafeArea()
                 .clipShape(RoundedRectangle(cornerRadius: cnRadioPantalla(), style: .continuous))
                 .offset(x: datos.arrastreSec)
                     .shadow(color: .black.opacity(datos.arrastreSec > 0 ? 0.18 : 0), radius: 14, x: -4)
@@ -4975,6 +4978,7 @@ struct CNPerfil: View {
                     .zIndex(1)
             }
         }
+        .ignoresSafeArea()
         // Un muelle corto: entra y sale más rápido que una curva de 0,26 s y
         // se deja interrumpir a mitad, que es lo que hace que se sienta ágil.
         .animation(.spring(response: 0.28, dampingFraction: 0.92), value: datos.seccion?.id)
