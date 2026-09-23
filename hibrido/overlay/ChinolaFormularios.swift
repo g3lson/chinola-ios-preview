@@ -1040,8 +1040,9 @@ struct CNPeriodoHoja: View {
                 .padding(.horizontal, 16).padding(.top, 4)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(CNC.scr.ignoresSafeArea())
+        .frame(maxWidth: .infinity, alignment: .top)
+        .padding(.top, 8)
+        .padding(.bottom, cnMargenAbajo())
         .environment(\.locale, Locale(identifier: CNC.fmt.loc))
     }
 

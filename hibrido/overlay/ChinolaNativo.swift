@@ -4115,7 +4115,12 @@ struct CNResumen: View {
             }
         }
         .background(CNC.scr.ignoresSafeArea())
-        .onChange(of: organiza) { on in datos.onOrganizando(on) }
+        .onChange(of: organiza) { on in
+            datos.onOrganizando(on)
+            // Al entrar, la web se guarda una copia del panel para poder
+            // volver a ella con la ×.
+            if on { datos.onPanel("editar", "", "empezar") }
+        }
         .onChange(of: datos.organizarPanel) { pedido in
             if pedido {
                 withAnimation(.easeOut(duration: 0.22)) { organiza = true }
@@ -4127,14 +4132,24 @@ struct CNResumen: View {
     /// La barra de arriba mientras se organiza: qué se está haciendo y «Listo».
     private var barraOrganiza: some View {
         HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(cnT("Organiza tu panel")).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink)
-                Text(cnT("Arrastra para mover · pellizca para cambiar el tamaño"))
-                    .font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(2)
-            }
-            Spacer(minLength: 8)
+            // La ×: deshacer todo lo tocado desde que se entró.
             Button {
                 UISelectionFeedbackGenerator().selectionChanged()
+                datos.onPanel("editar", "", "cancelar")
+                withAnimation(.easeOut(duration: 0.22)) { organiza = false }
+            } label: {
+                Image(systemName: "xmark").font(cnLetra(16, .bold)).foregroundColor(CNC.ink)
+                    .frame(width: 40, height: 40).background(CNC.soft, in: Circle())
+            }.buttonStyle(CNPulsable())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(cnT("Organiza tu panel")).font(cnLetra(16, .heavy)).foregroundColor(CNC.ink).lineLimit(1)
+                Text(cnT("Mantén pulsada para mover · pellizca para el tamaño"))
+                    .font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(2)
+            }
+            Spacer(minLength: 6)
+            Button {
+                UISelectionFeedbackGenerator().selectionChanged()
+                datos.onPanel("editar", "", "listo")
                 withAnimation(.easeOut(duration: 0.22)) { organiza = false }
             } label: {
                 Text(cnT("Listo")).font(cnLetra(15, .bold)).foregroundColor(CNC.sobreAcc)
@@ -4226,7 +4241,7 @@ struct CNResumen: View {
     }
 
     private func arrastre(_ w: CNResumenModelo.Widget, en vistas: [CNResumenModelo.Widget]) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.22)
+        LongPressGesture(minimumDuration: 0.45, maximumDistance: 8)
             .sequenced(before: DragGesture(minimumDistance: 4, coordinateSpace: .named("panel")))
             .onChanged { valor in
                 switch valor {
@@ -4583,14 +4598,16 @@ struct CNTarjetaWidget: View {
                 let cols = w.leyenda.count <= 2 ? w.leyenda.count : 2
                 CNRejillaFija(columnas: cols, total: w.leyenda.count) { i in
                     let s = w.leyenda[i]
-                    HStack(spacing: 7) {
-                        Circle().fill(cnColor(hexString: s.color)).frame(width: 9, height: 9)
-                        Text(s.label).font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(1)
-                        Spacer(minLength: 4)
-                        Text(s.ultimo).font(cnLetra(12, .bold)).foregroundColor(CNC.ink)
-                            .lineLimit(1).minimumScaleFactor(0.75)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Circle().fill(cnColor(hexString: s.color)).frame(width: 8, height: 8)
+                            Text(s.label).font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
+                        }
+                        Text(s.ultimo).font(cnLetra(14, .bold)).foregroundColor(CNC.ink)
+                            .lineLimit(1).minimumScaleFactor(0.7)
                     }
-                    .padding(.horizontal, 10).padding(.vertical, 7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 11).padding(.vertical, 8)
                     .background(CNC.soft.opacity(0.7), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
                 .padding(.top, 2)

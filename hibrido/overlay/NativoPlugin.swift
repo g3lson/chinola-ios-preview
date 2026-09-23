@@ -22,7 +22,8 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "tema", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "aviso", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "seccion", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "bloqueo", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "bloqueo", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "sesion", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -56,6 +57,16 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func menuActiva(_ call: CAPPluginCall) {
         let id = call.getString("id") ?? "resumen"
         DispatchQueue.main.async { CNMenuEstado.shared.activa = id; CNMenuEstado.shared.alRepintar(); call.resolve() }
+    }
+
+    // La sesión, para Siri: el atajo habla con el servidor sin pasar por la web.
+    @objc func sesion(_ call: CAPPluginCall) {
+        let token = call.getString("token") ?? ""
+        DispatchQueue.main.async {
+            if token.isEmpty { UserDefaults.standard.removeObject(forKey: "cnSesion") }
+            else { UserDefaults.standard.set(token, forKey: "cnSesion") }
+            call.resolve()
+        }
     }
 
     // Bloquear con Face ID al volver a la app. Se guarda aquí, en el

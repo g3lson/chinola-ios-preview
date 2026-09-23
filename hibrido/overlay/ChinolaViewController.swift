@@ -447,7 +447,7 @@ class ChinolaViewController: CAPBridgeViewController {
             // se dibuja la hoja NATIVA del periodo. Antes no pasaba nada.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 s.bridge?.webView?.evaluateJavaScript("(window.__chinolaPeriodoJSON && window.__chinolaPeriodoJSON()) || ''") { res, _ in
-                    guard let json = res as? String, json.count > 2 else { return }
+                    guard let json = res as? String, json.count > 2, let p = CNPeriodo.desde(json: json), p.abierto else { return }
                     CNDatos.shared.cargarPeriodo(json: json)
                     s.abrirPeriodo()
                 }
@@ -692,21 +692,24 @@ class ChinolaViewController: CAPBridgeViewController {
     private func abrirPeriodo() {
         refrescarPeriodo()
         guard periodoVC == nil else { return }
-        let host = UIHostingController(rootView: CNPeriodoHoja(datos: datos, onClose: { [weak self] in
+        // La misma hoja propia que el selector de libretas: de orilla a orilla,
+        // pegada al pie y con el estilo de la app.
+        let d = datos
+        let cerrar: () -> Void = { [weak self] in
             self?.eval("window.__chinolaPeriodo && window.__chinolaPeriodo('cerrar',0)")
             self?.cerrarPeriodo()
-        }))
-        host.modalPresentationStyle = .pageSheet
-        if let hoja = host.sheetPresentationController {
-            hoja.detents = [.large()]
-            hoja.prefersGrabberVisible = false
-            hoja.preferredCornerRadius = 28
         }
+        let host = UIHostingController(rootView: CNHojaAbajo(onClose: cerrar) {
+            CNPeriodoHoja(datos: d, onClose: cerrar)
+                .frame(maxHeight: UIScreen.main.bounds.height * 0.86)
+        })
+        host.view.backgroundColor = .clear
+        host.modalPresentationStyle = .overFullScreen
         periodoVC = host
         if let actual = presentedViewController {
-            actual.dismiss(animated: true) { [weak self] in self?.present(host, animated: true) }
+            actual.dismiss(animated: true) { [weak self] in self?.present(host, animated: false) }
         } else {
-            present(host, animated: true)
+            present(host, animated: false)
         }
     }
     private func refrescarPeriodo() {
@@ -716,7 +719,7 @@ class ChinolaViewController: CAPBridgeViewController {
         }
     }
     private func cerrarPeriodo() {
-        periodoVC?.dismiss(animated: true) { [weak self] in
+        periodoVC?.dismiss(animated: false) { [weak self] in
             guard let s = self else { return }
             CNDatos.shared.periodo = nil
             s.traerDatos(intentos: 3); s.traerResumen(intentos: 4)
