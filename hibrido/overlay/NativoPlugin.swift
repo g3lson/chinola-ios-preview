@@ -75,6 +75,7 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         let on = call.getBool("on") ?? false
         DispatchQueue.main.async {
             UserDefaults.standard.set(on, forKey: "cnBloqueo")
+            NotificationCenter.default.post(name: Notification.Name("cnBloqueoCambiado"), object: nil, userInfo: ["on": on])
             call.resolve()
         }
     }

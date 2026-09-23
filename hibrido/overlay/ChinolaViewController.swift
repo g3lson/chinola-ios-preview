@@ -108,6 +108,8 @@ class ChinolaViewController: CAPBridgeViewController {
                                                name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(alVolver),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(bloqueoCambiado(_:)),
+                                               name: Notification.Name("cnBloqueoCambiado"), object: nil)
         if bloqueoPuesto {
             bloqueada = true
             taparPantalla()
@@ -1281,6 +1283,30 @@ class ChinolaViewController: CAPBridgeViewController {
         enPrimerPlano = true
         guard bloqueoPuesto else { quitarCortinaBloqueo(); return }
         if bloqueada { pedirDesbloqueo() } else { quitarCortinaBloqueo() }
+    }
+
+    /// Al encenderlo se pide la cara ahí mismo: así se ve que funciona y, si
+    /// el teléfono no tiene nada con qué bloquear, se dice y se deja apagado.
+    @objc private func bloqueoCambiado(_ n: Notification) {
+        guard (n.userInfo?["on"] as? Bool) == true else { return }
+        let ctx = LAContext()
+        var error: NSError?
+        guard ctx.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            UserDefaults.standard.set(false, forKey: "cnBloqueo")
+            let a = UIAlertController(title: cnT("Sin nada con qué bloquear"),
+                                      message: cnT("Tu teléfono no tiene Face ID, huella ni código. Ponle uno en Ajustes y vuelve a encenderlo."),
+                                      preferredStyle: .alert)
+            a.addAction(UIAlertAction(title: "OK", style: .default))
+            (presentedViewController ?? self).present(a, animated: true)
+            eval("window.__chinolaBloqueoFallo && window.__chinolaBloqueoFallo()")
+            return
+        }
+        ctx.localizedCancelTitle = cnT("Ahora no")
+        ctx.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: cnT("Así se pedirá cada vez que vuelvas a Chinola")) { ok, _ in
+            DispatchQueue.main.async {
+                if ok { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+            }
+        }
     }
 
     private func taparPantalla() {
