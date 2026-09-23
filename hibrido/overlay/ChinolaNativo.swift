@@ -1205,6 +1205,8 @@ final class CNMenuEstado: ObservableObject {
     var alRepintar: () -> Void = {}
     /// Un aviso corto de la web, para dibujarlo en nativo.
     var alAviso: (String, String) -> Void = { _, _ in }
+    /// La web avisa de que la subpantalla abierta cambió (llegó algo del servidor).
+    var alSeccion: () -> Void = {}
 }
 
 /// Las 5 pestañas, en un solo sitio (las usa la barra nativa UITabBar).

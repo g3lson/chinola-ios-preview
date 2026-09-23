@@ -20,7 +20,8 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "menuTitulos", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "datos", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "tema", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "aviso", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "aviso", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "seccion", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -54,6 +55,11 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func menuActiva(_ call: CAPPluginCall) {
         let id = call.getString("id") ?? "resumen"
         DispatchQueue.main.async { CNMenuEstado.shared.activa = id; CNMenuEstado.shared.alRepintar(); call.resolve() }
+    }
+
+    // La subpantalla del perfil abierta tiene datos nuevos: se vuelve a pedir.
+    @objc func seccion(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { CNMenuEstado.shared.alSeccion(); call.resolve() }
     }
 
     // Un aviso corto de la web, dibujado en nativo.

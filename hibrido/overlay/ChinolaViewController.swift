@@ -328,6 +328,9 @@ class ChinolaViewController: CAPBridgeViewController {
             // ajustes: es un formulario nativo. Hoy solo invitar.
             if id == "importar" { s.pedirCsv(); return }
             if id == "organizar" { s.irAOrganizar(); return }
+            // Nueva libreta desde «Libretas y permisos»: el mismo camino que el
+            // «+» del selector (aviso de plan incluido).
+            if id == "hoja:libreta-nueva" { s.datos.onLibreta("nueva", 0); return }
             // Editar una libreta: la web la deja preparada y el mismo
             // formulario de «nueva» se abre con sus valores.
             if id.hasPrefix("hoja:libreta:") {
@@ -1503,6 +1506,10 @@ class ChinolaViewController: CAPBridgeViewController {
             }
         }
         menuEstado.alAviso = { [weak self] titulo, texto in self?.mostrarAviso(titulo, texto) }
+        menuEstado.alSeccion = { [weak self] in
+            guard let s = self, let id = CNDatos.shared.seccion?.id else { return }
+            s.traerSeccion(id)
+        }
         menuEstado.alRepintar = { [weak self] in
             guard let s = self else { return }
             s.barra.pintar(activa: s.menuEstado.activa, titulos: s.menuEstado.titulos)
