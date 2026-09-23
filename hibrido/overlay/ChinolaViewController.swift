@@ -341,6 +341,7 @@ class ChinolaViewController: CAPBridgeViewController {
             // ajustes: es un formulario nativo. Hoy solo invitar.
             if id == "importar" { s.pedirCsv(); return }
             if id == "organizar" { s.irAOrganizar(); return }
+            if id == "charla" { s.abrirCharla(); return }
             // Nueva libreta desde «Libretas y permisos»: el mismo camino que el
             // «+» del selector (aviso de plan incluido).
             if id == "hoja:libreta-nueva" { s.datos.onLibreta("nueva", 0); return }
@@ -1353,6 +1354,44 @@ class ChinolaViewController: CAPBridgeViewController {
                     s.cortinaBloqueo?.viewWithTag(77)?.isHidden = false
                 }
             }
+        }
+    }
+
+    // MARK: hablar con Chino
+    //
+    // La charla vive en la web (es quien habla con el servidor); aquí se
+    // dibuja y, mientras Chino piensa, se vuelve a pedir cada medio segundo.
+    private var charlaReloj: Timer?
+    private func abrirCharla() {
+        traerCharla()
+        datos.onCharla = { [weak self] texto in
+            guard let s = self else { return }
+            s.eval("window.__chinolaCharla && window.__chinolaCharla(\(s.comillas(texto)))")
+            s.vigilarCharla()
+        }
+        datos.onCharlaLimpiar = { [weak self] in
+            self?.eval("window.__chinolaCharlaLimpiar && window.__chinolaCharlaLimpiar()")
+            self?.traerCharla()
+        }
+        presentar(AnyView(CNCharlaVista(datos: datos, onClose: { [weak self] in
+            self?.charlaReloj?.invalidate(); self?.charlaReloj = nil
+            self?.cerrar()
+            self?.traerDatos(intentos: 2); self?.traerResumen(intentos: 2)
+        })))
+    }
+    private func traerCharla() {
+        bridge?.webView?.evaluateJavaScript("(window.__chinolaCharlaJSON && window.__chinolaCharlaJSON()) || ''") { res, _ in
+            if let json = res as? String, json.count > 2 { CNDatos.shared.cargarCharla(json: json) }
+        }
+    }
+    private func vigilarCharla() {
+        charlaReloj?.invalidate()
+        var vueltas = 0
+        charlaReloj = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] t in
+            guard let s = self else { t.invalidate(); return }
+            vueltas += 1
+            s.traerCharla()
+            if (CNDatos.shared.charla?.pensando == false && vueltas > 1) || vueltas > 120 { t.invalidate(); s.charlaReloj = nil }
         }
     }
 

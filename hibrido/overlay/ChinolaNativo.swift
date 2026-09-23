@@ -751,6 +751,11 @@ final class CNDatos: ObservableObject {
     @Published var libretaNueva: CNLibretaNueva? = nil
     @Published var invitar: CNInvitar? = nil
     @Published var tour: CNTour? = nil
+    /// La charla con Chino (mensajes, si está pensando).
+    @Published var charla: CNCharla? = nil
+    func cargarCharla(json: String) { charla = CNCharla.desde(json: json) }
+    var onCharla: (String) -> Void = { _ in }
+    var onCharlaLimpiar: () -> Void = {}
     @Published var mascota: CNMascota? = nil
     @Published var puerta: CNPuerta? = nil
     @Published var categoria: CNHojaCategoria? = nil

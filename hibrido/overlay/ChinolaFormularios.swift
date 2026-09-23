@@ -2497,3 +2497,217 @@ func cnCompartirTexto(nombre: String, texto: String) {
     hoja.popoverPresentationController?.sourceRect = CGRect(x: (arriba?.view.bounds.midX ?? 0), y: (arriba?.view.bounds.midY ?? 0), width: 1, height: 1)
     arriba?.present(hoja, animated: true)
 }
+
+// ── Hablar con Chino ────────────────────────────────────────────────────────
+//
+// Una charla: burbujas, la caja de texto y el micrófono (el reconocimiento
+// de voz del teléfono, sin mandar audio a nadie). Lo que se escribe va a la
+// web, que habla con el servidor; aquí se dibuja lo que vuelve.
+import Speech
+import AVFoundation
+
+struct CNCharla {
+    struct Mensaje: Identifiable { var id: Int; var de = ""; var texto = ""; var error = false }
+    var titulo = "Chino"; var ph = ""; var iaOn = false; var pensando = false
+    var chinolo = ""; var vacioTexto = ""
+    var mensajes: [Mensaje] = []
+    static func desde(json: String) -> CNCharla? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
+        func b(_ o: [String: Any], _ k: String) -> Bool { (o[k] as? Bool) ?? false }
+        var m = CNCharla()
+        if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
+        m.ph = s(r, "ph"); m.iaOn = b(r, "iaOn"); m.pensando = b(r, "pensando")
+        m.chinolo = s(r, "chinolo"); m.vacioTexto = s(r, "vacioTexto")
+        m.mensajes = ((r["mensajes"] as? [[String: Any]]) ?? []).map {
+            Mensaje(id: (($0["indice"] as? NSNumber)?.intValue) ?? 0, de: s($0, "de"), texto: s($0, "texto"), error: b($0, "error"))
+        }
+        return m
+    }
+}
+
+/// El dictado: el reconocedor del sistema, en el idioma de la app.
+final class CNDictado: ObservableObject {
+    @Published var texto = ""
+    @Published var grabando = false
+    private let motor = AVAudioEngine()
+    private var tarea: SFSpeechRecognitionTask?
+    private var peticion: SFSpeechAudioBufferRecognitionRequest?
+
+    func alternar() { if grabando { parar() } else { empezar() } }
+
+    func empezar() {
+        SFSpeechRecognizer.requestAuthorization { estado in
+            DispatchQueue.main.async {
+                guard estado == .authorized else { return }
+                AVAudioSession.sharedInstance().requestRecordPermission { ok in
+                    DispatchQueue.main.async { if ok { self.arranca() } }
+                }
+            }
+        }
+    }
+    private func arranca() {
+        guard let rec = SFSpeechRecognizer(locale: Locale(identifier: CNC.fmt.loc)) ?? SFSpeechRecognizer(), rec.isAvailable else { return }
+        let sesion = AVAudioSession.sharedInstance()
+        try? sesion.setCategory(.record, mode: .measurement, options: .duckOthers)
+        try? sesion.setActive(true, options: .notifyOthersOnDeactivation)
+        let p = SFSpeechAudioBufferRecognitionRequest()
+        p.shouldReportPartialResults = true
+        peticion = p
+        let entrada = motor.inputNode
+        let formato = entrada.outputFormat(forBus: 0)
+        entrada.removeTap(onBus: 0)
+        entrada.installTap(onBus: 0, bufferSize: 1024, format: formato) { buffer, _ in p.append(buffer) }
+        motor.prepare()
+        do { try motor.start() } catch { return }
+        grabando = true
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        tarea = rec.recognitionTask(with: p) { [weak self] res, err in
+            DispatchQueue.main.async {
+                guard let s = self else { return }
+                if let r = res { s.texto = r.bestTranscription.formattedString }
+                if err != nil || (res?.isFinal ?? false) { s.parar() }
+            }
+        }
+    }
+    func parar() {
+        guard grabando else { return }
+        motor.stop(); motor.inputNode.removeTap(onBus: 0)
+        peticion?.endAudio(); tarea?.cancel(); tarea = nil; peticion = nil
+        grabando = false
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
+
+struct CNCharlaVista: View {
+    @ObservedObject var datos: CNDatos
+    var onClose: () -> Void
+    @State private var texto = ""
+    @StateObject private var dictado = CNDictado()
+    @State private var flota = false
+
+    var body: some View {
+        let m = datos.charla ?? CNCharla()
+        return VStack(spacing: 0) {
+            CNHojaCabecera(titulo: m.titulo, onClose: onClose)
+            ScrollViewReader { lector in
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 8) {
+                        if m.mensajes.isEmpty {
+                            VStack(spacing: 12) {
+                                if let img = cnImagenBase64(m.chinolo) {
+                                    Image(uiImage: img).resizable().scaledToFit().frame(width: 120, height: 120)
+                                        .offset(y: flota ? -4 : 3)
+                                        .animation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true), value: flota)
+                                        .onAppear { flota = true }
+                                }
+                                Text(m.vacioTexto).font(cnLetra(14)).foregroundColor(CNC.pmut)
+                                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                                    .padding(.horizontal, 24)
+                            }
+                            .padding(.top, 30)
+                        }
+                        ForEach(m.mensajes) { x in
+                            HStack {
+                                if x.de == "yo" { Spacer(minLength: 50) }
+                                Text(x.texto).font(cnLetra(15))
+                                    .foregroundColor(x.de == "yo" ? CNC.sobreAcc : (x.error ? CNC.neg : CNC.ink))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .padding(.horizontal, 14).padding(.vertical, 10)
+                                    .background(x.de == "yo" ? CNC.acc : (x.error ? CNC.neg.opacity(0.10) : CNC.card),
+                                                in: CNBurbuja(mia: x.de == "yo"))
+                                if x.de != "yo" { Spacer(minLength: 50) }
+                            }
+                            .id(x.id)
+                        }
+                        if m.pensando {
+                            HStack {
+                                Text("…").font(cnLetra(15)).foregroundColor(CNC.pmut)
+                                    .padding(.horizontal, 14).padding(.vertical, 10)
+                                    .background(CNC.card, in: CNBurbuja(mia: false))
+                                Spacer(minLength: 50)
+                            }
+                            .id(-1)
+                        }
+                        if !m.mensajes.isEmpty && !m.pensando {
+                            Button { datos.onCharlaLimpiar() } label: {
+                                Text(cnT("Empezar de nuevo")).font(cnLetra(13)).foregroundColor(CNC.pmut).padding(6)
+                            }.buttonStyle(CNPulsable())
+                        }
+                        Color.clear.frame(height: 6).id("fin")
+                    }
+                    .padding(.horizontal, 16).padding(.top, 6)
+                }
+                .onChange(of: m.mensajes.count) { _ in withAnimation { lector.scrollTo("fin", anchor: .bottom) } }
+                .onChange(of: m.pensando) { _ in withAnimation { lector.scrollTo("fin", anchor: .bottom) } }
+            }
+            // La caja: micrófono, texto y enviar.
+            HStack(alignment: .bottom, spacing: 8) {
+                Button {
+                    dictado.alternar()
+                } label: {
+                    Image(systemName: dictado.grabando ? "stop.fill" : "mic.fill").font(cnLetra(18, .semibold))
+                        .foregroundColor(dictado.grabando ? .white : CNC.ink)
+                        .frame(width: 46, height: 46)
+                        .background(dictado.grabando ? CNC.neg : CNC.soft, in: Circle())
+                }.buttonStyle(CNPulsable())
+                TextField(m.ph, text: $texto, axis: .vertical)
+                    .lineLimit(1...4)
+                    .font(cnLetra(16)).foregroundColor(CNC.ink)
+                    .padding(.horizontal, 15).padding(.vertical, 12)
+                    .background(CNC.card, in: RoundedRectangle(cornerRadius: 23, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 23).stroke(CNC.line, lineWidth: 1))
+                    .onSubmit { mandar() }
+                Button { mandar() } label: {
+                    Image(systemName: "arrow.up").font(cnLetra(18, .bold)).foregroundColor(CNC.sobreAcc)
+                        .frame(width: 46, height: 46).background(CNC.acc, in: Circle())
+                }
+                .buttonStyle(CNPulsable())
+                .disabled(texto.trimmingCharacters(in: .whitespaces).isEmpty || m.pensando)
+                .opacity(texto.trimmingCharacters(in: .whitespaces).isEmpty || m.pensando ? 0.5 : 1)
+            }
+            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 10)
+            .background(CNC.scr)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(CNC.scr.ignoresSafeArea())
+        .environment(\.locale, Locale(identifier: CNC.fmt.loc))
+        .onReceive(dictado.$texto) { t in if !t.isEmpty { texto = t } }
+        .onChange(of: dictado.grabando) { on in
+            // Al soltar el micrófono se manda solo lo dictado.
+            if !on, !texto.trimmingCharacters(in: .whitespaces).isEmpty, !dictado.texto.isEmpty { mandar() }
+        }
+        .onDisappear { dictado.parar() }
+    }
+
+    private func mandar() {
+        let t = texto.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        datos.onCharla(t)
+        texto = ""; dictado.texto = ""
+    }
+}
+
+/// La burbuja: redonda salvo la esquina de quien habla, que va casi recta.
+struct CNBurbuja: Shape {
+    var mia: Bool
+    func path(in r: CGRect) -> Path {
+        let g: CGFloat = 18, ch: CGFloat = 5
+        // Radios por esquina: arriba-izq, arriba-der, abajo-der, abajo-izq.
+        let (ai, ad, bd, bi): (CGFloat, CGFloat, CGFloat, CGFloat) = mia ? (g, g, ch, g) : (g, g, g, ch)
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX + ai, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX - ad, y: r.minY))
+        p.addArc(center: CGPoint(x: r.maxX - ad, y: r.minY + ad), radius: ad, startAngle: .degrees(-90), endAngle: .degrees(0), clockwise: false)
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY - bd))
+        p.addArc(center: CGPoint(x: r.maxX - bd, y: r.maxY - bd), radius: bd, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
+        p.addLine(to: CGPoint(x: r.minX + bi, y: r.maxY))
+        p.addArc(center: CGPoint(x: r.minX + bi, y: r.maxY - bi), radius: bi, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
+        p.addLine(to: CGPoint(x: r.minX, y: r.minY + ai))
+        p.addArc(center: CGPoint(x: r.minX + ai, y: r.minY + ai), radius: ai, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+        p.closeSubpath()
+        return p
+    }
+}

@@ -236,6 +236,9 @@ extension TestVC {
             datos.aplicarModo(oscuro: true)
             barra.pintar(activa: "perfil", titulos: CNMenuEstado.shared.titulos)
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
+        case "charla", "charla-vacia":
+            datos.cargarCharla(json: cual == "charla" ? TestVC.charlaDeMuestra : TestVC.charlaVacia)
+            vista = AnyView(CNCharlaVista(datos: datos, onClose: {})); estado.activa = "perfil"
         case "mascota":
             datos.cargarMascota(json: TestVC.mascotaDeMuestra)
             vista = AnyView(ZStack { CNPerfil(datos: datos); CNMascotaVista(datos: datos, onClose: {}) })
@@ -702,6 +705,20 @@ extension TestVC {
 }
 
 extension TestVC {
+    static let charlaVacia = """
+    {"titulo":"Chino","ph":"Escríbele o dicta…","iaOn":true,"pensando":false,"chinolo":"",
+     "vacioTexto":"Cuéntame qué gastaste o pregúntame por tu dinero: «pagué la luz, 2.300», «¿en qué se me va el mes?», «¿cómo salgo de las deudas?».","mensajes":[]}
+    """
+    static let charlaDeMuestra = """
+    {"titulo":"Chino","ph":"Escríbele o dicta…","iaOn":true,"pensando":true,"chinolo":"","vacioTexto":"",
+     "mensajes":[
+      {"indice":0,"de":"yo","texto":"pagué la luz, 2.300"},
+      {"indice":1,"de":"chino","texto":"Anotado: RD$2,300 en Servicios (luz), hoy, desde Efectivo. Este mes llevas RD$4,100 en servicios."},
+      {"indice":2,"de":"yo","texto":"¿en qué se me va el mes?"},
+      {"indice":3,"de":"chino","texto":"Tus tres huecos: Comida RD$18,400 (31%), Transporte RD$9,200 (15%) y Servicios RD$4,100 (7%). Comida va 12% por encima del presupuesto; si recortas los pedidos del fin de semana llegas cómodo."},
+      {"indice":4,"de":"yo","texto":"¿cómo salgo de las deudas?"}
+     ]}
+    """
     static let tourDeMuestra = """
     {"paso":1,"total":5,"vista":"resumen","ancla":"libreta","titulo":"Anota en dos toques",
      "texto":"El botón amarillo abre el formulario con la cuenta y la categoría que más usas ya puestas.",
