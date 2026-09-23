@@ -77,6 +77,8 @@ struct CNHojaCabecera: View {
     var conCheck: Bool = true
     var onClose: () -> Void
     var onGuardar: (() -> Void)? = nil
+    /// Un «+» a la derecha (crear algo desde la hoja), en vez del ✓.
+    var onMas: (() -> Void)? = nil
     var body: some View {
         ZStack {
             Text(titulo).font(cnLetra(17, .bold)).foregroundColor(CNC.ink)
@@ -107,6 +109,15 @@ struct CNHojaCabecera: View {
                     .disabled(!guardarActivo)
                     .opacity(guardarActivo ? 1 : 0.6)
                     .accessibilityLabel(guardarTexto)
+                } else if let mas = onMas {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        mas()
+                    } label: {
+                        Image(systemName: "plus").font(cnLetra(18, .bold))
+                            .foregroundColor(CNC.sobreAcc)
+                            .frame(width: 44, height: 44).cnVidrio(Circle(), tinte: CNC.acc)
+                    }.buttonStyle(CNPulsable())
                 } else {
                     Color.clear.frame(width: 44, height: 44)
                 }
@@ -1237,9 +1248,8 @@ struct CNLibretasHoja: View {
         let altoMax = UIScreen.main.bounds.height * 0.82
         return VStack(spacing: 0) {
             // La misma cabecera que el periodo y los formularios: cerrar a la
-            // izquierda y el título en medio. El «+» ya no compite con ella:
-            // «Nueva libreta» es una fila más, al final de la lista.
-            CNHojaCabecera(titulo: m.titulo, onClose: onClose)
+            // izquierda, el título en medio y el «+» en la esquina derecha.
+            CNHojaCabecera(titulo: m.titulo, onClose: onClose, onMas: { datos.onLibreta("nueva", 0) })
                 .padding(.top, 8)
 
             // Con pocas libretas la hoja mide lo que mide su contenido; solo si
@@ -1278,24 +1288,16 @@ struct CNLibretasHoja: View {
                             .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
                         }
                     }
-                    // Las dos acciones, juntas en una tarjeta: crear otra libreta
-                    // y gestionar las que hay.
-                    VStack(spacing: 0) {
-                        accion("plus", m.textoNueva.isEmpty ? cnT("Nueva libreta") : m.textoNueva, tinte: CNC.acc) {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            datos.onLibreta("nueva", 0)
+                    // Gestionar las que hay (crear va en el «+» de arriba).
+                    if !m.textoGestionar.isEmpty {
+                        accion("person.2", m.textoGestionar, tinte: nil) {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            datos.onLibreta("gestionar", 0)
                         }
-                        if !m.textoGestionar.isEmpty {
-                            Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 62)
-                            accion("person.2", m.textoGestionar, tinte: nil) {
-                                UISelectionFeedbackGenerator().selectionChanged()
-                                datos.onLibreta("gestionar", 0)
-                            }
-                        }
+                        .background(CNC.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
                     }
-                    .background(CNC.card)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
                     // Hasta debajo del indicador de inicio: la hoja llega al pie.
                     Color.clear.frame(height: 6 + cnMargenAbajo())
                 }

@@ -475,13 +475,20 @@ class ChinolaViewController: CAPBridgeViewController {
             guard let s = self else { return }
             if que == "nueva" {
                 // Nueva libreta, en nativo: se cierra el selector y se abre la
-                // hoja con los tipos, colores e iconos que manda la web.
-                s.eval("window.__chinolaLibretaAccion && window.__chinolaLibretaAccion('nueva',0)")
+                // hoja con los tipos, colores e iconos que manda la web. Si el
+                // plan no da para otra, la web contesta «plan» y lo que se
+                // abre es la pantalla de planes, con su aviso.
                 s.cerrarLibretas()
-                s.bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretaNuevaJSON && window.__chinolaLibretaNuevaJSON()) || ''") { res, _ in
-                    if let json = res as? String, json.count > 2 { CNDatos.shared.cargarLibretaNueva(json: json) }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        s.presentar(AnyView(CNFormLibreta(datos: s.datos, onClose: { s.cerrar() })))
+                s.bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretaAccion && window.__chinolaLibretaAccion('nueva',0)) || ''") { r, _ in
+                    if (r as? String) == "plan" {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { s.mirarPuerta(intentos: 3) }
+                        return
+                    }
+                    s.bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretaNuevaJSON && window.__chinolaLibretaNuevaJSON()) || ''") { res, _ in
+                        if let json = res as? String, json.count > 2 { CNDatos.shared.cargarLibretaNueva(json: json) }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            s.presentar(AnyView(CNFormLibreta(datos: s.datos, onClose: { s.cerrar() })))
+                        }
                     }
                 }
                 return
