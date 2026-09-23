@@ -4064,6 +4064,7 @@ struct CNResumen: View {
     @State private var llevada = ""
     @State private var marcos: [String: CGRect] = [:]
     @State private var desplaza: CGSize = .zero
+    @State private var panelGlobal = CGRect.zero
     /// Solo para el banco de pruebas: arrancar ya organizando.
     var organizaAlEmpezar = false
     /// Solo para el banco de pruebas: rodar la lista sola para ver el plegado.
@@ -4192,13 +4193,22 @@ struct CNResumen: View {
                     .shadow(color: .black.opacity(llevada == w.wid ? 0.22 : 0), radius: 16, y: 8)
                     .zIndex(llevada == w.wid ? 10 : 0)
                     .animation(.spring(response: 0.28, dampingFraction: 0.85), value: llevada)
-                    .gesture(organiza ? arrastre(w, en: vistas) : nil)
                     // Pellizcar: abrir los dedos la hace ancha, juntarlos la
                     // hace media. Solo las que pueden ser medias.
                     .simultaneousGesture(organiza && w.puedeChica ? pellizco(w) : nil)
             }
             .coordinateSpace(name: "panel")
             .onPreferenceChange(CNMarcosPanel.self) { marcos = $0 }
+            // Dónde está el panel en la pantalla, para traducir el dedo (que
+            // llega en coordenadas de ventana) a la rejilla.
+            .background(GeometryReader { g in
+                Color.clear.preference(key: CNPanelGlobal.self, value: g.frame(in: .global))
+            })
+            .onPreferenceChange(CNPanelGlobal.self) { panelGlobal = $0 }
+            .background(organiza ? CNLevantador(
+                alEmpezar: { p in levantar(en: p) },
+                alMover: { desplaza = $0 },
+                alSoltar: { soltar($0, en: vistas) }) : nil)
             if organiza && !m.catalogo.isEmpty {
                 Menu {
                     ForEach(m.catalogo, id: \.id) { o in
@@ -4245,30 +4255,24 @@ struct CNResumen: View {
             }
     }
 
-    private func arrastre(_ w: CNResumenModelo.Widget, en vistas: [CNResumenModelo.Widget]) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.45, maximumDistance: 8)
-            .sequenced(before: DragGesture(minimumDistance: 4, coordinateSpace: .named("panel")))
-            .onChanged { valor in
-                switch valor {
-                case .first(true):
-                    if llevada != w.wid {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        llevada = w.wid; desplaza = .zero
-                    }
-                case .second(true, let d?):
-                    desplaza = d.translation
-                default: break
-                }
-            }
-            .onEnded { valor in
-                defer { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { llevada = ""; desplaza = .zero } }
-                guard case .second(true, let d?) = valor, let mio = marcos[w.wid] else { return }
-                let centro = CGPoint(x: mio.midX + d.translation.width, y: mio.midY + d.translation.height)
-                guard let destino = vistas.first(where: { $0.wid != w.wid && (marcos[$0.wid]?.contains(centro) ?? false) })
-                else { return }
-                UISelectionFeedbackGenerator().selectionChanged()
-                datos.onPanel("mover", w.wid, String(destino.indice))
-            }
+    /// Mantener pulsada una tarjeta la levanta. El punto llega en coordenadas
+    /// de ventana; se pasa a las del panel y se busca sobre cuál cayó el dedo.
+    private func levantar(en p: CGPoint) {
+        let local = CGPoint(x: p.x - panelGlobal.minX, y: p.y - panelGlobal.minY)
+        guard let wid = marcos.first(where: { $0.value.contains(local) })?.key else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        llevada = wid; desplaza = .zero
+    }
+    /// Al soltar: si el centro de la tarjeta cayó encima de otra, ocupa su sitio.
+    private func soltar(_ t: CGSize, en vistas: [CNResumenModelo.Widget]) {
+        let w = llevada
+        defer { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { llevada = ""; desplaza = .zero } }
+        guard !w.isEmpty, let mio = marcos[w] else { return }
+        let centro = CGPoint(x: mio.midX + t.width, y: mio.midY + t.height)
+        guard let destino = vistas.first(where: { $0.wid != w && (marcos[$0.wid]?.contains(centro) ?? false) })
+        else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+        datos.onPanel("mover", w, String(destino.indice))
     }
 
     private func tarjetaVacia(_ m: CNResumenModelo) -> some View {
@@ -4582,6 +4586,21 @@ struct CNTarjetaWidget: View {
     // MARK: gráfica de series (mismo lienzo 100×42 de la web)
     private var serie: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if !w.leyenda.isEmpty {
+                // Arriba, como en la web: punto, nombre y cifra en una línea, de
+                // dos en dos; con más series, renglones debajo (al lado no caben).
+                CNRejillaFija(columnas: w.leyenda.count == 1 ? 1 : 2, total: w.leyenda.count, alto: 6) { i in
+                    let s = w.leyenda[i]
+                    HStack(spacing: 6) {
+                        Circle().fill(cnColor(hexString: s.color)).frame(width: 8, height: 8)
+                        Text(s.label).font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(1)
+                        Text(s.ultimo).font(cnLetra(12.5, .bold)).foregroundColor(CNC.ink)
+                            .lineLimit(1).minimumScaleFactor(0.75)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.bottom, 2)
+            }
             CNLienzoSerie(w: w).frame(height: 170)
             if !w.etiquetas.isEmpty {
                 // Como mucho seis rótulos en el eje, repartidos: con veinticuatro
@@ -4595,27 +4614,6 @@ struct CNTarjetaWidget: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
-            }
-            if !w.leyenda.isEmpty {
-                // La leyenda debajo de la gráfica y en rejilla de dos: cinco
-                // series con su cifra no caben en una fila, y apretadas se
-                // leían a una letra por renglón.
-                let cols = w.leyenda.count <= 2 ? w.leyenda.count : 2
-                CNRejillaFija(columnas: cols, total: w.leyenda.count) { i in
-                    let s = w.leyenda[i]
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Circle().fill(cnColor(hexString: s.color)).frame(width: 8, height: 8)
-                            Text(s.label).font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
-                        }
-                        Text(s.ultimo).font(cnLetra(14, .bold)).foregroundColor(CNC.ink)
-                            .lineLimit(1).minimumScaleFactor(0.7)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 11).padding(.vertical, 8)
-                    .background(CNC.soft.opacity(0.7), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                .padding(.top, 2)
             }
         }
     }
@@ -5730,11 +5728,12 @@ struct CNSeccionVista: View {
 struct CNRejillaFija<C: View>: View {
     let columnas: Int
     let total: Int
+    var alto: CGFloat = 10
     @ViewBuilder var celda: (Int) -> C
     var body: some View {
         let cols = max(1, columnas)
         let filas = (total + cols - 1) / cols
-        VStack(spacing: 10) {
+        VStack(spacing: alto) {
             ForEach(0..<max(0, filas), id: \.self) { f in
                 HStack(alignment: .top, spacing: 10) {
                     ForEach(0..<cols, id: \.self) { c in
@@ -5791,5 +5790,89 @@ struct CNRodarSolo: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+// ── Levantar tarjetas del panel (UIKit) ─────────────────────────────────────
+//
+// Un DragGesture de SwiftUI en cada tarjeta se queda con el dedo y el panel
+// deja de hacer scroll mientras se organiza. Aquí el reconocedor de mantener
+// pulsado va en el UIScrollView que envuelve el panel: hasta que no se
+// mantiene quieto el dedo, el scroll manda; en cuanto se levanta una tarjeta,
+// el scroll se apaga hasta soltarla.
+struct CNPanelGlobal: PreferenceKey {
+    static var defaultValue = CGRect.zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
+}
+
+struct CNLevantador: UIViewRepresentable {
+    var alEmpezar: (CGPoint) -> Void
+    var alMover: (CGSize) -> Void
+    var alSoltar: (CGSize) -> Void
+
+    func makeUIView(context: Context) -> CNLevantadorVista {
+        let v = CNLevantadorVista()
+        v.coord = context.coordinator
+        return v
+    }
+    func updateUIView(_ v: CNLevantadorVista, context: Context) { context.coordinator.padre = self }
+    func makeCoordinator() -> Coord { Coord(self) }
+    static func dismantleUIView(_ v: CNLevantadorVista, coordinator: Coord) { v.quitar() }
+
+    final class Coord: NSObject, UIGestureRecognizerDelegate {
+        var padre: CNLevantador
+        var inicio = CGPoint.zero
+        weak var scroll: UIScrollView?
+        init(_ p: CNLevantador) { padre = p }
+        @objc func mantenido(_ g: UILongPressGestureRecognizer) {
+            let p = g.location(in: nil)
+            let t = CGSize(width: p.x - inicio.x, height: p.y - inicio.y)
+            switch g.state {
+            case .began:
+                inicio = p
+                scroll?.isScrollEnabled = false
+                padre.alEmpezar(p)
+            case .changed:
+                padre.alMover(t)
+            case .ended:
+                scroll?.isScrollEnabled = true
+                padre.alSoltar(t)
+            default:
+                scroll?.isScrollEnabled = true
+                padre.alSoltar(.zero)
+            }
+        }
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith o: UIGestureRecognizer) -> Bool { true }
+    }
+}
+
+final class CNLevantadorVista: UIView {
+    var coord: CNLevantador.Coord?
+    private var reconocedor: UILongPressGestureRecognizer?
+    override init(frame: CGRect) { super.init(frame: frame); isUserInteractionEnabled = false; backgroundColor = .clear }
+    required init?(coder: NSCoder) { nil }
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil, reconocedor == nil, let c = coord else { return }
+        // El UIScrollView que envuelve el panel: el de la ScrollView de SwiftUI.
+        guard let sv = sequence(first: superview, next: { $0?.superview }).compactMap({ $0 as? UIScrollView }).first
+        else { return }
+        let g = UILongPressGestureRecognizer(target: c, action: #selector(CNLevantador.Coord.mantenido(_:)))
+        g.minimumPressDuration = 0.4
+        g.allowableMovement = 10
+        g.cancelsTouchesInView = false
+        g.delegate = c
+        sv.addGestureRecognizer(g)
+        reconocedor = g
+        c.scroll = sv
+    }
+    override func willMove(toWindow w: UIWindow?) {
+        super.willMove(toWindow: w)
+        if w == nil { quitar() }
+    }
+    func quitar() {
+        if let g = reconocedor { g.view?.removeGestureRecognizer(g) }
+        reconocedor = nil
+        coord?.scroll?.isScrollEnabled = true
     }
 }
