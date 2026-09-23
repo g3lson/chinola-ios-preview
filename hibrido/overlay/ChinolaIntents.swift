@@ -49,11 +49,13 @@ struct CNAtajos: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: CNHablarIntent(),
+            // Las frases de Siri no admiten texto libre dentro: se dice «Anota en
+            // Chinola» y Siri pregunta «¿Qué anoto?»; ahí va la frase entera.
             phrases: [
-                "Anota en \(.applicationName) \(\.$texto)",
-                "Dile a \(.applicationName) \(\.$texto)",
-                "Pregúntale a \(.applicationName) \(\.$texto)",
-                "Apunta en \(.applicationName) \(\.$texto)"
+                "Anota en \(.applicationName)",
+                "Dile a \(.applicationName)",
+                "Pregúntale a \(.applicationName)",
+                "Habla con \(.applicationName)"
             ],
             shortTitle: "Hablar con Chinola",
             systemImageName: "bubble.left.and.text.bubble.right"
