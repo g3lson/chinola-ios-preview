@@ -2,6 +2,7 @@ import UIKit
 import SwiftUI
 import Capacitor
 import UniformTypeIdentifiers
+import LocalAuthentication
 
 /**
  * Base: la WEB de Capacitor. Encima, lo NATIVO:
@@ -100,6 +101,18 @@ class ChinolaViewController: CAPBridgeViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(avisarDelModo),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
         montarOrilla()
+        // El bloqueo con Face ID: se tapa al irse, se pide al volver.
+        NotificationCenter.default.addObserver(self, selector: #selector(alIrse),
+                                               name: UIApplication.willResignActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(alFondo),
+                                               name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(alVolver),
+                                               name: UIApplication.didBecomeActiveNotification, object: nil)
+        if bloqueoPuesto {
+            bloqueada = true
+            taparPantalla()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.pedirDesbloqueo() }
+        }
 
         menuEstado.alTocar = { [weak self] id in
             guard let self = self else { return }
@@ -1240,6 +1253,106 @@ class ChinolaViewController: CAPBridgeViewController {
         default: break
         }
     }
+    // MARK: bloqueo con Face ID / Touch ID
+    //
+    // Quien lo enciende no quiere que nadie que coja el teléfono vea sus
+    // finanzas: al irse la app se tapa (también en el selector de apps) y al
+    // volver pide la cara, la huella o el código del teléfono.
+    private var bloqueoPuesto: Bool { UserDefaults.standard.bool(forKey: "cnBloqueo") }
+    private var bloqueada = false
+    private var pidiendo = false
+    private var cortinaBloqueo: UIView?
+    private var enPrimerPlano = true
+
+    @objc private func alIrse() {
+        enPrimerPlano = false
+        guard bloqueoPuesto else { return }
+        taparPantalla()
+    }
+    @objc private func alFondo() {
+        guard bloqueoPuesto else { return }
+        bloqueada = true
+    }
+    @objc private func alVolver() {
+        enPrimerPlano = true
+        guard bloqueoPuesto else { quitarCortinaBloqueo(); return }
+        if bloqueada { pedirDesbloqueo() } else { quitarCortinaBloqueo() }
+    }
+
+    private func taparPantalla() {
+        guard cortinaBloqueo == nil else { return }
+        let fondo = UIVisualEffectView(effect: UIBlurEffect(style: CNC.tema.oscuro ? .dark : .light))
+        fondo.frame = view.bounds
+        fondo.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        let capa = UIView(frame: view.bounds)
+        capa.backgroundColor = UIColor(CNC.scr).withAlphaComponent(0.85)
+        capa.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        fondo.contentView.addSubview(capa)
+
+        let pila = UIStackView()
+        pila.axis = .vertical; pila.alignment = .center; pila.spacing = 14
+        pila.translatesAutoresizingMaskIntoConstraints = false
+        let marca = UIImageView(image: UIImage(named: "AppIcon") ?? UIImage(systemName: "lock.fill"))
+        marca.contentMode = .scaleAspectFit
+        marca.layer.cornerRadius = 18; marca.layer.cornerCurve = .continuous; marca.clipsToBounds = true
+        marca.widthAnchor.constraint(equalToConstant: 76).isActive = true
+        marca.heightAnchor.constraint(equalToConstant: 76).isActive = true
+        let titulo = UILabel()
+        titulo.text = cnT("Chinola está bloqueada")
+        titulo.font = cnUIFuente(19, .bold); titulo.textColor = UIColor(CNC.ink)
+        let boton = UIButton(type: .system)
+        boton.setTitle(cnT("Desbloquear"), for: .normal)
+        boton.titleLabel?.font = cnUIFuente(16, .bold)
+        boton.setTitleColor(UIColor(CNC.sobreAcc), for: .normal)
+        boton.backgroundColor = UIColor(CNC.acc)
+        boton.contentEdgeInsets = UIEdgeInsets(top: 13, left: 26, bottom: 13, right: 26)
+        boton.layer.cornerRadius = 22
+        boton.addTarget(self, action: #selector(tocarDesbloquear), for: .touchUpInside)
+        boton.isHidden = true
+        boton.tag = 77
+        pila.addArrangedSubview(marca); pila.addArrangedSubview(titulo); pila.addArrangedSubview(boton)
+        fondo.contentView.addSubview(pila)
+        NSLayoutConstraint.activate([
+            pila.centerXAnchor.constraint(equalTo: fondo.contentView.centerXAnchor),
+            pila.centerYAnchor.constraint(equalTo: fondo.contentView.centerYAnchor, constant: -20)
+        ])
+        view.addSubview(fondo)
+        cortinaBloqueo = fondo
+    }
+    private func quitarCortinaBloqueo() {
+        guard let c = cortinaBloqueo else { return }
+        cortinaBloqueo = nil
+        UIView.animate(withDuration: 0.22, animations: { c.alpha = 0 }) { _ in c.removeFromSuperview() }
+    }
+    @objc private func tocarDesbloquear() { pedirDesbloqueo() }
+
+    private func pedirDesbloqueo() {
+        guard bloqueada, !pidiendo, enPrimerPlano else { return }
+        taparPantalla()
+        let ctx = LAContext()
+        ctx.localizedCancelTitle = cnT("Ahora no")
+        var error: NSError?
+        // Cara o huella y, si no hay o falla, el código del teléfono.
+        guard ctx.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            // Sin nada que pedir (teléfono sin código): no se puede bloquear.
+            bloqueada = false; quitarCortinaBloqueo(); return
+        }
+        pidiendo = true
+        ctx.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: cnT("Desbloquea Chinola para ver tus finanzas")) { [weak self] ok, _ in
+            DispatchQueue.main.async {
+                guard let s = self else { return }
+                s.pidiendo = false
+                if ok {
+                    s.bloqueada = false
+                    s.quitarCortinaBloqueo()
+                } else {
+                    // Se queda tapada, con el botón para volver a intentarlo.
+                    s.cortinaBloqueo?.viewWithTag(77)?.isHidden = false
+                }
+            }
+        }
+    }
+
     /// Al resumen, organizando: desde Perfil o desde donde sea.
     private func irAOrganizar() {
         menuEstado.activa = "resumen"; barra.pintar(activa: "resumen", titulos: menuEstado.titulos)

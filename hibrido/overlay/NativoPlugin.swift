@@ -21,7 +21,8 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "datos", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "tema", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "aviso", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "seccion", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "seccion", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "bloqueo", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -55,6 +56,16 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func menuActiva(_ call: CAPPluginCall) {
         let id = call.getString("id") ?? "resumen"
         DispatchQueue.main.async { CNMenuEstado.shared.activa = id; CNMenuEstado.shared.alRepintar(); call.resolve() }
+    }
+
+    // Bloquear con Face ID al volver a la app. Se guarda aquí, en el
+    // teléfono: tiene que valer antes de que la web haya arrancado.
+    @objc func bloqueo(_ call: CAPPluginCall) {
+        let on = call.getBool("on") ?? false
+        DispatchQueue.main.async {
+            UserDefaults.standard.set(on, forKey: "cnBloqueo")
+            call.resolve()
+        }
     }
 
     // La subpantalla del perfil abierta tiene datos nuevos: se vuelve a pedir.
