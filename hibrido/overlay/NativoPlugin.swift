@@ -26,7 +26,8 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "bloqueo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "sesion", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "periodo", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "hoja", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "hoja", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "formulario", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -56,6 +57,18 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         let hasta = call.getString("hasta") ?? ""
         DispatchQueue.main.async {
             CNDatos.shared.ponPeriodo(mes: mes, desde: desde, hasta: hasta)
+            call.resolve()
+        }
+    }
+
+    /// La web acaba de abrir una hoja de formulario: que la dibuje el nativo.
+    ///
+    /// El mecanismo ya existía —la web describe los campos en
+    /// `__chinolaHojaJSON` y CNHojaWeb los pinta—, pero solo lo disparaba una
+    /// vista nativa. Con las pantallas en web hacía falta esta puerta.
+    @objc func formulario(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: Notification.Name("cnAbrirHoja"), object: nil)
             call.resolve()
         }
     }

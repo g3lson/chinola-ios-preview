@@ -137,6 +137,8 @@ class ChinolaViewController: CAPBridgeViewController {
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(bloqueoCambiado(_:)),
                                                name: Notification.Name("cnBloqueoCambiado"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(abrirHojaDeLaWeb),
+                                               name: Notification.Name("cnAbrirHoja"), object: nil)
         if bloqueoPuesto {
             bloqueada = true
             taparPantalla()
@@ -1603,6 +1605,21 @@ class ChinolaViewController: CAPBridgeViewController {
     }
 
     /// La hoja de la web, dibujada en nativo y encima de todo.
+    /// La web abrió una hoja: se pide su descripción y se dibuja NATIVA.
+    ///
+    /// Hasta ahora este camino solo lo abría una vista nativa. Con las
+    /// pantallas en web hacía falta que lo pudiera pedir la web, o los
+    /// formularios se quedaban dibujados por ella. Es el mismo mecanismo de
+    /// siempre —la web describe los campos, el nativo los pinta—, solo que
+    /// ahora la puerta está en los dos lados.
+    @objc func abrirHojaDeLaWeb() {
+        bridge?.webView?.evaluateJavaScript("(window.__chinolaHojaJSON && window.__chinolaHojaJSON()) || ''") { [weak self] res, _ in
+            guard let s = self, let json = res as? String, json.count > 2 else { return }
+            CNDatos.shared.cargarHojaWeb(json: json)
+            s.presentarHojaWeb()
+        }
+    }
+
     private weak var hojaWebVC: UIViewController?
     private func presentarHojaWeb() {
         guard hojaWebVC == nil else { refrescarHojaWeb(); return }
