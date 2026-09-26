@@ -2651,16 +2651,6 @@ struct CNDetalleMov: View {
 }
 
 // ── Formulario «Nuevo movimiento» NATIVO (guarda a la web) ──────────────────
-/// El símbolo de la moneda a secas («RD$», «$», «€»): lo que va delante del
-/// monto mientras se escribe, sin número pegado.
-func cnSimboloMoneda() -> String {
-    let f = NumberFormatter()
-    f.numberStyle = .currency
-    f.locale = Locale(identifier: CNC.fmt.loc)
-    f.currencyCode = CNC.fmt.moneda
-    return f.currencySymbol ?? CNC.fmt.moneda
-}
-
 /// ANOTAR UN MOVIMIENTO.
 ///
 /// Un `Form` de iOS, no una imitación: la barra con «Cancelar» y «Guardar» la
@@ -2765,7 +2755,7 @@ struct CNNuevoMov: View {
     /// escribir de verdad. El símbolo de la moneda queda fijo a la izquierda.
     private var monto_: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(cnSimboloMoneda())
+            Text(cnSimboloMoneda)
                 .font(cnLetra(22, .semibold))
                 .foregroundColor(CNC.pmut)
             TextField("0", text: $monto)
