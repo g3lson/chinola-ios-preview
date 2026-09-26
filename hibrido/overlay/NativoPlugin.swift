@@ -1,6 +1,7 @@
 import Foundation
 import Capacitor
 import SwiftUI
+import UIKit
 
 /**
  * Puente para incrustar pantallas NATIVAS (SwiftUI) dentro de la app Capacitor.
@@ -24,7 +25,8 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "seccion", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "bloqueo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "sesion", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "periodo", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "periodo", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "hoja", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -55,6 +57,52 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async {
             CNDatos.shared.ponPeriodo(mes: mes, desde: desde, hasta: hasta)
             call.resolve()
+        }
+    }
+
+    /// Una hoja de acciones DEL SISTEMA, pedida por la web.
+    ///
+    /// La puerta que le faltaba a Chinola. Hasta ahora los menús nativos
+    /// vivían dentro de las vistas SwiftUI, así que una pantalla dibujada en
+    /// web se quedaba con los menús de la web. Con esto la web puede pedir el
+    /// menú de iOS desde donde sea, igual que hace Batuta.
+    ///
+    /// { titulo, mensaje, opciones: [{ texto, estilo: normal|peligro|cancelar }] }
+    /// → { indice }, y -1 si se cancela.
+    @objc func hoja(_ call: CAPPluginCall) {
+        let titulo = call.getString("titulo") ?? ""
+        let mensaje = call.getString("mensaje") ?? ""
+        let opciones = call.getArray("opciones", JSObject.self) ?? []
+        DispatchQueue.main.async {
+            guard var arriba = self.bridge?.viewController else { call.reject("sin vista"); return }
+            while let siguiente = arriba.presentedViewController, !siguiente.isBeingDismissed {
+                arriba = siguiente
+            }
+            if arriba is UIAlertController { call.reject("ocupado"); return }
+            let alerta = UIAlertController(title: titulo.isEmpty ? nil : titulo,
+                                           message: mensaje.isEmpty ? nil : mensaje,
+                                           preferredStyle: .actionSheet)
+            var respondida = false
+            for (i, o) in opciones.enumerated() {
+                let estilo: UIAlertAction.Style
+                switch o["estilo"] as? String {
+                case "peligro": estilo = .destructive
+                case "cancelar": estilo = .cancel
+                default: estilo = .default
+                }
+                alerta.addAction(UIAlertAction(title: o["texto"] as? String ?? "", style: estilo) { _ in
+                    guard !respondida else { return }
+                    respondida = true
+                    call.resolve(["indice": estilo == .cancel ? -1 : i])
+                })
+            }
+            // En el iPad una hoja de acciones necesita de dónde nacer.
+            if let pop = alerta.popoverPresentationController {
+                pop.sourceView = arriba.view
+                pop.sourceRect = CGRect(x: arriba.view.bounds.midX, y: arriba.view.bounds.midY, width: 1, height: 1)
+                pop.permittedArrowDirections = []
+            }
+            arriba.present(alerta, animated: true)
         }
     }
 
