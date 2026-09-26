@@ -1455,6 +1455,28 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         let abajo = anfitriona?.safeAreaInsets.bottom ?? 0
         let nuevo = (conTitulos ? 58 : 52) + abajo
         if altoC?.constant != nuevo { altoC?.constant = nuevo }
+        revisarAncho()
+    }
+
+    /// El ancho que la barra tenía cuando midió los rótulos.
+    private var anchoMedido: CGFloat = 0
+
+    /// VOLVER A MEDIR LOS RÓTULOS CUANDO LA BARRA YA TIENE SU ANCHO.
+    ///
+    /// Las opciones se ponen en `viewDidLoad`, cuando la barra todavía mide 0:
+    /// UIKit reparte con ese ancho, decide que los rótulos no caben y los deja
+    /// cortados —«M...», «Pe...»— para siempre, aunque después crezca. Por eso
+    /// se cortaba «Movs», de cuatro letras, mientras «Plan», también de cuatro,
+    /// salía entera: no era el texto, era en qué momento se midió. Al volver a
+    /// poner las mismas opciones con el ancho de verdad, las mide otra vez.
+    private func revisarAncho() {
+        let ancho = barra.bounds.width
+        guard ancho > 1, abs(ancho - anchoMedido) > 0.5 else { return }
+        anchoMedido = ancho
+        let items = barra.items
+        let puesta = barra.selectedItem
+        barra.setItems(items, animated: false)
+        barra.selectedItem = puesta
     }
 
     /// Encoger la barra ENTERA al bajar y devolverla a su tamaño al subir.
@@ -1588,6 +1610,7 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     /// Pestaña activa, títulos y colores del tema.
     func pintar(activa: String, titulos: Bool) {
         if titulos != conTitulos { conTitulos = titulos; rehacer(); ajustar() }
+        revisarAncho()
         barra.tintColor = UIColor(CNC.pos)
         barra.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
         if let i = ids.firstIndex(of: activa), let items = barra.items, i < items.count,
