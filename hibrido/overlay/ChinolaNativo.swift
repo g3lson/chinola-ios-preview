@@ -497,14 +497,19 @@ struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String =
         icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "banknote.fill" }
     enum K: String, CodingKey { case id, nombre, banco, saldo, color, clase, icono } }
 
-struct CNCategoria: Decodable { var nombre: String = ""; var tipo: String = "Gasto"; var limite: Double = 0; var color: String = "#e0a92e"; var icono: String = "tag.fill"
+/// Ojo con `tipo` y `limite`: la web NO los manda. Lo que manda es `ingreso`
+/// —si la categoría es de entradas— y el presupuesto va aparte, en
+/// `CNLibreta.presupuesto`. Los dos campos se quedan porque hay código que los
+/// nombra, pero salen siempre "Gasto" y 0: no te fíes de ellos.
+struct CNCategoria: Decodable { var nombre: String = ""; var tipo: String = "Gasto"; var limite: Double = 0; var ingreso: Bool = false; var color: String = "#e0a92e"; var icono: String = "tag.fill"
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? "Gasto"
         limite = (try? c.decodeIfPresent(Double.self, forKey: .limite)) ?? 0
+        ingreso = (try? c.decodeIfPresent(Bool.self, forKey: .ingreso)) ?? false
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#e0a92e"
         icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "tag.fill" }
-    enum K: String, CodingKey { case nombre, tipo, limite, color, icono } }
+    enum K: String, CodingKey { case nombre, tipo, limite, ingreso, color, icono } }
 
 struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var limite: Double = 0; var corte: Int = 0; var pago: Int = 0; var color: String = "#d55948"
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
@@ -576,6 +581,9 @@ struct CNLibreta: Decodable {
     var categorias: [CNCategoria] = []
     var metas: [CNMeta] = []
     var tx: [CNMov] = []
+    /// El presupuesto: categoría → tope del mes. Vive AQUÍ, no en la
+    /// categoría, aunque `CNCategoria.limite` dé a entender lo contrario.
+    var presupuesto: [String: Double] = [:]
     init() {}
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? "Personal"
@@ -584,15 +592,22 @@ struct CNLibreta: Decodable {
         prestamos = (try? c.decodeIfPresent([CNPrestamo].self, forKey: .prestamos)) ?? []
         categorias = (try? c.decodeIfPresent([CNCategoria].self, forKey: .categorias)) ?? []
         metas = (try? c.decodeIfPresent([CNMeta].self, forKey: .metas)) ?? []
-        tx = (try? c.decodeIfPresent([CNMov].self, forKey: .tx)) ?? [] }
-    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx }
+        tx = (try? c.decodeIfPresent([CNMov].self, forKey: .tx)) ?? []
+        presupuesto = (try? c.decodeIfPresent([String: Double].self, forKey: .presupuesto)) ?? [:] }
+    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx, presupuesto }
 
     func categoria(_ nombre: String) -> CNCategoria? { categorias.first { $0.nombre == nombre } }
     func gastadoCategoria(_ nombre: String) -> Double {
         let mes = String(cnHoy().prefix(7))
         return tx.filter { $0.categoria == nombre && $0.esGasto && $0.fecha.hasPrefix(mes) }.reduce(0) { $0 + abs($1.monto) }
     }
-    var presupuestoTotal: Double { categorias.filter { $0.tipo == "Gasto" }.reduce(0) { $0 + $1.limite } }
+    /// Sumaba `categorias[].limite`, que la web nunca manda: daba siempre 0.
+    /// Ahora suma el presupuesto de verdad, igual que la web (`presRows`):
+    /// las categorías de gasto, sin contar Ahorro.
+    var presupuestoTotal: Double {
+        categorias.filter { !$0.ingreso && $0.nombre != "Ahorro" }
+            .reduce(0) { $0 + (presupuesto[$1.nombre] ?? 0) }
+    }
     var deudaTarjetas: Double { tarjetas.reduce(0) { $0 + $1.saldo } }
     private var mesActual: String { String(cnHoy().prefix(7)) }
     var ingresosMes: Double { tx.filter { $0.esIngreso && $0.fecha.hasPrefix(mesActual) }.reduce(0) { $0 + abs($1.monto) } }
@@ -639,6 +654,21 @@ func cnHoy() -> String {
     let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
     return f.string(from: Date())
 }
+/// El dinero CON su signo, como lo escribe la web (`Intl.NumberFormat` lo
+/// conserva). Para lo que puede ser negativo de verdad: el balance del mes, el
+/// saldo de una cuenta en rojo, el patrimonio. `cnDinero` se come el signo
+/// —hace abs()— y para esos sitios enseñaría un número en positivo que es
+/// mentira.
+func cnDineroFirmado(_ n: Double) -> String {
+    let f = NumberFormatter()
+    f.numberStyle = .currency
+    f.locale = Locale(identifier: CNC.fmt.loc)
+    f.currencyCode = CNC.fmt.moneda
+    let dec = CNC.fmt.centavos ? 2 : 0
+    f.minimumFractionDigits = dec; f.maximumFractionDigits = dec
+    return f.string(from: NSNumber(value: n)) ?? ""
+}
+
 func cnDinero(_ n: Double) -> String {
     let f = NumberFormatter()
     f.numberStyle = .currency
@@ -823,10 +853,12 @@ final class CNDatos: ObservableObject {
     /// Un modelo a medias (leído mientras la web repinta) NO pisa al bueno:
     /// así la pantalla no se queda en blanco al cambiar de pestaña.
     func cargarPlan(json: String) {
+        defer { refrescarPlan() }
         guard let m = CNPlanModelo.desde(json: json) else { return }
         if m.listo || plan == nil { plan = m }
     }
     func cargarCuentas(json: String) {
+        defer { refrescarCuentas() }
         guard let m = CNCuentasModelo.desde(json: json) else { return }
         if m.listo || cuentas == nil { cuentas = m }
     }
@@ -869,7 +901,91 @@ final class CNDatos: ObservableObject {
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
-    func cargar(json: String) { if let l = CNLibreta.desde(json: json) { libreta = l } }
+    func cargar(json: String) {
+        if let l = CNLibreta.desde(json: json) { libreta = l; refrescarCifras(); refrescarCuentas(); refrescarPlan() }
+    }
+
+    /// EL PERÍODO, que hasta ahora solo sabía la web.
+    ///
+    /// Sin él lo nativo no podía sumar nada: no sabía de qué mes hablar. Lo
+    /// manda `fijaPeriodo`, el embudo por el que pasan todos los cambios.
+    @Published var mesActivo: String = String(cnHoy().prefix(7))
+    @Published var desdeActivo: String = ""
+    @Published var hastaActivo: String = ""
+    var periodoCalculo: CNCalculo.Periodo {
+        CNCalculo.Periodo(mes: mesActivo,
+                          desde: desdeActivo.isEmpty ? nil : desdeActivo,
+                          hasta: hastaActivo.isEmpty ? nil : hastaActivo)
+    }
+    func ponPeriodo(mes: String, desde: String, hasta: String) {
+        if !mes.isEmpty { mesActivo = mes }
+        desdeActivo = desde
+        hastaActivo = hasta
+        refrescarCifras(); refrescarCuentas(); refrescarPlan()
+    }
+
+    /// Las CIFRAS de la cabecera del resumen, calculadas aquí con CNCalculo.
+    ///
+    /// El aspecto —cuál de las siete cabeceras, los colores, el degradado— lo
+    /// sigue mandando la web: eso es configuración, no cálculo, y sólo cambia
+    /// cuando el usuario la toca. Lo que cambia a cada rato son los números, y
+    /// esos ya no hay que pedirlos: salen de la libreta que ya tenemos.
+    /// Las cifras de CUENTAS, calculadas aquí.
+    ///
+    /// La fila número `i` es la cuenta número `i` de la libreta: así las numera
+    /// la web, y por eso se pueden emparejar sin más. Lo que NO se toca es la
+    /// decoración —iconos, colores, rótulos, lo que sale al deslizar— ni nada
+    /// si el dinero está oculto, que entonces la web manda cifras tapadas y
+    /// destaparlas sería un fallo de verdad.
+    func refrescarCuentas() {
+        guard var m = cuentas, !m.oculto else { return }
+        let l = libreta
+        for i in m.cuentas.indices where i < l.cuentas.count {
+            m.cuentas[i].valor = cnDineroFirmado(l.cuentas[i].saldo)
+        }
+        for i in m.tarjetas.indices where i < l.tarjetas.count {
+            m.tarjetas[i].valor = cnDinero(l.tarjetas[i].saldo)
+        }
+        for i in m.prestamos.indices where i < l.prestamos.count {
+            m.prestamos[i].valor = cnDinero(max(0, l.prestamos[i].total - l.prestamos[i].pagado))
+        }
+        m.totalCuentas.valor = cnDineroFirmado(CNCalculo.saldoCuentas(l))
+        m.totalTarjetas.valor = cnDinero(CNCalculo.deudaTarjetas(l))
+        m.totalPrestamos.valor = cnDinero(CNCalculo.pendientePrestamos(l))
+        m.patrimonio.valor = cnDineroFirmado(CNCalculo.patrimonio(l))
+        m.patrimonio.activos = cnDinero(CNCalculo.saldoCuentas(l))
+        m.patrimonio.pasivos = cnDinero(CNCalculo.deudaTarjetas(l) + CNCalculo.deudaPrestamos(l))
+        cuentas = m
+    }
+
+    /// Las cifras de PLAN: el gastado y el tope del mes, y el relleno de cada
+    /// barra.
+    ///
+    /// Las filas van en el mismo orden que en la web —las categorías de gasto,
+    /// sin las de ingreso y sin Ahorro—, así que se emparejan por posición.
+    /// Los textos («te quedan…», el pie) los sigue escribiendo la web: eso es
+    /// redacción, no cálculo, y copiarla a mano sería inventarse el tono.
+    func refrescarPlan() {
+        guard var m = plan else { return }
+        let pres = CNCalculo.presupuesto(libreta, periodoCalculo)
+        m.presGastado = cnDinero(pres.gastadoTotal)
+        m.presTotal = cnDinero(pres.limiteTotal)
+        m.presPct = Double(pres.pctTotal)
+        for i in m.filas.indices where i < pres.filas.count {
+            m.filas[i].pct = Double(pres.filas[i].pct)
+        }
+        plan = m
+    }
+
+    func refrescarCifras() {
+        guard resumen != nil else { return }
+        let t = CNCalculo.totales(libreta, periodoCalculo)
+        resumen?.cabecera.balanceFmt = cnDineroFirmado(t.bal)
+        resumen?.cabecera.ingFmt = cnDinero(t.ing)
+        resumen?.cabecera.gasFmt = cnDinero(t.gas)
+        resumen?.cabecera.entraFmt = cnDinero(t.ing)
+        resumen?.cabecera.saleFmt = cnDinero(t.gas)
+    }
     func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p } }
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
     /// con los colores nuevos (los de CNC son calculados).
@@ -884,6 +1000,7 @@ final class CNDatos: ObservableObject {
     }
     func cargarResumen(json: String) {
         guard let m = CNResumenModelo.desde(json: json) else { return }
+        defer { refrescarCifras() }
         if m.listo || resumen == nil {
             resumen = m
             return

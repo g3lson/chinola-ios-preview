@@ -23,8 +23,22 @@ class ChinolaViewController: CAPBridgeViewController {
     private let barra = CNBarraNativa()
     private var contenedorNativo: UIView?
 
-    // Pestañas ya nativas.
-    private let nativas: Set<String> = ["resumen", "movs", "cuentas", "plan", "perfil"]
+    /// Las pestañas que se dibujan en NATIVO. Vacía: todas se pintan en web,
+    /// y lo nativo es la barra de abajo, los menús, las hojas y los
+    /// formularios — el modelo de Batuta entero.
+    ///
+    /// Por qué: el reparto anterior pagaba el puente sin ganar nada. La web
+    /// calculaba el modelo de cada pantalla —incluida la geometría del panel:
+    /// los puntos de las líneas, los tramos de la dona, las paradas de los
+    /// degradados— y el nativo solo lo dibujaba. Dos implementaciones de la
+    /// misma pantalla, y el puente en medio de cada toque.
+    ///
+    /// Las vistas SwiftUI (CNResumen, CNMovs, CNCuentas, CNPlan, CNPerfil) se
+    /// quedan en el proyecto a propósito: devolver una pantalla a nativo es
+    /// escribir su id aquí. `mostrarNativo` con un id que no esté en la lista
+    /// quita el contenedor y deja ver la web, así que no hay nada más que
+    /// tocar para ir y volver.
+    private let nativas: Set<String> = []
 
     override func capacitorDidLoad() {
         nativo.store = datos
@@ -56,6 +70,14 @@ class ChinolaViewController: CAPBridgeViewController {
     /// Y por si ningún aviso llega: cada dos segundos se comprueba que la
     /// paleta puesta sea la del modo del teléfono. Es una comparación, no
     /// cuesta nada, y cierra la puerta a «hay que reiniciar».
+    ///
+    /// Lo intenté quitar escuchando a la pantalla, que es la única que ve el
+    /// modo de verdad —la ventana no, porque la app le fuerza el estilo del
+    /// tema—. No se puede: `UIScreen` NO admite `registerForTraitChanges`, no
+    /// conforma a `UITraitChangeObservable` (sí lo hacen UIView,
+    /// UIViewController y UIPresentationController, que están todos dentro de
+    /// la ventana forzada y por eso no sirven). Si algún día hay a quién
+    /// escuchar, este reloj sobra; hasta entonces, se queda.
     private var vigiaModo: Timer?
     private func vigilarModo() {
         vigiaModo?.invalidate()
@@ -77,8 +99,13 @@ class ChinolaViewController: CAPBridgeViewController {
         }
         // Y se le dice a la web, que también tiene que cambiar lo suyo.
         eval("window.__chinolaSistemaOscuro && window.__chinolaSistemaOscuro(\(oscuro))")
-        for t in [0.3, 0.9, 1.8] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + t) { [weak self] in self?.traerTema() }
+        // Antes se pedía el tema tres veces seguidas por si la web tardaba.
+        // Se pide una, y sólo se insiste si para entonces la paleta todavía no
+        // es la del modo nuevo.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.traerTema() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            guard let s = self, CNC.tema.oscuro != oscuro else { return }
+            s.traerTema()
         }
     }
 
@@ -150,6 +177,7 @@ class ChinolaViewController: CAPBridgeViewController {
         super.viewDidLayoutSubviews()
         barra.ajustar()
         apuntarPestanas()
+        avisarAltoBarra()
     }
 
     /// Dónde está cada pestaña, para que el tour las señale. Los botones de
@@ -547,6 +575,19 @@ class ChinolaViewController: CAPBridgeViewController {
 
     /// El modelo de UNA pantalla, en cuanto se entra en ella. La web tarda un
     /// pintado en tener listo lo suyo, así que se pide dos veces.
+    /// ¿Ya tiene el nativo el modelo de esa pantalla? El resumen lo dice él
+    /// mismo con su `listo` (la web lo marca cuando sus tarjetas están); las
+    /// demás, con haberlo recibido.
+    private func pantallaLista(_ id: String) -> Bool {
+        switch id {
+        case "resumen": return CNDatos.shared.resumen?.listo == true
+        case "cuentas": return CNDatos.shared.cuentas?.listo == true
+        case "plan": return CNDatos.shared.plan?.listo == true
+        case "perfil": return CNDatos.shared.ajustes != nil
+        default: return false
+        }
+    }
+
     private func refrescarPantalla(_ id: String) {
         let pedir = { [weak self] in
             guard let s = self else { return }
@@ -559,7 +600,13 @@ class ChinolaViewController: CAPBridgeViewController {
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: pedir)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: pedir)
+        // La segunda sólo si la primera no trajo nada. Antes salía siempre, y
+        // eso serializaba el modelo entero de la pantalla dos veces en cada
+        // toque de pestaña, también cuando la primera ya lo había traído todo.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            guard let s = self, !s.pantallaLista(id) else { return }
+            pedir()
+        }
     }
 
     private func refrescarPronto() {
@@ -1653,6 +1700,21 @@ class ChinolaViewController: CAPBridgeViewController {
     /// Un `UITabBar` de VERDAD: en iOS 26 trae el Liquid Glass del sistema (la
     /// lente que se desliza a la pestaña elegida, el brillo de los bordes). Una
     /// barra dibujada a mano se ve como cristal, pero está quieta.
+    /// Cuánto ocupa la barra nativa de abajo, dicho a la web.
+    ///
+    /// Cuando una pantalla se dibuja en web (el modelo de Batuta: navegación y
+    /// menús nativos, contenido web), la web necesita saber cuánto hueco
+    /// dejarle a la barra o el contenido se le mete debajo. Batuta hace lo
+    /// mismo con el alto de su cabecera (`--cabecera-alto`).
+    ///
+    /// Se manda el alto REAL, que cambia: la barra se encoge al bajar por la
+    /// pantalla, y el margen seguro de abajo varía entre aparatos.
+    fileprivate func avisarAltoBarra() {
+        let alto = barra.barra.frame.height + view.safeAreaInsets.bottom
+        guard alto > 0 else { return }
+        eval("document.documentElement.style.setProperty('--menu-alto','\(Int(alto.rounded()))px')")
+    }
+
     private func montarBarra() {
         guard barra.barra.superview == nil else { return }
         barra.alTocar = { [weak self] id in self?.menuEstado.alTocar(id) }
@@ -1661,7 +1723,10 @@ class ChinolaViewController: CAPBridgeViewController {
         // La barra se encoge al bajar por cualquier pantalla y vuelve al subir.
         CNScrollEstado.shared.alCambiar = { [weak self] compacto in
             self?.barra.compactar(compacto)
+            // La barra cambió de alto: la web tiene que reajustar su hueco.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) { self?.avisarAltoBarra() }
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in self?.avisarAltoBarra() }
         // Mantener pulsado un botón del menú: el atajo de esa pestaña, desde
         // donde sea. Anotar es el más usado, así que está en dos.
         datos.onMascota = { [weak self] in self?.abrirMascota() }

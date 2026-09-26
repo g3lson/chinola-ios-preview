@@ -23,7 +23,8 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "aviso", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "seccion", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "bloqueo", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "sesion", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "sesion", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "periodo", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -39,6 +40,20 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
             // Al store COMPARTIDO (esta instancia puede no ser la del VC).
             CNDatos.shared.cargar(json: json)
             if let p = perfil { CNDatos.shared.cargarPerfil(json: p) }
+            call.resolve()
+        }
+    }
+
+    // El período elegido: mes y, si lo hay, el rango a medida.
+    //
+    // Es lo que le faltaba al nativo para calcular por su cuenta. Con esto y
+    // la libreta, CNCalculo saca las cifras sin cruzar el puente.
+    @objc func periodo(_ call: CAPPluginCall) {
+        let mes = call.getString("mes") ?? ""
+        let desde = call.getString("desde") ?? ""
+        let hasta = call.getString("hasta") ?? ""
+        DispatchQueue.main.async {
+            CNDatos.shared.ponPeriodo(mes: mes, desde: desde, hasta: hasta)
             call.resolve()
         }
     }
