@@ -23,18 +23,22 @@ class ChinolaViewController: CAPBridgeViewController {
     private let barra = CNBarraNativa()
     private var contenedorNativo: UIView?
 
-    /// Las pestañas que se dibujan en NATIVO.
+    /// Las pestañas que se dibujan en NATIVO. Vacía: las pinta la web, y lo
+    /// nativo es el marco — la barra de abajo, los menús y las hojas.
     ///
-    /// Vuelven las cinco. Se probó dejarlas todas en web —el modelo de
-    /// Batuta— y se descubrió por qué ahí no se puede todavía: en Batuta la
-    /// web PIDE los menús y las hojas del sistema por el plugin
-    /// (`nav.hoja(...)`), pero el plugin de Chinola no tiene esa puerta, y sus
-    /// quince menús nativos viven DENTRO de estas vistas. Sin vistas nativas
-    /// no hay menús nativos, y se pierde justo lo mejor.
+    /// El primer intento salió mal y conviene saber por qué: los menús de
+    /// Chinola vivían DENTRO de estas vistas, así que al quitarlas se perdían.
+    /// Ahora no: `NativoPlugin.hoja` deja que la web pida la hoja del sistema,
+    /// y todos los menús de la app pasan por ahí. El marco sigue siendo de
+    /// iOS aunque el contenido sea web, que es el modelo de Batuta.
     ///
-    /// El orden correcto es: primero abrirle esa puerta a la web, y entonces
-    /// mover pantallas. Mientras tanto, las vistas se quedan.
-    private let nativas: Set<String> = ["resumen", "movs", "cuentas", "plan", "perfil"]
+    /// Lo que SÍ cambia: los formularios nativos (cuenta, tarjeta, préstamo,
+    /// meta, transferencia, categoría), el selector de libretas y la hoja del
+    /// período los dispara una vista nativa, así que ahora los dibuja la web.
+    ///
+    /// Las vistas SwiftUI se quedan en el proyecto: devolver una pantalla a
+    /// nativo es escribir su id aquí y nada más.
+    private let nativas: Set<String> = []
 
     override func capacitorDidLoad() {
         nativo.store = datos
