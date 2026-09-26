@@ -23,22 +23,28 @@ class ChinolaViewController: CAPBridgeViewController {
     private let barra = CNBarraNativa()
     private var contenedorNativo: UIView?
 
-    /// Las pestañas que se dibujan en NATIVO. Vacía: las pinta la web, y lo
-    /// nativo es el marco — la barra de abajo, los menús y las hojas.
+    /// Las pestañas que se dibujan en NATIVO.
     ///
-    /// El primer intento salió mal y conviene saber por qué: los menús de
-    /// Chinola vivían DENTRO de estas vistas, así que al quitarlas se perdían.
-    /// Ahora no: `NativoPlugin.hoja` deja que la web pida la hoja del sistema,
-    /// y todos los menús de la app pasan por ahí. El marco sigue siendo de
-    /// iOS aunque el contenido sea web, que es el modelo de Batuta.
+    /// Todas menos Resumen. Y la razón es distinta para cada una, no una regla
+    /// general:
     ///
-    /// Lo que SÍ cambia: los formularios nativos (cuenta, tarjeta, préstamo,
-    /// meta, transferencia, categoría), el selector de libretas y la hoja del
-    /// período los dispara una vista nativa, así que ahora los dibuja la web.
+    /// · **Movs** es la mejor resuelta en nativo: lee la libreta en Swift, sin
+    ///   puente, y trae su buscador, sus filtros y sus hojas del sistema.
+    ///   Pasarla a web fue un error — se perdían la barra de arriba, el
+    ///   buscador, las transiciones y la hoja de nuevo movimiento.
+    /// · **Cuentas** y **Plan** dibujan lo que la web calcula, pero sus filas
+    ///   se deslizan, sus menús son del sistema y sus formularios también.
+    /// · **Perfil** son subpantallas nativas encadenadas.
+    /// · **Resumen** sí se queda en web: la web calcula toda la geometría del
+    ///   panel —los puntos de las líneas, los tramos de la dona, las paradas
+    ///   de los degradados— y el nativo solo la dibujaba. Ahí el puente se
+    ///   pagaba entero sin ganar nada, y encima el panel es configurable con
+    ///   su configuración en la web.
     ///
-    /// Las vistas SwiftUI se quedan en el proyecto: devolver una pantalla a
-    /// nativo es escribir su id aquí y nada más.
-    private let nativas: Set<String> = []
+    /// Las cinco puertas del plugin (hoja, formulario, selector, hojaPeriodo,
+    /// periodo) siguen valiendo: el Resumen en web pide los menús, los
+    /// formularios y las hojas al sistema en vez de dibujarlos él.
+    private let nativas: Set<String> = ["movs", "cuentas", "plan", "perfil"]
 
     override func capacitorDidLoad() {
         nativo.store = datos

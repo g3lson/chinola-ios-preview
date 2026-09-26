@@ -274,6 +274,14 @@ extension TestVC {
                     .replacingOccurrences(of: "\"Metas\",\"puesta\":false", with: "\"Metas\",\"puesta\":true"))
             }
             vista = AnyView(CNPlan(datos: datos)); estado.activa = "plan"
+        case "nuevo-mov":
+            // La hoja de anotar, la que más se usa de toda la app: se monta
+            // Movimientos y se abre encima, que es como se ve de verdad.
+            vista = AnyView(CNMovs(datos: datos)); estado.activa = "movs"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                guard let s = self else { return }
+                s.presentar(AnyView(CNNuevoMov(datos: s.datos, onClose: { s.cerrar() })))
+            }
         default:        vista = AnyView(CNMovs(datos: datos));    estado.activa = "movs"
         }
         let h = UIHostingController(rootView: vista)
