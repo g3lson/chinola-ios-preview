@@ -1422,6 +1422,12 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     func montar(en vista: UIView) {
         barra.translatesAutoresizingMaskIntoConstraints = false
         barra.delegate = self
+        // Repartir el ancho A PARTES IGUALES entre las cinco. Suelta, la barra
+        // le da a cada opción lo que su texto pide y luego recorta a las que no
+        // caben: salían «Cu...» y «Pe...» mientras «Resumen» cabía entera.
+        barra.itemPositioning = .fill
+        barra.itemSpacing = 0
+        barra.itemWidth = 0
         let largo = UILongPressGestureRecognizer(target: self, action: #selector(mantenido(_:)))
         largo.minimumPressDuration = 0.4
         largo.cancelsTouchesInView = false
@@ -2901,10 +2907,12 @@ struct CNCuentas: View {
 
     var body: some View {
         let m = datos.cuentas ?? CNCuentasModelo()
-        return ScrollView(showsIndicators: false) {
+        // La barra de arriba la pone iOS, igual que en Movimientos: título
+        // grande que encoge al rodar y botones con la cápsula del sistema.
+        return NavigationView {
+            ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
                 CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
-                titulo(m)
                 patrimonio(m.patrimonio, oculto: m.oculto)
                 if !m.cuentas.isEmpty {
                     rotulo(m.rotuloCuentas, m.totalCuentas, plegado: m.plegadoCuentas, grupo: 0)
@@ -2921,17 +2929,23 @@ struct CNCuentas: View {
                 Color.clear.frame(height: 110)
             }
             .padding(.horizontal, 16).padding(.top, 2)
+            }
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle(m.titulo)
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) { menu(m) }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { datos.onAgregar() } label: { Image(systemName: "plus") }
+                }
+            }
         }
-        .background(CNC.scr.ignoresSafeArea())
-        .overlay(alignment: .top) { CNDifuminadoArriba() }
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
     }
 
-    private func titulo(_ m: CNCuentasModelo) -> some View {
-        HStack(spacing: 10) {
-            Text(m.titulo).font(cnLetra(34, .bold)).foregroundColor(CNC.ink)
-                .lineLimit(1).minimumScaleFactor(0.75)
-            Spacer(minLength: 8)
-            CNMenuVidrio(icono: "line.3.horizontal.decrease") {
+    private func menu(_ m: CNCuentasModelo) -> some View {
+        Menu {
                 Button { datos.onTendencia() } label: { Label(cnT("Ver la tendencia"), systemImage: "chart.line.uptrend.xyaxis") }
                 Button { datos.onCuentasAccion("ocultar", 0) } label: {
                     Label(m.oculto ? "Enseñar el dinero" : "Ocultar el dinero", systemImage: m.oculto ? "eye" : "eye.slash")
@@ -2948,8 +2962,8 @@ struct CNCuentas: View {
                         }
                     } label: { Label(cnT("Color de la tarjeta"), systemImage: "paintpalette") }
                 }
-            }
-            CNCirculoAcento(icono: "plus") { datos.onAgregar() }
+        } label: {
+            Image(systemName: "ellipsis")
         }
     }
 
@@ -3143,32 +3157,33 @@ struct CNPlan: View {
     @ObservedObject var datos: CNDatos
     var body: some View {
         let m = datos.plan ?? CNPlanModelo()
-        return ScrollView(showsIndicators: false) {
+        // Barra de arriba del sistema, como en Movimientos y Cuentas.
+        return NavigationView {
+            ScrollView(showsIndicators: false) {
             LazyVStack(alignment: .leading, spacing: 13) {
                 CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
-                titulo(m)
                 pestanas(m)
                 if m.tab == "metas" { metas(m) } else { presupuesto(m) }
                 Color.clear.frame(height: 110)
             }
             .padding(.horizontal, 16).padding(.top, 2)
-        }
-        .background(CNC.scr.ignoresSafeArea())
-        .overlay(alignment: .top) { CNDifuminadoArriba() }
-    }
-
-    private func titulo(_ m: CNPlanModelo) -> some View {
-        HStack(spacing: 10) {
-            Text(m.titulo).font(cnLetra(34, .bold)).foregroundColor(CNC.ink)
-                .lineLimit(1).minimumScaleFactor(0.75)
-            Spacer(minLength: 8)
-            CNMenuVidrio(icono: "calendar") {
-                Button { datos.onCalendario() } label: { Label(cnT("Cambiar el periodo"), systemImage: "calendar") }
             }
-            CNCirculoAcento(icono: "plus") {
-                datos.onPlanAccion(m.tab == "metas" ? "nuevaMeta" : "nuevaCat", 0)
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle(m.titulo)
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { datos.onCalendario() } label: { Image(systemName: "calendar") }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { datos.onPlanAccion(m.tab == "metas" ? "nuevaMeta" : "nuevaCat", 0) } label: {
+                        Image(systemName: "plus")
+                    }
+                }
             }
         }
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
     }
 
     /// Las dos pestañas: un carril con una pastilla que se desliza, como los
