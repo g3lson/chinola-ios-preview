@@ -27,7 +27,9 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "sesion", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "periodo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "hoja", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "formulario", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "formulario", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "selector", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "hojaPeriodo", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -57,6 +59,22 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         let hasta = call.getString("hasta") ?? ""
         DispatchQueue.main.async {
             CNDatos.shared.ponPeriodo(mes: mes, desde: desde, hasta: hasta)
+            call.resolve()
+        }
+    }
+
+    /// El selector de libretas, nativo, pedido por la web.
+    @objc func selector(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: Notification.Name("cnAbrirSelector"), object: nil)
+            call.resolve()
+        }
+    }
+
+    /// La hoja del período (los presets y el calendario), nativa.
+    @objc func hojaPeriodo(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: Notification.Name("cnAbrirPeriodo"), object: nil)
             call.resolve()
         }
     }

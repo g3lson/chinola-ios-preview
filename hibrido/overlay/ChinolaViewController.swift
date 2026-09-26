@@ -139,6 +139,10 @@ class ChinolaViewController: CAPBridgeViewController {
                                                name: Notification.Name("cnBloqueoCambiado"), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(abrirHojaDeLaWeb),
                                                name: Notification.Name("cnAbrirHoja"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(abrirSelectorDeLaWeb),
+                                               name: Notification.Name("cnAbrirSelector"), object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(abrirPeriodoDeLaWeb),
+                                               name: Notification.Name("cnAbrirPeriodo"), object: nil)
         if bloqueoPuesto {
             bloqueada = true
             taparPantalla()
@@ -1612,6 +1616,13 @@ class ChinolaViewController: CAPBridgeViewController {
     /// formularios se quedaban dibujados por ella. Es el mismo mecanismo de
     /// siempre —la web describe los campos, el nativo los pinta—, solo que
     /// ahora la puerta está en los dos lados.
+    /// El selector de libretas y la hoja del período, pedidos por la web.
+    ///
+    /// Los disparaba una vista nativa; con el contenido en web hacía falta que
+    /// los pudiera pedir ella, o se quedaban dibujados por la web.
+    @objc func abrirSelectorDeLaWeb() { refrescarLibretas(); abrirLibretas() }
+    @objc func abrirPeriodoDeLaWeb() { abrirPeriodo() }
+
     @objc func abrirHojaDeLaWeb() {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaHojaJSON && window.__chinolaHojaJSON()) || ''") { [weak self] res, _ in
             guard let s = self, let json = res as? String, json.count > 2 else { return }
