@@ -2651,6 +2651,15 @@ struct CNDetalleMov: View {
 }
 
 // ── Formulario «Nuevo movimiento» NATIVO (guarda a la web) ──────────────────
+/// Quitarle a la lista su fondo propio para que se vea el del tema. Desde
+/// iOS 16; antes se deja el del sistema, que ya es el gris de siempre.
+struct CNFondoLista: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) { content.scrollContentBackground(.hidden) }
+        else { content }
+    }
+}
+
 /// ANOTAR UN MOVIMIENTO.
 ///
 /// Un `Form` de iOS, no una imitación: la barra con «Cancelar» y «Guardar» la
@@ -2680,7 +2689,9 @@ struct CNNuevoMov: View {
     private let mapa = ["Ingreso", "Gasto Fijo", "Gasto Variable", "Ahorro"]
 
     var body: some View {
-        NavigationStack {
+        // NavigationView y no NavigationStack: la app llega hasta iOS 15 y el
+        // Stack es de la 16. En pila, que es como se comporta una hoja.
+        NavigationView {
             Form {
                 Section { monto_ }
                 Section {
@@ -2713,7 +2724,7 @@ struct CNNuevoMov: View {
                     Text(cnT("Para lo que pagas siempre: renta, luz, colegio"))
                 }
             }
-            .scrollContentBackground(.hidden)
+            .modifier(CNFondoLista())
             .background(CNC.scr.ignoresSafeArea())
             .font(cnLetra(17))
             .foregroundColor(CNC.ink)
@@ -2725,12 +2736,14 @@ struct CNNuevoMov: View {
                     Button(cnT("Cancelar")) { onClose() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(cnT("Guardar")) { guardar() }
-                        .fontWeight(.semibold)
-                        .disabled((Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0) <= 0)
+                    Button { guardar() } label: {
+                        Text(cnT("Guardar")).font(cnLetra(17, .semibold))
+                    }
+                    .disabled((Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0) <= 0)
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .environment(\.locale, Locale(identifier: CNC.fmt.loc))
         .onAppear {
             if let m = editar {
