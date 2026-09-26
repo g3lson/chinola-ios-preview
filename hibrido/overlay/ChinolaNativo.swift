@@ -1153,83 +1153,69 @@ struct CNMovs: View {
     }
 
     var body: some View {
-        // Sin franja de color: el título va sobre el fondo de la pantalla y se
-        // va con el scroll; lo único que se queda arriba es el buscador, que es
-        // lo que de verdad hace falta a mano mientras se rueda.
-        return ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
-                CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
-                titulo.padding(.horizontal, 16).padding(.top, 2)
-                Section(header: busqueda) {
+        // LA BARRA DE ARRIBA ES DE IOS, no un dibujo.
+        //
+        // Antes el título grande, el buscador y los botones estaban hechos a
+        // mano: un Text de 34 pt, un TextField dentro de una cápsula y unos
+        // círculos. Se parecía, pero no era: ni el título encogía como el del
+        // sistema, ni el buscador se comportaba como el del sistema, ni los
+        // botones traían la cápsula de vidrio de iOS 26. Ahora lo pone el
+        // sistema: `navigationTitle` grande, `searchable` y `toolbar`.
+        NavigationView {
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 12) {
+                    CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
                     if porDia.isEmpty {
-                        vacio.padding(.horizontal, 14)
+                        vacio.padding(.horizontal, 14).padding(.top, 8)
                     } else {
                         ForEach(porDia.indices, id: \.self) { i in
                             grupoDia(porDia[i].0, porDia[i].1).padding(.horizontal, 14)
                         }
                     }
-                    // En el banco de pruebas hay pocos movimientos y la lista
-                    // no llega a rodar; con este hueco sí, y se puede capturar
-                    // el buscador quedándose arriba.
+                    // Hueco de abajo: por debajo pasa la barra del menú.
                     Color.clear.frame(height: rodarAlEmpezar ? 800 : 110).id("cnAbajo")
                 }
+                .padding(.top, 4)
+                .modifier(CNRodarSolo(activo: rodarAlEmpezar))
             }
-            .modifier(CNRodarSolo(activo: rodarAlEmpezar))
-        }
-        .background(CNC.scr.ignoresSafeArea())
-        .overlay(alignment: .top) { CNDifuminadoArriba() }
-    }
-
-    private var titulo: some View {
-        HStack(spacing: 10) {
-            // El título grande de iOS, tal cual: SF Pro Display Bold a 34 pt,
-            // como el «Library» de Apple Music.
-            Text(cnT("Movimientos")).font(cnLetra(34, .bold)).foregroundColor(CNC.ink)
-                .lineLimit(1).minimumScaleFactor(0.75)
-            Spacer(minLength: 8)
-            CNMenuVidrio(icono: "calendar", activo: periodo > 0) {
-                Picker("", selection: $periodo) {
-                    ForEach(CNMovs.periodos.indices, id: \.self) { i in Text(cnT(CNMovs.periodos[i])).tag(i) }
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle(cnT("Movimientos"))
+            .navigationBarTitleDisplayMode(.large)
+            .searchable(text: $q,
+                        placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: Text(cnT("Buscar movimiento…")))
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Menu {
+                        Picker("", selection: $periodo) {
+                            ForEach(CNMovs.periodos.indices, id: \.self) { i in
+                                Text(cnT(CNMovs.periodos[i])).tag(i)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: periodo > 0 ? "calendar.badge.clock" : "calendar")
+                    }
                 }
-            }
-            CNCirculoAcento(icono: "plus") { datos.onNuevoMov() }
-        }
-    }
-
-    /// El buscador se queda fijo arriba al rodar (`pinnedViews`), en vidrio, y
-    /// el contenido pasa por detrás.
-    private var busqueda: some View {
-        HStack(spacing: 9) {
-            HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass").font(cnLetra(16, .semibold))
-                    .foregroundColor(CNC.pmut.opacity(0.9))
-                TextField(cnT("Buscar movimiento…"), text: $q).font(cnLetra(16)).foregroundColor(CNC.ink)
-                    .submitLabel(.search)
-                    .autocorrectionDisabled(true)
-                if !q.isEmpty {
-                    Button { q = "" } label: {
-                        Image(systemName: "xmark.circle.fill").font(cnLetra(15)).foregroundColor(CNC.pmut)
-                    }.buttonStyle(.plain)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Picker("", selection: $filtro) {
+                            ForEach(CNMovs.filtros.indices, id: \.self) { i in
+                                Text(cnT(CNMovs.filtros[i])).tag(i)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: filtro > 0
+                              ? "line.3.horizontal.decrease.circle.fill"
+                              : "line.3.horizontal.decrease.circle")
+                    }
                 }
-            }
-            .padding(.horizontal, 15).frame(height: 44)
-            .cnVidrio(Capsule())
-            CNMenuVidrio(icono: "line.3.horizontal.decrease", activo: filtro > 0, lado: 44) {
-                Picker("", selection: $filtro) {
-                    ForEach(CNMovs.filtros.indices, id: \.self) { i in Text(cnT(CNMovs.filtros[i])).tag(i) }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { datos.onNuevoMov() } label: { Image(systemName: "plus") }
                 }
             }
         }
-        .padding(.horizontal, 16)
-        // Pegado a la isla, como el buscador de Apple Music.
-        .padding(.top, max(2, 6 - max(0, cnMargenArriba() - 56)))
-        .padding(.bottom, 10)
-        .background(CNVeloFila())
-        // Sin franja detrás. Tenía una del color del tema para tapar lo que
-        // pasaba por debajo, y al rodar se veía justo lo que no debe verse: un
-        // recuadro cruzando la pantalla con una fila cortada dentro. Como en
-        // Apple Music, el contenido pasa POR DETRÁS de la cápsula y se ve a los
-        // lados; lo que toca la barra de estado lo difumina CNDifuminadoArriba.
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
     }
 
     private func grupoDia(_ fecha: String, _ items: [CNMov]) -> some View {
@@ -1371,7 +1357,7 @@ enum CNTabs {
     struct T { let id: String; let titulo: String; let path: String }
     static let todas: [T] = [
         .init(id: "resumen", titulo: "Resumen", path: CNTabIcono.resumen),
-        .init(id: "movs", titulo: "Movs.", path: CNTabIcono.movs),
+        .init(id: "movs", titulo: "Movs", path: CNTabIcono.movs),
         .init(id: "cuentas", titulo: "Cuentas", path: CNTabIcono.cuentas),
         .init(id: "plan", titulo: "Plan", path: CNTabIcono.plan),
         .init(id: "perfil", titulo: "Perfil", path: CNTabIcono.perfil)
@@ -1562,12 +1548,13 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         let ap = barra.standardAppearance
         for st in [ap.stackedLayoutAppearance, ap.inlineLayoutAppearance, ap.compactInlineLayoutAppearance] {
             if conTitulos {
-                // La letra la pone UIKit. Con la tipografía de la app los
-                // rótulos salían más anchos de lo que la barra cuenta y los
-                // cortaba en «C...», «Pl...», «P...». La barra es del sistema:
-                // que use la letra del sistema, como la de cualquier app.
-                st.normal.titleTextAttributes = [:]
-                st.selected.titleTextAttributes = [:]
+                // La letra del SISTEMA y un punto más pequeña que la de la
+                // app. Con la tipografía propia los rótulos salían más anchos
+                // de lo que la barra reparte y los cortaba en «Cu...», «Pe...»;
+                // la pestaña puesta se lleva una cápsula más ancha y a las
+                // otras les queda menos sitio, así que hay que ser modesto.
+                st.normal.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 10, weight: .medium)]
+                st.selected.titleTextAttributes = [.font: UIFont.systemFont(ofSize: 10, weight: .semibold)]
             } else {
                 st.normal.titleTextAttributes = [.foregroundColor: UIColor.clear,
                                                  .font: UIFont.systemFont(ofSize: 0.1)]
@@ -2693,16 +2680,18 @@ struct CNNuevoMov: View {
         // Stack es de la 16. En pila, que es como se comporta una hoja.
         NavigationView {
             Form {
-                Section { monto_ }
+                // El monto y el tipo van juntos: son la misma decisión
+                // («cuánto y de qué clase»), y separados dejaban dos huecos
+                // grandes que partían la hoja por la mitad.
                 Section {
+                    monto_
                     Picker("", selection: $tipo) {
                         ForEach(tipos.indices, id: \.self) { i in Text(tipos[i]).tag(i) }
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .listRowInsets(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14))
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
                 }
-                .listRowBackground(Color.clear)
                 Section {
                     TextField(cnT("En qué fue"), text: $concepto)
                         .font(cnLetra(17)).foregroundColor(CNC.ink)
@@ -2734,6 +2723,12 @@ struct CNNuevoMov: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(cnT("Cancelar")) { onClose() }
+                }
+                // El teclado numérico no trae tecla de retorno: sin esto no
+                // hay forma de cerrarlo y tapa media hoja.
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(cnT("Listo")) { montoPuesto = false }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { guardar() } label: {
