@@ -112,6 +112,8 @@ jobs:
             sleep 6
             xcrun simctl io "$UDID" screenshot "cap-$n-$P.png" || true
           done
+          echo "=== volcado de la barra ==="
+          xcrun simctl spawn "$UDID" log show --last 3m --predicate 'eventMessage CONTAINS "CNDUMP"' --style compact 2>/dev/null | head -60 || true
           echo "=== ¿sigue vivo el proceso? ==="
           xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolasim || echo "(el proceso NO está vivo → crasheó)"
           echo "=== crash reports ==="

@@ -137,6 +137,26 @@ class TestVC: CAPBridgeViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         barra.ajustar()
+        volcarBarra()
+    }
+
+    /// Solo para el banco: qué ancho tiene de verdad cada opción del menú y qué
+    /// texto acaba dibujando, para saber por qué se cortan los rótulos.
+    private var volcado = false
+    private func volcarBarra() {
+        guard !volcado, barra.barra.bounds.width > 1 else { return }
+        volcado = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            print("CNDUMP barra=\(self.barra.barra.bounds)")
+            func hurgar(_ v: UIView, _ nivel: Int) {
+                let sangria = String(repeating: "  ", count: nivel)
+                var extra = ""
+                if let l = v as? UILabel { extra = " TEXTO=«\(l.text ?? "")» fuente=\(l.font.pointSize) lineas=\(l.numberOfLines)" }
+                print("CNDUMP \(sangria)\(type(of: v)) \(v.frame)\(extra)")
+                for h in v.subviews { hurgar(h, nivel + 1) }
+            }
+            for v in self.barra.barra.subviews { hurgar(v, 1) }
+        }
     }
 
     /// Rodar la pantalla a mano: el ScrollViewReader de SwiftUI no siempre
