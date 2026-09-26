@@ -74,6 +74,7 @@ class TestVC: CAPBridgeViewController {
         let grisCab = disenoCab == "viva" ? "rgb(81,99,86)" : (cual.hasPrefix("cab-") ? "rgba(0,0,0,0.72)" : "rgb(214,222,205)")
         let pastCab = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.13)" : "rgba(255,255,255,0.13)"
         let pastF = cual.hasPrefix("cab-") ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)"
+        datos.cargar(json: TestVC.libretaDeMuestra)
         datos.cargarCuentas(json: TestVC.cuentasDeMuestra)
         datos.cargarPlan(json: TestVC.planDeMuestra)
         datos.cargarMovDetalle(json: TestVC.movDeMuestra)
@@ -866,4 +867,34 @@ extension TestVC {
             "iconoPath":"M5 17h14M6 17V9l2-4h8l2 4v8M7 13h10","catColor":"rgb(213,89,72)","iconoBg":"rgba(213,89,72,0.15)"}]}]}
         """
     }
+}
+
+extension TestVC {
+    /// La libreta que ve el banco de pruebas. Sin ella `libreta.tx` va vacía y
+    /// Movimientos salía en «No hay movimientos»: imposible mirar cómo queda la
+    /// lista, que es justo lo que hay que mirar.
+    static let libretaDeMuestra = """
+    {"nombre":"Personal",
+     "cuentas":[{"id":1,"nombre":"Cuenta principal","banco":"Banreservas","saldo":54800,"color":"#137d41","clase":"banco","icono":"casa"},
+                {"id":2,"nombre":"Ahorros","banco":"Banco Popular","saldo":92000,"color":"#398ad6","clase":"banco","icono":"banco"},
+                {"id":3,"nombre":"Efectivo","banco":"En mano","saldo":4200,"color":"#c9a227","clase":"efectivo","icono":"billete"}],
+     "categorias":[{"nombre":"Vivienda","ingreso":false,"color":"#137d41","icono":"casa"},
+                   {"nombre":"Alimentación","ingreso":false,"color":"#d08a3a","icono":"comida"},
+                   {"nombre":"Transporte","ingreso":false,"color":"#3a50a8","icono":"carrito"},
+                   {"nombre":"Servicios","ingreso":false,"color":"#2fa37a","icono":"rayo"},
+                   {"nombre":"Salud","ingreso":false,"color":"#19a89a","icono":"mas"},
+                   {"nombre":"Sueldo","ingreso":true,"color":"#137d41","icono":"billete"}],
+     "presupuesto":{"Vivienda":10000,"Alimentación":12000,"Transporte":6000},
+     "tx":[
+      {"id":"1758844800001","concepto":"Sueldo de septiembre","categoria":"Sueldo","tipo":"Ingreso","monto":68000,"fecha":"2026-09-25","medio":"cuenta:1","recurrente":true},
+      {"id":"1758844800002","concepto":"Supermercado Nacional","categoria":"Alimentación","tipo":"Gasto Variable","monto":4350,"fecha":"2026-09-25","medio":"cuenta:1"},
+      {"id":"1758758400003","concepto":"Renta del apartamento","categoria":"Vivienda","tipo":"Gasto Fijo","monto":22000,"fecha":"2026-09-24","medio":"cuenta:1","recurrente":true},
+      {"id":"1758758400004","concepto":"Gasolina","categoria":"Transporte","tipo":"Gasto Variable","monto":2800,"fecha":"2026-09-24","medio":"cuenta:3"},
+      {"id":"1758672000005","concepto":"Factura de luz","categoria":"Servicios","tipo":"Gasto Fijo","monto":3900,"fecha":"2026-09-23","medio":"cuenta:1","recurrente":true},
+      {"id":"1758672000006","concepto":"Café con Laura","categoria":"Alimentación","tipo":"Gasto Variable","monto":620,"fecha":"2026-09-23","medio":"cuenta:3"},
+      {"id":"1758585600007","concepto":"Farmacia","categoria":"Salud","tipo":"Gasto Variable","monto":1450,"fecha":"2026-09-22","medio":"cuenta:1"},
+      {"id":"1758585600008","concepto":"Para el viaje","categoria":"Otros","tipo":"Ahorro","monto":8000,"fecha":"2026-09-22","medio":"cuenta:2"},
+      {"id":"1758499200009","concepto":"Internet","categoria":"Servicios","tipo":"Gasto Fijo","monto":2600,"fecha":"2026-09-21","medio":"cuenta:1","recurrente":true},
+      {"id":"1758499200010","concepto":"Uber al aeropuerto","categoria":"Transporte","tipo":"Gasto Variable","monto":1200,"fecha":"2026-09-21","medio":"cuenta:3"}]}
+    """
 }

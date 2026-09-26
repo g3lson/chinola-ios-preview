@@ -312,14 +312,19 @@ var cnSimboloMoneda: String {
 /// pinta con variables CSS; el nativo los recibe por `__chinolaTemaJSON` y los
 /// guarda aquí, para que las pantallas nativas cambien de color con la app.
 struct CNPaletaTema {
-    var scr  = cnColor(0xfaf7ec)
+    // De fábrica, los grises de iOS: los mismos que usan Ajustes y el resto del
+    // teléfono, con el verde y el amarillo de Chinola solo donde hacen falta.
+    // Antes era un crema propio, y la app se veía como algo pegado encima del
+    // sistema en vez de parte de él. Es solo el punto de partida: el tema que
+    // el usuario elija en Ajustes llega de la web y pisa esto.
+    var scr  = cnColor(0xf0f0f3)
     var card = cnColor(0xffffff)
-    var soft = cnColor(0xf9f5e6)
-    var line = cnColor(0xe5e1d3)
-    var ink  = cnColor(0x132419)
-    var pmut = cnColor(0x516356)
-    var acc  = cnColor(0xefcb4c)
-    var side = cnColor(0x1d3d28)      // la franja de la cabecera
+    var soft = cnColor(0xe6e6e9)
+    var line = cnColor(0xd4d4d7)
+    var ink  = cnColor(0x1a1a1c)
+    var pmut = cnColor(0x6b6b6f)
+    var acc  = cnColor(0xfbd530)
+    var side = cnColor(0x064425)      // la franja de la cabecera
     var pos  = cnColor(0x137d41)
     var neg  = cnColor(0xd55948)
     var info = cnColor(0x398ad6)
@@ -1557,8 +1562,12 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         let ap = barra.standardAppearance
         for st in [ap.stackedLayoutAppearance, ap.inlineLayoutAppearance, ap.compactInlineLayoutAppearance] {
             if conTitulos {
-                st.normal.titleTextAttributes = [.font: cnUIFuente(11, .semibold)]
-                st.selected.titleTextAttributes = [.font: cnUIFuente(11, .bold)]
+                // La letra la pone UIKit. Con la tipografía de la app los
+                // rótulos salían más anchos de lo que la barra cuenta y los
+                // cortaba en «C...», «Pl...», «P...». La barra es del sistema:
+                // que use la letra del sistema, como la de cualquier app.
+                st.normal.titleTextAttributes = [:]
+                st.selected.titleTextAttributes = [:]
             } else {
                 st.normal.titleTextAttributes = [.foregroundColor: UIColor.clear,
                                                  .font: UIFont.systemFont(ofSize: 0.1)]
@@ -1576,8 +1585,6 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
             item.accessibilityLabel = cnT(t.titulo)
             // Sin rótulo el icono se centra solo bajándolo un poco.
             item.imageInsets = conTitulos ? .zero : UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
-            item.setTitleTextAttributes([.font: cnUIFuente(11, .semibold)], for: .normal)
-            item.setTitleTextAttributes([.font: cnUIFuente(11, .bold)], for: .selected)
             items.append(item); ids.append(t.id)
         }
         let antes = barra.selectedItem?.tag
@@ -2644,6 +2651,28 @@ struct CNDetalleMov: View {
 }
 
 // ── Formulario «Nuevo movimiento» NATIVO (guarda a la web) ──────────────────
+/// El símbolo de la moneda a secas («RD$», «$», «€»): lo que va delante del
+/// monto mientras se escribe, sin número pegado.
+func cnSimboloMoneda() -> String {
+    let f = NumberFormatter()
+    f.numberStyle = .currency
+    f.locale = Locale(identifier: CNC.fmt.loc)
+    f.currencyCode = CNC.fmt.moneda
+    return f.currencySymbol ?? CNC.fmt.moneda
+}
+
+/// ANOTAR UN MOVIMIENTO.
+///
+/// Un `Form` de iOS, no una imitación: la barra con «Cancelar» y «Guardar» la
+/// pone el sistema (y en iOS 26 les da su cápsula de vidrio), el selector de
+/// tipo es un `Picker` segmentado, la fecha un `DatePicker`, la cuenta y la
+/// categoría `Picker` de menú y la repetición un `Toggle`. Antes era todo
+/// dibujado a mano —círculos amarillos, rótulos en mayúsculas, cuadritos de
+/// colores sueltos, fichas que se salían por la derecha— y se notaba que no
+/// era del teléfono.
+///
+/// Del tema solo se toma el color: el fondo, las tarjetas y el acento. La FORMA
+/// es siempre la del sistema, que es lo que hace que encaje con el resto.
 struct CNNuevoMov: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
@@ -2655,57 +2684,63 @@ struct CNNuevoMov: View {
     @State private var categoria = ""
     @State private var fecha = Date()
     @State private var repetir = false
+    @FocusState private var montoPuesto: Bool
     /// Rótulos. Los valores que entiende la web son los de `mapa`.
     private var tipos: [String] { ["Ingreso", "Fijo", "Variable", "Ahorro"].map { cnT($0) } }
     private let mapa = ["Ingreso", "Gasto Fijo", "Gasto Variable", "Ahorro"]
 
     var body: some View {
-        VStack(spacing: 0) {
-                CNHojaCabecera(titulo: cnT(editar == nil ? "Nuevo movimiento" : "Editar movimiento"),
-                               guardarTexto: cnT("Guardar"), onClose: onClose, onGuardar: guardar)
-                ScrollView(showsIndicators: false) {
-                    // Todos los bloques igual: su rótulo encima y su tarjeta
-                    // debajo. El monto llevaba el suyo DENTRO y los demás
-                    // fuera, y la hoja se leía a saltos.
-                    VStack(alignment: .leading, spacing: 18) {
-                        pildoras
-                        VStack(alignment: .leading, spacing: 6) {
-                            titulo("Monto")
-                            CNMontoCampo(monto: $monto, rotulo: nil)
-                        }
-                        VStack(alignment: .leading, spacing: 6) {
-                            titulo("Concepto")
-                            grupo { TextField(cnT("En qué fue"), text: $concepto).font(cnLetra(16)).foregroundColor(CNC.ink).padding(.horizontal, 15).padding(.vertical, 14) }
-                        }
-                        VStack(alignment: .leading, spacing: 6) {
-                            titulo("Cuándo y de dónde")
-                            grupo {
-                                HStack(spacing: 12) { cuadro("calendar", CNC.neg); Text(cnT("Fecha")).font(cnLetra(16)).foregroundColor(CNC.ink); Spacer(); DatePicker("", selection: $fecha, displayedComponents: .date).labelsHidden() }.padding(.horizontal, 14).padding(.vertical, 7)
-                                divi()
-                                menuFila("banknote.fill", CNC.info, "Pagado con", cuentaNombre) { ForEach(datos.libreta.cuentas) { c in Button(c.nombre) { cuentaId = c.id } } }
-                            }
-                        }
-                        VStack(alignment: .leading, spacing: 8) {
-                            titulo("Categoría")
-                            CNChipsCategoria(datos: datos, categoria: $categoria)
-                        }
-                        grupo { HStack(spacing: 12) {
-                            cuadro("repeat", cnColor(0x825eb9))
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(cnT("Repetir cada mes")).font(cnLetra(16)).foregroundColor(CNC.ink)
-                                Text(cnT("Para lo que pagas siempre: renta, luz, colegio"))
-                                    .font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(2)
-                            }
-                            Spacer(minLength: 6)
-                            Toggle("", isOn: $repetir).labelsHidden().tint(CNC.pos)
-                        }.padding(.horizontal, 14).padding(.vertical, 9) }
-                        Color.clear.frame(height: 20)
-                    }.padding(.horizontal, 16)
+        NavigationStack {
+            Form {
+                Section { monto_ }
+                Section {
+                    Picker("", selection: $tipo) {
+                        ForEach(tipos.indices, id: \.self) { i in Text(tipos[i]).tag(i) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .listRowInsets(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14))
                 }
-                .cnTeclado()
+                .listRowBackground(Color.clear)
+                Section {
+                    TextField(cnT("En qué fue"), text: $concepto)
+                        .font(cnLetra(17)).foregroundColor(CNC.ink)
+                    Picker(cnT("Categoría"), selection: $categoria) {
+                        ForEach(datos.libreta.categorias, id: \.nombre) { c in
+                            Label { Text(cnT(c.nombre)) } icon: { cnGlifo(c.icono, tam: 15, grosor: 2.2) }
+                                .tag(c.nombre)
+                        }
+                        Text(cnT("Otros")).tag("")
+                    }
+                    Picker(cnT("Pagado con"), selection: $cuentaId) {
+                        ForEach(datos.libreta.cuentas) { c in Text(c.nombre).tag(c.id) }
+                    }
+                    DatePicker(cnT("Fecha"), selection: $fecha, displayedComponents: .date)
+                }
+                Section {
+                    Toggle(cnT("Repetir cada mes"), isOn: $repetir)
+                } footer: {
+                    Text(cnT("Para lo que pagas siempre: renta, luz, colegio"))
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(CNC.scr.ignoresSafeArea())
+            .font(cnLetra(17))
+            .foregroundColor(CNC.ink)
+            .tint(CNC.pos)
+            .navigationTitle(cnT(editar == nil ? "Nuevo movimiento" : "Editar movimiento"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(cnT("Cancelar")) { onClose() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(cnT("Guardar")) { guardar() }
+                        .fontWeight(.semibold)
+                        .disabled((Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0) <= 0)
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(CNC.scr.ignoresSafeArea())
         .environment(\.locale, Locale(identifier: CNC.fmt.loc))
         .onAppear {
             if let m = editar {
@@ -2719,28 +2754,31 @@ struct CNNuevoMov: View {
                 if let d = f.date(from: m.fecha) { fecha = d }
             }
             if cuentaId == 0 { cuentaId = datos.libreta.cuentas.first?.id ?? 0 }
+            // El teclado abierto de entrada: lo primero que se anota es cuánto.
+            if editar == nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { montoPuesto = true }
+            }
         }
     }
 
-    private var pildoras: some View {
-        HStack(spacing: 4) { ForEach(tipos.indices, id: \.self) { i in
-            Text(tipos[i]).font(cnLetra(13.5, i == tipo ? .bold : .semibold))
-                .foregroundColor(i == tipo ? CNC.sobreAcc : CNC.ink.opacity(0.7))
-                .frame(maxWidth: .infinity).padding(.vertical, 9)
-                .background(i == tipo ? AnyView(Capsule().fill(CNC.acc)) : AnyView(Color.clear))
-                .onTapGesture { UISelectionFeedbackGenerator().selectionChanged(); tipo = i }
-        } }.padding(4).background(CNC.soft).clipShape(Capsule())
-    }
-    private var cuentaNombre: String { datos.libreta.cuentas.first { $0.id == cuentaId }?.nombre ?? "Efectivo" }
-    private func titulo(_ t: String) -> some View { Text(t.uppercased()).font(cnLetra(12.5, .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading) }
-    private func grupo<C: View>(@ViewBuilder _ c: () -> C) -> some View { VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5)) }
-    private func divi() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 57) }
-    private func cuadro(_ ic: String, _ tinte: Color) -> some View { Image(systemName: ic).font(cnLetra(14, .semibold)).foregroundColor(.white).frame(width: 29, height: 29).background(tinte).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous)) }
-    private func menuFila<M: View>(_ icono: String, _ tinte: Color, _ titulo: String, _ valor: String, @ViewBuilder _ menu: () -> M) -> some View {
-        Menu { menu() } label: {
-            HStack(spacing: 12) { cuadro(icono, tinte); Text(titulo).font(cnLetra(16)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(valor).font(cnLetra(15)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(cnLetra(11, .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
+    /// El monto: lo único grande de la hoja, porque es lo único que hay que
+    /// escribir de verdad. El símbolo de la moneda queda fijo a la izquierda.
+    private var monto_: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(cnSimboloMoneda())
+                .font(cnLetra(22, .semibold))
+                .foregroundColor(CNC.pmut)
+            TextField("0", text: $monto)
+                .keyboardType(.decimalPad)
+                .focused($montoPuesto)
+                .font(cnLetra(40, .bold))
+                .foregroundColor(monto.isEmpty ? CNC.pmut.opacity(0.45) : CNC.ink)
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
         }
+        .padding(.vertical, 10)
     }
+
     private func guardar() {
         let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
         guard n > 0 else { onClose(); return }
