@@ -1162,22 +1162,32 @@ struct CNMovs: View {
         // botones traían la cápsula de vidrio de iOS 26. Ahora lo pone el
         // sistema: `navigationTitle` grande, `searchable` y `toolbar`.
         NavigationView {
-            ScrollView(showsIndicators: false) {
-                LazyVStack(spacing: 12) {
-                    CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
-                    if porDia.isEmpty {
-                        vacio.padding(.horizontal, 14).padding(.top, 8)
-                    } else {
-                        ForEach(porDia.indices, id: \.self) { i in
-                            grupoDia(porDia[i].0, porDia[i].1).padding(.horizontal, 14)
-                        }
-                    }
-                    // Hueco de abajo: por debajo pasa la barra del menú.
-                    Color.clear.frame(height: rodarAlEmpezar ? 800 : 110).id("cnAbajo")
+            // Una `List` agrupada DE VERDAD, no tarjetas dibujadas: los mismos
+            // márgenes, el mismo redondeo, las mismas rayas y las mismas
+            // cabeceras de sección que el Perfil o la pantalla de un
+            // movimiento. Era lo que hacía que estas dos listas se vieran de
+            // otra app que el resto.
+            List {
+                Section { CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0) }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                if porDia.isEmpty {
+                    Section { vacio }.listRowBackground(Color.clear)
                 }
-                .padding(.top, 4)
-                .modifier(CNRodarSolo(activo: rodarAlEmpezar))
+                ForEach(porDia.indices, id: \.self) { i in
+                    Section {
+                        ForEach(porDia[i].1) { m in fila(m) }
+                    } header: {
+                        cabeceraDia(porDia[i].0, porDia[i].1)
+                    }
+                }
+                // Hueco de abajo: por debajo pasa la barra del menú.
+                Section { Color.clear.frame(height: rodarAlEmpezar ? 800 : 60).id("cnAbajo") }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
             }
+            .listStyle(.insetGrouped)
+            .modifier(CNFondoLista())
             .background(CNC.scr.ignoresSafeArea())
             .navigationTitle(cnT("Movimientos"))
             .navigationBarTitleDisplayMode(.large)
@@ -1218,23 +1228,18 @@ struct CNMovs: View {
         .tint(CNC.pos)
     }
 
-    private func grupoDia(_ fecha: String, _ items: [CNMov]) -> some View {
+    /// El día y lo que dejó: una cabecera de sección, con la letra y el tono
+    /// que el sistema le da a las suyas.
+    private func cabeceraDia(_ fecha: String, _ items: [CNMov]) -> some View {
         let total = items.reduce(0.0) { $0 + ($1.esIngreso ? abs($1.monto) : ($1.esTransfer ? 0 : -abs($1.monto))) }
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(cnDiaLargo(fecha).uppercased()).font(cnLetra(11, .heavy)).tracking(0.4).foregroundColor(CNC.pmut)
-                Spacer()
-                Text((total >= 0 ? "+" : "−") + cnDinero(total)).font(cnLetra(11.5, .heavy)).foregroundColor(CNC.pmut)
-            }.padding(.horizontal, 6)
-            VStack(spacing: 0) {
-                ForEach(items.indices, id: \.self) { i in
-                    fila(items[i])
-                    if i < items.count - 1 { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 58) }
-                }
-            }
-            .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
+        return HStack {
+            Text(cnDiaLargo(fecha))
+            Spacer(minLength: 8)
+            Text((total >= 0 ? "+" : "−") + cnDinero(total))
         }
+        .font(cnLetra(13, .semibold))
+        .foregroundColor(CNC.pmut)
+        .textCase(nil)
     }
 
     private func fila(_ m: CNMov) -> some View {
@@ -1273,7 +1278,7 @@ struct CNMovs: View {
                 Spacer(minLength: 6)
                 Text((entra ? "+ " : (m.esTransfer ? "" : "− ")) + cnDinero(m.monto)).font(cnLetra(15, .heavy)).foregroundColor(color)
             }
-            .padding(.horizontal, 14).padding(.vertical, 11)
+            .padding(.vertical, 5)
         }
         .buttonStyle(.plain)
         // Mantener pulsado: las mismas acciones, en el menú del sistema.
@@ -2991,26 +2996,39 @@ struct CNCuentas: View {
         // La barra de arriba la pone iOS, igual que en Movimientos: título
         // grande que encoge al rodar y botones con la cápsula del sistema.
         return NavigationView {
-            ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 14) {
-                CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
-                patrimonio(m.patrimonio, oculto: m.oculto)
+            // Lista agrupada del sistema, la misma que Movimientos y el Perfil.
+            List {
+                Section { CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0) }
+                    .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+                Section { patrimonio(m.patrimonio, oculto: m.oculto) }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 if !m.cuentas.isEmpty {
-                    rotulo(m.rotuloCuentas, m.totalCuentas, plegado: m.plegadoCuentas, grupo: 0)
-                    if !m.plegadoCuentas { grupo(m.cuentas, tipo: "cuenta") }
+                    Section {
+                        if !m.plegadoCuentas { ForEach(m.cuentas) { f in fila(f, tipo: "cuenta") } }
+                    } header: {
+                        rotulo(m.rotuloCuentas, m.totalCuentas, plegado: m.plegadoCuentas, grupo: 0)
+                    }
                 }
                 if !m.tarjetas.isEmpty {
-                    rotulo(m.rotuloTarjetas, m.totalTarjetas, plegado: m.plegadoTarjetas, grupo: 1)
-                    if !m.plegadoTarjetas { grupo(m.tarjetas, tipo: "tarjeta") }
+                    Section {
+                        if !m.plegadoTarjetas { ForEach(m.tarjetas) { f in fila(f, tipo: "tarjeta") } }
+                    } header: {
+                        rotulo(m.rotuloTarjetas, m.totalTarjetas, plegado: m.plegadoTarjetas, grupo: 1)
+                    }
                 }
                 if !m.prestamos.isEmpty {
-                    rotulo(m.rotuloPrestamos, m.totalPrestamos, plegado: m.plegadoPrestamos, grupo: 2)
-                    if !m.plegadoPrestamos { grupo(m.prestamos, tipo: "prestamo") }
+                    Section {
+                        if !m.plegadoPrestamos { ForEach(m.prestamos) { f in fila(f, tipo: "prestamo") } }
+                    } header: {
+                        rotulo(m.rotuloPrestamos, m.totalPrestamos, plegado: m.plegadoPrestamos, grupo: 2)
+                    }
                 }
-                Color.clear.frame(height: 110)
+                Section { Color.clear.frame(height: 60) }
+                    .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             }
-            .padding(.horizontal, 16).padding(.top, 2)
-            }
+            .listStyle(.insetGrouped)
+            .modifier(CNFondoLista())
             .background(CNC.scr.ignoresSafeArea())
             .navigationTitle(m.titulo)
             .navigationBarTitleDisplayMode(.large)
@@ -3055,23 +3073,23 @@ struct CNCuentas: View {
             datos.onCuentasAccion("plegar", grupo)
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(t.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8)
-                    .foregroundColor(CNC.pmut)
+                Text(t).font(cnLetra(13, .semibold)).foregroundColor(CNC.pmut)
                 if grupo >= 0 {
                     Image(systemName: plegado ? "chevron.right" : "chevron.down")
                         .font(cnLetra(9.5, .heavy)).foregroundColor(CNC.pmut.opacity(0.7))
                 }
                 Spacer(minLength: 8)
                 if !total.valor.isEmpty {
-                    Text(total.rotulo).font(cnLetra(12, .semibold)).foregroundColor(CNC.pmut)
-                    Text(total.valor).font(cnLetra(13.5, .heavy))
+                    Text(total.rotulo).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                    Text(total.valor).font(cnLetra(13, .semibold))
                         .foregroundColor(total.tinta.isEmpty ? CNC.ink : cnColor(hexString: total.tinta))
                 }
             }
-            .padding(.horizontal, 4).padding(.top, 4).contentShape(Rectangle())
+            .contentShape(Rectangle())
         }
-        .buttonStyle(CNPulsable())
+        .buttonStyle(.plain)
         .disabled(grupo < 0)
+        .textCase(nil)
     }
 
     /// La tarjeta oscura del patrimonio, con el ojo para tapar el dinero y el
@@ -3115,51 +3133,43 @@ struct CNCuentas: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    private func grupo(_ filas: [CNCuentasModelo.Fila], tipo: String) -> some View {
-        VStack(spacing: 0) {
-            ForEach(filas) { f in
-                Button { datos.onCuentasAccion(tipo, f.indice) } label: {
-                    HStack(spacing: 12) {
-                        CNSVGShape(d: f.iconoPath)
-                            .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
-                            .foregroundColor(f.color.isEmpty ? CNC.pmut : cnColor(hexString: f.color))
-                            .frame(width: 19, height: 19).frame(width: 38, height: 38)
-                            .background(f.fondo.isEmpty ? CNC.soft : cnColor(hexString: f.fondo))
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(f.nombre).font(cnLetra(15.5, .bold))
-                                    .foregroundColor(CNC.ink).lineLimit(1)
-                                Spacer(minLength: 6)
-                                Text(f.valor).font(cnLetra(15.5, .bold))
-                                    .foregroundColor(f.tintaValor.isEmpty ? CNC.ink : cnColor(hexString: f.tintaValor))
-                                    .lineLimit(1)
-                            }
-                            if !f.detalle.isEmpty {
-                                Text(f.detalle).font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(1)
-                            }
-                            if !f.pie.isEmpty {
-                                CNBarraProgreso(parte: f.uso / 100,
-                                                color: f.usoColor.isEmpty ? CNC.pos : cnColor(hexString: f.usoColor),
-                                                alto: 5)
-                                    .padding(.top, 1)
-                                Text(f.pie).font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
-                            }
-                        }
-                        Image(systemName: "chevron.right").font(cnLetra(12, .semibold))
-                            .foregroundColor(CNC.pmut.opacity(0.5))
+    /// Una cuenta, una tarjeta o un préstamo. Sin tarjeta ni rayas propias:
+    /// las pone la lista, igual que en cualquier pantalla de Ajustes.
+    private func fila(_ f: CNCuentasModelo.Fila, tipo: String) -> some View {
+        Button { datos.onCuentasAccion(tipo, f.indice) } label: {
+            HStack(spacing: 12) {
+                CNSVGShape(d: f.iconoPath)
+                    .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                    .foregroundColor(f.color.isEmpty ? CNC.pmut : cnColor(hexString: f.color))
+                    .frame(width: 19, height: 19).frame(width: 38, height: 38)
+                    .background(f.fondo.isEmpty ? CNC.soft : cnColor(hexString: f.fondo))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(f.nombre).font(cnLetra(15.5, .semibold))
+                            .foregroundColor(CNC.ink).lineLimit(1)
+                        Spacer(minLength: 6)
+                        Text(f.valor).font(cnLetra(15.5, .semibold))
+                            .foregroundColor(f.tintaValor.isEmpty ? CNC.ink : cnColor(hexString: f.tintaValor))
+                            .lineLimit(1)
                     }
-                    .padding(.horizontal, 14).padding(.vertical, 12).contentShape(Rectangle())
-                    .overlay(alignment: .bottom) {
-                        if f.indice < filas.count - 1 {
-                            Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.leading, 64)
-                        }
+                    if !f.detalle.isEmpty {
+                        Text(f.detalle).font(cnLetra(12)).foregroundColor(CNC.pmut).lineLimit(1)
                     }
-                }.buttonStyle(CNPulsable())
+                    if !f.pie.isEmpty {
+                        CNBarraProgreso(parte: f.uso / 100,
+                                        color: f.usoColor.isEmpty ? CNC.pos : cnColor(hexString: f.usoColor),
+                                        alto: 5)
+                            .padding(.top, 1)
+                        Text(f.pie).font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(1)
+                    }
+                }
+                Image(systemName: "chevron.right").font(cnLetra(12, .semibold))
+                    .foregroundColor(CNC.pmut.opacity(0.5))
             }
+            .padding(.vertical, 5).contentShape(Rectangle())
         }
-        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+        .buttonStyle(.plain)
     }
 }
 
