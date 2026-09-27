@@ -5289,8 +5289,9 @@ struct CNPerfil: View {
                 // al arrastrarla se ven sus esquinas como las del sistema.
                 ZStack(alignment: .top) {
                     CNC.scr
+                    // Sin margen de arriba a mano: ahora lleva la barra del
+                    // sistema y es ella la que esquiva la isla.
                     CNSeccionVista(sec: sec, datos: datos, onVolver: { cerrar() })
-                        .padding(.top, cnMargenArriba())
                 }
                 .clipShape(RoundedRectangle(cornerRadius: cnRadioPantalla(), style: .continuous))
                 .offset(x: datos.arrastreSec)
@@ -5609,52 +5610,66 @@ struct CNSeccionVista: View {
     @ObservedObject var datos: CNDatos
     var onVolver: () -> Void
     var body: some View {
-        VStack(spacing: 0) {
-            cabecera
+        // Las doce subpantallas del Perfil pasan por aquí, así que la barra de
+        // arriba se arregla una vez y valen todas. Era la misma imitación de
+        // antes —dos círculos grises y un texto en medio— mientras el resto de
+        // la app ya usaba la barra del sistema.
+        NavigationView {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     ForEach(sec.bloques.indices, id: \.self) { i in bloque(sec.bloques[i], i) }
                     Color.clear.frame(height: 104)
                 }
-                .padding(.horizontal, 16).padding(.top, 14)
+                .padding(.horizontal, 16).padding(.top, 8)
             }
-        }
-        .background(CNC.scr.ignoresSafeArea())
-    }
-
-    private var cabecera: some View {
-        HStack(spacing: 6) {
-            Button {
-                if sec.volverA.isEmpty { onVolver() } else { datos.onAbrirSeccion(sec.volverA) }
-            } label: {
-                Image(systemName: "chevron.left").font(cnLetra(17, .bold))
-                    .foregroundColor(CNC.ink).frame(width: 40, height: 40)
-                    .background(CNC.soft, in: Circle())
-            }.buttonStyle(CNPulsable())
-            Spacer(minLength: 0)
-            Text(sec.titulo).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink).lineLimit(1)
-            Spacer(minLength: 0)
-            if sec.menu.isEmpty {
-                Color.clear.frame(width: 40, height: 40)
-            } else {
-                // Los tres puntos: lo que se hace con esta pantalla entera.
-                Menu {
-                    ForEach(sec.menu.indices, id: \.self) { k in
-                        let a = sec.menu[k]
-                        Button(role: a.peligro ? .destructive : nil) {
-                            if a.abre.isEmpty { datos.onSeccionAccion(a.accion, nil) } else { datos.onAbrirSeccion(a.abre) }
-                        } label: { Text(a.label) }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis").font(cnLetra(17, .bold))
-                        .foregroundColor(CNC.ink).frame(width: 40, height: 40)
-                        .background(CNC.soft, in: Circle())
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle(sec.titulo)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        if sec.volverA.isEmpty { onVolver() } else { datos.onAbrirSeccion(sec.volverA) }
+                    } label: { Image(systemName: "chevron.left") }
+                    .accessibilityLabel(cnT("Volver"))
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    // Los tres puntos: lo que se hace con esta pantalla entera.
+                    // Sin `if` aquí dentro, que los condicionales en la barra de
+                    // herramientas son de iOS 16 y la app llega hasta la 15.
+                    Menu {
+                        ForEach(sec.menu.indices, id: \.self) { k in
+                            let a = sec.menu[k]
+                            Button(role: a.peligro ? .destructive : nil) {
+                                if a.abre.isEmpty { datos.onSeccionAccion(a.accion, nil) } else { datos.onAbrirSeccion(a.abre) }
+                            } label: { Text(a.label) }
+                        }
+                    } label: { Image(systemName: "ellipsis") }
+                    .opacity(sec.menu.isEmpty ? 0 : 1)
+                    .disabled(sec.menu.isEmpty)
                 }
             }
         }
-        .padding(.horizontal, 16).padding(.top, 2 - max(0, cnMargenArriba() - 56))
-        .padding(.bottom, 6).frame(minHeight: 46)
-        .background(CNC.scr.ignoresSafeArea(edges: .top))
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
+    }
+
+    @ViewBuilder private func botonBloque(_ q: CNSeccion.Bloque) -> some View {
+        let etiqueta = Text(q.label).font(cnLetra(16, .semibold))
+            .frame(maxWidth: .infinity).padding(.vertical, 6)
+        let tocar = { if q.abre.isEmpty { datos.onSeccionAccion(q.accion, nil) } else { datos.onAbrirSeccion(q.abre) } }
+        if q.estilo == "acento" {
+            Button(action: tocar) { etiqueta }
+                .buttonStyle(.borderedProminent).tint(CNC.pos)
+                .controlSize(.large).clipShape(Capsule())
+        } else if q.estilo == "peligro" {
+            Button(role: .destructive, action: tocar) { etiqueta }
+                .buttonStyle(.bordered).tint(.red)
+                .controlSize(.large).clipShape(Capsule())
+        } else {
+            Button(action: tocar) { etiqueta }
+                .buttonStyle(.bordered).tint(CNC.pos)
+                .controlSize(.large).clipShape(Capsule())
+        }
     }
 
     @ViewBuilder private func bloque(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
@@ -5663,15 +5678,9 @@ struct CNSeccionVista: View {
             Text(q.texto).font(cnLetra(14)).foregroundColor(CNC.pmut)
                 .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
         case "boton":
-            Button { if q.abre.isEmpty { datos.onSeccionAccion(q.accion, nil) } else { datos.onAbrirSeccion(q.abre) } } label: {
-                Text(q.label).font(cnLetra(15, .bold))
-                    .foregroundColor(q.estilo == "acento" ? CNC.sobreAcc
-                                     : (q.estilo == "peligro" ? CNC.neg : CNC.ink))
-                    .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(q.estilo == "acento" ? CNC.acc
-                                : (q.estilo == "peligro" ? CNC.neg.opacity(0.10) : CNC.soft),
-                                in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-            }.buttonStyle(CNPulsable())
+            // Los estilos de botón DEL SISTEMA: el principal relleno, el
+            // normal con su fondo suave y el de peligro en rojo.
+            botonBloque(q)
         case "codigo":
             VStack(alignment: .leading, spacing: 9) {
                 if !q.titulo.isEmpty { rotulo(q.titulo) }
