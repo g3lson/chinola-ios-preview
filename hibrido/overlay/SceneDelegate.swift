@@ -367,7 +367,7 @@ extension TestVC {
                {"indice":1,"label":"ago","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"},
                {"indice":2,"label":"septiembre","puesto":true,"bg":"rgb(239,203,76)","fg":"rgb(32,24,10)"},
                {"indice":3,"label":"oct","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"},
-               {"indice":4,"label":"Rango…","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"}]},
+               {"indice":4,"label":"Rango","puesto":false,"bg":"rgba(255,255,255,0.13)","fg":"rgb(245,245,230)"}]},
      "vacio":false,
      "catIconos":{
        "Salud":{"path":"M12 7v10M7 12h10","color":"rgb(20,158,140)"},
