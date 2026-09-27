@@ -703,7 +703,11 @@ func cnDiaLargo(_ iso: String) -> String {
     let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
     guard let d = f.date(from: iso) else { return iso }
     let o = DateFormatter(); o.locale = Locale(identifier: CNC.fmt.loc); o.setLocalizedDateFormatFromTemplate("EEEE d MMMM")
-    return o.string(from: d).capitalized
+    // Solo la PRIMERA letra. `.capitalized` sube la de cada palabra y salía
+    // «Lunes, 7 De Septiembre»; antes no se notaba porque quien lo escribía lo
+    // pasaba entero a mayúsculas.
+    let t = o.string(from: d)
+    return t.isEmpty ? t : t.prefix(1).uppercased() + t.dropFirst()
 }
 
 // Estado compartido: la libreta que la web empuja + las acciones que rebotan a
@@ -1168,23 +1172,27 @@ struct CNMovs: View {
             // movimiento. Era lo que hacía que estas dos listas se vieran de
             // otra app que el resto.
             List {
-                Section { CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0) }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
                 if porDia.isEmpty {
                     Section { vacio }.listRowBackground(Color.clear)
                 }
                 ForEach(porDia.indices, id: \.self) { i in
                     Section {
+                        // El espía del scroll viaja DENTRO de la primera
+                        // sección: en una sección propia la lista le daba el
+                        // aire de una sección entera y quedaba un hueco enorme
+                        // bajo el buscador.
+                        if i == 0 { espia }
                         ForEach(porDia[i].1) { m in fila(m) }
                     } header: {
                         cabeceraDia(porDia[i].0, porDia[i].1)
                     }
                 }
-                // Hueco de abajo: por debajo pasa la barra del menú.
-                Section { Color.clear.frame(height: rodarAlEmpezar ? 800 : 60).id("cnAbajo") }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
+                // El hueco de abajo lo pone el margen seguro que el contenedor
+                // le añade por la barra flotante; aquí no hace falta nada.
+                if rodarAlEmpezar {
+                    Section { Color.clear.frame(height: 800).id("cnAbajo") }
+                        .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+                }
             }
             .listStyle(.insetGrouped)
             .modifier(CNFondoLista())
@@ -1226,6 +1234,16 @@ struct CNMovs: View {
         }
         .navigationViewStyle(.stack)
         .tint(CNC.pos)
+    }
+
+    /// Mira por dónde va el scroll (para encoger la barra de abajo) sin ocupar
+    /// sitio: fila de alto cero, sin fondo, sin margen y sin raya.
+    private var espia: some View {
+        CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
+            .frame(height: 0)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
     }
 
     /// El día y lo que dejó: una cabecera de sección, con la letra y el tono
@@ -2998,11 +3016,13 @@ struct CNCuentas: View {
         return NavigationView {
             // Lista agrupada del sistema, la misma que Movimientos y el Perfil.
             List {
-                Section { CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0) }
-                    .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
-                Section { patrimonio(m.patrimonio, oculto: m.oculto) }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                Section {
+                    CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
+                        .frame(height: 0).listRowSeparator(.hidden)
+                    patrimonio(m.patrimonio, oculto: m.oculto)
+                }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 if !m.cuentas.isEmpty {
                     Section {
                         if !m.plegadoCuentas { ForEach(m.cuentas) { f in fila(f, tipo: "cuenta") } }
@@ -3024,8 +3044,6 @@ struct CNCuentas: View {
                         rotulo(m.rotuloPrestamos, m.totalPrestamos, plegado: m.plegadoPrestamos, grupo: 2)
                     }
                 }
-                Section { Color.clear.frame(height: 60) }
-                    .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             }
             .listStyle(.insetGrouped)
             .modifier(CNFondoLista())
