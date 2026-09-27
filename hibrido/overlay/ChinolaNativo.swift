@@ -1177,14 +1177,13 @@ struct CNMovs: View {
                 }
                 ForEach(porDia.indices, id: \.self) { i in
                     Section {
-                        // El espía del scroll viaja DENTRO de la primera
-                        // sección: en una sección propia la lista le daba el
-                        // aire de una sección entera y quedaba un hueco enorme
-                        // bajo el buscador.
-                        if i == 0 { espia }
                         ForEach(porDia[i].1) { m in fila(m) }
                     } header: {
+                        // El espía va COLGADO de la cabecera, no como fila: una
+                        // fila, aunque mida cero, se lleva su hueco y su raya.
+                        // Una superposición no ocupa sitio.
                         cabeceraDia(porDia[i].0, porDia[i].1)
+                            .overlay(alignment: .top) { if i == 0 { espia } }
                     }
                 }
                 // El hueco de abajo lo pone el margen seguro que el contenedor
@@ -1241,9 +1240,7 @@ struct CNMovs: View {
     private var espia: some View {
         CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
             .frame(height: 0)
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            .allowsHitTesting(false)
     }
 
     /// El día y lo que dejó: una cabecera de sección, con la letra y el tono
@@ -3017,12 +3014,15 @@ struct CNCuentas: View {
             // Lista agrupada del sistema, la misma que Movimientos y el Perfil.
             List {
                 Section {
-                    CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
-                        .frame(height: 0).listRowSeparator(.hidden)
                     patrimonio(m.patrimonio, oculto: m.oculto)
+                        .overlay(alignment: .top) {
+                            CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
+                                .frame(height: 0).allowsHitTesting(false)
+                        }
                 }
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
                 if !m.cuentas.isEmpty {
                     Section {
                         if !m.plegadoCuentas { ForEach(m.cuentas) { f in fila(f, tipo: "cuenta") } }
@@ -3268,13 +3268,16 @@ struct CNPlan: View {
             // Lista agrupada del sistema, como Movimientos, Cuentas y Perfil.
             List {
                 Section {
-                    CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
-                        .frame(height: 0).listRowSeparator(.hidden)
                     pestanas(m)
+                        .overlay(alignment: .top) {
+                            CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
+                                .frame(height: 0).allowsHitTesting(false)
+                        }
                     if m.tab != "metas" { resumenPres(m) }
                 }
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
                 if m.tab == "metas" { metas(m) } else { presupuesto(m) }
             }
             .listStyle(.insetGrouped)
