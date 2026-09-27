@@ -677,19 +677,29 @@ struct CNAgregar: View {
     /// Sin atenuado ni esquinas propias: ya vamos DENTRO de una hoja del
     /// sistema, y ponerle otra encima se veía como dos hojas.
     private var chooser: some View {
-        VStack(spacing: 0) {
-            CNHojaCabecera(titulo: cnT("¿Qué quieres agregar?"), onClose: onClose)
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 10) {
+        // Barra del sistema y las tres en UNA lista agrupada, no tres tarjetas
+        // sueltas con hueco entre ellas: son opciones de lo mismo.
+        NavigationView {
+            List {
+                Section {
                     opcion("banco", CNC.pos, "Una cuenta", "Efectivo, banco, ahorros") { cual = "cuenta" }
                     opcion("tarjeta", CNC.neg, "Una tarjeta de crédito", "Con su deuda y sus fechas") { cual = "tarjeta" }
                     opcion("mano", cnColor(0x825eb9), "Un préstamo o fiado", "Lo que debes o te deben") { cual = "prestamo" }
                 }
-                .padding(.horizontal, 16).padding(.top, 4)
+            }
+            .listStyle(.insetGrouped)
+            .modifier(CNFondoLista())
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle(cnT("¿Qué quieres agregar?"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(cnT("Cancelar")) { onClose() }
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(CNC.scr.ignoresSafeArea())
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
     }
 
     private func opcion(_ ic: String, _ tinte: Color, _ t: String, _ s: String, _ tap: @escaping () -> Void) -> some View {
@@ -697,9 +707,10 @@ struct CNAgregar: View {
             HStack(spacing: 12) {
                 cnGlifo(ic, tam: 20).foregroundColor(.white).frame(width: 42, height: 42).background(tinte).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) { Text(t).font(cnLetra(16, .semibold)).foregroundColor(CNC.ink); Text(s).font(cnLetra(12.5)).foregroundColor(CNC.pmut) }
-                Spacer(minLength: 6); Image(systemName: "chevron.right").font(cnLetra(13, .semibold)).foregroundColor(CNC.pmut.opacity(0.6))
-            }.padding(14).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
-        }.buttonStyle(CNPulsable())
+                Spacer(minLength: 6); Image(systemName: "chevron.right").font(cnLetra(13, .semibold)).foregroundColor(CNC.pmut.opacity(0.5))
+            // Sin tarjeta propia: ahora es una fila de la lista y la pone ella.
+            }.padding(.vertical, 5).contentShape(Rectangle())
+        }.buttonStyle(.plain)
     }
 }
 

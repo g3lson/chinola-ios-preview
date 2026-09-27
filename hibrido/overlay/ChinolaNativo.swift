@@ -5754,7 +5754,11 @@ struct CNSeccionVista: View {
     }
 
     private func grupoVista(_ q: CNSeccion.Bloque) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+        // Si alguna fila del grupo lleva icono, las que no lo llevan RESERVAN
+        // su hueco. Si no, el texto de esas se pega al borde de la tarjeta y
+        // la columna de nombres da un salto a media lista.
+        let conIcono = q.filas.contains { !$0.icono.isEmpty }
+        return VStack(alignment: .leading, spacing: 7) {
             if !q.titulo.isEmpty { rotulo(q.titulo) }
             VStack(spacing: 0) {
                 ForEach(q.filas.indices, id: \.self) { i in
@@ -5768,6 +5772,8 @@ struct CNSeccionVista: View {
                                     .frame(width: 18, height: 18).frame(width: 30, height: 30)
                                     .background(f.bg.isEmpty ? CNC.soft : cnColor(hexString: f.bg),
                                                 in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            } else if conIcono {
+                                Color.clear.frame(width: 30, height: 30)
                             }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(f.label).font(cnLetra(16)).foregroundColor(CNC.ink).lineLimit(1)
@@ -5995,10 +6001,16 @@ struct CNSeccionVista: View {
                         }
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 11).padding(.horizontal, 8)
-                    .background(o.puesta ? CNC.soft : CNC.card,
+                    // Lo elegido, del verde del tinte. En amarillo eran —con
+                    // las muestras de color— los dos únicos sitios que seguían
+                    // marcando la selección con el acento de la marca, cuando
+                    // todo lo demás (la palomita del periodo, los
+                    // interruptores, los botones, la pestaña puesta) ya va en
+                    // verde. Cantaba precisamente por ser los únicos.
+                    .background(o.puesta ? CNC.pos.opacity(0.10) : CNC.card,
                                 in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 14)
-                        .stroke(o.puesta ? CNC.acc : CNC.line, lineWidth: o.puesta ? 2 : 1))
+                        .stroke(o.puesta ? CNC.pos : CNC.line, lineWidth: o.puesta ? 2 : 1))
                 }.buttonStyle(CNPulsable())
             }
         }
@@ -6019,7 +6031,8 @@ struct CNSeccionVista: View {
                             CNFondoCabecera(f: cnFondoDeCss(c.css), respaldo: CNC.side)
                                 .frame(width: 44, height: 44)
                                 .clipShape(Circle())
-                                .overlay(Circle().stroke(CNC.acc, lineWidth: c.puesta ? 3 : 0))
+                                // Del verde del tinte, igual que la rejilla.
+                                .overlay(Circle().stroke(CNC.pos, lineWidth: c.puesta ? 3 : 0))
                                 .overlay(Circle().stroke(CNC.line, lineWidth: 0.5))
                         }.buttonStyle(CNPulsable())
                     }
