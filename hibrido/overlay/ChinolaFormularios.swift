@@ -752,10 +752,10 @@ struct CNHojaWeb: View {
     @State private var texto: [Int: String] = [:]
 
     var body: some View {
-        VStack(spacing: 0) {
-            CNHojaCabecera(titulo: m.titulo, guardarTexto: m.boton.isEmpty ? "Guardar" : m.boton,
-                           guardarActivo: !m.cargando, conCheck: m.conCheck,
-                           onClose: onClose, onGuardar: { datos.onHojaEnviar() })
+        // Barra del sistema, igual que los nueve formularios nativos: esta la
+        // arma la web, pero se enseña dentro de la app y tiene que hablar el
+        // mismo idioma.
+        NavigationView {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
                     if !m.texto.isEmpty {
@@ -768,21 +768,44 @@ struct CNHojaWeb: View {
                     // Lo que no es «guardar sin más» lleva su botón con
                     // palabras: un ✓ no dice si va a borrar o a mandar un correo.
                     if !m.conCheck {
-                        Button { datos.onHojaEnviar() } label: {
-                            Text(m.boton).font(cnLetra(16, .bold))
-                                .foregroundColor(m.destruye ? .white : CNC.sobreAcc)
-                                .frame(maxWidth: .infinity).padding(.vertical, 16)
-                                .background(m.destruye ? CNC.neg : CNC.acc, in: Capsule())
-                        }.buttonStyle(CNPulsable()).padding(.top, 4)
+                        // Con el estilo del sistema: relleno, y en rojo cuando
+                        // lo que hace es destruir algo.
+                        Button(role: m.destruye ? .destructive : nil) { datos.onHojaEnviar() } label: {
+                            Text(m.boton).font(cnLetra(16, .semibold))
+                                .frame(maxWidth: .infinity).padding(.vertical, 6)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(m.destruye ? .red : CNC.pos)
+                        .controlSize(.large).clipShape(Capsule())
+                        .padding(.top, 4)
                     }
                     Color.clear.frame(height: 24)
                 }
-                .padding(.horizontal, 16).padding(.top, 4)
+                .padding(.horizontal, 16).padding(.top, 8)
             }
             .cnTeclado()
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle(m.titulo)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(cnT("Cancelar")) { onClose() }
+                }
+                // El botón de confirmar solo cuando la hoja es un «guardar sin
+                // más»; lo que borra o manda un correo lleva su botón con
+                // palabras dentro, que un ✓ no dice qué va a hacer.
+                ToolbarItemGroup(placement: .confirmationAction) {
+                    if m.conCheck {
+                        Button { datos.onHojaEnviar() } label: {
+                            Text(m.boton.isEmpty ? cnT("Guardar") : m.boton).font(cnLetra(17, .semibold))
+                        }
+                        .disabled(m.cargando)
+                    }
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(CNC.scr.ignoresSafeArea())
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
         .environment(\.locale, Locale(identifier: CNC.fmt.loc))
     }
 
@@ -804,9 +827,9 @@ struct CNHojaWeb: View {
                 HStack(spacing: 12) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .fill(c.marcada ? CNC.acc : Color.clear)
+                            .fill(c.marcada ? CNC.pos : Color.clear)
                         RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .stroke(c.marcada ? CNC.acc : CNC.line, lineWidth: 1.5)
+                            .stroke(c.marcada ? CNC.pos : CNC.line, lineWidth: 1.5)
                         if c.marcada {
                             Image(systemName: "checkmark").font(cnLetra(12, .heavy)).foregroundColor(CNC.sobreAcc)
                         }
@@ -1294,22 +1317,31 @@ struct CNLibretasHoja: View {
         let puesta = m.filas.first(where: { $0.enUso })
         let otras = m.filas.filter { !$0.enUso }
         let altoMax = UIScreen.main.bounds.height * 0.82
-        return VStack(spacing: 0) {
-            // La misma cabecera que el periodo y los formularios: cerrar a la
-            // izquierda, el título en medio y el «+» en la esquina derecha.
-            CNHojaCabecera(titulo: m.titulo, onClose: onClose, onMas: { datos.onLibreta("nueva", 0) })
-                .padding(.top, 8)
-
+        return NavigationView {
             // Con pocas libretas la hoja mide lo que mide su contenido; solo si
             // son muchas se convierte en una lista que rueda.
-            if m.filas.count > 5 {
-                ScrollView(showsIndicators: false) { cuerpo(m, puesta: puesta, otras: otras) }
-                    .frame(maxHeight: altoMax)
-            } else {
-                cuerpo(m, puesta: puesta, otras: otras)
+            Group {
+                if m.filas.count > 5 {
+                    ScrollView(showsIndicators: false) { cuerpo(m, puesta: puesta, otras: otras) }
+                        .frame(maxHeight: altoMax)
+                } else {
+                    ScrollView(showsIndicators: false) { cuerpo(m, puesta: puesta, otras: otras) }
+                }
+            }
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle(m.titulo)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(cnT("Cancelar")) { onClose() }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { datos.onLibreta("nueva", 0) } label: { Image(systemName: "plus") }
+                }
             }
         }
-        .frame(maxWidth: .infinity)
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
     }
 
     private func cuerpo(_ m: CNLibretas, puesta: CNLibretas.Fila?, otras: [CNLibretas.Fila]) -> some View {
@@ -2636,8 +2668,9 @@ struct CNCharlaVista: View {
 
     var body: some View {
         let m = datos.charla ?? CNCharla()
-        return VStack(spacing: 0) {
-            CNHojaCabecera(titulo: m.titulo, onClose: onClose)
+        // Barra del sistema, la última que quedaba con la cabecera a mano.
+        return NavigationView {
+            VStack(spacing: 0) {
             ScrollViewReader { lector in
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 8) {
@@ -2715,9 +2748,19 @@ struct CNCharlaVista: View {
             }
             .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 10)
             .background(CNC.scr)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle(m.titulo)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(cnT("Cerrar")) { onClose() }
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(CNC.scr.ignoresSafeArea())
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
         .environment(\.locale, Locale(identifier: CNC.fmt.loc))
         .onReceive(dictado.$texto) { t in if !t.isEmpty { texto = t } }
         .onChange(of: dictado.grabando) { on in
