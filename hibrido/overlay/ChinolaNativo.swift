@@ -4324,6 +4324,17 @@ struct CNFondoCabecera: View {
 /// movía y el valor no llegaba nunca a la vista. Esto sube por las vistas hasta
 /// dar con el `UIScrollView` que SwiftUI crea por debajo y se apunta a sus
 /// cambios de posición, que es el dato que de verdad manda.
+/// La sombra de la tarjeta que se arrastra. Puesta o quitada del todo, no
+/// puesta con opacidad cero: una sombra transparente sigue costando una pasada
+/// de dibujado por cada tarjeta.
+struct CNSombraLlevada: ViewModifier {
+    let activa: Bool
+    func body(content: Content) -> some View {
+        if activa { content.shadow(color: .black.opacity(0.22), radius: 16, y: 8) }
+        else { content }
+    }
+}
+
 struct CNEspiaScroll: UIViewRepresentable {
     var alRodar: (CGFloat) -> Void
     func makeUIView(context: Context) -> UIView {
@@ -4495,16 +4506,30 @@ struct CNResumen: View {
                                 datos: datos,
                                 onOrganizar: { withAnimation(.easeOut(duration: 0.22)) { organiza = true } })
                     // Dónde está cada tarjeta, para saber encima de cuál se suelta.
-                    .background(GeometryReader { g in
-                        Color.clear.preference(key: CNMarcosPanel.self,
-                                               value: [w.wid: g.frame(in: .named("panel"))])
-                    })
+                    // Dónde está cada tarjeta SOLO mientras se organiza.
+                    //
+                    // Esto medía y publicaba la posición de todas las tarjetas
+                    // SIEMPRE, y como el marco cambia en cada fotograma del
+                    // scroll, `marcos` se reescribía en cada fotograma y con él
+                    // se repintaba el Resumen entero. Se pagaba a todas horas
+                    // algo que solo sirve para arrastrar.
+                    .background(alignment: .center) {
+                        if organiza {
+                            GeometryReader { g in
+                                Color.clear.preference(key: CNMarcosPanel.self,
+                                                       value: [w.wid: g.frame(in: .named("panel"))])
+                            }
+                        }
+                    }
                     // El meneo: la señal de «esto se puede mover», como en el
                     // teléfono. Cada tarjeta empieza para un lado distinto.
                     .modifier(CNMeneo(activo: organiza && llevada != w.wid, lado: w.indice % 2 == 0))
                     .offset(llevada == w.wid ? desplaza : .zero)
                     .scaleEffect(llevada == w.wid ? 1.04 : 1)
-                    .shadow(color: .black.opacity(llevada == w.wid ? 0.22 : 0), radius: 16, y: 8)
+                    // La sombra, solo en la que se lleva el dedo: puesta en
+                    // todas (aunque fuera transparente) es una pasada de
+                    // dibujado por tarjeta en cada fotograma.
+                    .modifier(CNSombraLlevada(activa: llevada == w.wid))
                     .zIndex(llevada == w.wid ? 10 : 0)
                     .animation(.spring(response: 0.28, dampingFraction: 0.85), value: llevada)
                     // Pellizcar: abrir los dedos la hace ancha, juntarlos la
@@ -4515,9 +4540,15 @@ struct CNResumen: View {
             .onPreferenceChange(CNMarcosPanel.self) { marcos = $0 }
             // Dónde está el panel en la pantalla, para traducir el dedo (que
             // llega en coordenadas de ventana) a la rejilla.
-            .background(GeometryReader { g in
-                Color.clear.preference(key: CNPanelGlobal.self, value: g.frame(in: .global))
-            })
+            // Y dónde está el panel entero, también solo al organizar: en
+            // coordenadas de pantalla esto cambia en CADA fotograma del scroll.
+            .background(alignment: .center) {
+                if organiza {
+                    GeometryReader { g in
+                        Color.clear.preference(key: CNPanelGlobal.self, value: g.frame(in: .global))
+                    }
+                }
+            }
             .onPreferenceChange(CNPanelGlobal.self) { panelGlobal = $0 }
             .background(organiza ? CNLevantador(
                 alEmpezar: { p in levantar(en: p) },
