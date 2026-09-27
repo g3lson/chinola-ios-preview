@@ -2454,18 +2454,34 @@ struct CNDetalleVista: View {
         .frame(maxWidth: .infinity, alignment: .leading).padding(14).tarjetaCN()
     }
 
+    /// Las acciones de la pantalla, con los estilos de botón DEL SISTEMA: la
+    /// principal rellena y la otra con su fondo suave. Eran dos cápsulas
+    /// pintadas a mano —una amarilla— y, con la barra de arriba ya del
+    /// teléfono, eran lo único que seguía hablando otro idioma.
     private func botones(_ d: CNDetalle) -> some View {
         HStack(spacing: 12) {
             ForEach(d.botones) { b in
-                Button { datos.onDetalleAccion("boton", b.id) } label: {
-                    Text(b.label).font(cnLetra(15, .bold))
-                        .foregroundColor(b.estilo == "acento" ? CNC.sobreAcc : CNC.ink)
-                        .lineLimit(1).minimumScaleFactor(0.75)
-                        .frame(maxWidth: .infinity).padding(.vertical, 15)
-                        .background(b.estilo == "acento" ? CNC.acc : CNC.card, in: Capsule())
-                        .overlay(Capsule().stroke(b.estilo == "acento" ? Color.clear : CNC.line, lineWidth: 1))
-                }.buttonStyle(CNPulsable())
+                boton(b)
             }
+        }
+    }
+
+    @ViewBuilder private func boton(_ b: CNDetalle.Boton) -> some View {
+        let etiqueta = Text(b.label).font(cnLetra(15, .semibold))
+            .lineLimit(1).minimumScaleFactor(0.75)
+            .frame(maxWidth: .infinity).padding(.vertical, 6)
+        if b.estilo == "acento" {
+            Button { datos.onDetalleAccion("boton", b.id) } label: { etiqueta }
+                .buttonStyle(.borderedProminent)
+                .tint(CNC.pos)
+                .controlSize(.large)
+                .clipShape(Capsule())
+        } else {
+            Button { datos.onDetalleAccion("boton", b.id) } label: { etiqueta }
+                .buttonStyle(.bordered)
+                .tint(CNC.pos)
+                .controlSize(.large)
+                .clipShape(Capsule())
         }
     }
 
@@ -2650,7 +2666,9 @@ struct CNDetalleMov: View {
                 if m.puedeEditar {
                     Section {
                         Button(role: .destructive) { confirmarBorrar = true } label: {
-                            Label(cnT("Eliminar"), systemImage: "trash")
+                            // El tinte de la app pintaba el icono de verde al
+                            // lado de un texto rojo. Rojo los dos.
+                            Label(cnT("Eliminar"), systemImage: "trash").foregroundColor(.red)
                         }
                     }
                 }
@@ -5107,8 +5125,11 @@ struct CNPerfil: View {
 
     private var raiz: some View {
         let a = datos.ajustes ?? CNAjustes()
-        return VStack(spacing: 0) {
-            cabecera
+        // Con la barra de arriba del sistema, como las demás pantallas: el
+        // título grande «Chinola» que encoge al rodar. Antes era un Text de
+        // 34 pt al lado del logo, y con Movimientos, Cuentas y Plan ya en
+        // piezas de iOS, Perfil era la única que seguía imitándolas.
+        return NavigationView {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 22) {
                     CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
@@ -5123,35 +5144,26 @@ struct CNPerfil: View {
                         .frame(maxWidth: .infinity, alignment: .center).padding(.top, 4)
                     Color.clear.frame(height: 104)
                 }
-                .padding(.horizontal, 16).padding(.top, 14)
+                .padding(.horizontal, 16).padding(.top, 6)
+            }
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle("Chinola")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    // La marca, que además es la puerta de Chino: se mantiene
+                    // pulsada y sale. Estaba junto al título de antes.
+                    ZStack {
+                        Circle().fill(CNC.side).frame(width: 26, height: 26)
+                        Circle().fill(CNC.acc).frame(width: 10, height: 10)
+                    }
+                    .onLongPressGesture(minimumDuration: 0.4) { datos.onMascota() }
+                    .accessibilityLabel("Chinola")
+                }
             }
         }
-        .background(CNC.scr.ignoresSafeArea())
-    }
-
-    /// Perfil no lleva la cabecera de la libreta: aquí no hay mes ni balance
-    /// que mirar. Lleva el nombre de la app, como en la web.
-    private var cabecera: some View {
-        HStack(spacing: 11) {
-            // La marca, como siempre —y algo mayor, que es el título de la
-            // pantalla—. Chino vive en el menú, no aquí.
-            ZStack {
-                Circle().fill(CNC.side).frame(width: 38, height: 38)
-                Circle().fill(CNC.acc).frame(width: 14, height: 14)
-            }
-            .onLongPressGesture(minimumDuration: 0.4) { datos.onMascota() }
-            // Del tamaño del título de las otras pantallas: es el título de esta.
-            Text("Chinola").font(cnLetra(34, .bold)).foregroundColor(CNC.ink)
-            Spacer(minLength: 0)
-        }
-        // Pegado a la isla: el margen seguro ya la esquiva, así que dejar más
-        // aire aquí solo es pantalla desperdiciada.
-        // A la misma altura que el título de las otras pantallas (que llevan
-        // el hueco de la lista más 2): que «Chinola» no salga pegado a la isla.
-        .padding(.horizontal, 16).padding(.top, 14)
-        .padding(.bottom, 8).frame(minHeight: 44)
-        .background(CNC.scr.ignoresSafeArea(edges: .top))
-        .overlay(alignment: .top) { CNDifuminadoArriba(extra: 0) }
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
     }
 
     private func tarjetaUsuario(_ u: CNAjustes.Usuario) -> some View {
