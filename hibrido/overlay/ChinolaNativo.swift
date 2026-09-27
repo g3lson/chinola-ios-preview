@@ -2468,16 +2468,18 @@ struct CNDetalleVista: View {
                     Button(action: onVolver) { Image(systemName: "chevron.left") }
                         .accessibilityLabel(cnT("Volver"))
                 }
-                // Sin `if` aquí dentro: los condicionales en la barra de
-                // herramientas son de iOS 16 y la app llega hasta la 15.
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        ForEach(d.botones) { b in
-                            Button { datos.onDetalleAccion("boton", b.id) } label: { Text(b.label) }
-                        }
-                    } label: { Image(systemName: "ellipsis") }
-                    .opacity(d.botones.isEmpty ? 0 : 1)
-                    .disabled(d.botones.isEmpty)
+                // En un GRUPO, no en un `ToolbarItem` suelto: ahí dentro el
+                // `if` vale también en iOS 15. Dejarlo con opacidad cero no
+                // servía —el sistema le dibujaba igual su cápsula y salía un
+                // círculo blanco vacío.
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if !d.botones.isEmpty {
+                        Menu {
+                            ForEach(d.botones) { b in
+                                Button { datos.onDetalleAccion("boton", b.id) } label: { Text(b.label) }
+                            }
+                        } label: { Image(systemName: "ellipsis") }
+                    }
                 }
             }
         }
@@ -5632,25 +5634,51 @@ struct CNSeccionVista: View {
                     } label: { Image(systemName: "chevron.left") }
                     .accessibilityLabel(cnT("Volver"))
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    // Los tres puntos: lo que se hace con esta pantalla entera.
-                    // Sin `if` aquí dentro, que los condicionales en la barra de
-                    // herramientas son de iOS 16 y la app llega hasta la 15.
-                    Menu {
-                        ForEach(sec.menu.indices, id: \.self) { k in
-                            let a = sec.menu[k]
-                            Button(role: a.peligro ? .destructive : nil) {
-                                if a.abre.isEmpty { datos.onSeccionAccion(a.accion, nil) } else { datos.onAbrirSeccion(a.abre) }
-                            } label: { Text(a.label) }
-                        }
-                    } label: { Image(systemName: "ellipsis") }
-                    .opacity(sec.menu.isEmpty ? 0 : 1)
-                    .disabled(sec.menu.isEmpty)
+                // Los tres puntos: lo que se hace con esta pantalla entera.
+                //
+                // Va en un GRUPO y no en un `ToolbarItem` suelto: dentro del
+                // grupo el contenido es normal y el `if` vale también en iOS 15
+                // (en un `ToolbarItem` los condicionales son de la 16). Dejarlo
+                // puesto con opacidad cero no servía: el sistema le dibujaba
+                // igual su cápsula de vidrio y salía un círculo blanco vacío
+                // arriba a la derecha en las pantallas que no tienen menú.
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if !sec.menu.isEmpty {
+                        Menu {
+                            ForEach(sec.menu.indices, id: \.self) { k in
+                                let a = sec.menu[k]
+                                Button(role: a.peligro ? .destructive : nil) {
+                                    if a.abre.isEmpty { datos.onSeccionAccion(a.accion, nil) } else { datos.onAbrirSeccion(a.abre) }
+                                } label: { Text(a.label) }
+                            }
+                        } label: { Image(systemName: "ellipsis") }
+                    }
                 }
             }
         }
         .navigationViewStyle(.stack)
         .tint(CNC.pos)
+    }
+
+    /// Los botones chicos del rótulo de una lista («Abrir», «+ Invitar»), con
+    /// los estilos del sistema. Eran dos cápsulas pintadas a mano —una
+    /// amarilla— y, con la barra de arriba ya del teléfono, eran lo único que
+    /// seguía hablando otro idioma.
+    @ViewBuilder private func botonChico(_ bt: CNSeccion.Boton) -> some View {
+        let tocar = {
+            UISelectionFeedbackGenerator().selectionChanged()
+            if bt.abre.isEmpty { datos.onSeccionAccion(bt.accion, nil) } else { datos.onAbrirSeccion(bt.abre) }
+        }
+        let etiqueta = Text(bt.label).font(cnLetra(14, .semibold))
+        if bt.estilo == "acento" {
+            Button(action: tocar) { etiqueta }
+                .buttonStyle(.borderedProminent).tint(CNC.pos)
+                .controlSize(.small).clipShape(Capsule())
+        } else {
+            Button(action: tocar) { etiqueta }
+                .buttonStyle(.bordered).tint(CNC.pos)
+                .controlSize(.small).clipShape(Capsule())
+        }
     }
 
     @ViewBuilder private func botonBloque(_ q: CNSeccion.Bloque) -> some View {
@@ -5705,7 +5733,9 @@ struct CNSeccionVista: View {
                 Spacer(minLength: 8)
                 Toggle("", isOn: Binding(get: { q.puesto },
                                          set: { _ in datos.onSeccionAccion(q.accion, nil) }))
-                    .labelsHidden().tint(CNC.acc)
+                    // Del mismo verde que el resto de lo nativo. En amarillo
+                    // era el único control que no seguía el tinte de la app.
+                    .labelsHidden().tint(CNC.pos)
             }
             .padding(14).tarjetaCN()
         case "interruptores": llavesVista(q, bi)
@@ -6009,17 +6039,7 @@ struct CNSeccionVista: View {
                     if !q.titulo.isEmpty { rotulo(q.titulo) }
                     Spacer(minLength: 8)
                     ForEach(q.botones.indices, id: \.self) { k in
-                        let bt = q.botones[k]
-                        Button {
-                            UISelectionFeedbackGenerator().selectionChanged()
-                            if bt.abre.isEmpty { datos.onSeccionAccion(bt.accion, nil) } else { datos.onAbrirSeccion(bt.abre) }
-                        } label: {
-                            Text(bt.label).font(cnLetra(13, .bold))
-                                .foregroundColor(bt.estilo == "acento" ? CNC.sobreAcc : CNC.ink)
-                                .padding(.horizontal, 13).padding(.vertical, 8)
-                                .background(bt.estilo == "acento" ? CNC.acc : CNC.card, in: Capsule())
-                                .overlay(Capsule().stroke(bt.estilo == "acento" ? Color.clear : CNC.line, lineWidth: 1))
-                        }.buttonStyle(CNPulsable())
+                        botonChico(q.botones[k])
                     }
                 }
                 .padding(.bottom, q.botones.isEmpty ? 0 : 2)

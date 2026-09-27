@@ -230,7 +230,7 @@ extension TestVC {
         case "hoja-web":
             datos.cargarHojaWeb(json: TestVC.hojaDeMuestra)
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
-        case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas":
+        case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas", "sec-todo":
             datos.cargarSeccion(json: TestVC.seccionDeMuestra(String(cual.dropFirst(4))))
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
         case "tema-claro-movs", "tema-oscuro-movs", "movs-rodado":
@@ -468,6 +468,57 @@ extension TestVC {
     /// Secciones de ejemplo para mirarlas sin la web detrás.
     static func seccionDeMuestra(_ id: String) -> String {
         switch id {
+        // Una sección de mentira con TODOS los tipos de bloque que sabe
+        // dibujar `CNSeccionVista`. Del Perfil salen doce subpantallas y el
+        // banco solo tenía muestra de cuatro: las otras ocho no había forma de
+        // mirarlas. Con esta se ven todas las piezas de una vez.
+        case "todo":
+            return """
+            {"id":"todo","titulo":"Todas las piezas","volverA":"",
+             "menu":[{"label":"Una acción","accion":1},{"label":"Borrar","peligro":true,"accion":2}],
+             "bloques":[
+              {"tipo":"texto","texto":"Un párrafo de los que explican qué hace la pantalla."},
+              {"tipo":"grupo","titulo":"Un grupo de filas","filas":[
+                {"label":"Con valor y flecha","sub":"Y su línea de abajo","valor":"Puesto","entra":true,"accion":1,
+                 "icono":"M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0","bg":"rgba(19,125,65,0.14)","fg":"rgb(19,125,65)"},
+                {"label":"Solo con flecha","entra":true,"accion":2,
+                 "icono":"M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6zM9 12l2 2 4-4","bg":"rgba(58,80,168,0.14)","fg":"rgb(58,80,168)"},
+                {"label":"Con valor teñido","valor":"Activada","tinta":"rgb(19,125,65)","accion":3}]},
+              {"tipo":"interruptor","label":"Un interruptor suelto","pie":"Con su explicación debajo, que puede ser larga y ocupar dos renglones.","puesto":true,"accion":4},
+              {"tipo":"interruptores","titulo":"Varios juntos","items":[
+                {"label":"El primero","sub":"Con su nota","puesto":true,"accion":5},
+                {"label":"El segundo","puesto":false,"accion":6},
+                {"label":"El tercero","sub":"Otra nota","puesto":true,"accion":7}]},
+              {"tipo":"selector","titulo":"Un selector","opciones":[
+                {"label":"Español","sub":"es","puesta":true,"accion":8},
+                {"label":"English","sub":"en","accion":9},
+                {"label":"Français","sub":"fr","accion":10}]},
+              {"tipo":"previa","titulo":"Cómo se verá la letra","escala":1.1,
+               "muestraTitulo":"Gastos del mes","muestraCifra":"RD$31,000",
+               "muestraTexto":"Así se leen los textos normales de la app con este tamaño."},
+              {"tipo":"opciones","titulo":"Opciones en rejilla","columnas":3,"opciones":[
+                {"label":"Una","puesta":true,"accion":11,"icono":"M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z","color":"rgb(19,125,65)"},
+                {"label":"Otra","accion":12,"icono":"M12 2v20M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.8 5 3.4 5 1.5 5 3.6-2.2 3-5 3-5-1.1-5-3","color":"rgb(140,106,26)"},
+                {"label":"La tercera","accion":13,"icono":"M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0","color":"rgb(122,66,168)"}]},
+              {"tipo":"muestras","titulo":"Colores de la cabecera","colores":[
+                {"nombre":"Verde","css":"rgb(29,61,40)","puesta":true,"accion":14},
+                {"nombre":"Azul","css":"rgb(32,56,110)","accion":15},
+                {"nombre":"Vino","css":"rgb(88,30,44)","accion":16},
+                {"nombre":"Degradado","css":"linear-gradient(135deg, rgb(239,203,76), rgb(19,125,65))","accion":17}]},
+              {"tipo":"lista","titulo":"Una lista con botones",
+               "botones":[{"label":"Abrir","estilo":"acento","accion":18},{"label":"+ Invitar","accion":19}],
+               "items":[
+                {"titulo":"Gelson (tú)","detalle":"gelson@correo.do","chip":"Dueño","chipFondo":"rgba(140,106,26,0.14)",
+                 "icono":"M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0","color":"rgb(255,255,255)","fondo":"rgb(29,61,40)"},
+                {"titulo":"Ana","detalle":"ana@correo.do","chip":"Editor","chipFondo":"rgba(58,80,168,0.14)",
+                 "icono":"M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0","color":"rgb(255,255,255)","fondo":"rgb(46,80,170)",
+                 "acciones":[{"label":"Cambiar el rol","accion":20},{"label":"Quitar","peligro":true,"accion":21}]}]},
+              {"tipo":"codigo","titulo":"Un código para copiar","texto":"CHIN-4F2A-9KD1-77QX","label":"Copiar","accion":22},
+              {"tipo":"boton","label":"La acción principal","estilo":"acento","accion":23},
+              {"tipo":"boton","label":"Una acción normal","accion":24},
+              {"tipo":"boton","label":"Cerrar la sesión","estilo":"peligro","accion":25},
+              {"tipo":"texto","texto":"Y un pie que cierra la pantalla."}]}
+            """
         case "colores":
             let tema = { (n: String, bg: String, fr: String, card: String, ac: String, osc: Bool, puesta: Bool) -> String in
                 "{\"label\":\"\(n)\",\"puesta\":\(puesta),\"accion\":1,\"vista\":{\"tipo\":\"tema\",\"fondo\":\"\(bg)\",\"franja\":\"\(fr)\",\"tarjeta\":\"\(card)\",\"acento\":\"\(ac)\",\"oscuro\":\(osc)}}"
