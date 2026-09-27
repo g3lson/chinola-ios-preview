@@ -3294,8 +3294,12 @@ struct CNPlan: View {
                     .padding(.top, 4).padding(.bottom, 10)
                     .background(.bar)
             }
+            // Título en la barra, no grande: con el filtro pegado debajo, el
+            // título grande dejaba una banda vacía entre los botones y las
+            // pestañas (y llegó a no dibujarse). Es el mismo patrón que usa
+            // Apple cuando una pantalla tiene un filtro fijo arriba.
             .navigationTitle(m.titulo)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { datos.onCalendario() } label: { Image(systemName: "calendar") }
