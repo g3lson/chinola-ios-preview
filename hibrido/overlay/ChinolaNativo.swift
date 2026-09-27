@@ -1485,10 +1485,14 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     private static let hueco: CGFloat = 3
     private static let altoTexto: CGFloat = 12
 
-    /// La tinta de la pestaña: gris cuando está apagada, el verde del tema
-    /// cuando está puesta. Va dentro de la imagen, así que se decide aquí.
+    /// La tinta de la pestaña. Va DENTRO de la imagen, así que se decide aquí.
+    ///
+    /// Apagada no es `secondaryLabel`: ese gris es tan claro que las opciones
+    /// se confundían con lo que pasa por detrás del vidrio. Va casi a tinta
+    /// llena; lo que distingue a la puesta es el verde y la lente, no que las
+    /// demás se borren.
     static func tintaTab(_ puesta: Bool) -> UIColor {
-        puesta ? UIColor(CNC.pos) : UIColor.secondaryLabel
+        puesta ? UIColor(CNC.pos) : UIColor.label.withAlphaComponent(0.92)
     }
 
     /// ICONO Y NOMBRE EN UNA IMAGEN, ya del color que toca.
@@ -2335,12 +2339,9 @@ struct CNDetalleVista: View {
 
     var body: some View {
         let d = datos.detalle ?? CNDetalle()
-        return VStack(spacing: 0) {
-            CNBarraDetalle(titulo: d.titulo, onVolver: onVolver) {
-                ForEach(d.botones) { b in
-                    Button { datos.onDetalleAccion("boton", b.id) } label: { Text(b.label) }
-                }
-            }
+        // La barra de arriba es la del sistema, la misma que en Movimientos,
+        // Cuentas y Plan: así entrar en una cuenta no cambia de idioma visual.
+        return NavigationView {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 13) {
                     if !d.chips.isEmpty { chips(d) }
@@ -2359,11 +2360,29 @@ struct CNDetalleVista: View {
                     ForEach(d.tramos) { t in tramo(t) }
                     Color.clear.frame(height: 40)
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 16).padding(.top, 4)
+            }
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle(d.titulo)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: onVolver) { Image(systemName: "chevron.left") }
+                        .accessibilityLabel(cnT("Volver"))
+                }
+                if !d.botones.isEmpty {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Menu {
+                            ForEach(d.botones) { b in
+                                Button { datos.onDetalleAccion("boton", b.id) } label: { Text(b.label) }
+                            }
+                        } label: { Image(systemName: "ellipsis") }
+                    }
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(CNC.scr.ignoresSafeArea())
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
     }
 
     /// Los periodos de una categoría: pastillas en una fila que rueda.
@@ -2548,31 +2567,6 @@ struct CNDetalleVista: View {
 }
 
 /// La barra de arriba de cualquier detalle: atrás, el título y el menú ⋯.
-struct CNBarraDetalle<M: View>: View {
-    let titulo: String
-    var onVolver: () -> Void
-    @ViewBuilder var menu: () -> M
-    var body: some View {
-        HStack(spacing: 10) {
-            Button(action: onVolver) {
-                Image(systemName: "chevron.left").font(cnLetra(16, .bold))
-                    .foregroundColor(CNC.ink).frame(width: 40, height: 40)
-                    .background(CNC.soft, in: Circle())
-            }.buttonStyle(CNPulsable())
-            Spacer(minLength: 6)
-            Text(titulo).font(cnLetra(17, .bold)).foregroundColor(CNC.ink)
-                .lineLimit(1).truncationMode(.tail)
-            Spacer(minLength: 6)
-            Menu { menu() } label: {
-                Image(systemName: "ellipsis").font(cnLetra(16, .bold))
-                    .foregroundColor(CNC.ink).frame(width: 40, height: 40)
-                    .background(CNC.soft, in: Circle())
-            }
-        }
-        .padding(.horizontal, 16).padding(.top, 6).padding(.bottom, 10)
-    }
-}
-
 // La pantalla empujada (el detalle) entra y se va desde UIKit: el gesto de
 // volver es un UIScreenEdgePanGestureRecognizer de verdad, en
 // ChinolaViewController. Un DragGesture de SwiftUI aquí no llegaba a
@@ -2612,6 +2606,12 @@ struct CNMovDetalle {
     }
 }
 
+/// EL DETALLE DE UN MOVIMIENTO.
+///
+/// Barra de navegación del sistema arriba —atrás y el menú de «...»— y el
+/// contenido en una lista agrupada de iOS. Antes la barra eran dos círculos
+/// grises dibujados a mano y las acciones dos cápsulas, una amarilla: chocaba
+/// con el resto de la app, que ya usa las piezas del teléfono.
 struct CNDetalleMov: View {
     @ObservedObject var datos: CNDatos
     let movId: String
@@ -2620,101 +2620,87 @@ struct CNDetalleMov: View {
 
     var body: some View {
         let m = datos.movDetalle ?? CNMovDetalle()
-        return VStack(spacing: 0) {
-            // Barra de arriba sencilla: atrás, el nombre y el menú. Sin franja
-            // de color, como en la web.
-            HStack(spacing: 10) {
-                Button(action: onClose) {
-                    Image(systemName: "chevron.left").font(cnLetra(16, .bold))
-                        .foregroundColor(CNC.ink).frame(width: 40, height: 40)
-                        .background(CNC.soft, in: Circle())
-                }.buttonStyle(CNPulsable())
-                Spacer(minLength: 6)
-                Text(m.nombre).font(cnLetra(17, .bold)).foregroundColor(CNC.ink)
-                    .lineLimit(1).truncationMode(.tail)
-                Spacer(minLength: 6)
-                Menu {
-                    Button { datos.onAccion("editarMov", movId) } label: { Label(m.textoEditar, systemImage: "pencil") }
-                    Button { datos.onMovAccion("duplicar") } label: { Label(m.textoDuplicar, systemImage: "plus.square.on.square") }
-                    Button(role: .destructive) { confirmarBorrar = true } label: { Label(cnT("Eliminar"), systemImage: "trash") }
-                } label: {
-                    Image(systemName: "ellipsis").font(cnLetra(16, .bold))
-                        .foregroundColor(CNC.ink).frame(width: 40, height: 40)
-                        .background(CNC.soft, in: Circle())
+        return NavigationView {
+            List {
+                Section { cabecera(m) }
+                if m.puedeEditar {
+                    Section {
+                        Button { datos.onAccion("editarMov", movId) } label: {
+                            Label(m.textoEditar, systemImage: "pencil")
+                        }
+                        Button { datos.onMovAccion("duplicar") } label: {
+                            Label(m.textoDuplicar, systemImage: "plus.square.on.square")
+                        }
+                    }
                 }
-            }
-            .padding(.horizontal, 16).padding(.top, 6).padding(.bottom, 10)
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 14) {
-                    // Cuánto y de qué es.
-                    HStack(spacing: 14) {
-                        if !m.iconoPath.isEmpty {
-                            CNSVGShape(d: m.iconoPath)
-                                .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
-                                .foregroundColor(m.iconoColor.isEmpty ? CNC.pmut : cnColor(hexString: m.iconoColor))
-                                .frame(width: 22, height: 22).frame(width: 46, height: 46)
-                                .background(m.iconoBg.isEmpty ? CNC.soft : cnColor(hexString: m.iconoBg))
-                                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(m.rotulo.uppercased()).font(cnLetra(11.5, .heavy)).tracking(0.8)
-                                .foregroundColor(CNC.pmut)
-                            Text(m.montoFmt).font(cnLetra(30, .heavy))
-                                .foregroundColor(m.color.isEmpty ? CNC.ink : cnColor(hexString: m.color))
-                                .lineLimit(1).minimumScaleFactor(0.6)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(16).tarjetaCN()
-
-                    if m.puedeEditar {
-                        HStack(spacing: 12) {
-                            Button { datos.onAccion("editarMov", movId) } label: {
-                                Text(m.textoEditar).font(cnLetra(15, .bold))
-                                    .foregroundColor(CNC.sobreAcc)
-                                    .frame(maxWidth: .infinity).padding(.vertical, 15)
-                                    .background(CNC.acc, in: Capsule())
-                            }.buttonStyle(CNPulsable())
-                            Button { datos.onMovAccion("duplicar") } label: {
-                                Text(m.textoDuplicar).font(cnLetra(15, .bold))
-                                    .foregroundColor(CNC.ink)
-                                    .frame(maxWidth: .infinity).padding(.vertical, 15)
-                                    .background(CNC.card, in: Capsule())
-                                    .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
-                            }.buttonStyle(CNPulsable())
-                        }
-                    }
-
-                    VStack(spacing: 0) {
+                if !m.datos.isEmpty {
+                    Section {
                         ForEach(m.datos) { d in
                             HStack {
-                                Text(d.label).font(cnLetra(15)).foregroundColor(CNC.pmut)
+                                Text(d.label).foregroundColor(CNC.pmut)
                                 Spacer(minLength: 10)
-                                Text(d.valor).font(cnLetra(15, .bold)).foregroundColor(CNC.ink)
+                                Text(d.valor).fontWeight(.semibold).foregroundColor(CNC.ink)
                                     .multilineTextAlignment(.trailing).lineLimit(2)
-                            }
-                            .padding(.horizontal, 16).padding(.vertical, 14)
-                            .overlay(alignment: .bottom) {
-                                if d.id < m.datos.count - 1 {
-                                    Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.horizontal, 16)
-                                }
                             }
                         }
                     }
-                    .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
-                    Color.clear.frame(height: 40)
                 }
-                .padding(.horizontal, 16)
+                if m.puedeEditar {
+                    Section {
+                        Button(role: .destructive) { confirmarBorrar = true } label: {
+                            Label(cnT("Eliminar"), systemImage: "trash")
+                        }
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .modifier(CNFondoLista())
+            .background(CNC.scr.ignoresSafeArea())
+            .font(cnLetra(16))
+            .navigationTitle(m.nombre)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: onClose) { Image(systemName: "chevron.left") }
+                        .accessibilityLabel(cnT("Volver"))
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button { datos.onAccion("editarMov", movId) } label: { Label(m.textoEditar, systemImage: "pencil") }
+                        Button { datos.onMovAccion("duplicar") } label: { Label(m.textoDuplicar, systemImage: "plus.square.on.square") }
+                        Button(role: .destructive) { confirmarBorrar = true } label: { Label(cnT("Eliminar"), systemImage: "trash") }
+                    } label: { Image(systemName: "ellipsis") }
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(CNC.scr.ignoresSafeArea())
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
         .alert(cnT("¿Eliminar movimiento?"), isPresented: $confirmarBorrar) {
             Button(cnT("Cancelar"), role: .cancel) {}
             Button(cnT("Eliminar"), role: .destructive) { datos.onBorrarMov(movId); onClose() }
         } message: { Text(cnT("Esto revierte su efecto en los saldos. No se puede deshacer.")) }
+    }
+
+    /// Cuánto fue y de qué categoría: lo primero que se mira, centrado y
+    /// grande, en su propia fila sin adornos.
+    private func cabecera(_ m: CNMovDetalle) -> some View {
+        VStack(spacing: 10) {
+            if !m.iconoPath.isEmpty {
+                CNSVGShape(d: m.iconoPath)
+                    .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                    .foregroundColor(m.iconoColor.isEmpty ? CNC.pmut : cnColor(hexString: m.iconoColor))
+                    .frame(width: 24, height: 24).frame(width: 52, height: 52)
+                    .background(m.iconoBg.isEmpty ? CNC.soft : cnColor(hexString: m.iconoBg))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            Text(m.rotulo.uppercased()).font(cnLetra(11.5, .heavy)).tracking(0.8)
+                .foregroundColor(CNC.pmut)
+            Text(m.montoFmt).font(cnLetra(34, .heavy))
+                .foregroundColor(m.color.isEmpty ? CNC.ink : cnColor(hexString: m.color))
+                .lineLimit(1).minimumScaleFactor(0.5)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
     }
 }
 
@@ -3112,8 +3098,6 @@ struct CNCuentas: View {
     private func grupo(_ filas: [CNCuentasModelo.Fila], tipo: String) -> some View {
         VStack(spacing: 0) {
             ForEach(filas) { f in
-                CNDeslizable(clave: tipo + String(f.indice), acciones: f.acciones,
-                             onAccion: { datos.onFilaAccion($0, "cuentas") }) {
                 Button { datos.onCuentasAccion(tipo, f.indice) } label: {
                     HStack(spacing: 12) {
                         CNSVGShape(d: f.iconoPath)
@@ -3152,7 +3136,6 @@ struct CNCuentas: View {
                         }
                     }
                 }.buttonStyle(CNPulsable())
-                }
             }
         }
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -3312,8 +3295,6 @@ struct CNPlan: View {
 
         VStack(spacing: 0) {
             ForEach(m.filas) { f in
-                CNDeslizable(clave: "cat" + String(f.indice), acciones: f.acciones,
-                             onAccion: { datos.onFilaAccion($0, "plan") }) {
                 Button { datos.onPlanAccion("categoria", f.indice) } label: {
                     HStack(spacing: 12) {
                         CNSVGShape(d: f.iconoPath)
@@ -3345,7 +3326,6 @@ struct CNPlan: View {
                         }
                     }
                 }.buttonStyle(CNPulsable())
-                }
             }
         }
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -3489,12 +3469,10 @@ struct CNLimiteHoja: View {
 }
 
 
-// ── Deslizar una fila para ver sus acciones ────────────────────────────────
-//
-// Como las notificaciones del teléfono: se empuja la fila a la izquierda y
-// detrás aparecen sus botones. Aquí no se puede usar `swipeActions` (eso es de
-// `List`, y estas listas son propias), así que se hace a mano: un arrastre que
-// mueve la fila y unos botones debajo.
+// Las filas ya no se deslizan. El arrastre estaba hecho a mano (no con
+// `swipeActions`, que es de `List`) y competía con el scroll: se abría sin
+// querer y a veces la lista no rodaba. Las mismas acciones siguen estando en
+// el menú «...» de la pantalla de cada cuenta o categoría.
 struct CNAccionFila: Identifiable {
     var id: Int { accion }
     var label = ""
@@ -3502,99 +3480,6 @@ struct CNAccionFila: Identifiable {
     var peligro = false
     var accion = -1
 }
-
-/// Solo una fila abierta a la vez en toda la app.
-final class CNDeslizada: ObservableObject {
-    static let shared = CNDeslizada()
-    @Published var abierta: String = ""
-}
-
-struct CNDeslizable<C: View>: View {
-    let clave: String
-    let acciones: [CNAccionFila]
-    var onAccion: (Int) -> Void
-    @ViewBuilder var contenido: () -> C
-    @ObservedObject private var mando = CNDeslizada.shared
-    @State private var x: CGFloat = 0
-    @State private var arrastrando = false
-
-    private var ancho: CGFloat { CGFloat(acciones.count) * 78 }
-    private var abierta: Bool { mando.abierta == clave }
-
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            if !acciones.isEmpty && (x < -2 || abierta) {
-                HStack(spacing: 0) {
-                    ForEach(acciones) { a in boton(a) }
-                }
-                .frame(width: ancho)
-                .padding(.trailing, 6)
-            }
-            contenido()
-                .background(CNC.card)
-                .offset(x: x)
-                .contentShape(Rectangle())
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 14)
-                        .onChanged { g in
-                            guard !acciones.isEmpty else { return }
-                            // Solo horizontal: si el dedo va bajando, es scroll.
-                            guard abs(g.translation.width) > abs(g.translation.height) else { return }
-                            arrastrando = true
-                            if mando.abierta != clave { mando.abierta = clave }
-                            let base = abierta && !arrastrando ? -ancho : 0
-                            x = max(-ancho - 18, min(0, base + g.translation.width))
-                        }
-                        .onEnded { g in
-                            guard arrastrando else { return }
-                            arrastrando = false
-                            let va = g.predictedEndTranslation.width
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) {
-                                if x < -ancho * 0.45 || va < -120 { x = -ancho }
-                                else { x = 0; if abierta { mando.abierta = "" } }
-                            }
-                        }
-                )
-        }
-        .onChange(of: mando.abierta) { quien in
-            // Otra fila se abrió: esta se cierra.
-            if quien != clave && x != 0 {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) { x = 0 }
-            }
-        }
-    }
-
-    private func boton(_ a: CNAccionFila) -> some View {
-        let tinte = a.peligro ? CNC.neg : (a.icono == "estrella" ? CNC.acc : CNC.info)
-        // Los del sistema: en un botón redondo de 38 se leen mejor que los
-        // trazos de la app, que están pensados para ir dentro de una fila.
-        let simbolo = a.peligro ? "trash"
-            : (a.icono == "estrella" ? "star.fill" : (a.icono == "grafico" ? "slider.horizontal.3" : "pencil"))
-        return Button {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) { x = 0 }
-            CNDeslizada.shared.abierta = ""
-            onAccion(a.accion)
-        } label: {
-            VStack(spacing: 5) {
-                ZStack {
-                    Circle().fill(tinte).frame(width: 38, height: 38)
-                        .shadow(color: tinte.opacity(0.28), radius: 5, y: 2)
-                    Image(systemName: simbolo).font(.system(size: 15, weight: .bold))
-                        .foregroundColor(cnSobre(tinte))
-                }
-                Text(a.label).font(cnLetra(10.5, .semibold)).foregroundColor(CNC.pmut)
-                    .lineLimit(1).minimumScaleFactor(0.8)
-            }
-            .frame(width: 78)
-        }.buttonStyle(CNPulsable())
-    }
-}
-
-// ── Pantalla «Resumen» NATIVA ───────────────────────────────────────────────
-// El panel es configurable (tipos de tarjeta, tamaños, orden), así que el
-// modelo lo calcula la WEB —la misma lógica de dinero de siempre— y aquí solo
-// se DIBUJA, con las mismas medidas, colores y textos. Sin reimplementar nada.
 
 struct CNResumenModelo {
     struct Parada { var color = ""; var pos: Double = 0 }
