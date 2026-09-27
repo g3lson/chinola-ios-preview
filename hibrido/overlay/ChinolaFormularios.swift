@@ -16,24 +16,41 @@ struct CNHoja<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
+        // LA BARRA DE LA HOJA ES DEL SISTEMA.
+        //
+        // Por aquí pasan NUEVE formularios (cuenta, tarjeta, préstamo, meta,
+        // transferencia, libreta, invitar…), así que esto se arregla una vez y
+        // valen todos. Llevaban la misma imitación que tenía «Nuevo
+        // movimiento» antes de cambiarlo: una X en un círculo gris y un ✓ en
+        // un círculo amarillo. Ahora son «Cancelar» y «Guardar» de verdad, con
+        // su cápsula de vidrio en iOS 26.
+        //
         // Sin fondo ni esquinas propias: la hoja es del sistema (detents,
         // tirador, arrastre elástico y atenuado), como en cualquier app de Apple.
-        VStack(spacing: 0) {
-                cabecera
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) { content(); Color.clear.frame(height: 24) }
-                        .padding(.horizontal, 16).padding(.top, 4)
+        NavigationView {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) { content(); Color.clear.frame(height: 24) }
+                    .padding(.horizontal, 16).padding(.top, 8)
+            }
+            .cnTeclado()
+            .background(CNC.scr.ignoresSafeArea())
+            .navigationTitle(titulo)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(cnT("Cancelar")) { onClose() }
                 }
-                .cnTeclado()
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { onGuardar() } label: {
+                        Text(guardarTexto).font(cnLetra(17, .semibold))
+                    }
+                    .disabled(!guardarActivo)
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(CNC.scr.ignoresSafeArea())
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
         .environment(\.locale, Locale(identifier: CNC.fmt.loc))
-    }
-
-    private var cabecera: some View {
-        CNHojaCabecera(titulo: titulo, guardarTexto: guardarTexto, guardarActivo: guardarActivo,
-                       onClose: onClose, onGuardar: onGuardar)
     }
 }
 

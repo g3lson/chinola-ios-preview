@@ -98,6 +98,11 @@ class TestVC: CAPBridgeViewController {
         if base == "movs-rodado" || base == "plegada" || base == "cab-viva-plegada" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { [weak self] in self?.rodar(320) }
         }
+        // La muestra con todos los bloques no cabe en una pantalla: esta rueda
+        // para poder fotografiar la mitad de abajo.
+        if base == "sec-todo-abajo" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { [weak self] in self?.rodar(1050) }
+        }
         if ["cuenta", "tarjeta", "categoria"].contains(base) {
             datos.cargarDetalle(json: TestVC.detalleDeMuestra(base))
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) { [weak self] in
@@ -230,8 +235,9 @@ extension TestVC {
         case "hoja-web":
             datos.cargarHojaWeb(json: TestVC.hojaDeMuestra)
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
-        case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas", "sec-todo":
-            datos.cargarSeccion(json: TestVC.seccionDeMuestra(String(cual.dropFirst(4))))
+        case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas", "sec-todo", "sec-todo-abajo":
+            datos.cargarSeccion(json: TestVC.seccionDeMuestra(
+                String(cual.dropFirst(4)).replacingOccurrences(of: "-abajo", with: "")))
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
         case "tema-claro-movs", "tema-oscuro-movs", "movs-rodado":
             vista = AnyView(CNMovs(datos: datos, rodarAlEmpezar: cual == "movs-rodado")); estado.activa = "movs"

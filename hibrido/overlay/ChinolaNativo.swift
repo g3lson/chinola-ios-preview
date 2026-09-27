@@ -5856,7 +5856,7 @@ struct CNSeccionVista: View {
                                                      datos.marcarEnSeccion(bloque: bi, llave: i)
                                                      datos.onSeccionAccion(k.accion, nil)
                                                  }))
-                            .labelsHidden().tint(CNC.acc)
+                            .labelsHidden().tint(CNC.pos)
                     }
                     .padding(.horizontal, 14).padding(.vertical, 10)
                     if i < q.llaves.count - 1 {
