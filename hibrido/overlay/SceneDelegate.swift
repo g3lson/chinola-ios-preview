@@ -235,7 +235,7 @@ extension TestVC {
         case "hoja-web":
             datos.cargarHojaWeb(json: TestVC.hojaDeMuestra)
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
-        case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas", "sec-todo", "sec-todo-abajo":
+        case "sec-cabecera", "sec-colores", "sec-seguridad", "sec-libretas", "sec-todo", "sec-todo2":
             datos.cargarSeccion(json: TestVC.seccionDeMuestra(
                 String(cual.dropFirst(4)).replacingOccurrences(of: "-abajo", with: "")))
             vista = AnyView(CNPerfil(datos: datos)); estado.activa = "perfil"
@@ -498,7 +498,13 @@ extension TestVC {
               {"tipo":"selector","titulo":"Un selector","opciones":[
                 {"label":"Español","sub":"es","puesta":true,"accion":8},
                 {"label":"English","sub":"en","accion":9},
-                {"label":"Français","sub":"fr","accion":10}]},
+                {"label":"Français","sub":"fr","accion":10}]}]}
+            """
+        case "todo2":
+            return """
+            {"id":"todo2","titulo":"Piezas (2)","volverA":"",
+             "menu":[],
+             "bloques":[
               {"tipo":"previa","titulo":"Cómo se verá la letra","escala":1.1,
                "muestraTitulo":"Gastos del mes","muestraCifra":"RD$31,000",
                "muestraTexto":"Así se leen los textos normales de la app con este tamaño."},
