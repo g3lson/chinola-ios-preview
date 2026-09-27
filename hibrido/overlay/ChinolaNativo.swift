@@ -3267,22 +3267,33 @@ struct CNPlan: View {
         return NavigationView {
             // Lista agrupada del sistema, como Movimientos, Cuentas y Perfil.
             List {
-                Section {
-                    pestanas(m)
-                        .overlay(alignment: .top) {
-                            CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
-                                .frame(height: 0).allowsHitTesting(false)
-                        }
-                    if m.tab != "metas" { resumenPres(m) }
+                if m.tab != "metas" {
+                    Section {
+                        resumenPres(m)
+                            .overlay(alignment: .top) {
+                                CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
+                                    .frame(height: 0).allowsHitTesting(false)
+                            }
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
                 }
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
                 if m.tab == "metas" { metas(m) } else { presupuesto(m) }
             }
             .listStyle(.insetGrouped)
             .modifier(CNFondoLista())
             .background(CNC.scr.ignoresSafeArea())
+            // Presupuesto o Metas se queda ARRIBA, pegado bajo la barra, como
+            // el filtro de la biblioteca de Apple Music. Siendo una fila más de
+            // la lista parecía un segundo título de la pantalla y se iba con
+            // el scroll; así se lee por lo que es: un filtro de lo de abajo.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                pestanas(m)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4).padding(.bottom, 10)
+                    .background(.bar)
+            }
             .navigationTitle(m.titulo)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -3324,23 +3335,40 @@ struct CNPlan: View {
     /// Lo gastado del mes contra el presupuesto, con su aviso si se pasa.
     /// Va suelta, como la tarjeta de patrimonio en Cuentas.
     private func resumenPres(_ m: CNPlanModelo) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(m.presGastado).font(cnLetra(26, .heavy))
-                    .foregroundColor(m.presColor.isEmpty ? CNC.ink : cnColor(hexString: m.presColor))
-                    .lineLimit(1).minimumScaleFactor(0.6)
-                Text("\(m.presDe) \(m.presTotal)").font(cnLetra(13)).foregroundColor(CNC.pmut)
-                Spacer(minLength: 0)
-            }
-            CNBarraProgreso(parte: m.presPct / 100,
-                            color: m.presColor.isEmpty ? CNC.pos : cnColor(hexString: m.presColor), alto: 10)
-            if !m.presNota.isEmpty {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle").font(cnLetra(13, .semibold))
-                        .foregroundColor(m.presAvisoTinta.isEmpty ? CNC.acc : cnColor(hexString: m.presAvisoTinta))
-                    Text(m.presNota).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
-                        .fixedSize(horizontal: false, vertical: true)
+        let tinta = m.presColor.isEmpty ? CNC.pos : cnColor(hexString: m.presColor)
+        let aviso = m.presAvisoTinta.isEmpty ? CNC.acc : cnColor(hexString: m.presAvisoTinta)
+        return VStack(alignment: .leading, spacing: 12) {
+            // Cuánto llevas, y a la derecha contra cuánto. El porcentaje va
+            // arriba del todo: es la lectura rápida, y antes había que
+            // deducirlo mirando el largo de la barra.
+            HStack(alignment: .lastTextBaseline, spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(cnT("Gastado")).font(cnLetra(12, .semibold)).foregroundColor(CNC.pmut)
+                    Text(m.presGastado).font(cnLetra(30, .heavy)).foregroundColor(tinta)
+                        .lineLimit(1).minimumScaleFactor(0.6)
                 }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text("\(Int(m.presPct.rounded()))%")
+                        .font(cnLetra(15, .heavy)).foregroundColor(tinta)
+                    Text("\(m.presDe) \(m.presTotal)").font(cnLetra(12.5))
+                        .foregroundColor(CNC.pmut).lineLimit(1).minimumScaleFactor(0.7)
+                }
+            }
+            CNBarraProgreso(parte: m.presPct / 100, color: tinta, alto: 10)
+            if !m.presNota.isEmpty {
+                // El aviso, en su propia franja teñida: colgando suelto debajo
+                // de la barra se leía como un pie de página cualquiera.
+                HStack(alignment: .top, spacing: 9) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(cnLetra(13)).foregroundColor(aviso)
+                    Text(m.presNota).font(cnLetra(12.5)).foregroundColor(CNC.ink.opacity(0.75))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 11).padding(.vertical, 9)
+                .background(aviso.opacity(0.12),
+                            in: RoundedRectangle(cornerRadius: 11, style: .continuous))
             }
         }
         .padding(16).tarjetaCN()

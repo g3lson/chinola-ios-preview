@@ -44,7 +44,13 @@ class ChinolaViewController: CAPBridgeViewController {
     /// Las cinco puertas del plugin (hoja, formulario, selector, hojaPeriodo,
     /// periodo) siguen valiendo: el Resumen en web pide los menús, los
     /// formularios y las hojas al sistema en vez de dibujarlos él.
-    private let nativas: Set<String> = ["movs", "cuentas", "plan", "perfil"]
+    // Las CINCO son nativas. Resumen se había dejado en web porque la web ya
+    // calcula la geometría del panel y lo nativo solo la dibujaba; el problema
+    // es que se NOTABA: al volver de otra pestaña salía la pantalla de la PWA,
+    // con su botón de «+» flotando en medio y una franja arriba entre la isla y
+    // la cabecera. La vista nativa ya estaba hecha y completa (cabecera,
+    // panel, modo organizar), así que el puente se paga y se acabó el salto.
+    private let nativas: Set<String> = ["resumen", "movs", "cuentas", "plan", "perfil"]
 
     override func capacitorDidLoad() {
         nativo.store = datos

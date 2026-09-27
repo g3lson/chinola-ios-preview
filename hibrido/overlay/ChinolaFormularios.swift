@@ -1013,36 +1013,50 @@ struct CNPeriodoHoja: View {
     var onClose: () -> Void
     var body: some View {
         let p = datos.periodo ?? CNPeriodo()
-        return VStack(spacing: 0) {
-            CNHojaCabecera(titulo: cnT("Periodo"), onClose: onClose)
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Los atajos: este mes, el pasado, el año… y «Personalizado»,
-                    // que es el que saca el calendario.
-                    CNRejillaFija(columnas: 2, total: p.opciones.count) { i in
+        // Una lista del sistema con su palomita, como cualquier pantalla de
+        // ajustes que elige una opción. Era una rejilla de pastillas blancas
+        // repartidas en dos columnas con una X redonda arriba: ni se parecía a
+        // iOS ni dejaba claro qué estaba elegido.
+        return NavigationView {
+            List {
+                Section {
+                    ForEach(p.opciones.indices, id: \.self) { i in
                         let o = p.opciones[i]
                         Button { datos.onPeriodo("opcion", o.id) } label: {
-                            Text(o.label).font(cnLetra(14.5, o.puesta ? .bold : .semibold))
-                                .foregroundColor(o.tinta.isEmpty ? CNC.ink : cnColor(hexString: o.tinta))
-                                .frame(maxWidth: .infinity).padding(.vertical, 13)
-                                .background(o.puesta ? cnColor(hexString: o.fondo) : CNC.card,
-                                            in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 13)
-                                    .stroke(o.puesta ? Color.clear : CNC.line, lineWidth: 1))
-                        }.buttonStyle(CNPulsable())
+                            HStack {
+                                Text(o.label).foregroundColor(CNC.ink)
+                                Spacer(minLength: 8)
+                                if o.puesta {
+                                    Image(systemName: "checkmark")
+                                        .font(cnLetra(15, .semibold)).foregroundColor(CNC.pos)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    if !p.resumen.isEmpty {
-                        Text(p.resumen).font(cnLetra(13)).foregroundColor(CNC.pmut).padding(.horizontal, 4)
-                    }
-                    if p.calendario { calendario(p) }
-                    Color.clear.frame(height: 24)
+                } footer: {
+                    if !p.resumen.isEmpty { Text(p.resumen) }
                 }
-                .padding(.horizontal, 16).padding(.top, 4)
+                if p.calendario {
+                    Section { calendario(p) }
+                        .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                }
+            }
+            .listStyle(.insetGrouped)
+            .modifier(CNFondoLista())
+            .background(CNC.scr.ignoresSafeArea())
+            .font(cnLetra(17))
+            .navigationTitle(cnT("Periodo"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(cnT("Listo")) { onClose() }.fontWeight(.semibold)
+                }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .top)
-        .padding(.top, 8)
-        .padding(.bottom, cnMargenAbajo())
+        .navigationViewStyle(.stack)
+        .tint(CNC.pos)
         .environment(\.locale, Locale(identifier: CNC.fmt.loc))
     }
 
@@ -1080,14 +1094,16 @@ struct CNPeriodoHoja: View {
             }
             Button { if p.puedeAplicar { datos.onPeriodo("aplicar", 0) } } label: {
                 Text(p.textoAplicar.isEmpty ? "Aplicar" : p.textoAplicar)
-                    .font(cnLetra(16, .bold))
-                    .foregroundColor(p.puedeAplicar ? CNC.sobreAcc : CNC.pmut)
-                    .frame(maxWidth: .infinity).padding(.vertical, 15)
-                    .background(p.puedeAplicar ? CNC.acc : CNC.soft, in: Capsule())
+                    .font(cnLetra(16, .semibold))
+                    .frame(maxWidth: .infinity).padding(.vertical, 5)
             }
-            .buttonStyle(CNPulsable()).disabled(!p.puedeAplicar)
+            .buttonStyle(.borderedProminent)
+            .tint(CNC.pos)
+            .controlSize(.large)
+            .clipShape(Capsule())
+            .disabled(!p.puedeAplicar)
         }
-        .padding(14).tarjetaCN()
+        .padding(.vertical, 4)
     }
 
     private func celda(_ d: CNPeriodo.Dia) -> some View {
@@ -1106,10 +1122,11 @@ struct CNPeriodoHoja: View {
     }
 
     private func boton(_ ic: String, _ tap: @escaping () -> Void) -> some View {
-        Button(action: tap) {
-            Image(systemName: ic).font(cnLetra(14, .bold)).foregroundColor(CNC.ink)
-                .frame(width: 36, height: 36).background(CNC.soft, in: Circle())
-        }.buttonStyle(CNPulsable())
+        Button(action: tap) { Image(systemName: ic).font(cnLetra(15, .semibold)) }
+            .buttonStyle(.plain)
+            .foregroundColor(CNC.pos)
+            .frame(width: 40, height: 36)
+            .contentShape(Rectangle())
     }
 }
 
