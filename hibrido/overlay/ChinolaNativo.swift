@@ -35,7 +35,36 @@ func cnNumerosCSS(_ s: String) -> [(Double, Bool)] {
     return out
 }
 
+/// Lo ya leído, para no volver a leerlo. Un color llega SIEMPRE como texto
+/// («#137d41», «rgb(19,125,65)»…) y hay que interpretarlo; pasaba en cada
+/// repintado y hay casi cien sitios que lo piden, así que en una lista que
+/// rueda eran miles de análisis de texto por segundo.
+private let cnColoresLeidos = CNCache<String, Color>(tope: 512)
+
+/// Una memoria pequeña y segura entre hilos, que se vacía si crece de más.
+final class CNCache<K: Hashable, V> {
+    private var mapa: [K: V] = [:]
+    private let tope: Int
+    private let cerrojo = NSLock()
+    init(tope: Int) { self.tope = tope }
+    func valor(_ k: K, _ hacer: () -> V) -> V {
+        cerrojo.lock()
+        if let v = mapa[k] { cerrojo.unlock(); return v }
+        cerrojo.unlock()
+        let v = hacer()
+        cerrojo.lock()
+        if mapa.count >= tope { mapa.removeAll(keepingCapacity: true) }
+        mapa[k] = v
+        cerrojo.unlock()
+        return v
+    }
+}
+
 func cnColor(hexString s: String) -> Color {
+    cnColoresLeidos.valor(s) { cnColorLeer(s) }
+}
+
+private func cnColorLeer(_ s: String) -> Color {
     let t = s.trimmingCharacters(in: .whitespaces).lowercased()
     // «transparent» no es un número hexadecimal: leído como tal daba 0, o sea
     // NEGRO, y el calendario salía con bandas y círculos negros por todos lados.
@@ -1948,10 +1977,28 @@ struct CNArea: View {
 struct CNSVGShape: Shape {
     let d: String
     var viewBox: CGFloat = 24
+
+    /// El dibujo ya interpretado, en las coordenadas del propio SVG (0…24).
+    /// SwiftUI pide `path(in:)` en CADA repintado y en cada tamaño, y aquí se
+    /// leía la cadena entera —carácter a carácter— todas las veces. Con veinte
+    /// iconos en pantalla y una lista rodando eso son miles de lecturas por
+    /// segundo, que es parte de por qué la app se sentía pesada y calentaba.
+    /// Ahora se lee una vez por dibujo y luego solo se escala y se centra.
+    private static let dibujos = CNCache<String, Path>(tope: 256)
+
     func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / viewBox
-        let ox = rect.minX + (rect.width - viewBox * s) / 2
-        let oy = rect.minY + (rect.height - viewBox * s) / 2
+        let e = min(rect.width, rect.height) / viewBox
+        let ox = rect.minX + (rect.width - viewBox * e) / 2
+        let oy = rect.minY + (rect.height - viewBox * e) / 2
+        let base = CNSVGShape.dibujos.valor(d) { crudo() }
+        return base.applying(CGAffineTransform(translationX: ox, y: oy).scaledBy(x: e, y: e))
+    }
+
+    /// El dibujo tal cual viene, sin escalar ni mover.
+    private func crudo() -> Path {
+        let s: CGFloat = 1
+        let ox: CGFloat = 0
+        let oy: CGFloat = 0
         var p = Path(); var cur = CGPoint.zero; var start = CGPoint.zero
         // El último control de una curva: lo necesitan S/s y T/t, que lo
         // reflejan en vez de repetirlo.
@@ -4333,7 +4380,13 @@ struct CNResumen: View {
                 ScrollViewReader { lector in
                     VStack(spacing: 0) {
                         CNEspiaScroll { y in
-                            if abs(y - rodado) > 0.5 { rodado = max(0, y) }
+                            // `rodado` solo manda hasta los 90 pt que dura el
+                            // plegado de la cabecera; pasados esos, seguir
+                            // apuntándolo repintaba TODA la pantalla —tarjetas,
+                            // gráfica y todos los iconos— en cada fotograma del
+                            // scroll sin que cambiara nada. De ahí el tirón.
+                            let v = max(0, min(y, 90))
+                            if abs(v - rodado) > 0.5 { rodado = v }
                             CNScrollEstado.shared.mirar(y)
                         }
                         .frame(height: 0).id("cnArriba")

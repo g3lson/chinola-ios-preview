@@ -92,11 +92,37 @@ class ChinolaViewController: CAPBridgeViewController {
     /// escuchar, este reloj sobra; hasta entonces, se queda.
     private var vigiaModo: Timer?
     private func vigilarModo() {
+        // El reloj corre SOLO mientras la app está delante. Antes seguía
+        // despertando al teléfono cada dos segundos con la app en segundo
+        // plano y hasta con la pantalla apagada, sin nada que mirar: puro
+        // gasto de batería. Y al volver se comprueba de una vez, que es
+        // justamente cuando suele haber cambiado el modo.
+        NotificationCenter.default.addObserver(self, selector: #selector(modoDelante),
+                                               name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(modoDetras),
+                                               name: UIApplication.didEnterBackgroundNotification, object: nil)
+        arrancarVigiaModo()
+    }
+
+    @objc private func modoDelante() {
+        if CNC.pareja.oscuro != nil, sistemaOscuro != CNC.tema.oscuro { avisarDelModo() }
+        arrancarVigiaModo()
+    }
+
+    @objc private func modoDetras() {
+        vigiaModo?.invalidate(); vigiaModo = nil
+    }
+
+    private func arrancarVigiaModo() {
         vigiaModo?.invalidate()
-        vigiaModo = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+        // Cada tres segundos basta: es una red de seguridad para el cambio de
+        // modo mientras la app está abierta, no algo que haya que pillar al
+        // vuelo.
+        vigiaModo = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
             guard let s = self, CNC.pareja.oscuro != nil else { return }
             if s.sistemaOscuro != CNC.tema.oscuro { s.avisarDelModo() }
         }
+        vigiaModo?.tolerance = 1.0
     }
     @objc private func avisarDelModo() {
         let oscuro = sistemaOscuro
@@ -1047,6 +1073,10 @@ class ChinolaViewController: CAPBridgeViewController {
         // La web se entera igual de en qué pestaña estamos: así sus hojas y su
         // botón de atrás siguen cuadrando con lo que se ve.
         eval("window.__chinolaMenu && window.__chinolaMenu('\(id)')")
+        // Y de que ya no se la ve: queda debajo, tapada por esta pantalla, así
+        // que para de animarse y de sincronizar. Seguía componiendo el
+        // personaje flotando y las transiciones de algo invisible.
+        eval("window.__chinolaQuieto && window.__chinolaQuieto(true)")
         eval("window.__chinolaPush && window.__chinolaPush()")
         // Y se vuelve a pedir el modelo cuando la web ya haya repintado con la
         // pestaña nueva puesta.
@@ -1057,6 +1087,9 @@ class ChinolaViewController: CAPBridgeViewController {
     }
 
     private func mostrarWeb() {
+        // Vuelve a verse: se despierta antes de destapar, para que no aparezca
+        // con las animaciones congeladas.
+        eval("window.__chinolaQuieto && window.__chinolaQuieto(false)")
         contenedorNativo?.removeFromSuperview()
         contenedorNativo = nil
     }
