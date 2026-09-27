@@ -147,12 +147,12 @@ class TestVC: CAPBridgeViewController {
         guard !volcado, barra.barra.bounds.width > 1 else { return }
         volcado = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            print("CNDUMP barra=\(self.barra.barra.bounds)")
+            NSLog("CNDUMP barra=%@", NSCoder.string(for: self.barra.barra.bounds))
             func hurgar(_ v: UIView, _ nivel: Int) {
                 let sangria = String(repeating: "  ", count: nivel)
                 var extra = ""
                 if let l = v as? UILabel { extra = " TEXTO=«\(l.text ?? "")» fuente=\(l.font.pointSize) lineas=\(l.numberOfLines)" }
-                print("CNDUMP \(sangria)\(type(of: v)) \(v.frame)\(extra)")
+                NSLog("CNDUMP %@%@ %@%@", sangria, String(describing: type(of: v)), NSCoder.string(for: v.frame), extra)
                 for h in v.subviews { hurgar(h, nivel + 1) }
             }
             for v in self.barra.barra.subviews { hurgar(v, 1) }
