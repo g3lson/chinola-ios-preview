@@ -1455,28 +1455,46 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         let abajo = anfitriona?.safeAreaInsets.bottom ?? 0
         let nuevo = (conTitulos ? 58 : 52) + abajo
         if altoC?.constant != nuevo { altoC?.constant = nuevo }
-        revisarAncho()
+        recolocarRotulos()
     }
 
-    /// El ancho que la barra tenía cuando midió los rótulos.
-    private var anchoMedido: CGFloat = 0
-
-    /// VOLVER A MEDIR LOS RÓTULOS CUANDO LA BARRA YA TIENE SU ANCHO.
+    /// LOS RÓTULOS DEL MENÚ, A SU ANCHO.
     ///
-    /// Las opciones se ponen en `viewDidLoad`, cuando la barra todavía mide 0:
-    /// UIKit reparte con ese ancho, decide que los rótulos no caben y los deja
-    /// cortados —«M...», «Pe...»— para siempre, aunque después crezca. Por eso
-    /// se cortaba «Movs», de cuatro letras, mientras «Plan», también de cuatro,
-    /// salía entera: no era el texto, era en qué momento se midió. Al volver a
-    /// poner las mismas opciones con el ancho de verdad, las mide otra vez.
-    private func revisarAncho() {
+    /// Una `UITabBar` suelta —fuera de un `UITabBarController`, que es como
+    /// está aquí— mide mal los rótulos en iOS 26: a cada botón le da 79 pt,
+    /// pero al texto de algunos le da solo los 23 pt del icono, y entonces
+    /// escribe «Cu...», «Pe...», «M...». Se veía raro precisamente porque no
+    /// dependía del largo: «Plan» cabía y «Movs», del mismo largo, no.
+    ///
+    /// No hay forma pública de pedirle que los mida bien, así que se miden aquí
+    /// y se colocan centrados en su botón. Se hace después de cada disposición,
+    /// que es cuando UIKit ya ha puesto los suyos.
+    private func recolocarRotulos() {
         let ancho = barra.bounds.width
-        guard ancho > 1, abs(ancho - anchoMedido) > 0.5 else { return }
-        anchoMedido = ancho
-        let items = barra.items
-        let puesta = barra.selectedItem
-        barra.setItems(items, animated: false)
-        barra.selectedItem = puesta
+        guard ancho > 1 else { return }
+        for boton in botones() {
+            for v in boton.subviews {
+                guard let l = v as? UILabel, let t = l.text, !t.isEmpty else { continue }
+                let pide = ceil(l.sizeThatFits(CGSize(width: .greatestFiniteMagnitude,
+                                                      height: l.bounds.height)).width)
+                let cabe = min(pide, boton.bounds.width - 4)
+                guard abs(cabe - l.bounds.width) > 0.5 else { continue }
+                l.frame = CGRect(x: ((boton.bounds.width - cabe) / 2).rounded(),
+                                 y: l.frame.origin.y, width: cabe, height: l.bounds.height)
+            }
+        }
+    }
+
+    /// Los botones de la barra, de izquierda a derecha. No tienen nombre
+    /// público: se cogen por su clase, igual que hace el paseo guiado.
+    private func botones() -> [UIView] {
+        var fuera: [UIView] = []
+        func hurgar(_ v: UIView) {
+            if String(describing: type(of: v)).contains("UITabButton") { fuera.append(v); return }
+            for h in v.subviews { hurgar(h) }
+        }
+        hurgar(barra)
+        return fuera
     }
 
     /// Encoger la barra ENTERA al bajar y devolverla a su tamaño al subir.
@@ -1610,7 +1628,7 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     /// Pestaña activa, títulos y colores del tema.
     func pintar(activa: String, titulos: Bool) {
         if titulos != conTitulos { conTitulos = titulos; rehacer(); ajustar() }
-        revisarAncho()
+        recolocarRotulos()
         barra.tintColor = UIColor(CNC.pos)
         barra.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
         if let i = ids.firstIndex(of: activa), let items = barra.items, i < items.count,
