@@ -1051,7 +1051,9 @@ struct CNPeriodoHoja: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(cnT("Listo")) { onClose() }.fontWeight(.semibold)
+                    Button { onClose() } label: {
+                        Text(cnT("Listo")).font(cnLetra(17, .semibold))
+                    }
                 }
             }
         }
