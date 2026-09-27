@@ -696,12 +696,41 @@ class ChinolaViewController: CAPBridgeViewController {
 
     /// LEE los datos directamente del webview (sin plugin). El empuje por el
     /// plugin puede perderse en silencio; esto los trae y los carga seguro.
+    /// La huella de la última libreta traída. Si no cambió, no hay nada que
+    /// volver a traer.
+    private var huellaLibreta = ""
+
+    /// LA LIBRETA, SOLO SI CAMBIÓ.
+    ///
+    /// `traerDatos` convierte a texto la libreta ENTERA al otro lado, la manda
+    /// por el puente y la vuelve a leer aquí, y además encadena otras seis
+    /// llamadas. Eso pasaba en cada toque de pestaña, justo mientras entraba
+    /// la pantalla nueva y con el hilo principal ocupado: era la causa de que
+    /// las transiciones se sintieran pesadas. Ahora se pregunta primero por una
+    /// huella barata —largos de lista y un par de ids— y solo se trae la
+    /// libreta si de verdad es otra.
+    private func traerDatosSiCambio() {
+        bridge?.webView?.evaluateJavaScript("(window.__chinolaHuella && window.__chinolaHuella()) || ''") { [weak self] res, _ in
+            guard let s = self else { return }
+            let h = (res as? String) ?? ""
+            // Sin huella (una web vieja, o todavía arrancando) se hace lo de
+            // siempre: más vale traerla de más que quedarse sin ella.
+            guard !h.isEmpty else { s.traerDatos(); return }
+            guard h != s.huellaLibreta else { return }
+            s.huellaLibreta = h
+            s.traerDatos()
+        }
+    }
+
     private func traerDatos(intentos: Int = 8) {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaDatosJSON && window.__chinolaDatosJSON()) || ''") { [weak self] res, _ in
             guard let self = self else { return }
             let json = (res as? String) ?? ""
             if json.count > 2, let l = CNLibreta.desde(json: json) {
                 CNDatos.shared.libreta = l
+                self.bridge?.webView?.evaluateJavaScript("(window.__chinolaHuella && window.__chinolaHuella()) || ''") { h, _ in
+                    if let hs = h as? String { self.huellaLibreta = hs }
+                }
                 self.bridge?.webView?.evaluateJavaScript("(window.__chinolaPerfilJSON && window.__chinolaPerfilJSON()) || ''") { p, _ in
                     if let ps = p as? String, ps.count > 2 { CNDatos.shared.cargarPerfil(json: ps) }
                 }
@@ -1069,7 +1098,12 @@ class ChinolaViewController: CAPBridgeViewController {
         contenedorNativo = host.view
         ajustarHueco(host)
         view.bringSubviewToFront(barra.barra)
-        traerDatos()
+        // La libreta solo si cambió, y DESPUÉS de que entre la pantalla: si se
+        // pide aquí mismo, el puente se come los primeros fotogramas de la
+        // animación y el cambio se siente pesado.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) { [weak self] in
+            self?.traerDatosSiCambio()
+        }
         // La web se entera igual de en qué pestaña estamos: así sus hojas y su
         // botón de atrás siguen cuadrando con lo que se ve.
         eval("window.__chinolaMenu && window.__chinolaMenu('\(id)')")
