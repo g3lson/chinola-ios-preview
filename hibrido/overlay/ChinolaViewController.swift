@@ -169,7 +169,16 @@ class ChinolaViewController: CAPBridgeViewController {
                 self.refrescarPantalla(id)
             } else {
                 self.volviendo = false
-                self.mostrarWeb()
+                // La web se enseña UN POCO DESPUÉS de avisarle de la pestaña.
+                // Enseñándola en el mismo instante se veía un momento con lo
+                // de la pantalla anterior todavía puesto: arriba salía una
+                // franja del color de antes entre la isla y la cabecera, y
+                // parecía que la cabecera no llegaba al borde. Mientras tanto
+                // se queda lo nativo, que ya está pintado.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
+                    guard let s = self, s.menuEstado.activa == id else { return }
+                    s.mostrarWeb()
+                }
             }
         }
 
@@ -417,6 +426,12 @@ class ChinolaViewController: CAPBridgeViewController {
                 }
                 return
             }
+            // Fuera lo que hubiera: la subpantalla se enseña en cuanto
+            // `seccion` deja de ser nula, así que si se queda la anterior
+            // puesta se ve ESA hasta que llega la nueva del otro lado. Al
+            // pedir otra distinta se vacía primero; pidiendo la misma (un
+            // refresco) se deja, que si no parpadea.
+            if s.datos.seccion?.id != id { s.datos.seccion = nil }
             s.datos.seccionPedida = id
             s.traerSeccion(id)
         }

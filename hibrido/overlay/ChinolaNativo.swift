@@ -2370,14 +2370,16 @@ struct CNDetalleVista: View {
                     Button(action: onVolver) { Image(systemName: "chevron.left") }
                         .accessibilityLabel(cnT("Volver"))
                 }
-                if !d.botones.isEmpty {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Menu {
-                            ForEach(d.botones) { b in
-                                Button { datos.onDetalleAccion("boton", b.id) } label: { Text(b.label) }
-                            }
-                        } label: { Image(systemName: "ellipsis") }
-                    }
+                // Sin `if` aquí dentro: los condicionales en la barra de
+                // herramientas son de iOS 16 y la app llega hasta la 15.
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        ForEach(d.botones) { b in
+                            Button { datos.onDetalleAccion("boton", b.id) } label: { Text(b.label) }
+                        }
+                    } label: { Image(systemName: "ellipsis") }
+                    .opacity(d.botones.isEmpty ? 0 : 1)
+                    .disabled(d.botones.isEmpty)
                 }
             }
         }
