@@ -3825,6 +3825,14 @@ struct CNCabeceraApp: View {
     var onMesTira: (Int) -> Void = { _ in }
     var onPlegar: () -> Void = {}
 
+    /// LA CABECERA SIGUE AL DEDO, SIN ANIMACIÓN.
+    ///
+    /// Llevaba `.animation(.easeOut(duration: 0.2), value: progreso)`, y
+    /// `progreso` sale del scroll: cambia en CADA fotograma. O sea que cada
+    /// fotograma arrancaba una animación nueva de dos décimas sobre la
+    /// anterior sin terminar. Eso es lo que hacía que plegarse se sintiera
+    /// gomoso y con retraso. Un valor que ya viene del dedo no se anima: se
+    /// dibuja donde toca, que es como se pliegan las cabeceras del sistema.
     static let bloqueMeses: CGFloat = 114
     /// Lo que se deja por encima del contenido, ADEMÁS del margen seguro.
     ///
@@ -3970,7 +3978,6 @@ struct CNCabeceraApp: View {
                 .clipped()
             }
             .padding(.bottom, 10).padding(.top, padArriba)
-            .animation(.easeOut(duration: 0.2), value: progreso)
         }
         .frame(height: 50 + 10 + padArriba
                + CNCabeceraApp.bloqueMeses * CGFloat(1 - max(0.0, min(1.0, progreso))))
@@ -4041,7 +4048,6 @@ struct CNCabeceraApp: View {
             .clipped()
         }
         .padding(.horizontal, 16).padding(.top, padArriba).padding(.bottom, 10)
-        .animation(.easeOut(duration: 0.2), value: progreso)
         .frame(height: padArriba + 44 + 10 + blqAlto)
     }
 
