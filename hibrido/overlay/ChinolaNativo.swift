@@ -3264,36 +3264,22 @@ struct CNPlan: View {
     /// Las dos pestañas: un carril con una pastilla que se desliza, como los
     /// segmentados del teléfono. Dos botones enteros competían entre sí y
     /// costaba ver cuál estaba puesto.
+    /// Presupuesto o Metas: el segmentado DEL SISTEMA. Era una cápsula amarilla
+    /// dibujada a mano y, con el resto de la pantalla ya en piezas de iOS,
+    /// cantaba: es lo único que no venía del teléfono.
     private func pestanas(_ m: CNPlanModelo) -> some View {
-        GeometryReader { g in
-            let ancho = max(0, (g.size.width - 8) / CGFloat(max(1, m.tabs.count)))
-            ZStack(alignment: .leading) {
-                Capsule().fill(CNC.acc)
-                    .frame(width: ancho, height: 38)
-                    .offset(x: 4 + ancho * CGFloat(m.tabs.firstIndex { $0.puesta } ?? 0))
-                    .shadow(color: CNC.acc.opacity(0.3), radius: 6, y: 2)
-                HStack(spacing: 0) {
-                    ForEach(m.tabs) { t in
-                        Button {
-                            UISelectionFeedbackGenerator().selectionChanged()
-                            datos.ponerPestanaPlan(t.indice)
-                            datos.onPlanAccion("tab", t.indice)
-                        } label: {
-                            Text(t.label).font(cnLetra(14.5, .bold))
-                                .foregroundColor(t.puesta ? CNC.sobreAcc : CNC.pmut)
-                                .frame(maxWidth: .infinity).frame(height: 38)
-                                .contentShape(Rectangle())
-                        }.buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 4)
+        Picker("", selection: Binding(
+            get: { m.tabs.firstIndex { $0.puesta } ?? 0 },
+            set: { i in
+                guard i >= 0, i < m.tabs.count else { return }
+                UISelectionFeedbackGenerator().selectionChanged()
+                datos.ponerPestanaPlan(m.tabs[i].indice)
+                datos.onPlanAccion("tab", m.tabs[i].indice)
+            })) {
+                ForEach(m.tabs.indices, id: \.self) { i in Text(m.tabs[i].label).tag(i) }
             }
-            .frame(height: 46)
-            .background(CNC.soft, in: Capsule())
-            .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
-            .animation(.spring(response: 0.32, dampingFraction: 0.86), value: m.tab)
-        }
-        .frame(height: 46)
+            .pickerStyle(.segmented)
+            .labelsHidden()
     }
 
     @ViewBuilder private func presupuesto(_ m: CNPlanModelo) -> some View {
