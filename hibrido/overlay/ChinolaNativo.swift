@@ -330,11 +330,7 @@ var cnDiseno: Font.Design {
 /// El símbolo de la moneda puesta: «RD$», «$», «€»… Estaba escrito a mano en
 /// los campos de monto, así que cambiar de moneda dejaba el «RD$» delante.
 var cnSimboloMoneda: String {
-    let f = NumberFormatter()
-    f.numberStyle = .currency
-    f.locale = Locale(identifier: CNC.fmt.loc)
-    f.currencyCode = CNC.fmt.moneda
-    return f.currencySymbol ?? "$"
+    CNFormateadores.dinero.currencySymbol ?? "$"
 }
 
 /// La paleta del tema que tiene puesto el usuario. La web tiene 31 temas y los
@@ -668,8 +664,8 @@ struct CNLibreta: Decodable {
     struct Punto: Identifiable { let id = UUID(); let label: String; let valor: Double; let cambio: Double }
     func tendencia(_ n: Int = 12) -> [Punto] {
         let cal = Calendar.current
-        let ym = DateFormatter(); ym.dateFormat = "yyyy-MM"; ym.locale = Locale(identifier: "en_US_POSIX")
-        let et = DateFormatter(); et.dateFormat = "MMM yy"; et.locale = Locale(identifier: CNC.fmt.loc)
+        let ym = CNFormateadores.formato("yyyy-MM", loc: "en_US_POSIX")
+        let et = CNFormateadores.formato("MMM yy", loc: CNC.fmt.loc)
         var res: [Punto] = []; var running = patrimonio
         for k in 0..<n {
             guard let d = cal.date(byAdding: .month, value: -k, to: Date()) else { continue }
@@ -685,7 +681,7 @@ struct CNLibreta: Decodable {
 }
 
 func cnHoy() -> String {
-    let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+    let f = CNFormateadores.iso
     return f.string(from: Date())
 }
 /// El dinero CON su signo, como lo escribe la web (`Intl.NumberFormat` lo
@@ -693,45 +689,80 @@ func cnHoy() -> String {
 /// saldo de una cuenta en rojo, el patrimonio. `cnDinero` se come el signo
 /// —hace abs()— y para esos sitios enseñaría un número en positivo que es
 /// mentira.
+/// LOS FORMATEADORES, HECHOS UNA VEZ.
+///
+/// `NumberFormatter` y `DateFormatter` son de lo más caro que hay de construir
+/// en Foundation, y aquí se hacía uno NUEVO por cada cifra y por cada fecha que
+/// se escribía: en una lista de veinte movimientos, cuarenta por repintado.
+/// Se guardan por lo que los distingue —idioma, moneda, centavos, formato—, así
+/// que cambiar de moneda o de idioma sigue funcionando: la clave cambia y se
+/// hace otro.
+enum CNFormateadores {
+    private static var numeros: [String: NumberFormatter] = [:]
+    private static var fechas: [String: DateFormatter] = [:]
+    private static let cerrojo = NSLock()
+
+    static var dinero: NumberFormatter {
+        let dec = CNC.fmt.centavos ? 2 : 0
+        let clave = "\(CNC.fmt.loc)|\(CNC.fmt.moneda)|\(dec)"
+        cerrojo.lock(); defer { cerrojo.unlock() }
+        if let f = numeros[clave] { return f }
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.locale = Locale(identifier: CNC.fmt.loc)
+        f.currencyCode = CNC.fmt.moneda
+        f.minimumFractionDigits = dec; f.maximumFractionDigits = dec
+        numeros[clave] = f
+        return f
+    }
+
+    /// El que LEE la fecha guardada: siempre el mismo, no depende del idioma.
+    static var iso: DateFormatter { fecha(clave: "iso") { $0.dateFormat = "yyyy-MM-dd"; $0.locale = Locale(identifier: "en_US_POSIX") } }
+
+    /// Uno que ESCRIBE, con la plantilla que se le pida en el idioma puesto.
+    static func plantilla(_ p: String) -> DateFormatter {
+        fecha(clave: "p|\(p)|\(CNC.fmt.loc)") {
+            $0.locale = Locale(identifier: CNC.fmt.loc)
+            $0.setLocalizedDateFormatFromTemplate(p)
+        }
+    }
+
+    static func formato(_ fmt: String, loc: String) -> DateFormatter {
+        fecha(clave: "f|\(fmt)|\(loc)") { $0.dateFormat = fmt; $0.locale = Locale(identifier: loc) }
+    }
+
+    private static func fecha(clave: String, _ armar: (DateFormatter) -> Void) -> DateFormatter {
+        cerrojo.lock(); defer { cerrojo.unlock() }
+        if let f = fechas[clave] { return f }
+        let f = DateFormatter()
+        armar(f)
+        fechas[clave] = f
+        return f
+    }
+}
+
 func cnDineroFirmado(_ n: Double) -> String {
-    let f = NumberFormatter()
-    f.numberStyle = .currency
-    f.locale = Locale(identifier: CNC.fmt.loc)
-    f.currencyCode = CNC.fmt.moneda
-    let dec = CNC.fmt.centavos ? 2 : 0
-    f.minimumFractionDigits = dec; f.maximumFractionDigits = dec
-    return f.string(from: NSNumber(value: n)) ?? ""
+    CNFormateadores.dinero.string(from: NSNumber(value: n)) ?? ""
 }
 
 func cnDinero(_ n: Double) -> String {
-    let f = NumberFormatter()
-    f.numberStyle = .currency
-    f.locale = Locale(identifier: CNC.fmt.loc)
-    f.currencyCode = CNC.fmt.moneda
-    let dec = CNC.fmt.centavos ? 2 : 0
-    f.minimumFractionDigits = dec; f.maximumFractionDigits = dec
-    return f.string(from: NSNumber(value: abs(n))) ?? ""
+    CNFormateadores.dinero.string(from: NSNumber(value: abs(n))) ?? ""
 }
 
 // Fecha "d MMM" desde ISO.
 func cnFechaCorta(_ iso: String) -> String {
-    let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
-    guard let d = f.date(from: iso) else { return iso }
-    let o = DateFormatter(); o.locale = Locale(identifier: CNC.fmt.loc); o.setLocalizedDateFormatFromTemplate("d MMM")
-    return o.string(from: d)
+    guard let d = CNFormateadores.iso.date(from: iso) else { return iso }
+    return CNFormateadores.plantilla("d MMM").string(from: d)
 }
 /// "7 SEPTIEMBRE" — el formato que usa la app en las cabeceras de día.
 func cnDiaCorto(_ iso: String) -> String {
-    let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
-    guard let d = f.date(from: iso) else { return iso }
-    let o = DateFormatter(); o.locale = Locale(identifier: CNC.fmt.loc); o.setLocalizedDateFormatFromTemplate("d MMMM")
-    return o.string(from: d).uppercased()
+    guard let d = CNFormateadores.iso.date(from: iso) else { return iso }
+    return CNFormateadores.plantilla("d MMMM").string(from: d).uppercased()
 }
 
 func cnDiaLargo(_ iso: String) -> String {
-    let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
-    guard let d = f.date(from: iso) else { return iso }
-    let o = DateFormatter(); o.locale = Locale(identifier: CNC.fmt.loc); o.setLocalizedDateFormatFromTemplate("EEEE d MMMM")
+    guard let d = CNFormateadores.iso.date(from: iso) else { return iso }
+    let o = CNFormateadores.plantilla("EEEE d MMMM")
     // Solo la PRIMERA letra. `.capitalized` sube la de cada palabra y salía
     // «Lunes, 7 De Septiembre»; antes no se notaba porque quien lo escribía lo
     // pasaba entero a mayúsculas.
@@ -1154,7 +1185,7 @@ struct CNMovs: View {
         }
         if periodo > 0 {
             let cal = Calendar.current, hoy = Date()
-            let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+            let f = CNFormateadores.iso
             t = t.filter { m in
                 guard let d = f.date(from: m.fecha) else { return true }
                 switch periodo {
@@ -2902,7 +2933,7 @@ struct CNNuevoMov: View {
                 categoria = m.categoria
                 repetir = m.recurrente
                 if m.medio.hasPrefix("cuenta:"), let id = Int(m.medio.dropFirst(7)) { cuentaId = id }
-                let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+                let f = CNFormateadores.iso
                 if let d = f.date(from: m.fecha) { fecha = d }
             }
             if cuentaId == 0 { cuentaId = datos.libreta.cuentas.first?.id ?? 0 }
@@ -2934,7 +2965,7 @@ struct CNNuevoMov: View {
     private func guardar() {
         let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
         guard n > 0 else { onClose(); return }
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
+        let f = CNFormateadores.iso
         var dict: [String: Any] = [
             "concepto": concepto.isEmpty ? (categoria.isEmpty ? "Movimiento" : categoria) : concepto,
             "categoria": categoria.isEmpty ? "Otros" : categoria,
