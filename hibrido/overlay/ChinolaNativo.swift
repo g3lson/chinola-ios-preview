@@ -1405,8 +1405,20 @@ extension UIImage {
     }
 }
 
+/// Una `UITabBar` que avisa cuando acaba de colocar sus botones. Hace falta
+/// para poder retocar los rótulos JUSTO DESPUÉS, no antes: desde
+/// `viewDidLayoutSubviews` se llegaba demasiado pronto y UIKit volvía a
+/// dejarlos como estaban.
+final class CNTabBarAvisa: UITabBar {
+    var alDisponer: () -> Void = {}
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        alDisponer()
+    }
+}
+
 final class CNBarraNativa: NSObject, UITabBarDelegate {
-    let barra = UITabBar()
+    let barra = CNTabBarAvisa()
     private var ids: [String] = []
     private var conTitulos = true
     /// Encogida: solo iconos, y más baja.
@@ -1422,6 +1434,7 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     func montar(en vista: UIView) {
         barra.translatesAutoresizingMaskIntoConstraints = false
         barra.delegate = self
+        barra.alDisponer = { [weak self] in self?.recolocarRotulos() }
         // Repartir el ancho A PARTES IGUALES entre las cinco. Suelta, la barra
         // le da a cada opción lo que su texto pide y luego recorta a las que no
         // caben: salían «Cu...» y «Pe...» mientras «Resumen» cabía entera.
@@ -1469,9 +1482,12 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     /// No hay forma pública de pedirle que los mida bien, así que se miden aquí
     /// y se colocan centrados en su botón. Se hace después de cada disposición,
     /// que es cuando UIKit ya ha puesto los suyos.
+    private var recolocando = false
     private func recolocarRotulos() {
         let ancho = barra.bounds.width
-        guard ancho > 1 else { return }
+        guard ancho > 1, !recolocando else { return }
+        recolocando = true
+        defer { recolocando = false }
         for boton in botones() {
             for v in boton.subviews {
                 guard let l = v as? UILabel, let t = l.text, !t.isEmpty else { continue }
