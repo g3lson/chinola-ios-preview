@@ -1405,20 +1405,8 @@ extension UIImage {
     }
 }
 
-/// Una `UITabBar` que avisa cuando acaba de colocar sus botones. Hace falta
-/// para poder retocar los rótulos JUSTO DESPUÉS, no antes: desde
-/// `viewDidLayoutSubviews` se llegaba demasiado pronto y UIKit volvía a
-/// dejarlos como estaban.
-final class CNTabBarAvisa: UITabBar {
-    var alDisponer: () -> Void = {}
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        alDisponer()
-    }
-}
-
 final class CNBarraNativa: NSObject, UITabBarDelegate {
-    let barra = CNTabBarAvisa()
+    let barra = UITabBar()
     private var ids: [String] = []
     private var conTitulos = true
     /// Encogida: solo iconos, y más baja.
@@ -1434,7 +1422,6 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     func montar(en vista: UIView) {
         barra.translatesAutoresizingMaskIntoConstraints = false
         barra.delegate = self
-        barra.alDisponer = { [weak self] in self?.recolocarRotulos() }
         // Repartir el ancho A PARTES IGUALES entre las cinco. Suelta, la barra
         // le da a cada opción lo que su texto pide y luego recorta a las que no
         // caben: salían «Cu...» y «Pe...» mientras «Resumen» cabía entera.
@@ -1468,49 +1455,6 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         let abajo = anfitriona?.safeAreaInsets.bottom ?? 0
         let nuevo = (conTitulos ? 58 : 52) + abajo
         if altoC?.constant != nuevo { altoC?.constant = nuevo }
-        recolocarRotulos()
-    }
-
-    /// LOS RÓTULOS DEL MENÚ, A SU ANCHO.
-    ///
-    /// Una `UITabBar` suelta —fuera de un `UITabBarController`, que es como
-    /// está aquí— mide mal los rótulos en iOS 26: a cada botón le da 79 pt,
-    /// pero al texto de algunos le da solo los 23 pt del icono, y entonces
-    /// escribe «Cu...», «Pe...», «M...». Se veía raro precisamente porque no
-    /// dependía del largo: «Plan» cabía y «Movs», del mismo largo, no.
-    ///
-    /// No hay forma pública de pedirle que los mida bien, así que se miden aquí
-    /// y se colocan centrados en su botón. Se hace después de cada disposición,
-    /// que es cuando UIKit ya ha puesto los suyos.
-    private var recolocando = false
-    private func recolocarRotulos() {
-        let ancho = barra.bounds.width
-        guard ancho > 1, !recolocando else { return }
-        recolocando = true
-        defer { recolocando = false }
-        for boton in botones() {
-            for v in boton.subviews {
-                guard let l = v as? UILabel, let t = l.text, !t.isEmpty else { continue }
-                let pide = ceil(l.sizeThatFits(CGSize(width: .greatestFiniteMagnitude,
-                                                      height: l.bounds.height)).width)
-                let cabe = min(pide, boton.bounds.width - 4)
-                guard abs(cabe - l.bounds.width) > 0.5 else { continue }
-                l.frame = CGRect(x: ((boton.bounds.width - cabe) / 2).rounded(),
-                                 y: l.frame.origin.y, width: cabe, height: l.bounds.height)
-            }
-        }
-    }
-
-    /// Los botones de la barra, de izquierda a derecha. No tienen nombre
-    /// público: se cogen por su clase, igual que hace el paseo guiado.
-    private func botones() -> [UIView] {
-        var fuera: [UIView] = []
-        func hurgar(_ v: UIView) {
-            if String(describing: type(of: v)).contains("UITabButton") { fuera.append(v); return }
-            for h in v.subviews { hurgar(h) }
-        }
-        hurgar(barra)
-        return fuera
     }
 
     /// Encoger la barra ENTERA al bajar y devolverla a su tamaño al subir.
@@ -1536,15 +1480,49 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     }
 
 
+    /// Alto de la imagen compuesta: icono, hueco y nombre.
+    private static let altoIcono: CGFloat = 23
+    private static let hueco: CGFloat = 3
+    private static let altoTexto: CGFloat = 12
+
+    /// La tinta de la pestaña: gris cuando está apagada, el verde del tema
+    /// cuando está puesta. Va dentro de la imagen, así que se decide aquí.
+    static func tintaTab(_ puesta: Bool) -> UIColor {
+        puesta ? UIColor(CNC.pos) : UIColor.secondaryLabel
+    }
+
+    /// ICONO Y NOMBRE EN UNA IMAGEN, ya del color que toca.
+    static func conNombre(_ path: String, _ nombre: String, puesta: Bool) -> UIImage {
+        let fuente = UIFont.systemFont(ofSize: 10, weight: puesta ? .semibold : .medium)
+        let tinta = tintaTab(puesta)
+        let atrib: [NSAttributedString.Key: Any] = [.font: fuente, .foregroundColor: tinta]
+        let medida = (nombre as NSString).size(withAttributes: atrib)
+        let ancho = max(altoIcono, ceil(medida.width))
+        let alto = altoIcono + hueco + altoTexto
+        let img = UIGraphicsImageRenderer(size: CGSize(width: ancho, height: alto)).image { _ in
+            let icono = cnIconoUIImage(path, lado: altoIcono, grosor: 2.6)
+                .withTintColor(tinta, renderingMode: .alwaysOriginal)
+            icono.draw(in: CGRect(x: (ancho - altoIcono) / 2, y: 0, width: altoIcono, height: altoIcono))
+            (nombre as NSString).draw(
+                in: CGRect(x: (ancho - medida.width) / 2, y: altoIcono + hueco,
+                           width: medida.width, height: altoTexto),
+                withAttributes: atrib)
+        }
+        return img.withRenderingMode(.alwaysOriginal)
+    }
+
     /// El icono de Perfil: el dibujo de Chino o, si así lo elige el usuario, el
     /// de siempre pero redondo, con su inicial —como el del perfil de otras
     /// apps—. Apagado cuando no es la pestaña puesta, vivo en cuanto lo es.
     func ponerChinolo(_ b64: String) {
         guard let items = barra.items, let i = ids.firstIndex(of: "perfil"), i < items.count else { return }
+        let nombre = cnT("Perfil")
         if CNC.fmt.iconoPerfil == "perfil" {
             items[i].imageInsets = conTitulos ? .zero : UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
-            items[i].image = CNBarraNativa.redondo(CNC.fmt.inicial, puesto: false).withRenderingMode(.alwaysOriginal)
-            items[i].selectedImage = CNBarraNativa.redondo(CNC.fmt.inicial, puesto: true).withRenderingMode(.alwaysOriginal)
+            items[i].image = CNBarraNativa.bajoNombre(
+                CNBarraNativa.redondo(CNC.fmt.inicial, puesto: false), nombre, puesta: false)
+            items[i].selectedImage = CNBarraNativa.bajoNombre(
+                CNBarraNativa.redondo(CNC.fmt.inicial, puesto: true), nombre, puesta: true)
             return
         }
         guard !b64.isEmpty, let d = Data(base64Encoded: b64), let img = UIImage(data: d) else { return }
@@ -1556,8 +1534,29 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         let color = UIGraphicsImageRenderer(size: CGSize(width: lado, height: lado)).image { _ in
             img.draw(in: CGRect(x: 0, y: 0, width: lado, height: lado))
         }
-        items[i].image = (CNBarraNativa.enGris(color) ?? color).withRenderingMode(.alwaysOriginal)
-        items[i].selectedImage = color.withRenderingMode(.alwaysOriginal)
+        items[i].image = CNBarraNativa.bajoNombre(CNBarraNativa.enGris(color) ?? color, nombre, puesta: false)
+        items[i].selectedImage = CNBarraNativa.bajoNombre(color, nombre, puesta: true)
+    }
+
+    /// El mismo truco que `conNombre`, pero partiendo de un dibujo ya hecho (el
+    /// de Chino o el círculo con la inicial): se le pone el nombre debajo. Sin
+    /// rótulos devuelve el dibujo tal cual.
+    static func bajoNombre(_ dibujo: UIImage, _ nombre: String, puesta: Bool) -> UIImage {
+        guard CNMenuEstado.shared.titulos else { return dibujo.withRenderingMode(.alwaysOriginal) }
+        let fuente = UIFont.systemFont(ofSize: 10, weight: puesta ? .semibold : .medium)
+        let atrib: [NSAttributedString.Key: Any] = [.font: fuente, .foregroundColor: tintaTab(puesta)]
+        let medida = (nombre as NSString).size(withAttributes: atrib)
+        let ancho = max(dibujo.size.width, ceil(medida.width))
+        let alto = dibujo.size.height + hueco + altoTexto
+        let img = UIGraphicsImageRenderer(size: CGSize(width: ancho, height: alto)).image { _ in
+            dibujo.draw(in: CGRect(x: (ancho - dibujo.size.width) / 2, y: 0,
+                                   width: dibujo.size.width, height: dibujo.size.height))
+            (nombre as NSString).draw(
+                in: CGRect(x: (ancho - medida.width) / 2, y: dibujo.size.height + hueco,
+                           width: medida.width, height: altoTexto),
+                withAttributes: atrib)
+        }
+        return img.withRenderingMode(.alwaysOriginal)
     }
 
     /// El icono redondo del perfil: la silueta dentro de un aro, como el de
@@ -1627,13 +1626,33 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         barra.standardAppearance = ap
         if #available(iOS 15.0, *) { barra.scrollEdgeAppearance = ap }
         for (i, t) in CNTabs.todas.enumerated() {
-            // Más grandes y más gruesos: en una barra de cinco, un trazo fino se
-            // pierde.
-            let img = cnIconoUIImage(t.path, lado: 23, grosor: 2.6).withRenderingMode(.alwaysTemplate)
-            let item = UITabBarItem(title: conTitulos ? cnT(t.titulo) : nil, image: img, tag: i)
-            item.accessibilityLabel = cnT(t.titulo)
-            // Sin rótulo el icono se centra solo bajándolo un poco.
-            item.imageInsets = conTitulos ? .zero : UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
+            let nombre = cnT(t.titulo)
+            let item: UITabBarItem
+            if conTitulos {
+                // EL ICONO Y EL RÓTULO, EN UNA SOLA IMAGEN.
+                //
+                // Suelta, esta barra mide mal los rótulos en iOS 26: al texto
+                // de algunas pestañas le daba el ancho del icono —23 pt— y las
+                // escribía «Cu...», «Pe...», «M...». No dependía del largo del
+                // texto («Plan» cabía y «Movs» no), no hay forma pública de
+                // corregir la medida y retocar los marcos a mano no sirve:
+                // UIKit los rehace después. Dibujando el nombre DENTRO de la
+                // imagen no queda nada que medir. Es lo mismo que ya se hacía
+                // con la pestaña de Perfil.
+                item = UITabBarItem(title: nil,
+                                    image: CNBarraNativa.conNombre(t.path, nombre, puesta: false),
+                                    tag: i)
+                item.selectedImage = CNBarraNativa.conNombre(t.path, nombre, puesta: true)
+                item.imageInsets = .zero
+            } else {
+                // Más grandes y más gruesos: en una barra de cinco, un trazo
+                // fino se pierde.
+                let img = cnIconoUIImage(t.path, lado: 23, grosor: 2.6).withRenderingMode(.alwaysTemplate)
+                item = UITabBarItem(title: nil, image: img, tag: i)
+                // Sin rótulo el icono se centra solo bajándolo un poco.
+                item.imageInsets = UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
+            }
+            item.accessibilityLabel = nombre
             items.append(item); ids.append(t.id)
         }
         let antes = barra.selectedItem?.tag
@@ -1644,7 +1663,6 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     /// Pestaña activa, títulos y colores del tema.
     func pintar(activa: String, titulos: Bool) {
         if titulos != conTitulos { conTitulos = titulos; rehacer(); ajustar() }
-        recolocarRotulos()
         barra.tintColor = UIColor(CNC.pos)
         barra.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
         if let i = ids.firstIndex(of: activa), let items = barra.items, i < items.count,
