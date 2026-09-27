@@ -3265,15 +3265,20 @@ struct CNPlan: View {
         let m = datos.plan ?? CNPlanModelo()
         // Barra de arriba del sistema, como en Movimientos y Cuentas.
         return NavigationView {
-            ScrollView(showsIndicators: false) {
-            LazyVStack(alignment: .leading, spacing: 13) {
-                CNEspiaScroll { CNScrollEstado.shared.mirar($0) }.frame(height: 0)
-                pestanas(m)
+            // Lista agrupada del sistema, como Movimientos, Cuentas y Perfil.
+            List {
+                Section {
+                    CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
+                        .frame(height: 0).listRowSeparator(.hidden)
+                    pestanas(m)
+                    if m.tab != "metas" { resumenPres(m) }
+                }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 if m.tab == "metas" { metas(m) } else { presupuesto(m) }
-                Color.clear.frame(height: 110)
             }
-            .padding(.horizontal, 16).padding(.top, 2)
-            }
+            .listStyle(.insetGrouped)
+            .modifier(CNFondoLista())
             .background(CNC.scr.ignoresSafeArea())
             .navigationTitle(m.titulo)
             .navigationBarTitleDisplayMode(.large)
@@ -3313,8 +3318,9 @@ struct CNPlan: View {
             .labelsHidden()
     }
 
-    @ViewBuilder private func presupuesto(_ m: CNPlanModelo) -> some View {
-        // Lo gastado del mes contra el presupuesto, con su aviso si se pasa.
+    /// Lo gastado del mes contra el presupuesto, con su aviso si se pasa.
+    /// Va suelta, como la tarjeta de patrimonio en Cuentas.
+    private func resumenPres(_ m: CNPlanModelo) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(m.presGastado).font(cnLetra(26, .heavy))
@@ -3335,13 +3341,15 @@ struct CNPlan: View {
             }
         }
         .padding(16).tarjetaCN()
+    }
 
-        // Sin botón de «+ Categoría»: el «+» de arriba ya crea la que toca
-        // según la pestaña, y dos botones para lo mismo estorban.
-        Text(m.tituloCategorias.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8)
-            .foregroundColor(CNC.pmut).padding(.leading, 4).padding(.top, 4)
-
-        VStack(spacing: 0) {
+    /// Las categorías del mes, en su sección. Sin botón de «+ Categoría»: el
+    /// «+» de arriba ya crea la que toca según la pestaña.
+    @ViewBuilder private func presupuesto(_ m: CNPlanModelo) -> some View {
+        Section {
+            if m.filas.isEmpty {
+                cnVacioCard("Sin categorías", "Crea la primera para empezar a repartir el mes.")
+            }
             ForEach(m.filas) { f in
                 Button { datos.onPlanAccion("categoria", f.indice) } label: {
                     HStack(spacing: 12) {
@@ -3367,26 +3375,17 @@ struct CNPlan: View {
                         Image(systemName: "chevron.right").font(cnLetra(12, .semibold))
                             .foregroundColor(CNC.pmut.opacity(0.5))
                     }
-                    .padding(.horizontal, 14).padding(.vertical, 12).contentShape(Rectangle())
-                    .overlay(alignment: .bottom) {
-                        if f.indice < m.filas.count - 1 {
-                            Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.leading, 64)
-                        }
-                    }
-                }.buttonStyle(CNPulsable())
+                    .padding(.vertical, 5).contentShape(Rectangle())
+                }.buttonStyle(.plain)
             }
-        }
-        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
-
-        if m.filas.isEmpty {
-            cnVacioCard("Sin categorías", "Crea la primera para empezar a repartir el mes.")
+        } header: {
+            Text(m.tituloCategorias).font(cnLetra(13, .semibold))
+                .foregroundColor(CNC.pmut).textCase(nil)
         }
     }
 
     @ViewBuilder private func metas(_ m: CNPlanModelo) -> some View {
-        Text(m.tituloTusMetas.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8)
-            .foregroundColor(CNC.pmut).padding(.leading, 4)
+        Section {
         if m.metas.isEmpty {
             cnVacioCard("Sin metas", "Una meta es un ahorro con nombre y fecha. Toca + para crear la primera.")
         }
@@ -3425,7 +3424,11 @@ struct CNPlan: View {
                     }.buttonStyle(CNPulsable())
                 }
             }
-            .padding(15).tarjetaCN()
+            .padding(.vertical, 6)
+        }
+        } header: {
+            Text(m.tituloTusMetas).font(cnLetra(13, .semibold))
+                .foregroundColor(CNC.pmut).textCase(nil)
         }
     }
 }
