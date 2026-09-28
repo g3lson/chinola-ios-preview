@@ -43,12 +43,28 @@ jobs:
           # —todas sus pantallas son nativas—. Si WebKit suspende el JavaScript
           # de un webview que no se ve, aquí el módulo no corre y en la sonda de
           # antes sí, que es la diferencia que queda por explicar.
-          cp ../hibrido/sonda-tapada/ViewController.swift ios/App/App/ViewController.swift
+          # El SceneDelegate YA existe en el proyecto que genera Capacitor: se
+          # SOBRESCRIBE. Añadirlo otra vez lo dejaba duplicado, Xcode se saltaba
+          # uno de los dos y la tapa nunca llegaba a aplicarse —que es por lo que
+          # la primera vez salió el mismo resultado que sin tapar—.
           cp ../hibrido/sonda-tapada/SceneDelegate.swift ios/App/App/SceneDelegate.swift
+          cp ../hibrido/sonda-tapada/ViewController.swift ios/App/App/ViewController.swift
           gem install xcodeproj --no-document --quiet
-          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); g=(p.main_group['App']||p.main_group); ['ViewController.swift','SceneDelegate.swift'].each{|n| f=g.new_file(n); p.targets.first.add_file_references([f])}; p.save"
+          # Solo ViewController es nuevo. Y se comprueba que no acabe duplicado.
+          ruby -e "
+            require 'xcodeproj'
+            p = Xcodeproj::Project.open('ios/App/App.xcodeproj')
+            g = (p.main_group['App'] || p.main_group)
+            t = p.targets.first
+            ya = t.source_build_phase.files.map { |f| f.file_ref&.path }.compact
+            abort('ViewController ya estaba: revisar') if ya.include?('ViewController.swift')
+            t.add_file_references([g.new_file('ViewController.swift')])
+            p.save
+            puts 'fuentes: ' + t.source_build_phase.files.map { |f| f.file_ref&.path }.compact.sort.join(', ')
+          "
           /usr/libexec/PlistBuddy -c "Delete :UISceneStoryboardFile" ios/App/App/Info.plist 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Set :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0:UISceneDelegateClassName \$(PRODUCT_MODULE_NAME).SceneDelegate" ios/App/App/Info.plist 2>/dev/null || true
+          echo "=== quién monta la ventana ==="
+          /usr/libexec/PlistBuddy -c "Print :UIApplicationSceneManifest" ios/App/App/Info.plist 2>/dev/null || echo "(sin manifiesto de escena)"
           echo "=== lo que se empaqueta ==="; ls -R ios/App/App/public | head -20
 
       - name: Compilar para simulador
@@ -75,8 +91,12 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b || true
           xcrun simctl install "$UDID" "$APP"
           xcrun simctl launch "$UDID" do.com.fente.sondamodulos || true
-          sleep 14
-          xcrun simctl io "$UDID" screenshot "respuesta-ios$RT_VER.png" || true
+          # La primera foto es el CONTROL: si no se ve la tapa, la prueba no
+          # vale y el resultado de la segunda no dice nada.
+          sleep 4
+          xcrun simctl io "$UDID" screenshot "1-tapado-ios$RT_VER.png" || true
+          sleep 11
+          xcrun simctl io "$UDID" screenshot "2-respuesta-ios$RT_VER.png" || true
           echo "=== lo que dijo el webview ==="
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "App"' --style compact 2>/dev/null | grep -iE "module|cors|script|blocked" | head -20 || true
 
