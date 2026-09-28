@@ -100,11 +100,11 @@ jobs:
           xcrun simctl launch "$UDID" do.com.fente.sondamodulos || true
           # La primera foto es el CONTROL: si no se ve la tapa, la prueba no
           # vale y el resultado de la segunda no dice nada.
-          sleep 4
-          xcrun simctl io "$UDID" screenshot "1-tapado-ios$RT_VER.png" || true
+          sleep 6
+          xcrun simctl io "$UDID" screenshot "1-con-el-arreglo-ios$RT_VER.png" || true
           echo "=== ¿se montó nuestro controlador? ==="
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'eventMessage CONTAINS "SONDA"' --style compact 2>/dev/null | head -10 || true
-          sleep 11
+          sleep 8
           xcrun simctl io "$UDID" screenshot "2-respuesta-ios$RT_VER.png" || true
           echo "=== lo que dijo el webview ==="
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "App"' --style compact 2>/dev/null | grep -iE "module|cors|script|blocked" | head -20 || true

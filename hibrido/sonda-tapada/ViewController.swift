@@ -1,56 +1,71 @@
 import UIKit
+import SwiftUI
 import Capacitor
 
-/// Igual que hace Chinola: una vista OPACA a pantalla completa encima del
-/// webview desde el primer fotograma, porque todas sus pantallas son nativas.
+/// La forma que tiene Chinola, y el arreglo.
 ///
-/// La pregunta es si WebKit, al no ver el webview, suspende su JavaScript y por
-/// eso el módulo de la app nunca llega a ejecutarse.
+/// Capacitor hace `view = webView` en su `loadView`, que es `final`: la vista
+/// raíz del controlador ES el WKWebView. Así que todo lo que Chinola añadía a
+/// `view` —las pantallas nativas, la barra, el botón flotante— se estaba
+/// metiendo DENTRO del webview.
+///
+/// Aquí se reproduce lo que hace la app de verdad —un huésped de SwiftUI a
+/// pantalla completa encima, desde el arranque— con el webview ya sacado a un
+/// contenedor. Si la página se pinta y el módulo corre, la estructura aguanta.
 class ViewController: CAPBridgeViewController {
-    private var tapa: UIView?
-
     override func viewDidLoad() {
         super.viewDidLoad()
-        NSLog("SONDA: viewDidLoad del controlador propio")
+        NSLog("SONDA: viewDidLoad")
 
-        let tapa = UIView()
-        self.tapa = tapa
-        tapa.backgroundColor = .systemBackground      // opaca, como la de Chinola
-        tapa.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(tapa)
-        NSLayoutConstraint.activate([
-            tapa.topAnchor.constraint(equalTo: view.topAnchor),
-            tapa.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tapa.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tapa.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
-
-        let aviso = UILabel()
-        aviso.text = "tapando el webview…"
-        aviso.textAlignment = .center
-        aviso.translatesAutoresizingMaskIntoConstraints = false
-        tapa.addSubview(aviso)
-        NSLayoutConstraint.activate([
-            aviso.centerXAnchor.constraint(equalTo: tapa.centerXAnchor),
-            aviso.centerYAnchor.constraint(equalTo: tapa.centerYAnchor)
-        ])
-
-        // A los 9 segundos se destapa para poder fotografiar la respuesta. Para
-        // entonces el módulo ya habría corrido de sobra si fuera a correr.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak self] in
-            NSLog("SONDA: destapando")
-            self?.tapa?.removeFromSuperview()
-            self?.tapa = nil
+        // EL ARREGLO: el webview deja de ser la raíz.
+        if let web = viewIfLoaded, web === (webView as UIView?) {
+            let contenedor = UIView(frame: web.frame)
+            contenedor.backgroundColor = web.backgroundColor
+            contenedor.autoresizingMask = web.autoresizingMask
+            view = contenedor
+            contenedor.addSubview(web)
+            web.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                web.topAnchor.constraint(equalTo: contenedor.topAnchor),
+                web.leadingAnchor.constraint(equalTo: contenedor.leadingAnchor),
+                web.trailingAnchor.constraint(equalTo: contenedor.trailingAnchor),
+                web.bottomAnchor.constraint(equalTo: contenedor.bottomAnchor)
+            ])
+            NSLog("SONDA: webview sacado de la raíz · raíz ahora = \(type(of: view!))")
+        } else {
+            NSLog("SONDA: la raíz NO era el webview")
         }
-    }
 
-    /// La tapa, otra vez al frente después de que Capacitor coloque lo suyo: en
-    /// `viewDidLoad` el webview todavía se está montando y puede quedar encima.
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        if let t = tapa {
-            view.bringSubviewToFront(t)
-            NSLog("SONDA: tapa al frente · webview tapado = \(t.superview != nil)")
+        // Y encima, un huésped de SwiftUI a pantalla completa, como el botón
+        // flotante de Chinola: transparente y sin robar toques.
+        let host = UIHostingController(rootView: EncimaDeTodo())
+        host.view.backgroundColor = .clear
+        host.view.isOpaque = false
+        host.view.isUserInteractionEnabled = false
+        addChild(host); view.addSubview(host.view); host.didMove(toParent: self)
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            host.view.topAnchor.constraint(equalTo: view.topAnchor),
+            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        NSLog("SONDA: huésped de SwiftUI encima")
+    }
+}
+
+/// Un botón flotante de mentira, para ocupar el mismo sitio que el de verdad.
+struct EncimaDeTodo: View {
+    var body: some View {
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                Circle().fill(Color.yellow)
+                    .frame(width: 56, height: 56)
+                    .shadow(radius: 6)
+                    .padding(24)
+            }
         }
     }
 }
