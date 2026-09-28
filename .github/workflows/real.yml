@@ -1,0 +1,102 @@
+name: El controlador REAL de Chinola, ejecutándose
+
+# El otro banco de pruebas monta su propio `TestVC`: el controlador de verdad se
+# compilaba pero nunca se ejecutaba. Y el fallo que perseguimos —la app abre en
+# blanco— está justo en lo que ese controlador le hace al webview al arrancar.
+#
+# Aquí se ejecuta DE VERDAD, con una página mínima que dice en pantalla si su
+# JavaScript llegó a correr. Nada del código web de Chinola: solo la pregunta.
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['hibrido/real/**', 'hibrido/overlay/**', '.github/workflows/real.yml']
+
+jobs:
+  correr:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Montar la app con el controlador real
+        run: |
+          mkdir -p app/www && cd app
+          cp -R ../hibrido/real/index.html ../hibrido/real/assets www/
+          npm init -y >/dev/null
+          npm i @capacitor/core@latest @capacitor/cli@latest @capacitor/ios@latest >/dev/null 2>&1
+          cat > capacitor.config.json <<'JSON'
+          { "appId": "do.com.fente.chinolareal", "appName": "Chinola", "webDir": "www",
+            "ios": { "contentInset": "never" }, "server": { "iosScheme": "capacitor" } }
+          JSON
+          npx cap add ios
+          npx cap sync ios
+
+          # Los Swift REALES de la app, el controlador incluido.
+          for f in ChinolaNativo ChinolaFormularios ChinolaViewController CNCalculo Cobro NativoPlugin ChinolaIntents; do
+            cp ../hibrido/overlay/$f.swift ios/App/App/$f.swift
+          done
+          cp -R ../hibrido/overlay/Fuentes ios/App/App/Fuentes
+          cp ../hibrido/real/SceneDelegate.swift ios/App/App/SceneDelegate.swift
+
+          gem install xcodeproj --no-document --quiet
+          ruby -e "
+            require 'xcodeproj'
+            p = Xcodeproj::Project.open('ios/App/App.xcodeproj')
+            g = (p.main_group['App'] || p.main_group)
+            t = p.targets.first
+            ya = t.source_build_phase.files.map { |f| f.file_ref&.path }.compact
+            %w[ChinolaNativo.swift ChinolaFormularios.swift ChinolaViewController.swift CNCalculo.swift Cobro.swift NativoPlugin.swift ChinolaIntents.swift].each do |n|
+              next if ya.include?(n)
+              t.add_file_references([g.new_file(n)])
+            end
+            r = g.new_reference('Fuentes'); r.set_last_known_file_type('folder'); t.add_resources([r])
+            p.save
+          "
+          # Sin storyboard: manda nuestro SceneDelegate, como en la app.
+          RUTA=':UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0:UISceneStoryboardFile'
+          /usr/libexec/PlistBuddy -c "Delete $RUTA" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Print $RUTA" ios/App/App/Info.plist 2>/dev/null \
+            && { echo '::error::el storyboard sigue puesto'; exit 1; } || echo 'storyboard fuera ✓'
+          /usr/libexec/PlistBuddy -c "Delete :UIMainStoryboardFile" ios/App/App/Info.plist 2>/dev/null || true
+
+      - name: Compilar
+        run: |
+          set -o pipefail
+          cd app
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Debug -sdk iphonesimulator \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO 2>&1 | tail -25
+
+      - name: Ejecutar y fotografiar
+        run: |
+          cd app
+          APP=$(find build/Build/Products -name "App.app" -maxdepth 3 | head -1)
+          RT=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; rs=[r for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and "SimRuntime.iOS" in r["identifier"]]; rs.sort(key=lambda r:[int(n) for n in r["version"].split(".")]); print(rs[-1]["identifier"], rs[-1]["version"])')
+          RT_ID=$(echo "$RT" | cut -d' ' -f1); RT_VER=$(echo "$RT" | cut -d' ' -f2)
+          MODELO=$(xcrun simctl list devicetypes -j | python3 -c 'import json,sys; ns=[d["name"] for d in json.load(sys.stdin)["devicetypes"]]; print(next((q for q in ["iPhone 17 Pro","iPhone 16 Pro","iPhone 16"] if q in ns), "iPhone 16 Pro"))')
+          echo "iOS $RT_VER · $MODELO"
+          xcrun simctl delete "real" 2>/dev/null || true
+          UDID=$(xcrun simctl create "real" "$MODELO" "$RT_ID")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+          sleep 8
+          xcrun simctl io "$UDID" screenshot "1-a-los-8s-ios$RT_VER.png" || true
+          sleep 14
+          xcrun simctl io "$UDID" screenshot "2-a-los-22s-ios$RT_VER.png" || true
+          echo "=== ¿sigue vivo el proceso? ==="
+          xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolareal || echo "(NO está vivo → crasheó)"
+          echo "=== crash ==="
+          find ~/Library/Logs/DiagnosticReports -name "App-*.ips" 2>/dev/null | sort | tail -1 | while read f; do sed -n '1,40p' "$f"; done
+
+      - name: Subir
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real
+          path: app/*.png
