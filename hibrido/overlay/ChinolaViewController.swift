@@ -180,6 +180,11 @@ class ChinolaViewController: CAPBridgeViewController {
         (ProcessInfo.processInfo.environment["CN_SIN"] ?? "")
             .split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty })
+    private static let hasta = Int(ProcessInfo.processInfo.environment["CN_HASTA"] ?? "") ?? Int.max
+    private func paro(_ tramo: Int) -> Bool {
+        if tramo > Self.hasta { NSLog("CNSIN: paro en el tramo \(tramo)"); return true }
+        return false
+    }
     private func sin(_ que: String) -> Bool {
         if Self.apagadas.contains(que) { NSLog("CNSIN: apagado «\(que)»"); return true }
         return false
@@ -192,6 +197,10 @@ class ChinolaViewController: CAPBridgeViewController {
         // está en lo que hace sino en lo que ES: sus propiedades o el registro
         // de plugins. Y si arranca, está aquí dentro y se busca a la mitad.
         if sin("todo") { return }
+        // Búsqueda binaria: con `CN_HASTA=n` solo corren los n primeros tramos.
+        // Con `viewDidLoad` vacío la app arranca, así que el culpable está en
+        // este método; esto lo encuentra en una pasada en vez de en ocho.
+        if paro(1) { return }
         // En iOS 17 y más, `traitCollectionDidChange` ya no se llama: hay que
         // apuntarse al cambio. Sin esto, poner el teléfono en oscuro no movía
         // la app hasta reiniciarla.
@@ -201,15 +210,18 @@ class ChinolaViewController: CAPBridgeViewController {
             }
         }
         // Las tipografías de la marca, antes de pintar nada.
+        if paro(2) { return }
         if !sin("fuentes") { CNFuentes.registrar() }
         // Y el tema de la última vez: la primera pantalla sale ya con sus
         // colores, su letra y su moneda.
+        if paro(3) { return }
         if !sin("tema") { datos.temaGuardado() }
         if !sin("acciones") { conectarAcciones() }
         if !sin("avisos") {
         NotificationCenter.default.addObserver(self, selector: #selector(avisarDelModo),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
         }
+        if paro(4) { return }
         if !sin("orilla") { montarOrilla() }
         // El bloqueo con Face ID: se tapa al irse, se pide al volver.
         NotificationCenter.default.addObserver(self, selector: #selector(alIrse),
@@ -232,6 +244,7 @@ class ChinolaViewController: CAPBridgeViewController {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.pedirDesbloqueo() }
         }
 
+        if paro(5) { return }
         menuEstado.alTocar = { [weak self] id in
             guard let self = self else { return }
             self.menuEstado.activa = id
@@ -269,6 +282,7 @@ class ChinolaViewController: CAPBridgeViewController {
         // Qué tiene dentro el webview cuando no da señales. Distingue «no
         // cargó nada» de «cargó su página y su código falló», que es la
         // diferencia entre buscar en el empaquetado o en el JavaScript.
+        if paro(6) { return }
         CNAvisoDeFallo.shared.estadoDeLaWeb = { [weak self] contar in
             guard let w = self?.bridge?.webView else { contar("no hay webview"); return }
             w.callAsyncJavaScript("try{var e=document.documentElement;var t=document.querySelector('script[src]');var l=['url: '+location.href,'estado: '+document.readyState,'scripts: '+document.scripts.length,'html: '+(e?e.innerHTML.length:-1)+' car.','raiz: '+(document.getElementById('raiz')?'si':'no'),'Capacitor: '+(window.Capacitor?'si':'no')];if(!t){l.push('script: NINGUNO con src');return l.join('\\n')}l.push('script: '+(t.type||'clasico')+' '+t.src);try{var r=await fetch(t.src);var txt=await r.text();l.push('al pedirlo: '+r.status+' '+(r.headers.get('content-type')||'sin tipo'));l.push('mide: '+txt.length+' car.');}catch(err){l.push('al pedirlo FALLO: '+err)}return l.join('\\n')}catch(e){return 'no se pudo mirar: '+e}", arguments: [:], in: nil, in: .page) { r in
@@ -295,10 +309,12 @@ class ChinolaViewController: CAPBridgeViewController {
             }
             s.eval("window.__chinolaPon && window.__chinolaPon(\(s.comillas(clave)), \(js))")
         }
+        if paro(7) { return }
         if !sin("modo") { vigilarModo() }
         // Lo NATIVO desde el primer fotograma. Sin esto, al abrir se veía el
         // tablero de la WEB hasta que se tocaba una pestaña: la app empezaba
         // enseñando justo lo que ya no usa.
+        if paro(8) { return }
         if !sin("nativo") { mostrarNativo(menuEstado.activa) }
         if !sin("cortina") { montarCortina() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in self?.traerDatos() }

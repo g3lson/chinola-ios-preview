@@ -104,14 +104,14 @@ jobs:
           xcrun simctl io "$UDID" screenshot "1-de-fabrica.png" || true
 
           n=1
-          for COMBO in "todo" "todo,plugins"; do
+          for HASTA in 2 4 6 7 8; do
             n=$((n+1))
-            echo "=== Chinola sin: $COMBO ==="
+            echo "=== hasta el tramo $HASTA ==="
             xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
             sleep 2
-            SIMCTL_CHILD_CN_SIN="$COMBO" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
-            sleep 19
-            xcrun simctl io "$UDID" screenshot "$n-chinola-$(echo $COMBO | md5 -q 2>/dev/null | cut -c1-6 || echo $n).png" || true
+            SIMCTL_CHILD_CN_HASTA="$HASTA" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+            sleep 18
+            xcrun simctl io "$UDID" screenshot "$n-hasta-$HASTA.png" || true
           done
           echo "=== ¿sigue vivo el proceso? ==="
           xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolareal || echo "(NO está vivo → crasheó)"
