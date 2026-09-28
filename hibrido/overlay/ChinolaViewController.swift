@@ -198,10 +198,29 @@ class ChinolaViewController: CAPBridgeViewController {
         ])
     }
 
+    /// UN INTERRUPTOR PARA BUSCAR AL CULPABLE.
+    ///
+    /// La app abre en blanco y el JavaScript de la web nunca llega a correr,
+    /// pero con un Capacitor de fábrica sí corre: es algo que hace ESTE
+    /// controlador al arrancar. Con esto se puede apagar pieza por pieza en el
+    /// simulador —`CN_SIN=flotante,barra,nativo`— y ver con cuál vuelve a
+    /// funcionar, en vez de adivinar a base de compilaciones.
+    ///
+    /// Solo lee una variable de entorno, que en un teléfono de verdad no
+    /// existe: fuera de las pruebas, esto siempre devuelve falso.
+    private static let apagadas: Set<String> = Set(
+        (ProcessInfo.processInfo.environment["CN_SIN"] ?? "")
+            .split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty })
+    private func sin(_ que: String) -> Bool {
+        if Self.apagadas.contains(que) { NSLog("CNSIN: apagado «\(que)»"); return true }
+        return false
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         // Lo PRIMERO, antes de que nada se monte encima.
-        sacarElWebviewDeLaRaiz()
+        if !sin("raiz") { sacarElWebviewDeLaRaiz() }
         // En iOS 17 y más, `traitCollectionDidChange` ya no se llama: hay que
         // apuntarse al cambio. Sin esto, poner el teléfono en oscuro no movía
         // la app hasta reiniciarla.
@@ -218,7 +237,7 @@ class ChinolaViewController: CAPBridgeViewController {
         conectarAcciones()
         NotificationCenter.default.addObserver(self, selector: #selector(avisarDelModo),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
-        montarOrilla()
+        if !sin("orilla") { montarOrilla() }
         // El bloqueo con Face ID: se tapa al irse, se pide al volver.
         NotificationCenter.default.addObserver(self, selector: #selector(alIrse),
                                                name: UIApplication.willResignActiveNotification, object: nil)
@@ -267,8 +286,8 @@ class ChinolaViewController: CAPBridgeViewController {
             }
         }
 
-        montarBarra()
-        montarFlotante()
+        if !sin("barra") { montarBarra() }
+        if !sin("flotante") { montarFlotante() }
         // Si la web no da señales en diez segundos, avisar: la app en blanco no
         // le dice nada a nadie, y su propio cartel queda debajo de lo nativo.
         // Qué tiene dentro el webview cuando no da señales. Distingue «no
@@ -304,8 +323,8 @@ class ChinolaViewController: CAPBridgeViewController {
         // Lo NATIVO desde el primer fotograma. Sin esto, al abrir se veía el
         // tablero de la WEB hasta que se tocaba una pestaña: la app empezaba
         // enseñando justo lo que ya no usa.
-        mostrarNativo(menuEstado.activa)
-        montarCortina()
+        if !sin("nativo") { mostrarNativo(menuEstado.activa) }
+        if !sin("cortina") { montarCortina() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in self?.traerDatos() }
         // La puerta (bienvenida, acceso, nombre, plan) también es nativa.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.mirarPuerta() }
