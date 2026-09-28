@@ -6902,7 +6902,7 @@ struct CNTarjetaApilada: View {
         // llegaba a dibujar: quedaba un bloque de color vacío debajo del
         // número.
         .padding(17)
-        .frame(maxWidth: .infinity, height: altoFrente, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: altoFrente, maxHeight: altoFrente, alignment: .topLeading)
         .background(
             ZStack(alignment: .bottomTrailing) {
                 c.color
