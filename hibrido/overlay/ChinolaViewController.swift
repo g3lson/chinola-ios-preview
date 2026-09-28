@@ -190,8 +190,46 @@ class ChinolaViewController: CAPBridgeViewController {
         return false
     }
 
+    /// SACAR EL WEBVIEW DE LA RAÍZ.
+    ///
+    /// Capacitor hace `view = webView` en su `loadView`, que es `final`: la
+    /// vista raíz del controlador ES el WKWebView. Así que cada
+    /// `view.addSubview(...)` de esta clase —la barra de abajo, las pantallas
+    /// nativas, el botón flotante— estaba metiendo vistas de UIKit DENTRO del
+    /// webview, en el primer fotograma y antes de que la página hubiera
+    /// ejecutado una línea. Con eso, su JavaScript no arranca: la app abre en
+    /// blanco y no da un solo error, porque no llega a correr nada que pueda
+    /// darlo.
+    ///
+    /// Medido: con `viewDidLoad` vacío la web arranca; dejando correr hasta
+    /// `montarBarra()`, deja de arrancar.
+    ///
+    /// Aquí se pone en su sitio: la raíz pasa a ser una vista normal y el
+    /// webview, un hijo que la llena. No hay que tocar ni una llamada más:
+    /// todo lo que se añadía a `view` se sigue añadiendo a `view`, solo que
+    /// ahora `view` ya no es el webview.
+    private func sacarElWebviewDeLaRaiz() {
+        guard let web = viewIfLoaded, web === (webView as UIView?) else { return }
+        let contenedor = UIView(frame: web.frame)
+        contenedor.backgroundColor = web.backgroundColor
+        contenedor.autoresizingMask = web.autoresizingMask
+        // Primero la raíz nueva y DESPUÉS se mete el webview: al revés, sería
+        // hijo de sí mismo por un instante.
+        view = contenedor
+        contenedor.addSubview(web)
+        web.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            web.topAnchor.constraint(equalTo: contenedor.topAnchor),
+            web.leadingAnchor.constraint(equalTo: contenedor.leadingAnchor),
+            web.trailingAnchor.constraint(equalTo: contenedor.trailingAnchor),
+            web.bottomAnchor.constraint(equalTo: contenedor.bottomAnchor)
+        ])
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
+        // LO PRIMERO: antes de que nada se monte encima.
+        if !sin("raiz") { sacarElWebviewDeLaRaiz() }
         // Partir por la mitad: con esto el controlador no hace NADA más que lo
         // que hace el de fábrica. Si aun así la web no arranca, el problema no
         // está en lo que hace sino en lo que ES: sus propiedades o el registro

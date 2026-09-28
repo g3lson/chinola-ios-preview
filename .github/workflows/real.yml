@@ -103,16 +103,18 @@ jobs:
           sleep 18
           xcrun simctl io "$UDID" screenshot "1-de-fabrica.png" || true
 
-          n=1
-          for HASTA in 2 4 6 7 8; do
-            n=$((n+1))
-            echo "=== hasta el tramo $HASTA ==="
-            xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
-            sleep 2
-            SIMCTL_CHILD_CN_HASTA="$HASTA" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
-            sleep 18
-            xcrun simctl io "$UDID" screenshot "$n-hasta-$HASTA.png" || true
-          done
+          echo "=== Chinola, TODO encendido, con el arreglo ==="
+          xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+          sleep 2
+          xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+          sleep 20
+          xcrun simctl io "$UDID" screenshot "2-con-el-arreglo.png" || true
+          echo "=== y sin el arreglo, para comparar ==="
+          xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+          sleep 2
+          SIMCTL_CHILD_CN_SIN="raiz" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+          sleep 20
+          xcrun simctl io "$UDID" screenshot "3-sin-el-arreglo.png" || true
           echo "=== ¿sigue vivo el proceso? ==="
           xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolareal || echo "(NO está vivo → crasheó)"
           echo "=== crash ==="
