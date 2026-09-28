@@ -4,19 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Chinola</title>
-<script type="module" src="/assets/app-PrUeBa123.js"></script>
+<!-- LA ÚLTIMA DIFERENCIA SIN PROBAR.
+     La sonda que SÍ funcionaba pedía su módulo con ruta relativa. Ésta, y el
+     index de Chinola, lo piden con ruta ABSOLUTA. Aquí van los dos a la vez:
+     el que pinte señala al culpable. -->
+<script type="module" src="/assets/absoluto.js"></script>
+<script type="module" src="./assets/relativo.js"></script>
 </head>
-<body style="margin:0;font:600 26px -apple-system,system-ui">
+<body style="margin:0;font:600 24px -apple-system,system-ui">
 <div id="raiz"></div>
-<!-- EL CLÁSICO PINTA. Si sale su franja y no la del módulo, lo que el
-     controlador rompe son SOLO los módulos. Si no sale ninguna, rompe todo el
-     JavaScript. Son dos problemas distintos y hasta ahora no los había
-     separado. -->
 <script>
   var d = document.createElement('div');
-  d.id = 'clasico';
-  d.setAttribute('style', 'padding:70px 20px 24px;background:#1f6f3f;color:#fff');
-  d.textContent = 'CLÁSICO: sí corrió';
+  d.setAttribute('style', 'padding:70px 20px 20px;background:#1f6f3f;color:#fff');
+  d.textContent = 'CLÁSICO: corrió';
   document.body.appendChild(d);
 </script>
 </body>
