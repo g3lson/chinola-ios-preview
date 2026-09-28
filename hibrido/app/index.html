@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#22331f" />
+<meta name="description" content="Chinola — tus finanzas por libretas: personal, familia y negocio, cada una con sus movimientos, presupuesto y metas." />
+<title>Chinola · Tus finanzas por libretas</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/app.webmanifest" />
+<!-- «Añadir a pantalla de inicio» en el iPhone: sin estas dos, Safari abre
+     la app dentro del navegador, con su barra y sus botones encima. -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Chinola" />
+<meta name="application-name" content="Chinola" />
+<meta name="robots" content="noindex" />
+<meta name="author" content="FENTE" />
+<meta name="copyright" content="© 2026 FENTE. Todos los derechos reservados." />
+
+<link rel="preload" href="/fuentes/fuentes.css?v=2" as="style" />
+<link rel="stylesheet" href="/fuentes/fuentes.css?v=2" />
+  <script type="module" crossorigin src="/assets/app-BUEML_it.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/client-B4bZkblM.js">
+</head>
+<body>
+<!-- Chinola © 2026 FENTE. Todos los derechos reservados. Software propietario:
+     leerlo en el navegador no autoriza a copiarlo. https://chinola.fente.com.do/legal/terminos -->
+<div id="raiz"></div>
+<!-- El fondo del tema, antes de que se cargue nada. El arranque pintaba el
+     crema de la marca y, si el tema puesto era oscuro, la app daba un
+     fogonazo claro antes de aparecer. Esto lee lo guardado y deja el fondo
+     puesto en el primer pintado, que es lo que hace que abrir la app se
+     parezca a abrir una app y no a cargar una página. -->
+<script>
+  (function () {
+    var FONDOS = {
+      sistema: '#f2f2f7', sistema_noche: '#000000',
+      oceano: '#f2f5fb', menta: '#f0faf6', cacao: '#faf6f1', uva: '#f7f2fb',
+      carbon: '#1e1f21', medianoche: '#1b1e2b', claro: '#fdfdfd', chinola: '#f9f7ee',
+      semillas: '#faf7ec', jugo: '#fdf6e8', hoja: '#eff8f1', noche: '#171c18',
+      noche_semillas: '#161b17', sombrio: '#121212', tinta: '#fbfbfb', niebla: '#f2f3f5',
+      flor: '#f9f2fb', pulpa: '#fdf6e9', cascara: '#f4f9e9', arena: '#faf5ed',
+      coral: '#fdf2f1', indigo: '#f2f3fc', salvia: '#f2f6f2', pizarra: '#f1f3f5',
+      papel: '#faf7ef', chinola_noche: '#151b16', ciruela: '#1c141f', cafe_noche: '#1c1712',
+      bosque: '#101710', tinta_azul: '#14161f', brasa: '#1d1412'
+    };
+    try {
+      var j = JSON.parse(localStorage.getItem('chinola-sesion-v3') || 'null');
+      var f = j && FONDOS[j.tema];
+      if (f) {
+        document.documentElement.style.background = f;
+        document.body.style.background = f;
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', f);
+      }
+    } catch (e) { /* modo privado: se queda el de la marca */ }
+  })();
+</script>
+</body>
+</html>
