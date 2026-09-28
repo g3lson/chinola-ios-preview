@@ -104,7 +104,7 @@ jobs:
           xcrun simctl io "$UDID" screenshot "1-de-fabrica.png" || true
 
           n=1
-          for COMBO in "nativo,cortina,flotante,barra,orilla,eval,plugins,fuentes,tema,acciones,modo,layout,avisos,traits" "nativo,cortina,flotante,barra,orilla,eval,plugins" "nativo,cortina,layout" "nativo,cortina,acciones"; do
+          for COMBO in "todo" "todo,plugins"; do
             n=$((n+1))
             echo "=== Chinola sin: $COMBO ==="
             xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true

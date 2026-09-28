@@ -187,6 +187,11 @@ class ChinolaViewController: CAPBridgeViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        // Partir por la mitad: con esto el controlador no hace NADA más que lo
+        // que hace el de fábrica. Si aun así la web no arranca, el problema no
+        // está en lo que hace sino en lo que ES: sus propiedades o el registro
+        // de plugins. Y si arranca, está aquí dentro y se busca a la mitad.
+        if sin("todo") { return }
         // En iOS 17 y más, `traitCollectionDidChange` ya no se llama: hay que
         // apuntarse al cambio. Sin esto, poner el teléfono en oscuro no movía
         // la app hasta reiniciarla.
