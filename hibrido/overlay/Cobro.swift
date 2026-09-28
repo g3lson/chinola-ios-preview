@@ -21,9 +21,43 @@ public class CobroPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "Cobro"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "productos", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "diagnostico", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "comprar", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restaurar", returnType: CAPPluginReturnPromise)
     ]
+
+    /// POR QUÉ NO SE PUEDE COMPRAR.
+    ///
+    /// Cuando `Product.products(for:)` vuelve vacío, StoreKit no dice por qué:
+    /// simplemente no hay productos. Las causas son siempre las mismas cuatro
+    /// —el producto no existe, no está al menos en «Ready to Submit», el
+    /// bundle no coincide, o el contrato de apps de pago no está activo— y
+    /// desde fuera no se distinguen. Esto recoge lo que SÍ se puede saber
+    /// desde el teléfono para no tener que adivinar.
+    @objc func diagnostico(_ call: CAPPluginCall) {
+        let ids = call.getArray("ids", String.self) ?? []
+        Task {
+            var salida: [String: Any] = [
+                "bundle": Bundle.main.bundleIdentifier ?? "—",
+                "puedePagar": AppStore.canMakePayments
+            ]
+            if #available(iOS 15.0, *) {
+                let tienda = await Storefront.current
+                salida["pais"] = tienda?.countryCode ?? "—"
+            }
+            do {
+                let hallados = try await Product.products(for: ids)
+                salida["pedidos"] = ids
+                salida["encontrados"] = hallados.map { $0.id }
+                salida["faltan"] = ids.filter { id in !hallados.contains { $0.id == id } }
+                salida["ok"] = hallados.count == ids.count && !ids.isEmpty
+            } catch {
+                salida["ok"] = false
+                salida["fallo"] = error.localizedDescription
+            }
+            call.resolve(salida)
+        }
+    }
 
     /// Los precios, tal como Apple los da en la tienda de quien mira.
     @objc func productos(_ call: CAPPluginCall) {

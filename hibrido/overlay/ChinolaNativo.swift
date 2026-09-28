@@ -199,6 +199,21 @@ struct CNFormato {
     var inicial = ""
     /// Las tarjetas de cifras del panel, cada una del color de su cifra.
     var panelVivo = false
+    /// Qué tarjeta se ve arriba en Cuentas: clasica, apilada, suma, grafica,
+    /// chino, bloques… o «ninguna».
+    ///
+    /// Estos cuatro vivían en @AppStorage, o sea en el teléfono y solo en el
+    /// teléfono: no existían en la web ni en la PWA, y no seguían a la persona
+    /// de su iPhone a su iPad ni sobrevivían a reinstalar. Ahora los guarda la
+    /// web con el resto de ajustes y llegan por aquí, que es el mismo camino
+    /// que ya traía el tema y la letra.
+    var tarjetaCuentas = "clasica"
+    /// A cuánto quiere llegar: lo usa la barra de meta de la tarjeta de Chino.
+    var metaPatrimonio: Double = 0
+    /// El presupuesto en aro en vez de en barra.
+    var planAro = false
+    /// Cómo se ven las pestañas del Plan: sistema, subrayado o pastillas.
+    var planPestanas = "pastillas"
     /// 1 = el tamaño de siempre. La web usa 1,07 como «Normal», así que se
     /// divide entre eso: lo normal aquí tiene que seguir midiendo lo que medía.
     var letra: CGFloat = 1
@@ -212,12 +227,25 @@ struct CNFormato {
         if let t = o["iconoPerfil"] as? String, !t.isEmpty { f.iconoPerfil = t }
         if let t = o["inicial"] as? String { f.inicial = t }
         if let v = o["panelVivo"] as? Bool { f.panelVivo = v }
+        if let t = o["tarjetaCuentas"] as? String, !t.isEmpty { f.tarjetaCuentas = t }
+        if let e = o["metaPatrimonio"] as? NSNumber { f.metaPatrimonio = e.doubleValue }
+        if let v = o["planAro"] as? Bool { f.planAro = v }
+        if let t = o["planPestanas"] as? String, !t.isEmpty { f.planPestanas = t }
         if let e = o["letra"] as? NSNumber {
             let v = CGFloat(truncating: e)
             if v > 0.4 && v < 2.5 { f.letra = v }
         }
         return f
     }
+}
+
+/// Un ajuste de pantalla como Binding, para que los Picker sigan siendo Picker.
+///
+/// Lee del formato que manda la web y escribe de vuelta por el puente. El valor
+/// que se ve es siempre el de la web: no se guarda una copia aquí que luego
+/// discrepe de la del navegador.
+func cnAjuste<T>(_ clave: String, _ leer: @escaping () -> T, _ aJS: @escaping (T) -> Any) -> Binding<T> {
+    Binding(get: leer, set: { nuevo in CNC.alPoner?(clave, aJS(nuevo)) })
 }
 
 /// Un tamaño de letra del diseño, ya escalado por el ajuste del usuario.
@@ -407,6 +435,11 @@ struct CNPaletaTema {
 enum CNC {
     static var tema = CNPaletaTema()
     static var fmt = CNFormato()
+    /// Guardar un ajuste de pantalla. Lo pone el controlador y acaba en
+    /// `window.__chinolaPon`, que es quien lo escribe donde se guarda todo lo
+    /// demás. Antes estos ajustes eran @AppStorage y por eso solo existían en
+    /// este teléfono: ni en la web, ni en la PWA, ni en el otro aparato.
+    static var alPoner: ((String, Any) -> Void)?
     /// Las paletas de día y de noche cuando se sigue al teléfono.
     static var pareja: (claro: CNPaletaTema?, oscuro: CNPaletaTema?) = (nil, nil)
     static var scr: Color  { tema.scr }
@@ -3094,12 +3127,12 @@ struct CNCuentasModelo {
 struct CNCuentas: View {
     @ObservedObject var datos: CNDatos
     /// Qué tarjeta va arriba: «clasica», «apilada», «grafica», «suma»,
-    /// «chino», «bloques» o «ninguna». Es cómo prefieres mirarlo, así que se
-    /// guarda en el teléfono y no hace falta ir a la web.
-    @AppStorage("chinola.tarjetaCuentas") private var tarjetaArriba = "clasica"
+    /// «chino», «bloques» o «ninguna». Lo guarda la web con el resto de
+    /// ajustes, así que es el mismo en el teléfono, en la web y en la PWA.
+    private var tarjetaArriba: String { CNC.fmt.tarjetaCuentas }
     /// A cuánto quieres llegar. Solo la usa la tarjeta de Chino, y si no hay
     /// ninguna puesta esa tarjeta no enseña barra de meta.
-    @AppStorage("chinola.metaPatrimonio") private var metaPatrimonio = 0.0
+    private var metaPatrimonio: Double { CNC.fmt.metaPatrimonio }
 
     var body: some View {
         let m = datos.cuentas ?? CNCuentasModelo()
@@ -3253,7 +3286,7 @@ struct CNCuentas: View {
             }
             Divider()
             Menu {
-                Picker(cnT("La tarjeta de arriba"), selection: $tarjetaArriba) {
+                Picker(cnT("La tarjeta de arriba"), selection: cnAjuste("tarjetaCuentas", { tarjetaArriba }, { $0 })) {
                     Label(cnT("Clásica"), systemImage: "rectangle.fill").tag("clasica")
                     Label(cnT("Apilada"), systemImage: "square.stack.3d.up.fill").tag("apilada")
                     Label(cnT("Con gráfica"), systemImage: "chart.xyaxis.line").tag("grafica")
@@ -3461,9 +3494,9 @@ struct CNPlan: View {
     @ObservedObject var datos: CNDatos
     /// En barra o en aro. Es cosa del teléfono —cómo prefieres mirarlo—, así
     /// que se guarda aquí y no hace falta ir a la web ni volver.
-    @AppStorage("chinola.planAro") private var enAro = false
+    private var enAro: Bool { CNC.fmt.planAro }
     /// Cómo se ven las pestañas: «sistema», «subrayado» o «pastillas».
-    @AppStorage("chinola.planPestanas") private var estiloPestanas = "pastillas"
+    private var estiloPestanas: String { CNC.fmt.planPestanas }
     var body: some View {
         let m = datos.plan ?? CNPlanModelo()
         // Barra de arriba del sistema, como en Movimientos y Cuentas.
@@ -3517,11 +3550,11 @@ struct CNPlan: View {
                         // tocar; no tiene por qué estar a un toque.
                         Menu {
                             Menu {
-                                Picker(cnT("El presupuesto"), selection: $enAro) {
+                                Picker(cnT("El presupuesto"), selection: cnAjuste("planAro", { enAro }, { $0 })) {
                                     Label(cnT("En barra"), systemImage: "chart.bar.fill").tag(false)
                                     Label(cnT("En aro"), systemImage: "circle.dashed").tag(true)
                                 }
-                                Picker(cnT("Las pestañas"), selection: $estiloPestanas) {
+                                Picker(cnT("Las pestañas"), selection: cnAjuste("planPestanas", { estiloPestanas }, { $0 })) {
                                     Label(cnT("Pastillas"), systemImage: "capsule.fill").tag("pastillas")
                                     Label(cnT("Subrayadas"), systemImage: "underline").tag("subrayado")
                                     Label(cnT("Del sistema"), systemImage: "switch.2").tag("sistema")

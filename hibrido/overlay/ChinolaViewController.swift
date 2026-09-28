@@ -234,6 +234,22 @@ class ChinolaViewController: CAPBridgeViewController {
 
         montarBarra()
         montarFlotante()
+        // Los ajustes de pantalla (la tarjeta de Cuentas, el presupuesto en aro,
+        // el estilo de las pestañas) los guarda la WEB, que es lo que hace que
+        // sean los mismos en el teléfono, en la web y en la PWA. Antes eran
+        // @AppStorage y vivían solo aquí dentro.
+        CNC.alPoner = { [weak self] clave, valor in
+            guard let s = self else { return }
+            let js: String
+            switch valor {
+            case let b as Bool: js = b ? "true" : "false"
+            case let n as Double: js = String(n)
+            case let n as Int: js = String(n)
+            case let t as String: js = s.comillas(t)
+            default: js = s.comillas(String(describing: valor))
+            }
+            s.eval("window.__chinolaPon && window.__chinolaPon(\(s.comillas(clave)), \(js))")
+        }
         vigilarModo()
         // Lo NATIVO desde el primer fotograma. Sin esto, al abrir se veía el
         // tablero de la WEB hasta que se tocaba una pestaña: la app empezaba
