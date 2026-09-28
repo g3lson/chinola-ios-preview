@@ -221,6 +221,10 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
             CNFlotante.shared.puesto = puesto
             CNFlotante.shared.x = max(0, min(1, x))
             CNFlotante.shared.y = max(0, min(1, y))
+            // El contenedor del botón se monta AQUÍ, no al arrancar: es una
+            // vista que acaba dentro del webview, y meterla antes de que la
+            // página corra es lo que dejaba la app en blanco.
+            if puesto { NotificationCenter.default.post(name: Notification.Name("cnFlotantePuesto"), object: nil) }
         }
         call.resolve()
     }
