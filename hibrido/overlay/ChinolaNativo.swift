@@ -3341,6 +3341,9 @@ struct CNPlanModelo {
 
 struct CNPlan: View {
     @ObservedObject var datos: CNDatos
+    /// En barra o en aro. Es cosa del teléfono —cómo prefieres mirarlo—, así
+    /// que se guarda aquí y no hace falta ir a la web ni volver.
+    @AppStorage("chinola.planAro") private var enAro = false
     var body: some View {
         let m = datos.plan ?? CNPlanModelo()
         // Barra de arriba del sistema, como en Movimientos y Cuentas.
@@ -3384,6 +3387,18 @@ struct CNPlan: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { datos.onCalendario() } label: { Image(systemName: "calendar") }
                 }
+                // Cómo enseñar el presupuesto: en barra o en aro. Van las dos
+                // y se elige, que cada una cuenta lo mismo de otra manera.
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if m.tab != "metas" {
+                        Menu {
+                            Picker("", selection: $enAro) {
+                                Label(cnT("En barra"), systemImage: "chart.bar.fill").tag(false)
+                                Label(cnT("En aro"), systemImage: "circle.dashed").tag(true)
+                            }
+                        } label: { Image(systemName: "ellipsis") }
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { datos.onPlanAccion(m.tab == "metas" ? "nuevaMeta" : "nuevaCat", 0) } label: {
                         Image(systemName: "plus")
@@ -3424,7 +3439,14 @@ struct CNPlan: View {
     /// podía.
     private func resumenPres(_ m: CNPlanModelo) -> some View {
         let c = cuentasPres()
-        return VStack(alignment: .leading, spacing: 14) {
+        return Group {
+            if enAro { tarjetaAro(c) } else { tarjetaBarra(c) }
+        }
+    }
+
+    /// EN BARRA: el número grande y la barra de dos tramos debajo.
+    private func tarjetaBarra(_ c: CuentasPres) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
                 Text(rotuloGastado()).font(cnLetra(13)).foregroundColor(CNC.pmut)
                 Spacer(minLength: 8)
@@ -3467,6 +3489,45 @@ struct CNPlan: View {
             }
         }
         .padding(16).tarjetaCN()
+    }
+
+    /// EN ARO: el porcentaje de un vistazo y las cifras al lado.
+    private func tarjetaAro(_ c: CuentasPres) -> some View {
+        VStack(spacing: 14) {
+            HStack(alignment: .center, spacing: 16) {
+                CNAroPresupuesto(veces: c.hayLimite ? c.gastado / c.limite : 0, tinta: c.tinta)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(c.excedido ? cnT("Te pasaste por") : cnT("Te queda"))
+                        .font(cnLetra(13)).foregroundColor(CNC.pmut)
+                    Text(c.hayLimite ? cnDinero(abs(c.limite - c.gastado)) : "—")
+                        .font(cnLetra(27, .heavy))
+                        .foregroundColor(c.excedido ? CNC.neg : CNC.pos)
+                        .lineLimit(1).minimumScaleFactor(0.5)
+                    Text(cnT("Gastaste") + " " + cnDinero(c.gastado)
+                         + " " + cnT("de") + " " + (c.hayLimite ? cnDinero(c.limite) : "—"))
+                        .font(cnLetra(12)).foregroundColor(CNC.pmut)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            Divider()
+            HStack(alignment: .top, spacing: 8) {
+                pie(cnT("Límite"), c.hayLimite ? cnDinero(c.limite) : "—")
+                Spacer(minLength: 0)
+                pie(cnT("Gastado"), cnDinero(c.gastado))
+                Spacer(minLength: 0)
+                pie(cnT("Quedan"), "\(c.diasQuedan) " + cnT("días"))
+            }
+        }
+        .padding(16).tarjetaCN()
+    }
+
+    private func pie(_ t: String, _ v: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(t).font(cnLetra(12)).foregroundColor(CNC.pmut)
+            Text(v).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
+                .lineLimit(1).minimumScaleFactor(0.7)
+        }
     }
 
     /// Lo que enseña la tarjeta, sacado de la libreta.
@@ -3670,6 +3731,8 @@ struct CNBarraPresupuesto: View {
     /// parte de lo gastado que sí cabía.
     let parte: Double
     let excedido: Bool
+    /// El color del exceso (rojo). El tramo que SÍ cabía va siempre en verde:
+    /// ese dinero no es el problema.
     let tinta: Color
     var alto: CGFloat = 12
 
@@ -3682,11 +3745,11 @@ struct CNBarraPresupuesto: View {
                 if excedido {
                     CNRayas(color: tinta)
                         .frame(width: w, height: alto)
-                        .background(tinta.opacity(0.16))
+                        .background(tinta.opacity(0.10))
                 } else {
                     Rectangle().fill(CNC.soft).frame(width: w, height: alto)
                 }
-                Rectangle().fill(tinta).frame(width: x, height: alto)
+                Rectangle().fill(excedido ? CNC.pos : tinta).frame(width: x, height: alto)
                 if excedido {
                     // Dónde estaba el límite.
                     Rectangle().fill(CNC.ink)
@@ -3698,6 +3761,54 @@ struct CNBarraPresupuesto: View {
             .frame(height: alto)
         }
         .frame(height: alto)
+    }
+}
+
+/// EL MISMO DATO, EN ARO.
+///
+/// La otra forma de mirarlo: el aro da el porcentaje de un vistazo y deja
+/// sitio al lado para las cifras. Pasado el tope da otra vuelta: la primera
+/// queda tenue por detrás y la segunda, el exceso, va en color fuerte.
+struct CNAroPresupuesto: View {
+    /// Lo gastado sobre el tope. 1 es justo el límite; 1,9 es un 190 %.
+    let veces: Double
+    let tinta: Color
+    var lado: CGFloat = 96
+    var grosor: CGFloat = 13
+
+    var body: some View {
+        let primera = max(0, min(1, veces))
+        let segunda = max(0, min(1, veces - 1))
+        return ZStack {
+            Circle().stroke(CNC.soft, lineWidth: grosor)
+            // La primera vuelta. Si hubo segunda, esta se queda de fondo.
+            arco(primera).stroke(tinta.opacity(veces > 1 ? 0.28 : 1),
+                                 style: StrokeStyle(lineWidth: grosor, lineCap: .round))
+            if segunda > 0 {
+                arco(segunda).stroke(tinta, style: StrokeStyle(lineWidth: grosor, lineCap: .round))
+            }
+            VStack(spacing: 0) {
+                Text("\(Int((veces * 100).rounded()))%")
+                    .font(cnLetra(19, .heavy)).foregroundColor(tinta)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text(cnT("del límite")).font(cnLetra(10)).foregroundColor(CNC.pmut)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
+            .padding(.horizontal, grosor + 2)
+        }
+        .frame(width: lado, height: lado)
+    }
+
+    /// El arco se dibuja con sus ángulos, sin rotar la vista: rotándola se
+    /// iría también el texto de dentro.
+    private func arco(_ parte: Double) -> Path {
+        Path { p in
+            p.addArc(center: CGPoint(x: lado / 2, y: lado / 2),
+                     radius: (lado - grosor) / 2,
+                     startAngle: .degrees(-90),
+                     endAngle: .degrees(-90 + 360 * parte),
+                     clockwise: false)
+        }
     }
 }
 
