@@ -247,7 +247,13 @@ extension TestVC {
             vista = AnyView(CNResumen(datos: datos, organizaAlEmpezar: cual == "organiza",
                                       rodarAlEmpezar: cual == "plegada" || cual == "cab-viva-plegada"))
             estado.activa = "resumen"
-        case "cuentas": vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
+        case "cuentas", "cta-apilada", "cta-grafica", "cta-suma", "cta-chino", "cta-bloques", "cta-ninguna":
+            // Cada variante de la tarjeta de arriba, para poder mirarlas todas.
+            let cual2 = ["cta-apilada": "apilada", "cta-grafica": "grafica", "cta-suma": "suma",
+                         "cta-chino": "chino", "cta-bloques": "bloques", "cta-ninguna": "ninguna"][cual] ?? "clasica"
+            UserDefaults.standard.set(cual2, forKey: "chinola.tarjetaCuentas")
+            UserDefaults.standard.set(cual == "cta-chino" ? 100000.0 : 0.0, forKey: "chinola.metaPatrimonio")
+            vista = AnyView(CNCuentas(datos: datos)); estado.activa = "cuentas"
         case "libretas":
             datos.cargarLibretas(json: TestVC.libretasDeMuestra)
             let d = datos

@@ -3085,6 +3085,13 @@ struct CNCuentasModelo {
 
 struct CNCuentas: View {
     @ObservedObject var datos: CNDatos
+    /// Qué tarjeta va arriba: «clasica», «apilada», «grafica», «suma»,
+    /// «chino», «bloques» o «ninguna». Es cómo prefieres mirarlo, así que se
+    /// guarda en el teléfono y no hace falta ir a la web.
+    @AppStorage("chinola.tarjetaCuentas") private var tarjetaArriba = "clasica"
+    /// A cuánto quieres llegar. Solo la usa la tarjeta de Chino, y si no hay
+    /// ninguna puesta esa tarjeta no enseña barra de meta.
+    @AppStorage("chinola.metaPatrimonio") private var metaPatrimonio = 0.0
 
     var body: some View {
         let m = datos.cuentas ?? CNCuentasModelo()
@@ -3094,7 +3101,7 @@ struct CNCuentas: View {
             // Lista agrupada del sistema, la misma que Movimientos y el Perfil.
             List {
                 Section {
-                    patrimonio(m.patrimonio, oculto: m.oculto)
+                    arriba(m)
                         .overlay(alignment: .top) {
                             CNEspiaScroll { CNScrollEstado.shared.mirar($0) }
                                 .frame(height: 0).allowsHitTesting(false)
@@ -3141,8 +3148,45 @@ struct CNCuentas: View {
         .tint(CNC.pos)
     }
 
+    /// La tarjeta de arriba, la que se haya elegido. «ninguna» no dibuja nada:
+    /// quien solo quiere su lista de cuentas no tiene por qué cargar con una
+    /// tarjeta grande encima.
+    @ViewBuilder private func arriba(_ m: CNCuentasModelo) -> some View {
+        switch tarjetaArriba {
+        case "ninguna":
+            EmptyView()
+        case "apilada":
+            CNTarjetaApilada(r: retrato, oculto: m.oculto,
+                             onOjo: { datos.onCuentasAccion("ocultar", 0) })
+        case "grafica":
+            CNTarjetaGrafica(r: retrato, oculto: m.oculto)
+        case "suma":
+            CNTarjetaSuma(r: retrato, oculto: m.oculto)
+        case "chino":
+            CNTarjetaChino(r: retrato, oculto: m.oculto,
+                           chinolo: datos.mascota?.chinolo ?? "", meta: metaPatrimonio)
+        case "bloques":
+            CNTarjetaBloques(r: retrato, oculto: m.oculto)
+        default:
+            patrimonio(m.patrimonio, oculto: m.oculto)
+        }
+    }
+
+    /// El patrimonio desmenuzado, leído de la libreta. Se calcula una vez por
+    /// pintado: recorre los movimientos para armar la historia.
+    private var retrato: CNCalculo.Retrato { CNCalculo.retrato(datos.libreta) }
+
     private func menu(_ m: CNCuentasModelo) -> some View {
         Menu {
+            Picker(cnT("La tarjeta de arriba"), selection: $tarjetaArriba) {
+                Label(cnT("Clásica"), systemImage: "rectangle.fill").tag("clasica")
+                Label(cnT("Apilada"), systemImage: "square.stack.3d.up.fill").tag("apilada")
+                Label(cnT("Con gráfica"), systemImage: "chart.xyaxis.line").tag("grafica")
+                Label(cnT("La suma"), systemImage: "plusminus").tag("suma")
+                Label(cnT("Con Chino"), systemImage: "face.smiling").tag("chino")
+                Label(cnT("En bloques"), systemImage: "square.grid.2x2.fill").tag("bloques")
+                Label(cnT("Ninguna"), systemImage: "rectangle.slash").tag("ninguna")
+            }
                 Button { datos.onTendencia() } label: { Label(cnT("Ver la tendencia"), systemImage: "chart.line.uptrend.xyaxis") }
                 Button { datos.onCuentasAccion("ocultar", 0) } label: {
                     Label(m.oculto ? "Enseñar el dinero" : "Ocultar el dinero", systemImage: m.oculto ? "eye" : "eye.slash")
@@ -6664,5 +6708,450 @@ final class CNLevantadorVista: UIView {
         if let g = reconocedor { g.view?.removeGestureRecognizer(g) }
         reconocedor = nil
         coord?.scroll?.isScrollEnabled = true
+    }
+}
+
+// ── Las tarjetas de arriba de Cuentas ───────────────────────────────────────
+//
+// El patrimonio es UN número, pero hay cinco maneras razonables de contarlo y
+// cada persona lee mejor una. Van las cinco, y también la de no poner ninguna:
+// quien solo quiere su lista de cuentas no tiene por qué cargar con una
+// tarjeta grande arriba. Se elige en el menú de la pantalla.
+//
+// Todas sacan sus números de `CNCalculo.retrato`, que lee la libreta: aquí no
+// se inventa nada ni se pide nada por el puente.
+
+/// APILADA: las deudas asomando por detrás y lo que te queda encima.
+/// Cuenta la historia en un gesto: hay cosas debajo, y lo de arriba es lo que
+/// sobra después de todas.
+struct CNTarjetaApilada: View {
+    let r: CNCalculo.Retrato
+    var oculto = false
+    var onOjo: () -> Void = {}
+
+    var body: some View {
+        VStack(spacing: -14) {
+            if r.prestamos > 0 {
+                capa(cnT("Préstamos y fiados"), r.prestamos, cnColor(0x7a4fd0), 0)
+            }
+            if r.debes - r.prestamos > 0 {
+                capa(cnT("Tarjetas y crédito"), -(r.debes - r.prestamos), cnColor(0xd0463a), 1)
+            }
+            if r.ahorro > 0 {
+                capa(cnT("Ahorro e inversión"), r.ahorro, cnColor(0x2f5bc4), 2)
+            }
+            principal
+        }
+    }
+
+    private func capa(_ t: String, _ v: Double, _ color: Color, _ i: Int) -> some View {
+        HStack {
+            Text(t).font(cnLetra(13, .semibold))
+            Spacer(minLength: 8)
+            Text(oculto ? "•••" : cnDineroFirmado(v)).font(cnLetra(13, .semibold))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 16).padding(.top, 11).padding(.bottom, 20)
+        .background(color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(.horizontal, CGFloat(2 - i) * 7)
+        .zIndex(Double(i))
+    }
+
+    private var principal: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top) {
+                Text(cnT("Te queda si pagas todo")).font(cnLetra(13))
+                    .foregroundColor(.white.opacity(0.8))
+                Spacer(minLength: 8)
+                Button(action: onOjo) {
+                    Image(systemName: oculto ? "eye.slash.fill" : "eye.fill")
+                        .font(cnLetra(12, .semibold)).foregroundColor(cnSobre(CNC.acc))
+                        .frame(width: 26, height: 26).background(CNC.acc, in: Circle())
+                }.buttonStyle(.plain)
+            }
+            Text(oculto ? "•••" : cnDinero(r.queda))
+                .font(cnLetra(32, .heavy)).foregroundColor(.white)
+                .lineLimit(1).minimumScaleFactor(0.5)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(cnT("Para gastar") + " " + (oculto ? "•••" : cnDinero(r.paraGastar)))
+                    .font(cnLetra(12)).foregroundColor(.white.opacity(0.8))
+                Spacer(minLength: 8)
+                if r.cambioMes != 0 {
+                    Text((r.cambioMes > 0 ? "↑ " : "↓ ") + cnDinero(r.cambioMes) + " " + cnT("este mes"))
+                        .font(cnLetra(12, .semibold)).foregroundColor(CNC.acc)
+                }
+            }
+            .padding(.top, 6)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CNC.side, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .zIndex(9)
+    }
+}
+
+/// SUMA: lo que tienes, menos lo que debes, igual lo que queda. Es la tarjeta
+/// que ENSEÑA la cuenta en vez de dar el resultado, con el detalle de dónde
+/// sale cada línea.
+struct CNTarjetaSuma: View {
+    let r: CNCalculo.Retrato
+    var oculto = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(cnT("Tu patrimonio este mes")).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                .padding(.bottom, 12)
+            fila("+", CNC.pos, cnT("Lo que tienes"), r.tienes, detalleTienes, CNC.ink)
+            Divider().padding(.vertical, 12)
+            fila("−", CNC.neg, cnT("Lo que debes"), r.debes, detalleDebes, CNC.neg)
+            Divider().padding(.vertical, 12)
+            fila("=", CNC.ink, cnT("Te queda"), r.queda, "", r.queda >= 0 ? CNC.pos : CNC.neg, fuerte: true)
+            Text(cnT("Es lo que tendrías si hoy pagaras todas tus deudas."))
+                .font(cnLetra(11.5)).foregroundColor(CNC.pmut)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 12)
+        }
+        .padding(16).tarjetaCN()
+    }
+
+    private var detalleTienes: String {
+        var p: [String] = []
+        if r.paraGastar != 0 { p.append(cnT("Para gastar") + " " + cnDinero(r.paraGastar)) }
+        if r.ahorro != 0 { p.append(cnT("Ahorro") + " " + cnDinero(r.ahorro)) }
+        if r.porCobrar != 0 { p.append(cnT("Te deben") + " " + cnDinero(r.porCobrar)) }
+        return p.joined(separator: " · ")
+    }
+    private var detalleDebes: String {
+        var p: [String] = r.tarjetas.prefix(2).map { $0.nombre + " " + cnDinero($0.monto) }
+        if r.prestamos != 0 { p.append(cnT("Préstamos") + " " + cnDinero(r.prestamos)) }
+        return p.joined(separator: " · ")
+    }
+
+    private func fila(_ signo: String, _ tinte: Color, _ t: String, _ v: Double,
+                      _ sub: String, _ tintaValor: Color, fuerte: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(signo).font(cnLetra(15, .heavy))
+                .foregroundColor(fuerte ? cnSobre(tinte) : tinte)
+                .frame(width: 26, height: 26)
+                .background(fuerte ? tinte : tinte.opacity(0.14), in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(t).font(cnLetra(fuerte ? 16 : 15, fuerte ? .bold : .regular)).foregroundColor(CNC.ink)
+                if !sub.isEmpty {
+                    Text(sub).font(cnLetra(11.5)).foregroundColor(CNC.pmut)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 8)
+            Text(oculto ? "•••" : cnDinero(v))
+                .font(cnLetra(fuerte ? 19 : 16, fuerte ? .heavy : .semibold))
+                .foregroundColor(tintaValor)
+                .lineLimit(1).minimumScaleFactor(0.6)
+        }
+    }
+}
+
+/// GRÁFICA: el patrimonio a lo largo del tiempo, con su periodo a elegir.
+/// La única que contesta «¿voy bien?» en vez de «¿cuánto tengo?».
+struct CNTarjetaGrafica: View {
+    let r: CNCalculo.Retrato
+    var oculto = false
+    @State private var meses = 12
+    private let periodos: [(Int, String)] = [(3, "3M"), (6, "6M"), (12, "1A"), (0, "Todo")]
+
+    private var puntos: [(etiqueta: String, valor: Double)] {
+        meses == 0 ? r.serie : Array(r.serie.suffix(meses))
+    }
+    private var cambio: Double {
+        guard let a = puntos.first?.valor, let b = puntos.last?.valor else { return 0 }
+        return b - a
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(cnT("Patrimonio")).font(cnLetra(13)).foregroundColor(CNC.pmut)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(oculto ? "•••" : cnDinero(r.queda))
+                    .font(cnLetra(30, .heavy)).foregroundColor(CNC.ink)
+                    .lineLimit(1).minimumScaleFactor(0.5)
+                if cambio != 0 && !oculto {
+                    Text((cambio > 0 ? "+" : "−") + cnDinero(cambio) + " " + cnT("en") + " " + etiquetaPeriodo())
+                        .font(cnLetra(12.5, .semibold))
+                        .foregroundColor(cambio > 0 ? CNC.pos : CNC.neg)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                }
+                Spacer(minLength: 0)
+            }
+            CNLineaPatrimonio(valores: puntos.map { $0.valor },
+                              color: cambio >= 0 ? CNC.pos : CNC.neg)
+                .frame(height: 118)
+                .opacity(oculto ? 0.25 : 1)
+            HStack {
+                Text(primeraEtiqueta()).font(cnLetra(11)).foregroundColor(CNC.pmut)
+                Spacer(minLength: 8)
+                Text(ultimaEtiqueta()).font(cnLetra(11)).foregroundColor(CNC.pmut)
+            }
+            Picker("", selection: $meses) {
+                ForEach(periodos, id: \.0) { p in Text(cnT(p.1)).tag(p.0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+        }
+        .padding(16).tarjetaCN()
+    }
+
+    private func etiquetaPeriodo() -> String {
+        switch meses {
+        case 3: return "3 " + cnT("meses")
+        case 6: return "6 " + cnT("meses")
+        case 12: return "1 " + cnT("año")
+        default: return cnT("todo")
+        }
+    }
+    private func mes(_ ym: String) -> String {
+        guard let d = CNFormateadores.formato("yyyy-MM", loc: "en_US_POSIX").date(from: ym) else { return ym }
+        return CNFormateadores.plantilla("MMM yy").string(from: d)
+    }
+    private func primeraEtiqueta() -> String { puntos.first.map { mes($0.etiqueta) } ?? "" }
+    private func ultimaEtiqueta() -> String { cnT("Hoy") }
+}
+
+/// La línea con su relleno. Sin dependencias: una `Path` y ya.
+struct CNLineaPatrimonio: View {
+    let valores: [Double]
+    let color: Color
+
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            let n = valores.count
+            if n >= 2 {
+                let lo = valores.min() ?? 0, hi = valores.max() ?? 1
+                let rango = max(1, hi - lo)
+                let punto = { (i: Int) -> CGPoint in
+                    CGPoint(x: w * CGFloat(i) / CGFloat(n - 1),
+                            y: h - (CGFloat((valores[i] - lo) / rango) * (h - 10)) - 5)
+                }
+                // Las guías, como en el resto de las gráficas de la app.
+                ForEach(1..<4, id: \.self) { k in
+                    Rectangle().fill(CNC.line.opacity(0.5))
+                        .frame(height: 0.5)
+                        .offset(y: h * CGFloat(k) / 4)
+                }
+                Path { p in
+                    p.move(to: CGPoint(x: 0, y: h))
+                    p.addLine(to: punto(0))
+                    for i in 1..<n { p.addLine(to: punto(i)) }
+                    p.addLine(to: CGPoint(x: w, y: h))
+                    p.closeSubpath()
+                }
+                .fill(LinearGradient(colors: [color.opacity(0.22), color.opacity(0.02)],
+                                     startPoint: .top, endPoint: .bottom))
+                Path { p in
+                    p.move(to: punto(0))
+                    for i in 1..<n { p.addLine(to: punto(i)) }
+                }
+                .stroke(color, style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
+                Circle().fill(color).frame(width: 8, height: 8)
+                    .position(punto(n - 1))
+            }
+        }
+    }
+}
+
+/// CHINO: la misma cifra, contada por el personaje. Es la que se lee sin
+/// saber de finanzas, y la única que dice «vas bien» o «vas mal» con palabras.
+/// La barra de meta solo sale si hay una puesta: inventar un objetivo que
+/// nadie eligió sería mentirle a la cara.
+struct CNTarjetaChino: View {
+    let r: CNCalculo.Retrato
+    var oculto = false
+    /// El dibujo de Chino, si la web ya lo mandó.
+    var chinolo: String = ""
+    /// A cuánto quiere llegar. 0 = no ha puesto ninguna.
+    var meta: Double = 0
+
+    private var subio: Bool { r.cambioMes >= 0 }
+    private var pct: Double { meta > 0 ? max(0, min(1, r.queda / meta)) : 0 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                if let img = cnImagenBase64(chinolo) {
+                    Image(uiImage: img).resizable().scaledToFit().frame(width: 54, height: 54)
+                } else {
+                    Text(subio ? "🙂" : "😕").font(.system(size: 42))
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(frase).font(cnLetra(14, .semibold))
+                        .foregroundColor(cnSobre(CNC.acc))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(oculto ? "•••" : cnDinero(r.queda))
+                        .font(cnLetra(30, .heavy)).foregroundColor(cnSobre(CNC.acc))
+                        .lineLimit(1).minimumScaleFactor(0.5)
+                }
+                Spacer(minLength: 0)
+            }
+            if meta > 0 {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack {
+                        Text(cnT("Meta") + ": " + cnDinero(meta))
+                            .font(cnLetra(12.5, .semibold)).foregroundColor(cnSobre(CNC.acc))
+                        Spacer(minLength: 8)
+                        Text("\(Int((pct * 100).rounded()))%")
+                            .font(cnLetra(12.5, .heavy)).foregroundColor(cnSobre(CNC.acc))
+                    }
+                    CNBarraProgreso(parte: pct, color: cnSobre(CNC.acc).opacity(0.85), alto: 8)
+                    if let cuando = llegada() {
+                        Text(cnT("A este ritmo llegas en") + " " + cuando)
+                            .font(cnLetra(11.5)).foregroundColor(cnSobre(CNC.acc).opacity(0.7))
+                    }
+                }
+                .padding(12)
+                .background(Color.white.opacity(0.30),
+                            in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CNC.acc, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var frase: String {
+        guard r.cambioMes != 0 else { return cnT("Si hoy pagas todo, te quedan") }
+        let cuanto = cnDinero(r.cambioMes)
+        return (subio ? cnT("¡Subiste") + " " + cuanto + "! " : cnT("Bajaste") + " " + cuanto + ". ")
+            + cnT("Si hoy pagas todo, te quedan")
+    }
+
+    /// Cuándo llegaría a la meta al ritmo de este mes. Sin ritmo —o yendo
+    /// hacia atrás— no se dice nada: una fecha inventada no ayuda.
+    private func llegada() -> String? {
+        guard meta > r.queda, r.cambioMes > 0 else { return nil }
+        let faltan = (meta - r.queda) / r.cambioMes
+        guard faltan.isFinite, faltan < 600 else { return nil }
+        let cal = Calendar(identifier: .gregorian)
+        guard let d = cal.date(byAdding: .month, value: Int(faltan.rounded(.up)), to: Date()) else { return nil }
+        return CNFormateadores.plantilla("MMMM yyyy").string(from: d)
+    }
+}
+
+/// BLOQUES: cada pieza del tamaño de lo que pesa. De un vistazo se ve si lo
+/// que tienes guardado aguanta lo que debes, que en una lista de números hay
+/// que compararlo a mano.
+struct CNTarjetaBloques: View {
+    let r: CNCalculo.Retrato
+    var oculto = false
+
+    private struct Pieza: Identifiable {
+        var id: String; var label: String; var monto: Double; var color: Color
+    }
+
+    private var piezas: [Pieza] {
+        var p: [Pieza] = []
+        if r.ahorro > 0 { p.append(.init(id: "aho", label: cnT("Ahorro e inversión"), monto: r.ahorro, color: cnColor(0x2f5bc4))) }
+        if r.paraGastar > 0 { p.append(.init(id: "gas", label: cnT("Para gastar"), monto: r.paraGastar, color: cnColor(0x1f7a46))) }
+        for (i, t) in r.tarjetas.enumerated() {
+            p.append(.init(id: "t\(i)", label: t.nombre, monto: t.monto, color: cnColor(0xd0463a)))
+        }
+        if r.prestamos > 0 { p.append(.init(id: "pre", label: cnT("Préstamos"), monto: r.prestamos, color: cnColor(0x7a4fd0))) }
+        return p.sorted { $0.monto > $1.monto }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(cnT("Patrimonio")).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                Spacer(minLength: 8)
+                Text(oculto ? "•••" : cnDinero(r.queda))
+                    .font(cnLetra(20, .heavy)).foregroundColor(CNC.ink)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+            }
+            CNMosaico(piezas: piezas.map { (id: $0.id, label: $0.label, peso: $0.monto,
+                                            color: $0.color, negativo: $0.color != cnColor(0x2f5bc4) && $0.color != cnColor(0x1f7a46)) },
+                      queda: r.queda, oculto: oculto)
+                .frame(height: 168)
+            HStack(spacing: 14) {
+                leyenda(cnT("Para gastar"), cnColor(0x1f7a46))
+                leyenda(cnT("Ahorro"), cnColor(0x2f5bc4))
+                leyenda(cnT("Deudas"), cnColor(0xd0463a))
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(16).tarjetaCN()
+    }
+
+    private func leyenda(_ t: String, _ c: Color) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(c).frame(width: 7, height: 7)
+            Text(t).font(cnLetra(11)).foregroundColor(CNC.pmut)
+        }
+    }
+}
+
+/// El mosaico: dos filas, lo que suma arriba y lo que resta abajo, cada pieza
+/// de un ancho proporcional a lo que pesa dentro de su fila.
+struct CNMosaico: View {
+    let piezas: [(id: String, label: String, peso: Double, color: Color, negativo: Bool)]
+    let queda: Double
+    var oculto = false
+
+    var body: some View {
+        let suman = piezas.filter { !$0.negativo }
+        let restan = piezas.filter { $0.negativo }
+        return VStack(spacing: 7) {
+            if !suman.isEmpty { fila(suman, alto: restan.isEmpty ? 1 : 0.56) }
+            if !restan.isEmpty { fila(restan, alto: suman.isEmpty ? 1 : 0.44, conQueda: true) }
+        }
+    }
+
+    @ViewBuilder
+    private func fila(_ ps: [(id: String, label: String, peso: Double, color: Color, negativo: Bool)],
+                      alto: CGFloat, conQueda: Bool = false) -> some View {
+        GeometryReader { g in
+            let total = max(1, ps.reduce(0) { $0 + $1.peso })
+            // El hueco de «te queda» ocupa lo que le toca al lado de las deudas.
+            let extra = conQueda && queda > 0 ? queda : 0
+            let todo = total + extra
+            HStack(spacing: 6) {
+                ForEach(ps, id: \.id) { p in
+                    bloque(p.label, p.peso, p.color, p.negativo)
+                        .frame(width: max(34, (g.size.width - CGFloat(ps.count) * 6) * CGFloat(p.peso / todo)))
+                }
+                if extra > 0 { hueco() }
+            }
+            .frame(height: g.size.height)
+        }
+        .frame(maxHeight: .infinity)
+        .layoutPriority(alto)
+    }
+
+    private func bloque(_ t: String, _ v: Double, _ c: Color, _ neg: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(t).font(cnLetra(11, .semibold)).foregroundColor(.white.opacity(0.9))
+                .lineLimit(2).minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            Text(oculto ? "•••" : (neg ? "−" : "") + cnDinero(v))
+                .font(cnLetra(15, .heavy)).foregroundColor(.white)
+                .lineLimit(1).minimumScaleFactor(0.5)
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(c, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func hueco() -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(cnT("Te queda")).font(cnLetra(11)).foregroundColor(CNC.pmut)
+                .lineLimit(2).minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            Text(oculto ? "•••" : cnDinero(queda))
+                .font(cnLetra(15, .heavy)).foregroundColor(CNC.pos)
+                .lineLimit(1).minimumScaleFactor(0.5)
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(style: StrokeStyle(lineWidth: 1.4, dash: [5, 4]))
+            .foregroundColor(CNC.line))
     }
 }

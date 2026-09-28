@@ -295,4 +295,73 @@ enum CNCalculo {
     // `cnDineroFirmado` (lo que puede ser negativo) en ChinolaNativo.swift,
     // con la moneda y los decimales del perfil. Tener dos es justo la manera
     // de que un día enseñen cosas distintas.
+
+    // MARK: - El patrimonio, desmenuzado
+
+    /// El patrimonio partido en las piezas que lo explican, para las tarjetas
+    /// de arriba de Cuentas: lo que tienes, lo que debes, de dónde sale cada
+    /// parte y cómo ha ido cambiando.
+    struct Retrato {
+        /// Cuentas + lo que te deben.
+        var tienes: Double = 0
+        /// Tarjetas + préstamos que debes.
+        var debes: Double = 0
+        /// El patrimonio: tienes − debes.
+        var queda: Double = 0
+        /// Lo que hay para gastar hoy (banco, efectivo, billeteras).
+        var paraGastar: Double = 0
+        /// Lo guardado (ahorro e inversión).
+        var ahorro: Double = 0
+        /// Lo que te deben, aparte.
+        var porCobrar: Double = 0
+        /// Cada tarjeta con lo que debe, de mayor a menor.
+        var tarjetas: [(nombre: String, monto: Double)] = []
+        /// Lo que debes en préstamos.
+        var prestamos: Double = 0
+        /// Cuánto subió o bajó este mes.
+        var cambioMes: Double = 0
+        /// El patrimonio al cierre de cada mes, del más viejo al de hoy.
+        var serie: [(etiqueta: String, valor: Double)] = []
+    }
+
+    /// Las clases de cuenta que son dinero disponible hoy. Las demás
+    /// —ahorro, inversión— también son tuyas, pero no se gastan mañana.
+    private static let clasesGasto: Set<String> = ["banco", "efectivo", "billetera"]
+
+    static func retrato(_ l: CNLibreta, meses: Int = 12, hoy: Date = Date()) -> Retrato {
+        var r = Retrato()
+        r.paraGastar = l.cuentas.filter { clasesGasto.contains($0.clase) }.reduce(0) { $0 + $1.saldo }
+        r.ahorro = l.cuentas.filter { !clasesGasto.contains($0.clase) }.reduce(0) { $0 + $1.saldo }
+        r.porCobrar = porCobrarPrestamos(l)
+        r.tienes = saldoCuentas(l) + r.porCobrar
+        r.prestamos = deudaPrestamos(l)
+        r.debes = deudaTarjetas(l) + r.prestamos
+        r.queda = r.tienes - r.debes
+        r.tarjetas = l.tarjetas.map { (nombre: $0.nombre, monto: $0.saldo) }
+            .filter { $0.monto > 0 }
+            .sorted { $0.monto > $1.monto }
+
+        // Cómo ha ido cambiando. Los saldos que guarda la libreta son los de
+        // HOY, así que la historia se reconstruye hacia atrás: el patrimonio
+        // al cierre del mes anterior es el de este menos lo que entró y salió
+        // durante este. Es una reconstrucción, no un registro: las cuentas y
+        // las deudas que se crearon a mitad de camino no se tienen en cuenta.
+        let cal = Calendar(identifier: .gregorian)
+        let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM"; fmt.locale = Locale(identifier: "en_US_POSIX")
+        var valor = r.queda
+        var puntos: [(String, Double)] = []
+        for atras in 0..<max(1, meses) {
+            guard let d = cal.date(byAdding: .month, value: -atras, to: hoy) else { break }
+            let ym = fmt.string(from: d)
+            puntos.append((ym, valor))
+            if atras == 0 {
+                let t = totales(l, Periodo(mes: ym))
+                r.cambioMes = t.ing - t.gas
+            }
+            let t = totales(l, Periodo(mes: ym))
+            valor -= (t.ing - t.gas)
+        }
+        r.serie = puntos.reversed().map { (etiqueta: $0.0, valor: $0.1) }
+        return r
+    }
 }
