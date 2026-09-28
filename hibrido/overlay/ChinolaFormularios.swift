@@ -184,7 +184,7 @@ func cnHojaTitulo(_ t: String) -> some View {
     Text(t.uppercased()).font(cnLetra(12.5, .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading)
 }
 func cnGrupoHoja<C: View>(@ViewBuilder _ c: () -> C) -> some View {
-    VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
+    VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 0.5))
 }
 func cnDiviHoja() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 16) }
 func cnCuadroHoja(_ ic: String, _ tinte: Color) -> some View {
@@ -607,7 +607,7 @@ struct CNFormMeta: View {
                             .frame(width: 42, height: 42)
                             .background(icono == ic ? cnColor(hexString: color) : CNC.card)
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(CNC.line, lineWidth: icono == ic ? 0 : 0.5))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(CNC.line, lineWidth: icono == ic ? 0 : 0.5))
                             .onTapGesture { UISelectionFeedbackGenerator().selectionChanged(); icono = ic }
                     } }.padding(.horizontal, 2).padding(.vertical, 2)
                 }
@@ -1009,7 +1009,7 @@ struct CNHojaWeb: View {
                 }
                 .padding(.horizontal, 14).padding(.vertical, 13)
                 .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
                 .contentShape(Rectangle())
             }.buttonStyle(CNPulsable())
         } else {
@@ -1022,7 +1022,7 @@ struct CNHojaWeb: View {
                     Image(uiImage: img).resizable().interpolation(.none).scaledToFit()
                         .frame(width: 200, height: 200).padding(6)
                         .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
                         .frame(maxWidth: .infinity)
                 }
             } else if c.tipo == "nota" {
@@ -1053,7 +1053,7 @@ struct CNHojaWeb: View {
                 }
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
                 .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
             } else if c.tipo == "enlace" {
                 Button {
                     if let u = URL(string: c.valor) { UIApplication.shared.open(u) }
@@ -1085,7 +1085,7 @@ struct CNHojaWeb: View {
                                     .frame(width: 20, height: 20).frame(width: 44, height: 44)
                                     .background(x.puesta ? CNC.soft : CNC.card,
                                                 in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                                    .overlay(RoundedRectangle(cornerRadius: 13)
+                                    .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
                                         .stroke(x.puesta ? CNC.acc : CNC.line, lineWidth: x.puesta ? 2 : 1))
                             }.buttonStyle(CNPulsable())
                         }
@@ -1531,7 +1531,7 @@ struct CNLibretasHoja: View {
                             }
                             .background(CNC.card)
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
+                            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(CNC.line, lineWidth: 1))
                         }
                     }
                     // Gestionar las que hay (crear va en el «+» de arriba).
@@ -1542,7 +1542,7 @@ struct CNLibretasHoja: View {
                         }
                         .background(CNC.card)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(CNC.line, lineWidth: 1))
                     }
                     // Hasta debajo del indicador de inicio: la hoja llega al pie.
                     Color.clear.frame(height: 6 + cnMargenAbajo())
@@ -1707,7 +1707,7 @@ struct CNFormLibreta: View {
                                 .frame(maxWidth: .infinity).padding(.vertical, 12)
                                 .background(tipo == t.id ? CNC.acc : CNC.card,
                                             in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 13).stroke(CNC.line, lineWidth: tipo == t.id ? 0 : 1))
+                                .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(CNC.line, lineWidth: tipo == t.id ? 0 : 1))
                         }.buttonStyle(CNPulsable())
                     }
                 }
@@ -1725,7 +1725,7 @@ struct CNFormLibreta: View {
                                     .frame(width: 44, height: 44)
                                     .background(icono == ic.id ? cnColor(hexString: colorPuesto(m)) : CNC.card)
                                     .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                                    .overlay(RoundedRectangle(cornerRadius: 13)
+                                    .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
                                         .stroke(CNC.line, lineWidth: icono == ic.id ? 0 : 0.5))
                                     .onTapGesture { UISelectionFeedbackGenerator().selectionChanged(); icono = ic.id }
                             }
@@ -1837,7 +1837,7 @@ struct CNFormInvitar: View {
                     }
                     .background(CNC.card)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 0.5))
                 }
             }
             if !m.pie.isEmpty {
@@ -2013,7 +2013,7 @@ struct CNTourVista: View {
             }
             .padding(16)
             .background(CNC.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(CNC.line, lineWidth: 1))
             .shadow(color: .black.opacity(0.22), radius: 18, y: 6)
             if picoAbajo { pico(x: picoX) }
         }
@@ -2088,7 +2088,7 @@ struct CNMascotaVista: View {
             .frame(maxWidth: 330)
             .padding(18)
             .background(CNC.card, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 26).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(CNC.line, lineWidth: 1))
             .shadow(color: .black.opacity(0.22), radius: 22, y: 8)
             .rotation3DEffect(.degrees(vuelta ? 180 : 0), axis: (x: 0, y: 1, z: 0))
             .scaleEffect(x: vuelta ? -1 : 1, y: 1)
@@ -2516,7 +2516,7 @@ struct CNPuertaVista: View {
                     .padding(14)
                     .background(p.puesto ? CNC.soft : CNC.card,
                                 in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 18)
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(p.puesto ? CNC.acc : CNC.line, lineWidth: p.puesto ? 2 : 1))
                 }.buttonStyle(CNPulsable())
             }
@@ -2560,7 +2560,7 @@ struct CNPuertaVista: View {
             Text(t).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
                 .frame(maxWidth: .infinity).padding(.vertical, 14)
                 .background(CNC.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
         }.buttonStyle(CNPulsable())
     }
 
@@ -2573,7 +2573,7 @@ struct CNPuertaVista: View {
             .foregroundColor(CNC.ink)
             .frame(maxWidth: .infinity).padding(.vertical, 13)
             .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
         }.buttonStyle(CNPulsable())
     }
 }
@@ -2599,7 +2599,7 @@ struct CNCampoClave: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 14)
         .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
     }
 }
 
@@ -2665,7 +2665,7 @@ struct CNFormCategoria: View {
                                     .frame(maxWidth: .infinity).padding(.vertical, 12)
                                     .background(t.puesto ? CNC.side : CNC.card,
                                                 in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                                    .overlay(RoundedRectangle(cornerRadius: 13)
+                                    .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
                                         .stroke(CNC.line, lineWidth: t.puesto ? 0 : 1))
                             }.buttonStyle(CNPulsable())
                         }
@@ -2694,7 +2694,7 @@ struct CNFormCategoria: View {
                                 .frame(height: 44).frame(maxWidth: .infinity)
                                 .background(ic.puesto ? tinte.opacity(0.16) : CNC.card,
                                             in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 13)
+                                .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
                                     .stroke(ic.puesto ? tinte : CNC.line, lineWidth: ic.puesto ? 1.6 : 0.5))
                         }.buttonStyle(CNPulsable())
                     }
@@ -2902,7 +2902,7 @@ struct CNCharlaVista: View {
                     .font(cnLetra(16)).foregroundColor(CNC.ink)
                     .padding(.horizontal, 15).padding(.vertical, 12)
                     .background(CNC.card, in: RoundedRectangle(cornerRadius: 23, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 23).stroke(CNC.line, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 23, style: .continuous).stroke(CNC.line, lineWidth: 1))
                     .onSubmit { mandar() }
                 Button { mandar() } label: {
                     Image(systemName: "arrow.up").font(cnLetra(18, .bold)).foregroundColor(CNC.sobreAcc)

@@ -1379,7 +1379,7 @@ struct CNMovs: View {
         }
         .frame(maxWidth: .infinity).padding(.vertical, 26)
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(CNC.line, lineWidth: 1))
     }
 
 }
@@ -1951,8 +1951,8 @@ struct CNTendencia: View {
                         }
                         CNArea(valores: puntos.map { $0.valor }).frame(height: 130)
                     }
-                    .padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20))
-                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
+                    .padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(CNC.line, lineWidth: 1))
 
                     VStack(spacing: 0) {
                         let filas = Array(puntos.reversed())
@@ -1970,8 +1970,8 @@ struct CNTendencia: View {
                             if i < filas.count - 1 { Divider().overlay(CNC.line) }
                         }
                     }
-                    .padding(.horizontal, 16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20))
-                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(CNC.line, lineWidth: 1))
+                    .padding(.horizontal, 16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(CNC.line, lineWidth: 1))
 
                     Color.clear.frame(height: 24)
                 }
@@ -2273,7 +2273,7 @@ enum CNIconos {
 extension View { func tarjetaCN() -> some View {
     self.padding(14).frame(maxWidth: .infinity)
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 0.5))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 0.5))
 } }
 
 // ── Pantallas de DETALLE nativas (al tocar un item) ─────────────────────────
@@ -2348,7 +2348,7 @@ struct CNDetCifra: View {
             } }
         }
         .padding(.vertical, 18).padding(.horizontal, 16).frame(maxWidth: .infinity)
-        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 0.5))
+        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(CNC.line, lineWidth: 0.5))
     }
 }
 struct CNBotonAncho: View {
@@ -2612,7 +2612,7 @@ struct CNDetalleVista: View {
             }
         }
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
     }
 
     /// Mes a mes: sale cuando el periodo abarca más de un mes.
@@ -2687,7 +2687,7 @@ struct CNDetalleVista: View {
                 }
             }
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
         }
     }
 }
@@ -3118,11 +3118,30 @@ struct CNCuentas: View {
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
-                if !m.cuentas.isEmpty {
+                // Las cuentas, partidas como en el catálogo de agregar: lo que
+                // es para gastar y lo que está guardado. Iban todas bajo un
+                // solo rótulo «Cuentas» —el mismo que el título de la
+                // pantalla— y ahí dentro el efectivo del bolsillo pesaba igual
+                // que un certificado a plazo.
+                if !m.plegadoCuentas && !paraGastar(m).isEmpty {
                     Section {
-                        if !m.plegadoCuentas { ForEach(m.cuentas) { f in fila(f, tipo: "cuenta") } }
+                        ForEach(paraGastar(m)) { f in fila(f, tipo: "cuenta") }
                     } header: {
-                        rotulo(m.rotuloCuentas, m.totalCuentas, plegado: m.plegadoCuentas, grupo: 0)
+                        rotulo(cnT("Para gastar"), totalDe(paraGastar(m), como: m),
+                               plegado: m.plegadoCuentas, grupo: 0)
+                    }
+                }
+                if !m.plegadoCuentas && !guardado(m).isEmpty {
+                    Section {
+                        ForEach(guardado(m)) { f in fila(f, tipo: "cuenta") }
+                    } header: {
+                        rotulo(cnT("Ahorro e inversión"), totalDe(guardado(m), como: m),
+                               plegado: m.plegadoCuentas, grupo: 0)
+                    }
+                }
+                if m.plegadoCuentas && !m.cuentas.isEmpty {
+                    Section {} header: {
+                        rotulo(m.rotuloCuentas, m.totalCuentas, plegado: true, grupo: 0)
                     }
                 }
                 if !m.tarjetas.isEmpty {
@@ -3178,6 +3197,121 @@ struct CNCuentas: View {
         default:
             patrimonio(m.patrimonio, oculto: m.oculto)
         }
+    }
+
+    /// De qué clase es una fila de cuenta. La web no manda la clase en la
+    /// fila, así que se busca en la libreta: primero por posición —que es el
+    /// orden con el que la web las arma— y, si no cuadra, por nombre.
+    private func claseDe(_ f: CNCuentasModelo.Fila) -> String {
+        let cs = datos.libreta.cuentas
+        if f.indice >= 0, f.indice < cs.count, cs[f.indice].nombre == f.nombre {
+            return cs[f.indice].clase
+        }
+        return cs.first { $0.nombre == f.nombre }?.clase ?? "banco"
+    }
+
+    /// Lo que se puede gastar hoy.
+    private func paraGastar(_ m: CNCuentasModelo) -> [CNCuentasModelo.Fila] {
+        m.cuentas.filter { ["banco", "efectivo", "billetera"].contains(claseDe($0)) }
+    }
+    /// Lo guardado: ahorro e inversión.
+    private func guardado(_ m: CNCuentasModelo) -> [CNCuentasModelo.Fila] {
+        m.cuentas.filter { !["banco", "efectivo", "billetera"].contains(claseDe($0)) }
+    }
+
+    /// El total de un grupo, sumado de la libreta (la web solo manda el de
+    /// todas juntas, y ahora hacen falta dos).
+    private func totalDe(_ filas: [CNCuentasModelo.Fila], como m: CNCuentasModelo) -> CNCuentasModelo.Total {
+        let cs = datos.libreta.cuentas
+        let suma = filas.reduce(0.0) { acc, f in
+            acc + (cs.first { $0.nombre == f.nombre }?.saldo ?? 0)
+        }
+        // El rótulo y el color, los mismos que ya traía el total de la web.
+        return CNCuentasModelo.Total(rotulo: m.totalCuentas.rotulo, valor: cnDinero(suma),
+                                     tinta: m.totalCuentas.tinta)
+    }
+
+    /// El patrimonio desmenuzado, leído de la libreta. Se calcula una vez por
+    /// pintado: recorre los movimientos para armar la historia.
+    private var retrato: CNCalculo.Retrato { CNCalculo.retrato(datos.libreta) }
+
+    /// EL MENÚ DE LA PANTALLA.
+    ///
+    /// Lo que se hace a menudo arriba —ver la tendencia, tapar el dinero— y
+    /// todo lo de personalizar metido en «Editar la pantalla», abajo. Las
+    /// siete formas de la tarjeta ocupaban el menú entero por encima de las
+    /// acciones, y eso se elige UNA vez: puesta la pantalla como te gusta, no
+    /// se vuelve a tocar.
+    private func menu(_ m: CNCuentasModelo) -> some View {
+        Menu {
+            Button { datos.onTendencia() } label: {
+                Label(cnT("Ver la tendencia"), systemImage: "chart.line.uptrend.xyaxis")
+            }
+            Button { datos.onCuentasAccion("ocultar", 0) } label: {
+                Label(m.oculto ? cnT("Enseñar el dinero") : cnT("Ocultar el dinero"),
+                      systemImage: m.oculto ? "eye" : "eye.slash")
+            }
+            Divider()
+            Menu {
+                Picker(cnT("La tarjeta de arriba"), selection: $tarjetaArriba) {
+                    Label(cnT("Clásica"), systemImage: "rectangle.fill").tag("clasica")
+                    Label(cnT("Apilada"), systemImage: "square.stack.3d.up.fill").tag("apilada")
+                    Label(cnT("Con gráfica"), systemImage: "chart.xyaxis.line").tag("grafica")
+                    Label(cnT("La suma"), systemImage: "plusminus").tag("suma")
+                    Label(cnT("Con Chino"), systemImage: "face.smiling").tag("chino")
+                    Label(cnT("En bloques"), systemImage: "square.grid.2x2.fill").tag("bloques")
+                    Label(cnT("Ninguna"), systemImage: "rectangle.slash").tag("ninguna")
+                }
+                if !m.coloresTarjeta.isEmpty {
+                    // El color de la tarjeta de Patrimonio: el del tema, el
+                    // mismo de la cabecera del resumen, o uno de sus colores.
+                    Menu {
+                        ForEach(m.coloresTarjeta.indices, id: \.self) { i in
+                            let c = m.coloresTarjeta[i]
+                            Button { datos.onCuentasAccion("color", i) } label: {
+                                Label(c.nombre, systemImage: c.puesta ? "checkmark.circle.fill" : "circle")
+                            }
+                        }
+                    } label: { Label(cnT("Color de la tarjeta"), systemImage: "paintpalette") }
+                }
+            } label: {
+                Label(cnT("Editar la pantalla"), systemImage: "slider.horizontal.3")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+        }
+    }
+
+    /// De qué clase es una fila de cuenta. La web no manda la clase en la
+    /// fila, así que se busca en la libreta: primero por posición —que es el
+    /// orden con el que la web las arma— y, si no cuadra, por nombre.
+    private func claseDe(_ f: CNCuentasModelo.Fila) -> String {
+        let cs = datos.libreta.cuentas
+        if f.indice >= 0, f.indice < cs.count, cs[f.indice].nombre == f.nombre {
+            return cs[f.indice].clase
+        }
+        return cs.first { $0.nombre == f.nombre }?.clase ?? "banco"
+    }
+
+    /// Lo que se puede gastar hoy.
+    private func paraGastar(_ m: CNCuentasModelo) -> [CNCuentasModelo.Fila] {
+        m.cuentas.filter { ["banco", "efectivo", "billetera"].contains(claseDe($0)) }
+    }
+    /// Lo guardado: ahorro e inversión.
+    private func guardado(_ m: CNCuentasModelo) -> [CNCuentasModelo.Fila] {
+        m.cuentas.filter { !["banco", "efectivo", "billetera"].contains(claseDe($0)) }
+    }
+
+    /// El total de un grupo, sumado de la libreta (la web solo manda el de
+    /// todas juntas, y ahora hacen falta dos).
+    private func totalDe(_ filas: [CNCuentasModelo.Fila], como m: CNCuentasModelo) -> CNCuentasModelo.Total {
+        let cs = datos.libreta.cuentas
+        let suma = filas.reduce(0.0) { acc, f in
+            acc + (cs.first { $0.nombre == f.nombre }?.saldo ?? 0)
+        }
+        // El rótulo y el color, los mismos que ya traía el total de la web.
+        return CNCuentasModelo.Total(rotulo: m.totalCuentas.rotulo, valor: cnDinero(suma),
+                                     tinta: m.totalCuentas.tinta)
     }
 
     /// El patrimonio desmenuzado, leído de la libreta. Se calcula una vez por
@@ -3445,15 +3579,23 @@ struct CNPlan: View {
                 // y se elige, que cada una cuenta lo mismo de otra manera.
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Group {
+                        // Igual que en Cuentas: todo lo de personalizar
+                        // dentro de «Editar la pantalla». Se elige una vez y,
+                        // puesta la pantalla como te gusta, no se vuelve a
+                        // tocar; no tiene por qué estar a un toque.
                         Menu {
-                            Picker(cnT("El presupuesto"), selection: $enAro) {
-                                Label(cnT("En barra"), systemImage: "chart.bar.fill").tag(false)
-                                Label(cnT("En aro"), systemImage: "circle.dashed").tag(true)
-                            }
-                            Picker(cnT("Las pestañas"), selection: $estiloPestanas) {
-                                Label(cnT("Pastillas"), systemImage: "capsule.fill").tag("pastillas")
-                                Label(cnT("Subrayadas"), systemImage: "underline").tag("subrayado")
-                                Label(cnT("Del sistema"), systemImage: "switch.2").tag("sistema")
+                            Menu {
+                                Picker(cnT("El presupuesto"), selection: $enAro) {
+                                    Label(cnT("En barra"), systemImage: "chart.bar.fill").tag(false)
+                                    Label(cnT("En aro"), systemImage: "circle.dashed").tag(true)
+                                }
+                                Picker(cnT("Las pestañas"), selection: $estiloPestanas) {
+                                    Label(cnT("Pastillas"), systemImage: "capsule.fill").tag("pastillas")
+                                    Label(cnT("Subrayadas"), systemImage: "underline").tag("subrayado")
+                                    Label(cnT("Del sistema"), systemImage: "switch.2").tag("sistema")
+                                }
+                            } label: {
+                                Label(cnT("Editar la pantalla"), systemImage: "slider.horizontal.3")
                             }
                         } label: { Image(systemName: "ellipsis") }
                     }
@@ -4047,7 +4189,7 @@ func cnVacioCard(_ titulo: String, _ texto: String) -> some View {
     }
     .frame(maxWidth: .infinity).padding(.vertical, 22).padding(.horizontal, 16)
     .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
 }
 
 /// La categoría cuyo presupuesto se está cambiando.
@@ -5084,7 +5226,7 @@ struct CNResumen: View {
         .padding(.horizontal, 16).padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
     }
 }
 
@@ -5174,7 +5316,7 @@ struct CNTelefonoMini: View {
                     // Las cifras de colores: tres tarjetas, cada una con su color.
                     ForEach(0..<3, id: \.self) { k in
                         HStack(spacing: 4) {
-                            RoundedRectangle(cornerRadius: 2).fill(cnColor(hexString: o.puntos[k])).frame(width: 22, height: 5)
+                            RoundedRectangle(cornerRadius: 2, style: .continuous).fill(cnColor(hexString: o.puntos[k])).frame(width: 22, height: 5)
                             Spacer(minLength: 0)
                         }
                         .padding(7).frame(maxWidth: .infinity)
@@ -5182,8 +5324,8 @@ struct CNTelefonoMini: View {
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(raya).frame(width: 30, height: 4)
-                        RoundedRectangle(cornerRadius: 2).fill(acento).frame(width: 22, height: 5)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(raya).frame(width: 30, height: 4)
+                        RoundedRectangle(cornerRadius: 2, style: .continuous).fill(acento).frame(width: 22, height: 5)
                     }
                     .padding(7).frame(maxWidth: .infinity, alignment: .leading)
                     .background(tarjeta, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
@@ -5296,7 +5438,7 @@ struct CNTarjetaWidget: View {
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .background(conVida ? tinteVida.opacity(0.13) : CNC.card)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: conVida ? 0 : 1))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: conVida ? 0 : 1))
         .opacity(w.oculta ? 0.42 : 1)
         // Mantener pulsado: lo mismo, sin tener que entrar en «organizar».
         .contextMenu { acciones }
@@ -5512,7 +5654,7 @@ struct CNTarjetaWidget: View {
     }
     private func punto(_ t: String, _ c: String) -> some View {
         HStack(spacing: 6) {
-            RoundedRectangle(cornerRadius: 4).fill(cnColor(hexString: c)).frame(width: 9, height: 9)
+            RoundedRectangle(cornerRadius: 4, style: .continuous).fill(cnColor(hexString: c)).frame(width: 9, height: 9)
             Text(t).font(cnLetra(12, .semibold)).foregroundColor(CNC.pmut)
         }
     }
@@ -5540,7 +5682,7 @@ struct CNTarjetaWidget: View {
                 ForEach(w.filasDona.indices, id: \.self) { i in
                     let r = w.filasDona[i]
                     HStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 3).fill(cnColor(hexString: r.color)).frame(width: 9, height: 9)
+                        RoundedRectangle(cornerRadius: 3, style: .continuous).fill(cnColor(hexString: r.color)).frame(width: 9, height: 9)
                         Text(r.label).font(cnLetra(12)).foregroundColor(CNC.ink)
                         Spacer(minLength: 6)
                         Text(r.valor).font(cnLetra(12, .bold)).foregroundColor(CNC.ink)
@@ -5832,7 +5974,7 @@ struct CNPerfil: View {
             .padding(15)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(CNC.line, lineWidth: 1))
             if !u.modoPie.isEmpty {
                 Text(u.modoPie).font(cnLetra(12)).foregroundColor(CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
@@ -5852,7 +5994,7 @@ struct CNPerfil: View {
                 }
             }
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
             if !g.pie.isEmpty {
                 Text(g.pie).font(cnLetra(12)).foregroundColor(CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 6)
@@ -6244,7 +6386,7 @@ struct CNSeccionVista: View {
                 }
             }
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
             if !q.pie.isEmpty { rotulo(q.pie) }
         }
     }
@@ -6269,8 +6411,8 @@ struct CNSeccionVista: View {
             }
             .frame(height: alto)
             VStack(spacing: 4) {
-                RoundedRectangle(cornerRadius: 2).fill(CNC.pmut.opacity(0.22)).frame(height: 5)
-                RoundedRectangle(cornerRadius: 2).fill(CNC.pmut.opacity(0.14)).frame(height: 5)
+                RoundedRectangle(cornerRadius: 2, style: .continuous).fill(CNC.pmut.opacity(0.22)).frame(height: 5)
+                RoundedRectangle(cornerRadius: 2, style: .continuous).fill(CNC.pmut.opacity(0.14)).frame(height: 5)
             }
             .padding(.horizontal, 7).padding(.top, 7)
             Spacer(minLength: 0)
@@ -6347,7 +6489,7 @@ struct CNSeccionVista: View {
             }
             .background(CNC.card)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
             if !q.pie.isEmpty { rotulo(q.pie) }
         }
     }
@@ -6368,7 +6510,7 @@ struct CNSeccionVista: View {
             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
             .background(CNC.card)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
             .animation(.easeOut(duration: 0.18), value: q.escala)
         }
     }
@@ -6404,7 +6546,7 @@ struct CNSeccionVista: View {
                 .padding(.horizontal, 15).padding(.vertical, 14)
                 .background(CNC.card)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
             }
         }
     }
@@ -6451,7 +6593,7 @@ struct CNSeccionVista: View {
                     // verde. Cantaba precisamente por ser los únicos.
                     .background(o.puesta ? CNC.pos.opacity(0.10) : CNC.card,
                                 in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 14)
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(o.puesta ? CNC.pos : CNC.line, lineWidth: o.puesta ? 2 : 1))
                 }.buttonStyle(CNPulsable())
             }
@@ -6559,7 +6701,7 @@ struct CNSeccionVista: View {
                 }
             }
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
             if !q.pie.isEmpty { rotulo(q.pie) }
         }
     }
