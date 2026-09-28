@@ -9,6 +9,14 @@
      pedir al vuelo. Si con esto la app arranca dentro del controlador real, el
      arreglo que ya está en main es el bueno. -->
 <script src="/assets/app.js"></script>
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    var d = document.createElement('div');
+    d.setAttribute('style', 'padding:20px;background:#2f5bc4;color:#fff');
+    d.textContent = 'EN LINEA: corrio';
+    document.body.appendChild(d);
+  });
+</script>
 </head>
 <body style="margin:0;font:600 24px -apple-system,system-ui">
 <div id="raiz"></div>
