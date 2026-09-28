@@ -3344,6 +3344,8 @@ struct CNPlan: View {
     /// En barra o en aro. Es cosa del teléfono —cómo prefieres mirarlo—, así
     /// que se guarda aquí y no hace falta ir a la web ni volver.
     @AppStorage("chinola.planAro") private var enAro = false
+    /// Cómo se ven las pestañas: «sistema», «subrayado» o «pastillas».
+    @AppStorage("chinola.planPestanas") private var estiloPestanas = "pastillas"
     var body: some View {
         let m = datos.plan ?? CNPlanModelo()
         // Barra de arriba del sistema, como en Movimientos y Cuentas.
@@ -3390,11 +3392,16 @@ struct CNPlan: View {
                 // Cómo enseñar el presupuesto: en barra o en aro. Van las dos
                 // y se elige, que cada una cuenta lo mismo de otra manera.
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    if m.tab != "metas" {
+                    Group {
                         Menu {
-                            Picker("", selection: $enAro) {
+                            Picker(cnT("El presupuesto"), selection: $enAro) {
                                 Label(cnT("En barra"), systemImage: "chart.bar.fill").tag(false)
                                 Label(cnT("En aro"), systemImage: "circle.dashed").tag(true)
+                            }
+                            Picker(cnT("Las pestañas"), selection: $estiloPestanas) {
+                                Label(cnT("Pastillas"), systemImage: "capsule.fill").tag("pastillas")
+                                Label(cnT("Subrayadas"), systemImage: "underline").tag("subrayado")
+                                Label(cnT("Del sistema"), systemImage: "switch.2").tag("sistema")
                             }
                         } label: { Image(systemName: "ellipsis") }
                     }
@@ -3413,22 +3420,115 @@ struct CNPlan: View {
     /// Las dos pestañas: un carril con una pastilla que se desliza, como los
     /// segmentados del teléfono. Dos botones enteros competían entre sí y
     /// costaba ver cuál estaba puesto.
-    /// Presupuesto o Metas: el segmentado DEL SISTEMA. Era una cápsula amarilla
-    /// dibujada a mano y, con el resto de la pantalla ya en piezas de iOS,
-    /// cantaba: es lo único que no venía del teléfono.
-    private func pestanas(_ m: CNPlanModelo) -> some View {
+    /// PRESUPUESTO O METAS, DE TRES MANERAS.
+    ///
+    /// El segmentado del sistema es correcto pero se queda corto aquí: es una
+    /// cápsula fina con dos palabras y no dice NADA de lo que hay detrás. Las
+    /// otras dos sí: cuántas categorías se te fueron y por dónde van las
+    /// metas, sin entrar a mirar. Se elige en el menú de la pantalla.
+    @ViewBuilder private func pestanas(_ m: CNPlanModelo) -> some View {
+        switch estiloPestanas {
+        case "subrayado": pestanasSubrayado(m)
+        case "pastillas": pestanasPastillas(m)
+        default: pestanasSistema(m)
+        }
+    }
+
+    /// Lo que cada pestaña tiene que contar: el presupuesto, cuántas
+    /// categorías se pasaron; las metas, cuántas hay y por dónde van.
+    private func avisoTab(_ i: Int, _ m: CNPlanModelo) -> (texto: String, alerta: Bool) {
+        if i == 0 {
+            let n = CNCalculo.presupuesto(datos.libreta, datos.periodoCalculo).excedidas
+            return (n > 0 ? String(n) : "", n > 0)
+        }
+        guard !m.metas.isEmpty else { return ("", false) }
+        let media = m.metas.reduce(0.0) { $0 + $1.pct } / Double(m.metas.count)
+        return ("\(Int(media.rounded()))%", false)
+    }
+
+    private func ponerTab(_ t: CNPlanModelo.Tab) {
+        UISelectionFeedbackGenerator().selectionChanged()
+        datos.ponerPestanaPlan(t.indice)
+        datos.onPlanAccion("tab", t.indice)
+    }
+
+    /// El del sistema, tal cual.
+    private func pestanasSistema(_ m: CNPlanModelo) -> some View {
         Picker("", selection: Binding(
             get: { m.tabs.firstIndex { $0.puesta } ?? 0 },
-            set: { i in
-                guard i >= 0, i < m.tabs.count else { return }
-                UISelectionFeedbackGenerator().selectionChanged()
-                datos.ponerPestanaPlan(m.tabs[i].indice)
-                datos.onPlanAccion("tab", m.tabs[i].indice)
-            })) {
+            set: { i in guard i >= 0, i < m.tabs.count else { return }; ponerTab(m.tabs[i]) })) {
                 ForEach(m.tabs.indices, id: \.self) { i in Text(m.tabs[i].label).tag(i) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+    }
+
+    /// SUBRAYADO: el nombre con su cifra al lado y una raya debajo del puesto.
+    private func pestanasSubrayado(_ m: CNPlanModelo) -> some View {
+        HStack(spacing: 24) {
+            ForEach(m.tabs.indices, id: \.self) { i in
+                let t = m.tabs[i]
+                let aviso = avisoTab(i, m)
+                Button { ponerTab(t) } label: {
+                    VStack(spacing: 7) {
+                        HStack(spacing: 7) {
+                            Text(t.label)
+                                .font(cnLetra(16, t.puesta ? .bold : .semibold))
+                                .foregroundColor(t.puesta ? CNC.ink : CNC.pmut)
+                            if !aviso.texto.isEmpty {
+                                Text(aviso.texto)
+                                    .font(cnLetra(11.5, .bold))
+                                    .foregroundColor(aviso.alerta ? .white : CNC.pmut)
+                                    .padding(.horizontal, aviso.alerta ? 6 : 0)
+                                    .padding(.vertical, aviso.alerta ? 2.5 : 0)
+                                    .background(aviso.alerta ? AnyView(Capsule().fill(CNC.neg))
+                                                             : AnyView(Color.clear))
+                            }
+                        }
+                        Capsule()
+                            .fill(t.puesta ? CNC.ink : Color.clear)
+                            .frame(height: 2.5)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// PASTILLAS: la puesta rellena, con su icono, y la otra al lado apagada.
+    private func pestanasPastillas(_ m: CNPlanModelo) -> some View {
+        HStack(spacing: 8) {
+            ForEach(m.tabs.indices, id: \.self) { i in
+                let t = m.tabs[i]
+                let aviso = avisoTab(i, m)
+                Button { ponerTab(t) } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: i == 0 ? "chart.pie.fill" : "target")
+                            .font(cnLetra(13, .semibold))
+                        Text(t.label).font(cnLetra(15, .semibold))
+                        if !aviso.texto.isEmpty {
+                            if aviso.alerta {
+                                // Solo el punto: el número ya está en la lista
+                                // de abajo, aquí basta con «mira esto».
+                                Circle().fill(CNC.neg).frame(width: 7, height: 7)
+                            } else {
+                                Text(aviso.texto).font(cnLetra(13))
+                                    .foregroundColor(t.puesta ? Color.white.opacity(0.75) : CNC.pmut)
+                            }
+                        }
+                    }
+                    .foregroundColor(t.puesta ? .white : CNC.pmut)
+                    .padding(.horizontal, 15).padding(.vertical, 10)
+                    .background(t.puesta ? AnyView(Capsule().fill(CNC.pos))
+                                         : AnyView(Capsule().fill(CNC.card)))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     /// LO GASTADO CONTRA EL PRESUPUESTO.
