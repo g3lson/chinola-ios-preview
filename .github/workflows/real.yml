@@ -95,17 +95,20 @@ jobs:
           # Se lanza una vez por combinación, apagando piezas del controlador.
           # La que vuelva a funcionar señala al culpable. Cada lanzamiento son
           # 20 segundos: las seis caben de sobra en una sola ejecución.
-          n=0
-          for COMBO in "nativo,cortina"; do
-            n=$((n+1))
-            ETIQUETA=$(echo "${COMBO:-nada}" | tr ',' '-')
-            echo "=== sin: ${COMBO:-(nada, tal cual)} ==="
-            xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
-            sleep 1
-            SIMCTL_CHILD_CN_SIN="$COMBO" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
-            sleep 20
-            xcrun simctl io "$UDID" screenshot "$n-sin-$ETIQUETA.png" || true
-          done
+          # Dos lanzamientos de la MISMA app: el controlador de fábrica y el de
+          # Chinola. La comparación en la misma página zanja de quién es el
+          # fallo, y de paso dice si este banco es de fiar.
+          echo "=== 1) controlador DE FÁBRICA ==="
+          SIMCTL_CHILD_CN_FABRICA=1 xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+          sleep 18
+          xcrun simctl io "$UDID" screenshot "1-de-fabrica.png" || true
+
+          echo "=== 2) controlador de CHINOLA ==="
+          xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+          sleep 2
+          SIMCTL_CHILD_CN_SIN="nativo,cortina" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+          sleep 20
+          xcrun simctl io "$UDID" screenshot "2-de-chinola.png" || true
           echo "=== ¿sigue vivo el proceso? ==="
           xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolareal || echo "(NO está vivo → crasheó)"
           echo "=== crash ==="

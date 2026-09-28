@@ -1,17 +1,20 @@
 import UIKit
+import Capacitor
 
-/// La ventana igual que en la app de verdad: a mano, con ChinolaViewController.
+/// La MISMA app, con uno u otro controlador según la variable de entorno.
 ///
-/// El banco de pruebas de al lado usa su propio `TestVC`, así que el
-/// controlador de verdad se compilaba pero NUNCA se ejecutaba. Y el fallo que
-/// perseguimos —la app abre en blanco— está justo ahí: en lo que ese
-/// controlador le hace al webview al arrancar.
+/// Así se comparan en la misma compilación y la misma página: si con el de
+/// fábrica los módulos arrancan y con el de Chinola no, el culpable es el
+/// controlador. Si no arrancan con ninguno, el culpable es este banco de
+/// pruebas y hay que dejar de creerle.
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
     func scene(_ scene: UIScene, willConnectTo: UISceneSession, options: UIScene.ConnectionOptions) {
         guard let escena = scene as? UIWindowScene else { return }
+        let deFabrica = ProcessInfo.processInfo.environment["CN_FABRICA"] == "1"
+        NSLog("SONDA: controlador \(deFabrica ? "DE FÁBRICA" : "de Chinola")")
         window = UIWindow(windowScene: escena)
-        window?.rootViewController = ChinolaViewController()
+        window?.rootViewController = deFabrica ? CAPBridgeViewController() : ChinolaViewController()
         window?.makeKeyAndVisible()
     }
 }
