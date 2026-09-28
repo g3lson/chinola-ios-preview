@@ -384,14 +384,27 @@ final class CNAvisoDeFallo {
     private var contesto = false
     private var puesto = false
     private var reloj: Timer?
+    /// Le pregunta al webview qué tiene cargado. Lo pone el controlador, que es
+    /// quien lo tiene a mano. Sin esto el aviso solo puede decir «no contestó»,
+    /// que es verdad pero no dice por qué.
+    var estadoDeLaWeb: ((@escaping (String) -> Void) -> Void)?
 
     /// Arranca el vigía. Lo llama el controlador al montar.
     func vigilar() {
         reloj?.invalidate()
         reloj = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
             guard let s = self, !s.contesto else { return }
-            s.mostrar("La parte web de la app no llegó a arrancar: no mandó señal en quince segundos.\n\n"
-                      + "Si esto sale siempre, la app no puede cargar sus archivos.")
+            let cabecera = "La parte web de la app no llegó a arrancar: no mandó señal en quince segundos.\n\n"
+            // Antes de enseñarlo, se le pregunta al webview qué tiene dentro:
+            // si cargó su página, en qué estado está y cuántos scripts ve. Eso
+            // distingue «no cargó nada» de «cargó y su código falló».
+            guard let preguntar = s.estadoDeLaWeb else {
+                s.mostrar(cabecera + "No se pudo mirar qué tiene cargado el webview.")
+                return
+            }
+            preguntar { detalle in
+                s.mostrar(cabecera + "Lo que ve el webview:\n" + detalle)
+            }
         }
     }
 

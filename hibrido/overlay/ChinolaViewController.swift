@@ -236,6 +236,15 @@ class ChinolaViewController: CAPBridgeViewController {
         montarFlotante()
         // Si la web no da señales en diez segundos, avisar: la app en blanco no
         // le dice nada a nadie, y su propio cartel queda debajo de lo nativo.
+        // Qué tiene dentro el webview cuando no da señales. Distingue «no
+        // cargó nada» de «cargó su página y su código falló», que es la
+        // diferencia entre buscar en el empaquetado o en el JavaScript.
+        CNAvisoDeFallo.shared.estadoDeLaWeb = { [weak self] contar in
+            guard let w = self?.bridge?.webView else { contar("no hay webview"); return }
+            w.evaluateJavaScript("(function(){try{var e=document.documentElement;return ['url: '+location.href,'estado: '+document.readyState,'scripts: '+document.scripts.length,'html: '+(e?e.innerHTML.length:-1)+' car.','raiz: '+(document.getElementById('raiz')?'si':'no'),'Capacitor: '+(window.Capacitor?'si':'no')].join('\\n')}catch(e){return 'no se pudo mirar: '+e}})()") { res, err in
+                contar((res as? String) ?? ("no contestó: " + (err?.localizedDescription ?? "sin motivo")))
+            }
+        }
         CNAvisoDeFallo.shared.vigilar()
         // Los ajustes de pantalla (la tarjeta de Cuentas, el presupuesto en aro,
         // el estilo de las pestañas) los guarda la WEB, que es lo que hace que
