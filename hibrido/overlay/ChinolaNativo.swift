@@ -388,9 +388,9 @@ final class CNAvisoDeFallo {
     /// Arranca el vigía. Lo llama el controlador al montar.
     func vigilar() {
         reloj?.invalidate()
-        reloj = Timer.scheduledTimer(withTimeInterval: 10, repeats: false) { [weak self] _ in
+        reloj = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
             guard let s = self, !s.contesto else { return }
-            s.mostrar("La parte web de la app no llegó a arrancar: no mandó señal en diez segundos.\n\n"
+            s.mostrar("La parte web de la app no llegó a arrancar: no mandó señal en quince segundos.\n\n"
                       + "Si esto sale siempre, la app no puede cargar sus archivos.")
         }
     }
@@ -411,7 +411,11 @@ final class CNAvisoDeFallo {
         var arriba = raiz
         while let otro = arriba.presentedViewController { arriba = otro }
 
-        let vista = UIHostingController(rootView: CNPantallaDeFallo(texto: texto))
+        var vista: UIHostingController<CNPantallaDeFallo>!
+        vista = UIHostingController(rootView: CNPantallaDeFallo(texto: texto, alCerrar: { [weak self] in
+            vista?.dismiss(animated: true)
+            self?.puesto = false
+        }))
         vista.modalPresentationStyle = .fullScreen
         arriba.present(vista, animated: false)
     }
@@ -420,6 +424,10 @@ final class CNAvisoDeFallo {
 /// El cartel, con el texto seleccionable para poder copiarlo o fotografiarlo.
 struct CNPantallaDeFallo: View {
     let texto: String
+    /// Se puede cerrar: si alguna vez saltara de más —un teléfono lento que
+    /// tarda más de la cuenta en arrancar—, un cartel a pantalla completa sin
+    /// salida sería peor que el fallo que intenta contar.
+    var alCerrar: () -> Void = {}
     private var version: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
@@ -446,6 +454,14 @@ struct CNPantallaDeFallo: View {
                 Text("Versión " + version + " · iOS " + UIDevice.current.systemVersion
                      + " · " + UIDevice.current.model)
                     .font(.system(size: 12)).foregroundColor(.secondary)
+                Button(action: alCerrar) {
+                    Text("Cerrar y seguir")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 13))
+                }
+                .padding(.top, 4)
                 Spacer(minLength: 0)
             }
             .padding(20)
