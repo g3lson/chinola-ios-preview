@@ -103,18 +103,18 @@ jobs:
           sleep 18
           xcrun simctl io "$UDID" screenshot "1-de-fabrica.png" || true
 
-          echo "=== Chinola, TODO encendido, con el arreglo ==="
-          xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
-          sleep 2
-          xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
-          sleep 20
-          xcrun simctl io "$UDID" screenshot "2-con-el-arreglo.png" || true
-          echo "=== y sin el arreglo, para comparar ==="
-          xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
-          sleep 2
-          SIMCTL_CHILD_CN_SIN="raiz" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
-          sleep 20
-          xcrun simctl io "$UDID" screenshot "3-sin-el-arreglo.png" || true
+          n=1
+          for CFG in "CN_HASTA=5" "CN_SIN=barra" "CN_HASTA=4"; do
+            n=$((n+1))
+            echo "=== $CFG ==="
+            xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+            sleep 2
+            env "SIMCTL_CHILD_${CFG%%=*}=${CFG#*=}" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+            sleep 18
+            xcrun simctl io "$UDID" screenshot "$n-$(echo $CFG | tr '=' '-').png" || true
+          done
+          echo "=== ¿se hizo el reparenteo? ==="
+          xcrun simctl spawn "$UDID" log show --last 3m --predicate 'eventMessage CONTAINS "CNRAIZ"' --style compact 2>/dev/null | head -5 || true
           echo "=== ¿sigue vivo el proceso? ==="
           xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolareal || echo "(NO está vivo → crasheó)"
           echo "=== crash ==="

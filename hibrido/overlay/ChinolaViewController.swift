@@ -209,7 +209,11 @@ class ChinolaViewController: CAPBridgeViewController {
     /// todo lo que se añadía a `view` se sigue añadiendo a `view`, solo que
     /// ahora `view` ya no es el webview.
     private func sacarElWebviewDeLaRaiz() {
-        guard let web = viewIfLoaded, web === (webView as UIView?) else { return }
+        guard let web = viewIfLoaded, web === (webView as UIView?) else {
+            NSLog("CNRAIZ: NO se hizo · viewIfLoaded=\(String(describing: viewIfLoaded)) webView=\(String(describing: webView))")
+            return
+        }
+        NSLog("CNRAIZ: sacando el webview de la raíz")
         let contenedor = UIView(frame: web.frame)
         contenedor.backgroundColor = web.backgroundColor
         contenedor.autoresizingMask = web.autoresizingMask
