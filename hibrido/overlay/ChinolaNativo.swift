@@ -6721,72 +6721,188 @@ final class CNLevantadorVista: UIView {
 // Todas sacan sus números de `CNCalculo.retrato`, que lee la libreta: aquí no
 // se inventa nada ni se pide nada por el puente.
 
-/// APILADA: las deudas asomando por detrás y lo que te queda encima.
+/// APILADA: un mazo de cartas que se puede girar.
+///
 /// Cuenta la historia en un gesto: hay cosas debajo, y lo de arriba es lo que
-/// sobra después de todas.
+/// sobra después de todas. Pero además se GIRA: se arrastra la de delante
+/// hacia abajo, o se toca una de atrás, y esa pasa al frente con su propio
+/// detalle. Así el mazo no es un adorno —cada carta se puede leer entera—, y
+/// al volver a la pantalla el orden empieza otra vez por el patrimonio, que
+/// es lo que se viene a mirar.
 struct CNTarjetaApilada: View {
     let r: CNCalculo.Retrato
     var oculto = false
     var onOjo: () -> Void = {}
 
+    /// Cuántas veces se ha pasado la de delante atrás.
+    @State private var giro = 0
+    @State private var arrastre: CGFloat = 0
+
+    /// Lo que asoma de cada carta de atrás y lo que mide la de delante.
+    private let asoma: CGFloat = 38
+    private let altoFrente: CGFloat = 132
+
+    private struct Carta: Identifiable {
+        var id: String
+        var titulo: String
+        var corto: String
+        var monto: Double
+        /// Se escribe con su signo: una deuda es negativa.
+        var firmado: Bool
+        var color: Color
+        var pieIzq: String
+        var pieDer: String
+    }
+
+    /// Las cartas que hay de verdad. El patrimonio siempre; las demás solo si
+    /// existen: una franja vacía puesta para rellenar no cuenta nada.
+    private var cartas: [Carta] {
+        var c: [Carta] = []
+        let tarjetas = r.debes - r.prestamos
+        if r.prestamos > 0 || r.porCobrar > 0 {
+            var pies: [String] = []
+            if r.prestamos > 0 { pies.append(cnT("Debes") + " " + cnDinero(r.prestamos)) }
+            if r.porCobrar > 0 { pies.append(cnT("Te deben") + " " + cnDinero(r.porCobrar)) }
+            c.append(.init(id: "pre", titulo: cnT("Préstamos y fiados"), corto: cnT("Préstamos"),
+                           monto: r.porCobrar - r.prestamos, firmado: true, color: cnColor(0x6f4bc9),
+                           pieIzq: pies.joined(separator: " · "), pieDer: ""))
+        }
+        if tarjetas > 0 {
+            c.append(.init(id: "tar", titulo: cnT("Tarjetas y crédito"), corto: cnT("Tarjetas"),
+                           monto: -tarjetas, firmado: true, color: cnColor(0xd0463a),
+                           pieIzq: r.tarjetas.prefix(2).map { $0.nombre + " " + cnDinero($0.monto) }
+                               .joined(separator: " · "), pieDer: ""))
+        }
+        if r.ahorro > 0 {
+            c.append(.init(id: "aho", titulo: cnT("Ahorro e inversión"), corto: cnT("Ahorro"),
+                           monto: r.ahorro, firmado: false, color: cnColor(0x2f5bc4),
+                           pieIzq: cnT("Guardado, no para gastar mañana"), pieDer: ""))
+        }
+        c.append(.init(id: "pat", titulo: cnT("Te queda si pagas todo"), corto: cnT("Te queda"),
+                       monto: r.queda, firmado: false, color: CNC.side,
+                       pieIzq: cnT("Para gastar") + " " + cnDinero(r.paraGastar),
+                       pieDer: r.cambioMes == 0 ? ""
+                           : (r.cambioMes > 0 ? "↑ " : "↓ ") + cnDinero(r.cambioMes) + " " + cnT("este mes")))
+        return c
+    }
+
+    /// El mazo en el orden de ahora: la última de la lista es la de delante.
+    private var enOrden: [Carta] {
+        let c = cartas
+        guard c.count > 1 else { return c }
+        let n = ((giro % c.count) + c.count) % c.count
+        return Array(c[n...] + c[..<n])
+    }
+
     var body: some View {
-        VStack(spacing: -14) {
-            if r.prestamos > 0 {
-                capa(cnT("Préstamos y fiados"), r.prestamos, cnColor(0x7a4fd0), 0)
+        let mazo = enOrden
+        let atras = mazo.dropLast()
+        let frente = mazo.last
+        return ZStack(alignment: .top) {
+            ForEach(Array(atras.enumerated()), id: \.element.id) { i, carta in
+                trasera(carta)
+                    .padding(.horizontal, CGFloat(atras.count - 1 - i) * 8)
+                    .offset(y: CGFloat(i) * asoma)
+                    .zIndex(Double(i))
+                    .onTapGesture { girarHasta(carta) }
             }
-            if r.debes - r.prestamos > 0 {
-                capa(cnT("Tarjetas y crédito"), -(r.debes - r.prestamos), cnColor(0xd0463a), 1)
+            if let f = frente {
+                delantera(f)
+                    .offset(y: CGFloat(atras.count) * asoma + max(0, arrastre))
+                    .zIndex(99)
+                    .gesture(arrastrar)
             }
-            if r.ahorro > 0 {
-                capa(cnT("Ahorro e inversión"), r.ahorro, cnColor(0x2f5bc4), 2)
+        }
+        .frame(height: CGFloat(max(0, mazo.count - 1)) * asoma + altoFrente,
+               alignment: .top)
+        .animation(.spring(response: 0.34, dampingFraction: 0.82), value: giro)
+        // Al volver a la pantalla, el mazo empieza otra vez por el patrimonio.
+        .onAppear { giro = 0; arrastre = 0 }
+    }
+
+    /// Arrastrar la de delante hacia abajo la manda al final del mazo.
+    private var arrastrar: some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { g in arrastre = max(0, g.translation.height * 0.6) }
+            .onEnded { g in
+                let lejos = g.translation.height > 46 || g.predictedEndTranslation.height > 110
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+                    arrastre = 0
+                    if lejos, cartas.count > 1 {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        giro -= 1
+                    }
+                }
             }
-            principal
+    }
+
+    /// Tocar una de atrás la trae al frente.
+    private func girarHasta(_ carta: Carta) {
+        let c = cartas
+        guard c.count > 1, let destino = c.firstIndex(where: { $0.id == carta.id }) else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+            giro = destino + 1
         }
     }
 
-    private func capa(_ t: String, _ v: Double, _ color: Color, _ i: Int) -> some View {
-        HStack {
-            Text(t).font(cnLetra(13, .semibold))
+    private func trasera(_ c: Carta) -> some View {
+        HStack(spacing: 10) {
+            Text(c.titulo).font(cnLetra(13.5, .semibold)).lineLimit(1)
             Spacer(minLength: 8)
-            Text(oculto ? "•••" : cnDineroFirmado(v)).font(cnLetra(13, .semibold))
+            Text(oculto ? "•••" : (c.firmado ? cnDineroFirmado(c.monto) : cnDinero(c.monto)))
+                .font(cnLetra(13.5, .heavy)).lineLimit(1).minimumScaleFactor(0.7)
         }
         .foregroundColor(.white)
-        .padding(.horizontal, 16).padding(.top, 11).padding(.bottom, 20)
-        .background(color, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .padding(.horizontal, CGFloat(2 - i) * 7)
-        .zIndex(Double(i))
+        .padding(.horizontal, 17)
+        .frame(height: altoFrente, alignment: .top)
+        .padding(.top, 13)
+        .frame(maxWidth: .infinity)
+        .background(c.color, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.10), radius: 8, y: 3)
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    private var principal: some View {
-        VStack(alignment: .leading, spacing: 4) {
+    private func delantera(_ c: Carta) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top) {
-                Text(cnT("Te queda si pagas todo")).font(cnLetra(13))
-                    .foregroundColor(.white.opacity(0.8))
+                Text(c.titulo).font(cnLetra(13)).foregroundColor(.white.opacity(0.82))
                 Spacer(minLength: 8)
                 Button(action: onOjo) {
                     Image(systemName: oculto ? "eye.slash.fill" : "eye.fill")
                         .font(cnLetra(12, .semibold)).foregroundColor(cnSobre(CNC.acc))
-                        .frame(width: 26, height: 26).background(CNC.acc, in: Circle())
+                        .frame(width: 28, height: 28).background(CNC.acc, in: Circle())
                 }.buttonStyle(.plain)
             }
-            Text(oculto ? "•••" : cnDinero(r.queda))
+            Text(oculto ? "•••" : (c.firmado ? cnDineroFirmado(c.monto) : cnDinero(c.monto)))
                 .font(cnLetra(32, .heavy)).foregroundColor(.white)
-                .lineLimit(1).minimumScaleFactor(0.5)
+                .lineLimit(1).minimumScaleFactor(0.45)
+                .padding(.top, 4)
+            Spacer(minLength: 6)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(cnT("Para gastar") + " " + (oculto ? "•••" : cnDinero(r.paraGastar)))
-                    .font(cnLetra(12)).foregroundColor(.white.opacity(0.8))
+                Text(c.pieIzq).font(cnLetra(12)).foregroundColor(.white.opacity(0.8))
+                    .lineLimit(1).minimumScaleFactor(0.8)
                 Spacer(minLength: 8)
-                if r.cambioMes != 0 {
-                    Text((r.cambioMes > 0 ? "↑ " : "↓ ") + cnDinero(r.cambioMes) + " " + cnT("este mes"))
-                        .font(cnLetra(12, .semibold)).foregroundColor(CNC.acc)
+                if !c.pieDer.isEmpty {
+                    Text(c.pieDer).font(cnLetra(12, .semibold)).foregroundColor(CNC.acc)
+                        .lineLimit(1).minimumScaleFactor(0.8)
                 }
             }
-            .padding(.top, 6)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CNC.side, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .zIndex(9)
+        .padding(17)
+        .frame(maxWidth: .infinity, minHeight: altoFrente, alignment: .topLeading)
+        .background(
+            ZStack(alignment: .bottomTrailing) {
+                c.color
+                // El círculo de luz de la esquina: le quita la planicie al
+                // bloque de color sin meter una imagen.
+                Circle().fill(Color.white.opacity(0.07))
+                    .frame(width: 150, height: 150)
+                    .offset(x: 46, y: 54)
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.16), radius: 14, y: 6)
     }
 }
 
