@@ -38,6 +38,17 @@ jobs:
           JSON
           npx cap add ios
           npx cap sync ios
+          # Y la segunda mitad de la pregunta: con el webview TAPADO por una
+          # vista nativa opaca desde el primer fotograma, como hace Chinola
+          # —todas sus pantallas son nativas—. Si WebKit suspende el JavaScript
+          # de un webview que no se ve, aquí el módulo no corre y en la sonda de
+          # antes sí, que es la diferencia que queda por explicar.
+          cp ../hibrido/sonda-tapada/ViewController.swift ios/App/App/ViewController.swift
+          cp ../hibrido/sonda-tapada/SceneDelegate.swift ios/App/App/SceneDelegate.swift
+          gem install xcodeproj --no-document --quiet
+          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('ios/App/App.xcodeproj'); g=(p.main_group['App']||p.main_group); ['ViewController.swift','SceneDelegate.swift'].each{|n| f=g.new_file(n); p.targets.first.add_file_references([f])}; p.save"
+          /usr/libexec/PlistBuddy -c "Delete :UISceneStoryboardFile" ios/App/App/Info.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0:UISceneDelegateClassName \$(PRODUCT_MODULE_NAME).SceneDelegate" ios/App/App/Info.plist 2>/dev/null || true
           echo "=== lo que se empaqueta ==="; ls -R ios/App/App/public | head -20
 
       - name: Compilar para simulador
@@ -64,7 +75,7 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b || true
           xcrun simctl install "$UDID" "$APP"
           xcrun simctl launch "$UDID" do.com.fente.sondamodulos || true
-          sleep 8
+          sleep 14
           xcrun simctl io "$UDID" screenshot "respuesta-ios$RT_VER.png" || true
           echo "=== lo que dijo el webview ==="
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "App"' --style compact 2>/dev/null | grep -iE "module|cors|script|blocked" | head -20 || true
