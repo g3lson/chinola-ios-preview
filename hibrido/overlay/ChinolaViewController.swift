@@ -180,6 +180,11 @@ class ChinolaViewController: CAPBridgeViewController {
         (ProcessInfo.processInfo.environment["CN_SIN"] ?? "")
             .split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty })
+    private func sin(_ que: String) -> Bool {
+        if Self.apagadas.contains(que) { NSLog("CNSIN: apagado «\(que)»"); return true }
+        return false
+    }
+
     /// SACAR EL WEBVIEW DE LA RAÍZ.
     ///
     /// Capacitor hace `view = webView` en su `loadView`, que es `final`: la
@@ -190,9 +195,6 @@ class ChinolaViewController: CAPBridgeViewController {
     /// ejecutado una línea. Con eso, su JavaScript no arranca: la app abre en
     /// blanco y no da un solo error, porque no llega a correr nada que pueda
     /// darlo.
-    ///
-    /// Medido: con `viewDidLoad` vacío la web arranca; dejando correr hasta
-    /// `montarBarra()`, deja de arrancar.
     ///
     /// Aquí se pone en su sitio: la raíz pasa a ser una vista normal y el
     /// webview, un hijo que la llena. No hay que tocar ni una llamada más:
@@ -229,9 +231,6 @@ class ChinolaViewController: CAPBridgeViewController {
         // está en lo que hace sino en lo que ES: sus propiedades o el registro
         // de plugins. Y si arranca, está aquí dentro y se busca a la mitad.
         if sin("todo") { return }
-        // Búsqueda binaria: con `CN_HASTA=n` solo corren los n primeros tramos.
-        // Con `viewDidLoad` vacío la app arranca, así que el culpable está en
-        // este método; esto lo encuentra en una pasada en vez de en ocho.
         // En iOS 17 y más, `traitCollectionDidChange` ya no se llama: hay que
         // apuntarse al cambio. Sin esto, poner el teléfono en oscuro no movía
         // la app hasta reiniciarla.
