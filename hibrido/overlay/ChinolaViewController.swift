@@ -165,8 +165,43 @@ class ChinolaViewController: CAPBridgeViewController {
         }
     }
 
+    /// SACAR EL WEBVIEW DE LA RAÍZ.
+    ///
+    /// Capacitor hace `view = webView` en su `loadView`, que es `final`: la vista
+    /// raíz del controlador ES el WKWebView. Así que cada `view.addSubview(...)`
+    /// de esta clase —las pantallas nativas, la barra de abajo, el botón
+    /// flotante de Chino— estaba metiendo vistas de UIKit y huéspedes de SwiftUI
+    /// DENTRO del propio webview, no encima de él.
+    ///
+    /// Funcionó durante mucho tiempo, pero es meterle mano a las tripas de
+    /// WebKit: el webview deja de ser una hoja del árbol y pasa a tener
+    /// controladores hijos y capas ajenas dentro. Aquí se pone en su sitio: la
+    /// raíz pasa a ser una vista normal y el webview, un hijo más que la llena.
+    ///
+    /// No hay que tocar ni una llamada: todo lo que se añadía a `view` sigue
+    /// añadiéndose a `view`, solo que ahora `view` ya no es el webview.
+    private func sacarElWebviewDeLaRaiz() {
+        guard let web = viewIfLoaded, web === (webView as UIView?) else { return }
+        let contenedor = UIView(frame: web.frame)
+        contenedor.backgroundColor = web.backgroundColor
+        contenedor.autoresizingMask = web.autoresizingMask
+        // Primero se cambia la raíz y DESPUÉS se mete el webview: al revés, el
+        // webview sería hijo de sí mismo por un instante.
+        view = contenedor
+        contenedor.addSubview(web)
+        web.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            web.topAnchor.constraint(equalTo: contenedor.topAnchor),
+            web.leadingAnchor.constraint(equalTo: contenedor.leadingAnchor),
+            web.trailingAnchor.constraint(equalTo: contenedor.trailingAnchor),
+            web.bottomAnchor.constraint(equalTo: contenedor.bottomAnchor)
+        ])
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
+        // Lo PRIMERO, antes de que nada se monte encima.
+        sacarElWebviewDeLaRaiz()
         // En iOS 17 y más, `traitCollectionDidChange` ya no se llama: hay que
         // apuntarse al cambio. Sin esto, poner el teléfono en oscuro no movía
         // la app hasta reiniciarla.
