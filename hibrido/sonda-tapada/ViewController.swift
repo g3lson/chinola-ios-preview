@@ -7,10 +7,14 @@ import Capacitor
 /// La pregunta es si WebKit, al no ver el webview, suspende su JavaScript y por
 /// eso el módulo de la app nunca llega a ejecutarse.
 class ViewController: CAPBridgeViewController {
+    private var tapa: UIView?
+
     override func viewDidLoad() {
         super.viewDidLoad()
+        NSLog("SONDA: viewDidLoad del controlador propio")
 
         let tapa = UIView()
+        self.tapa = tapa
         tapa.backgroundColor = .systemBackground      // opaca, como la de Chinola
         tapa.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tapa)
@@ -33,8 +37,20 @@ class ViewController: CAPBridgeViewController {
 
         // A los 9 segundos se destapa para poder fotografiar la respuesta. Para
         // entonces el módulo ya habría corrido de sobra si fuera a correr.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 9) {
-            tapa.removeFromSuperview()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak self] in
+            NSLog("SONDA: destapando")
+            self?.tapa?.removeFromSuperview()
+            self?.tapa = nil
+        }
+    }
+
+    /// La tapa, otra vez al frente después de que Capacitor coloque lo suyo: en
+    /// `viewDidLoad` el webview todavía se está montando y puede quedar encima.
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if let t = tapa {
+            view.bringSubviewToFront(t)
+            NSLog("SONDA: tapa al frente · webview tapado = \(t.superview != nil)")
         }
     }
 }
