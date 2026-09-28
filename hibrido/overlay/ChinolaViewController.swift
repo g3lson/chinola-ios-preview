@@ -53,6 +53,7 @@ class ChinolaViewController: CAPBridgeViewController {
     private let nativas: Set<String> = ["resumen", "movs", "cuentas", "plan", "perfil"]
 
     override func capacitorDidLoad() {
+        if sin("plugins") { return }
         nativo.store = datos
         nativo.menuEstado = menuEstado
         bridge?.registerPluginInstance(CobroPlugin())
@@ -795,6 +796,11 @@ class ChinolaViewController: CAPBridgeViewController {
     }
 
     private func eval(_ js: String) {
+        // Sospechoso: el controlador habla con el webview MUY pronto —desde
+        // `viewDidLayoutSubviews`, que dispara antes de que la página haya
+        // corrido nada—. Con el interruptor se puede callar del todo y ver si
+        // el módulo arranca entonces.
+        if sin("eval") { return }
         bridge?.webView?.evaluateJavaScript(js, completionHandler: nil)
     }
 
