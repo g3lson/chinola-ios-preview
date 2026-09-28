@@ -96,7 +96,7 @@ jobs:
           # La que vuelva a funcionar señala al culpable. Cada lanzamiento son
           # 20 segundos: las seis caben de sobra en una sola ejecución.
           n=0
-          for COMBO in "" "eval" "plugins" "eval,plugins" "eval,plugins,flotante,barra,nativo,raiz,cortina,orilla"; do
+          for COMBO in "nativo,cortina" "nativo,cortina,eval,plugins,flotante,barra,raiz,orilla"; do
             n=$((n+1))
             ETIQUETA=$(echo "${COMBO:-nada}" | tr ',' '-')
             echo "=== sin: ${COMBO:-(nada, tal cual)} ==="

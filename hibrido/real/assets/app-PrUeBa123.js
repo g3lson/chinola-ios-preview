@@ -1,19 +1,11 @@
-// Si esto corre, el módulo arranca dentro del controlador real de Chinola.
-window.__modulo = true;
+// Si esto corre, los módulos arrancan dentro del controlador real.
+const d = document.createElement('div');
+d.id = 'modulo';
+d.setAttribute('style', 'padding:24px 20px;background:#b8860b;color:#fff');
+d.textContent = 'MÓDULO: sí corrió';
+document.body.appendChild(d);
 
-// Y se le dice al nativo, que es la señal que su vigía espera. Si el vigía
-// salta igual, es que esto nunca corrió.
-const pinta = (t, c) => {
-  const d = document.createElement('div');
-  d.setAttribute('style', 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;'
-    + 'justify-content:center;background:' + c + ';color:#fff;font:700 34px -apple-system,system-ui;'
-    + 'text-align:center;padding:24px');
-  d.textContent = t;
-  document.body.appendChild(d);
-};
-pinta('EL MÓDULO SÍ CORRIÓ', '#137d41');
-
-// Y se contesta lo que el nativo pregunta, para que no salte su aviso.
-window.__chinolaTemaJSON = () => JSON.stringify({ scr: '#f0f0f3', card: '#ffffff', ink: '#1a1a1c' });
+// Y se le contesta al nativo, para que su vigía no tape la pantalla.
+window.__chinolaTemaJSON = () => JSON.stringify({ scr: '#ffffff', card: '#ffffff', ink: '#111111' });
 window.__chinolaDatosJSON = () => '{}';
 window.__chinolaHuella = () => 'prueba';

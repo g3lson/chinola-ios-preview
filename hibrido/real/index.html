@@ -4,17 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Chinola</title>
-<!-- La misma forma que el index de verdad: un módulo con hash en el nombre, y
-     un script clásico suelto. Lo que se mide es si el módulo llega a correr
-     dentro del controlador REAL de la app. -->
 <script type="module" src="/assets/app-PrUeBa123.js"></script>
 </head>
-<body>
+<body style="margin:0;font:600 26px -apple-system,system-ui">
 <div id="raiz"></div>
+<!-- EL CLÁSICO PINTA. Si sale su franja y no la del módulo, lo que el
+     controlador rompe son SOLO los módulos. Si no sale ninguna, rompe todo el
+     JavaScript. Son dos problemas distintos y hasta ahora no los había
+     separado. -->
 <script>
-  // El de control: clásico, corre siempre.
-  window.__clasico = true;
-  document.title = 'clasico ok';
+  var d = document.createElement('div');
+  d.id = 'clasico';
+  d.setAttribute('style', 'padding:70px 20px 24px;background:#1f6f3f;color:#fff');
+  d.textContent = 'CLÁSICO: sí corrió';
+  document.body.appendChild(d);
 </script>
 </body>
 </html>
