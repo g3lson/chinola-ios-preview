@@ -463,6 +463,10 @@ struct CNMontoHoja: View {
 struct CNFormCuenta: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
+    /// Lo que ya se eligió en el catálogo: la clase y un nombre de partida.
+    /// Así no hay que volver a decirlo aquí.
+    var claseInicial: String = ""
+    var nombreSugerido: String = ""
     @State private var nombre = ""
     @State private var banco = ""
     @State private var saldo = ""
@@ -479,6 +483,11 @@ struct CNFormCuenta: View {
             VStack(alignment: .leading, spacing: 8) { cnHojaTitulo(cnT("Tipo")); CNFichas(opciones: clases, elegida: $clase) }
             CNColorFila(color: $color)
         }
+        // Lo que ya se dijo en el catálogo, puesto de partida.
+        .onAppear {
+            if !claseInicial.isEmpty, clases.contains(where: { $0.0 == claseInicial }) { clase = claseInicial }
+            if nombre.isEmpty { nombre = cnT(nombreSugerido) }
+        }
     }
 
     private func guardar() {
@@ -493,6 +502,7 @@ struct CNFormCuenta: View {
 struct CNFormTarjeta: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
+    var nombreSugerido: String = ""
     @State private var nombre = ""
     @State private var banco = ""
     @State private var limite = ""
@@ -519,6 +529,7 @@ struct CNFormTarjeta: View {
             }
             CNColorFila(color: $color)
         }
+        .onAppear { if nombre.isEmpty { nombre = cnT(nombreSugerido) } }
     }
 
     private func guardar() {
@@ -532,6 +543,8 @@ struct CNFormTarjeta: View {
 struct CNFormPrestamo: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
+    var sentidoInicial: String = ""
+    var nombreSugerido: String = ""
     @State private var nombre = ""
     @State private var entidad = ""
     @State private var total = ""
@@ -553,6 +566,10 @@ struct CNFormPrestamo: View {
                 CNFilaMonto(icono: "checkmark.circle.fill", tinte: CNC.pos, titulo: cnT("Ya pagado"), monto: $pagado)
             }
             CNColorFila(color: $color)
+        }
+        .onAppear {
+            if !sentidoInicial.isEmpty { sentido = sentidoInicial }
+            if nombre.isEmpty { nombre = cnT(nombreSugerido) }
         }
     }
 
@@ -663,33 +680,69 @@ struct CNFormTransferencia: View {
 struct CNAgregar: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
-    @State private var cual: String? = nil
+    @State private var elegido: CNTipoAgregar? = nil
+    @State private var busca = ""
 
     var body: some View {
-        switch cual {
-        case "cuenta": CNFormCuenta(datos: datos, onClose: onClose)
-        case "tarjeta": CNFormTarjeta(datos: datos, onClose: onClose)
-        case "prestamo": CNFormPrestamo(datos: datos, onClose: onClose)
-        default: chooser
+        if let t = elegido {
+            switch t.forma {
+            case "tarjeta": CNFormTarjeta(datos: datos, onClose: onClose, nombreSugerido: t.titulo)
+            case "prestamo": CNFormPrestamo(datos: datos, onClose: onClose,
+                                            sentidoInicial: t.sentido, nombreSugerido: t.titulo)
+            default: CNFormCuenta(datos: datos, onClose: onClose,
+                                  claseInicial: t.clase, nombreSugerido: t.titulo)
+            }
+        } else {
+            chooser
+        }
+    }
+
+    /// Lo que encaja con lo que se está buscando. Se mira el nombre, la frase
+    /// de debajo y unas palabras más que no se enseñan («PayPal», «USDT»…):
+    /// la gente busca por la marca, no por cómo lo llamamos nosotros.
+    private var encontrados: [CNTipoAgregar] {
+        let q = busca.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return CNTipoAgregar.todos }
+        return CNTipoAgregar.todos.filter {
+            (cnT($0.titulo) + " " + cnT($0.sub) + " " + $0.busca).lowercased().contains(q)
         }
     }
 
     /// Sin atenuado ni esquinas propias: ya vamos DENTRO de una hoja del
     /// sistema, y ponerle otra encima se veía como dos hojas.
+    /// EL CATÁLOGO, AGRUPADO POR LO QUE HACE CADA COSA.
+    ///
+    /// Antes eran tres filas con los nombres de dentro de la app —cuenta,
+    /// tarjeta, préstamo—, que obligan a traducir: «una membresía del gimnasio,
+    /// ¿eso qué es?». Agrupado por para qué sirve —gastar, invertir, deber,
+    /// prestar, prepagado— no hay que traducir nada, y con el buscador da
+    /// igual que sean dieciocho.
     private var chooser: some View {
-        // Barra del sistema y las tres en UNA lista agrupada, no tres tarjetas
-        // sueltas con hueco entre ellas: son opciones de lo mismo.
         NavigationView {
             List {
-                Section {
-                    opcion("banco", CNC.pos, "Una cuenta", "Efectivo, banco, ahorros") { cual = "cuenta" }
-                    opcion("tarjeta", CNC.neg, "Una tarjeta de crédito", "Con su deuda y sus fechas") { cual = "tarjeta" }
-                    opcion("mano", cnColor(0x825eb9), "Un préstamo o fiado", "Lo que debes o te deben") { cual = "prestamo" }
+                ForEach(CNTipoAgregar.grupos, id: \.id) { g in
+                    let suyos = encontrados.filter { $0.grupo == g.id }
+                    if !suyos.isEmpty {
+                        Section {
+                            ForEach(suyos) { t in fila(t) }
+                        } header: {
+                            cabeceraGrupo(g)
+                        }
+                    }
+                }
+                if encontrados.isEmpty {
+                    Section {
+                        Text(cnT("Nada con ese nombre"))
+                            .font(cnLetra(15)).foregroundColor(CNC.pmut)
+                    }
                 }
             }
             .listStyle(.insetGrouped)
             .modifier(CNFondoLista())
             .background(CNC.scr.ignoresSafeArea())
+            .searchable(text: $busca,
+                        placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: Text(cnT("Buscar: tarjeta, PayPal, cripto…")))
             .navigationTitle(cnT("¿Qué quieres agregar?"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -702,16 +755,129 @@ struct CNAgregar: View {
         .tint(CNC.pos)
     }
 
-    private func opcion(_ ic: String, _ tinte: Color, _ t: String, _ s: String, _ tap: @escaping () -> Void) -> some View {
-        Button(action: tap) {
+    private func cabeceraGrupo(_ g: CNTipoAgregar.Grupo) -> some View {
+        HStack(spacing: 7) {
+            Circle().fill(g.color).frame(width: 7, height: 7)
+            Text(cnT(g.titulo)).font(cnLetra(13, .semibold)).foregroundColor(CNC.ink)
+            Text(cnT(g.pista)).font(cnLetra(12)).foregroundColor(CNC.pmut)
+            Spacer(minLength: 0)
+        }
+        .textCase(nil)
+    }
+
+    private func fila(_ t: CNTipoAgregar) -> some View {
+        let grupo = CNTipoAgregar.grupo(t.grupo)
+        return Button { elegido = t } label: {
             HStack(spacing: 12) {
-                cnGlifo(ic, tam: 20).foregroundColor(.white).frame(width: 42, height: 42).background(tinte).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) { Text(t).font(cnLetra(16, .semibold)).foregroundColor(CNC.ink); Text(s).font(cnLetra(12.5)).foregroundColor(CNC.pmut) }
-                Spacer(minLength: 6); Image(systemName: "chevron.right").font(cnLetra(13, .semibold)).foregroundColor(CNC.pmut.opacity(0.5))
-            // Sin tarjeta propia: ahora es una fila de la lista y la pone ella.
-            }.padding(.vertical, 5).contentShape(Rectangle())
+                cnGlifo(t.icono, tam: 18)
+                    .foregroundColor(grupo.color)
+                    .frame(width: 34, height: 34)
+                    .background(grupo.color.opacity(0.13),
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(cnT(t.titulo)).font(cnLetra(15.5, .semibold)).foregroundColor(CNC.ink)
+                    Text(cnT(t.sub)).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 6)
+            }
+            .padding(.vertical, 5).contentShape(Rectangle())
         }.buttonStyle(.plain)
     }
+}
+
+/// UNA COSA QUE SE PUEDE AGREGAR.
+///
+/// Por dentro la app solo sabe de tres: una CUENTA (con su clase), una TARJETA
+/// y un PRÉSTAMO. Todo esto son esas tres con el nombre y el icono que le pone
+/// la gente, no tres modelos nuevos: así el catálogo puede crecer sin tocar ni
+/// los saldos ni los cálculos.
+struct CNTipoAgregar: Identifiable {
+    struct Grupo { var id: String; var titulo: String; var pista: String; var color: Color }
+
+    var id: String
+    var titulo: String
+    var sub: String
+    var icono: String
+    var grupo: String
+    /// «cuenta», «tarjeta» o «prestamo».
+    var forma: String
+    /// Para las cuentas: banco, efectivo, billetera, ahorro, inversion.
+    var clase: String = ""
+    /// Para los préstamos: «debo» o «medeben».
+    var sentido: String = ""
+    /// Palabras que NO se enseñan pero por las que se busca: la gente escribe
+    /// la marca («PayPal», «USDT»), no nuestra palabra.
+    var busca: String = ""
+
+    static let grupos: [Grupo] = [
+        .init(id: "gastar", titulo: "Para gastar", pista: "débito", color: cnColor(0x2f9e5c)),
+        .init(id: "invertir", titulo: "Ahorro e inversión", pista: "invierte", color: cnColor(0x3a66c8)),
+        .init(id: "credito", titulo: "Tarjetas y crédito", pista: "crédito", color: cnColor(0xd55948)),
+        .init(id: "deudas", titulo: "Préstamos y fiados", pista: "pedir prestado / prestar", color: cnColor(0xb08420)),
+        .init(id: "prepago", titulo: "Prepago y membresías", pista: "cuenta de miembro", color: cnColor(0x7a4fd0))
+    ]
+    static func grupo(_ id: String) -> Grupo {
+        grupos.first { $0.id == id } ?? grupos[0]
+    }
+
+    static let todos: [CNTipoAgregar] = [
+        .init(id: "banco", titulo: "Cuenta de banco", sub: "Corriente o nómina, con tarjeta de débito",
+              icono: "banco", grupo: "gastar", forma: "cuenta", clase: "banco",
+              busca: "nomina corriente debito banreservas popular bhd scotiabank"),
+        .init(id: "efectivo", titulo: "Efectivo", sub: "Lo que cargas en la cartera",
+              icono: "billete", grupo: "gastar", forma: "cuenta", clase: "efectivo",
+              busca: "cash dinero cartera bolsillo"),
+        .init(id: "billetera", titulo: "Billetera digital", sub: "PayPal, tPago, Qik…",
+              icono: "telefono", grupo: "gastar", forma: "cuenta", clase: "billetera",
+              busca: "paypal tpago qik wally azul app movil wallet"),
+
+        .init(id: "ahorro", titulo: "Ahorro o certificado", sub: "Dinero guardado que no tocas",
+              icono: "hucha", grupo: "invertir", forma: "cuenta", clase: "ahorro",
+              busca: "certificado plazo fijo cdt ahorros"),
+        .init(id: "acciones", titulo: "Acciones", sub: "En una casa de bolsa o app",
+              icono: "chart.line.uptrend.xyaxis", grupo: "invertir", forma: "cuenta", clase: "inversion",
+              busca: "bolsa broker etf stocks acciones"),
+        .init(id: "fondo", titulo: "Fondo de inversión", sub: "Fondos mutuos o de pensión voluntaria",
+              icono: "chart.bar.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
+              busca: "mutuo pension afp fondo"),
+        .init(id: "cripto", titulo: "Criptomonedas", sub: "Bitcoin, USDT y otras",
+              icono: "bitcoinsign.circle", grupo: "invertir", forma: "cuenta", clase: "inversion",
+              busca: "bitcoin btc usdt ethereum binance cripto crypto"),
+        .init(id: "inmueble", titulo: "Bienes raíces", sub: "Casa, solar o apartamento",
+              icono: "casa", grupo: "invertir", forma: "cuenta", clase: "inversion",
+              busca: "casa apartamento solar terreno inmueble propiedad"),
+        .init(id: "metales", titulo: "Metales", sub: "Oro o plata",
+              icono: "circle.hexagongrid.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
+              busca: "oro plata metal lingote"),
+
+        .init(id: "tarjeta", titulo: "Tarjeta de crédito", sub: "Con límite, día de corte y día de pago",
+              icono: "tarjeta", grupo: "credito", forma: "tarjeta",
+              busca: "visa mastercard amex credito limite corte"),
+        .init(id: "linea", titulo: "Línea de crédito", sub: "Dinero del banco que usas y repones",
+              icono: "arrow.left.arrow.right", grupo: "credito", forma: "tarjeta",
+              busca: "linea sobregiro revolvente credito"),
+
+        .init(id: "debo", titulo: "Yo debo", sub: "Préstamo del banco, del carro o de alguien",
+              icono: "arrow.down", grupo: "deudas", forma: "prestamo", sentido: "debo",
+              busca: "prestamo hipoteca carro vehiculo debo deuda fiado"),
+        .init(id: "medeben", titulo: "Me deben", sub: "Lo que le prestaste a un amigo o familiar",
+              icono: "arrow.up", grupo: "deudas", forma: "prestamo", sentido: "meDeben",
+              busca: "me deben prestado fiado cobrar"),
+
+        .init(id: "membresia", titulo: "Membresía", sub: "Gimnasio, club, supermercado",
+              icono: "star", grupo: "prepago", forma: "cuenta", clase: "billetera",
+              busca: "gimnasio gym club socio supermercado puntos"),
+        .init(id: "transporte", titulo: "Tarjeta de transporte", sub: "Metro, OMSA, peaje",
+              icono: "auto", grupo: "prepago", forma: "cuenta", clase: "billetera",
+              busca: "metro omsa peaje paso rapido transporte"),
+        .init(id: "escolar", titulo: "Tarjeta escolar", sub: "Comedor o cafetería",
+              icono: "birrete", grupo: "prepago", forma: "cuenta", clase: "billetera",
+              busca: "colegio escuela comedor cafeteria"),
+        .init(id: "otra", titulo: "Otra con saldo", sub: "Cualquier tarjeta que recargas",
+              icono: "tag", grupo: "prepago", forma: "cuenta", clase: "billetera",
+              busca: "regalo gift recarga saldo prepago")
+    ]
 }
 
 // ── Las hojas de la WEB, dibujadas en nativo ────────────────────────────────

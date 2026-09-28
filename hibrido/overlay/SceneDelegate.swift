@@ -293,7 +293,14 @@ extension TestVC {
             CNMenuEstado.shared.titulos = false
             barra.pintar(activa: estado.activa, titulos: false)
             vista = AnyView(CNMovs(datos: datos)); estado.activa = "movs"
+        case "plan-aro":
+            UserDefaults.standard.set(true, forKey: "chinola.planAro")
+            datos.cargarPlan(json: TestVC.planDeMuestra)
+            vista = AnyView(CNPlan(datos: datos)); estado.activa = "plan"
         case "plan", "metas":
+            // Que «plan» salga siempre en barra, aunque una captura anterior
+            // haya dejado puesto el aro.
+            UserDefaults.standard.set(false, forKey: "chinola.planAro")
             if cual == "metas" {
                 datos.cargarPlan(json: TestVC.planDeMuestra
                     .replacingOccurrences(of: "\"tab\":\"presupuesto\"", with: "\"tab\":\"metas\"")
