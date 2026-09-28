@@ -103,12 +103,16 @@ jobs:
           sleep 18
           xcrun simctl io "$UDID" screenshot "1-de-fabrica.png" || true
 
-          echo "=== 2) controlador de CHINOLA ==="
-          xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
-          sleep 2
-          SIMCTL_CHILD_CN_SIN="nativo,cortina" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
-          sleep 20
-          xcrun simctl io "$UDID" screenshot "2-de-chinola.png" || true
+          n=1
+          for COMBO in "nativo,cortina,flotante,barra,orilla,eval,plugins,fuentes,tema,acciones,modo,layout,avisos,traits" "nativo,cortina,flotante,barra,orilla,eval,plugins" "nativo,cortina,layout" "nativo,cortina,acciones"; do
+            n=$((n+1))
+            echo "=== Chinola sin: $COMBO ==="
+            xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+            sleep 2
+            SIMCTL_CHILD_CN_SIN="$COMBO" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+            sleep 19
+            xcrun simctl io "$UDID" screenshot "$n-chinola-$(echo $COMBO | md5 -q 2>/dev/null | cut -c1-6 || echo $n).png" || true
+          done
           echo "=== ¿sigue vivo el proceso? ==="
           xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolareal || echo "(NO está vivo → crasheó)"
           echo "=== crash ==="

@@ -190,19 +190,21 @@ class ChinolaViewController: CAPBridgeViewController {
         // En iOS 17 y más, `traitCollectionDidChange` ya no se llama: hay que
         // apuntarse al cambio. Sin esto, poner el teléfono en oscuro no movía
         // la app hasta reiniciarla.
-        if #available(iOS 17.0, *) {
+        if #available(iOS 17.0, *), !sin("traits") {
             registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (vc: ChinolaViewController, _) in
                 vc.avisarDelModo()
             }
         }
         // Las tipografías de la marca, antes de pintar nada.
-        CNFuentes.registrar()
+        if !sin("fuentes") { CNFuentes.registrar() }
         // Y el tema de la última vez: la primera pantalla sale ya con sus
         // colores, su letra y su moneda.
-        datos.temaGuardado()
-        conectarAcciones()
+        if !sin("tema") { datos.temaGuardado() }
+        if !sin("acciones") { conectarAcciones() }
+        if !sin("avisos") {
         NotificationCenter.default.addObserver(self, selector: #selector(avisarDelModo),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
+        }
         if !sin("orilla") { montarOrilla() }
         // El bloqueo con Face ID: se tapa al irse, se pide al volver.
         NotificationCenter.default.addObserver(self, selector: #selector(alIrse),
@@ -288,7 +290,7 @@ class ChinolaViewController: CAPBridgeViewController {
             }
             s.eval("window.__chinolaPon && window.__chinolaPon(\(s.comillas(clave)), \(js))")
         }
-        vigilarModo()
+        if !sin("modo") { vigilarModo() }
         // Lo NATIVO desde el primer fotograma. Sin esto, al abrir se veía el
         // tablero de la WEB hasta que se tocaba una pestaña: la app empezaba
         // enseñando justo lo que ya no usa.
@@ -301,6 +303,7 @@ class ChinolaViewController: CAPBridgeViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        if sin("layout") { return }
         barra.ajustar()
         apuntarPestanas()
         avisarAltoBarra()
