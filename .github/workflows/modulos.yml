@@ -1,0 +1,77 @@
+name: ¿Arrancan los módulos dentro de la app?
+
+# Una app Capacitor de fábrica con una página de tres líneas, para responder una
+# sola pregunta: ¿se ejecuta un <script type="module"> cuando la app está
+# empaquetada (capacitor://localhost), o lo bloquea el navegador?
+#
+# Importa porque su manejador de archivos solo manda cabeceras de CORS en live
+# reload, y un módulo se pide SIEMPRE en modo CORS. Si la respuesta es que no
+# arranca, esa es la causa de que una app entera se quede en blanco sin dar un
+# solo error: el error es del navegador, no del código.
+#
+# Aquí no va nada de Chinola: solo la pregunta.
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['hibrido/www/probe/**', '.github/workflows/modulos.yml']
+
+jobs:
+  probar:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Montar una app Capacitor de fábrica con la página de prueba
+        run: |
+          mkdir -p sonda/www && cd sonda
+          cp -R ../hibrido/www/probe/* www/
+          npm init -y >/dev/null
+          npm i @capacitor/core@latest @capacitor/cli@latest @capacitor/ios@latest >/dev/null 2>&1
+          cat > capacitor.config.json <<'JSON'
+          { "appId": "do.com.fente.sondamodulos", "appName": "Sonda", "webDir": "www",
+            "server": { "iosScheme": "capacitor" } }
+          JSON
+          npx cap add ios
+          npx cap sync ios
+          echo "=== lo que se empaqueta ==="; ls -R ios/App/App/public | head -20
+
+      - name: Compilar para simulador
+        run: |
+          set -o pipefail
+          cd sonda
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Debug -sdk iphonesimulator \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO 2>&1 | tail -20
+
+      - name: Lanzar y fotografiar la respuesta
+        run: |
+          cd sonda
+          APP=$(find build/Build/Products -name "App.app" -maxdepth 3 | head -1)
+          # El runtime MÁS NUEVO, que es donde está el comportamiento que se
+          # quiere comprobar: en uno viejo la respuesta podría ser otra.
+          RT=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; rs=[r for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and "SimRuntime.iOS" in r["identifier"]]; rs.sort(key=lambda r:[int(n) for n in r["version"].split(".")]); print(rs[-1]["identifier"], rs[-1]["version"])')
+          RT_ID=$(echo "$RT" | cut -d' ' -f1); RT_VER=$(echo "$RT" | cut -d' ' -f2)
+          echo "runtime: iOS $RT_VER"
+          MODELO=$(xcrun simctl list devicetypes -j | python3 -c 'import json,sys; ns=[d["name"] for d in json.load(sys.stdin)["devicetypes"]]; print(next((q for q in ["iPhone 17 Pro","iPhone 16 Pro","iPhone 16"] if q in ns), "iPhone 16 Pro"))')
+          xcrun simctl delete "sonda" 2>/dev/null || true
+          UDID=$(xcrun simctl create "sonda" "$MODELO" "$RT_ID")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" do.com.fente.sondamodulos || true
+          sleep 8
+          xcrun simctl io "$UDID" screenshot "respuesta-ios$RT_VER.png" || true
+          echo "=== lo que dijo el webview ==="
+          xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "App"' --style compact 2>/dev/null | grep -iE "module|cors|script|blocked" | head -20 || true
+
+      - name: Subir la respuesta
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: respuesta
+          path: sonda/*.png

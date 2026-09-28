@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>¿arrancan los módulos?</title>
+<style>
+  html,body{margin:0;background:#fff;color:#111;font:16px/1.5 -apple-system,system-ui,sans-serif;padding:70px 18px}
+  h1{font-size:21px;margin:0 0 14px}
+  .r{font-size:19px;font-weight:800;margin:10px 0}
+  .si{color:#137d41} .no{color:#c0392b}
+  pre{white-space:pre-wrap;word-break:break-word;font-size:12px;color:#555;background:#f2f2f2;padding:10px;border-radius:8px}
+</style>
+<!-- LA PREGUNTA, EN DOS LÍNEAS.
+     Un <script type="module"> se pide SIEMPRE en modo CORS. El manejador de
+     Capacitor solo manda cabeceras de CORS en live reload, así que empaquetado
+     no manda ninguna. Si esa es la causa de la pantalla en blanco, aquí el
+     módulo no corre y el clásico sí. -->
+<script type="module" src="./modulo.js"></script>
+<script src="./clasico.js"></script>
+</head>
+<body>
+<h1>¿Arrancan los módulos dentro de la app?</h1>
+<div id="mod" class="r">módulo: …</div>
+<div id="cla" class="r">clásico: …</div>
+<pre id="det">midiendo…</pre>
+<script>
+  // Los módulos son diferidos: corren después de parsear. Se mira al final.
+  window.addEventListener('load', function () {
+    setTimeout(async function () {
+      var m = window.__modulo, c = window.__clasico;
+      document.getElementById('mod').textContent = 'módulo: ' + (m || 'NO corrió');
+      document.getElementById('mod').className = 'r ' + (m ? 'si' : 'no');
+      document.getElementById('cla').textContent = 'clásico: ' + (c || 'NO corrió');
+      document.getElementById('cla').className = 'r ' + (c ? 'si' : 'no');
+      var l = ['url: ' + location.href, 'scripts: ' + document.scripts.length];
+      try {
+        var r = await fetch('./modulo.js');
+        l.push('al pedir el módulo: ' + r.status + ' · ' + (r.headers.get('content-type') || 'sin tipo'));
+        l.push('permite CORS: ' + (r.headers.get('access-control-allow-origin') || 'NO manda cabecera'));
+      } catch (e) { l.push('al pedirlo FALLÓ: ' + e); }
+      document.getElementById('det').textContent = l.join('\n');
+    }, 400);
+  });
+</script>
+</body>
+</html>
