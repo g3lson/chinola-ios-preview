@@ -3480,7 +3480,7 @@ struct CNPlan: View {
                     Image(systemName: c.excedido ? "arrow.up.right" : "arrow.right")
                         .font(cnLetra(12, .bold)).foregroundColor(c.tinta)
                         .padding(.top, 1)
-                    nota.font(cnLetra(12.5)).foregroundColor(CNC.ink.opacity(0.75))
+                    Text(nota).font(cnLetra(12.5)).foregroundColor(CNC.ink.opacity(0.75))
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
@@ -3493,18 +3493,24 @@ struct CNPlan: View {
 
     /// EN ARO: el porcentaje de un vistazo y las cifras al lado.
     private func tarjetaAro(_ c: CuentasPres) -> some View {
-        VStack(spacing: 14) {
+        // Los textos, armados ANTES. Encadenados con `+` dentro del cuerpo, el
+        // compilador de Swift se atraganta intentando deducir los tipos.
+        let rotulo: String = c.excedido ? cnT("Te pasaste por") : cnT("Te queda")
+        let cifra: String = c.hayLimite ? cnDinero(abs(c.limite - c.gastado)) : "—"
+        let limiteTxt: String = c.hayLimite ? cnDinero(c.limite) : "—"
+        let detalle: String = cnT("Gastaste") + " " + cnDinero(c.gastado) + " " + cnT("de") + " " + limiteTxt
+        let quedanTxt: String = String(c.diasQuedan) + " " + cnT("días")
+        let veces: Double = c.hayLimite ? c.gastado / c.limite : 0
+        return VStack(spacing: 14) {
             HStack(alignment: .center, spacing: 16) {
-                CNAroPresupuesto(veces: c.hayLimite ? c.gastado / c.limite : 0, tinta: c.tinta)
+                CNAroPresupuesto(veces: veces, tinta: c.tinta)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(c.excedido ? cnT("Te pasaste por") : cnT("Te queda"))
-                        .font(cnLetra(13)).foregroundColor(CNC.pmut)
-                    Text(c.hayLimite ? cnDinero(abs(c.limite - c.gastado)) : "—")
+                    Text(rotulo).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                    Text(cifra)
                         .font(cnLetra(27, .heavy))
                         .foregroundColor(c.excedido ? CNC.neg : CNC.pos)
                         .lineLimit(1).minimumScaleFactor(0.5)
-                    Text(cnT("Gastaste") + " " + cnDinero(c.gastado)
-                         + " " + cnT("de") + " " + (c.hayLimite ? cnDinero(c.limite) : "—"))
+                    Text(detalle)
                         .font(cnLetra(12)).foregroundColor(CNC.pmut)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -3512,11 +3518,11 @@ struct CNPlan: View {
             }
             Divider()
             HStack(alignment: .top, spacing: 8) {
-                pie(cnT("Límite"), c.hayLimite ? cnDinero(c.limite) : "—")
+                pie(cnT("Límite"), limiteTxt)
                 Spacer(minLength: 0)
                 pie(cnT("Gastado"), cnDinero(c.gastado))
                 Spacer(minLength: 0)
-                pie(cnT("Quedan"), "\(c.diasQuedan) " + cnT("días"))
+                pie(cnT("Quedan"), quedanTxt)
             }
         }
         .padding(16).tarjetaCN()
@@ -3613,18 +3619,17 @@ struct CNPlan: View {
     }
 
     /// La frase de abajo: el ritmo y, si te pasaste, quién lo explica.
-    private func notaPres(_ c: CuentasPres) -> Text? {
+    private func notaPres(_ c: CuentasPres) -> String? {
         guard c.hayLimite, c.porDiaLimite > 0 else { return nil }
-        var t = Text(cnT("Ibas a") + " ") + Text(cnDinero(c.porDiaLimite)).fontWeight(.semibold)
-            + Text(" " + cnT("por día") + ". " + cnT("Vas a") + " ")
-            + Text(cnDinero(c.porDiaReal)).fontWeight(.semibold) + Text(".")
+        var t: String = cnT("Ibas a") + " " + cnDinero(c.porDiaLimite) + " " + cnT("por día") + ". "
+        t += cnT("Vas a") + " " + cnDinero(c.porDiaReal) + "."
         if c.culpables.count == 1 {
-            t = t + Text(" " + c.culpables[0] + " " + cnT("explica el") + " \(c.pctCulpa)% " + cnT("del exceso") + ".")
+            t += " " + c.culpables[0] + " " + cnT("explica el") + " " + String(c.pctCulpa) + "% " + cnT("del exceso") + "."
         } else if c.culpables.count > 1 {
-            t = t + Text(" " + c.culpables.joined(separator: " " + cnT("y") + " ")
-                         + " " + cnT("explican el") + " \(c.pctCulpa)% " + cnT("del exceso") + ".")
+            let quienes: String = c.culpables.joined(separator: " " + cnT("y") + " ")
+            t += " " + quienes + " " + cnT("explican el") + " " + String(c.pctCulpa) + "% " + cnT("del exceso") + "."
         } else if c.diasQuedan > 0 {
-            t = t + Text(" " + cnT("Quedan") + " \(c.diasQuedan) " + cnT("días") + ".")
+            t += " " + cnT("Quedan") + " " + String(c.diasQuedan) + " " + cnT("días") + "."
         }
         return t
     }
