@@ -7,10 +7,14 @@ import AppIntents
 // app: Siri lee la respuesta.
 @available(iOS 16.0, *)
 struct CNHablarIntent: AppIntent {
+    // `LocalizedStringResource` se traduce con el catálogo de cadenas de la
+    // app, igual que las frases: en inglés y en francés salen en su idioma.
     static var title: LocalizedStringResource = "Hablar con Chinola"
     static var description = IntentDescription("Anota un gasto o pregunta por tu dinero, en tus palabras.")
     static var openAppWhenRun = false
 
+    // Siri pregunta esto cuando la frase no trae el texto dentro (que es
+    // siempre: los atajos no admiten texto libre en la frase).
     @Parameter(title: "Qué", requestValueDialog: "¿Qué anoto o qué quieres saber?")
     var texto: String
 
@@ -27,7 +31,11 @@ struct CNHablarIntent: AppIntent {
         req.setValue("application/json", forHTTPHeaderField: "content-type")
         req.setValue("Bearer " + token, forHTTPHeaderField: "authorization")
         req.timeoutInterval = 25
-        req.httpBody = try? JSONSerialization.data(withJSONObject: ["texto": texto, "canal": "siri"])
+        // El idioma del teléfono va con la pregunta: Siri en francés tiene que
+        // recibir la respuesta en francés, no en español.
+        let idioma = Locale.preferredLanguages.first.map { String($0.prefix(2)) } ?? "es"
+        req.httpBody = try? JSONSerialization.data(
+            withJSONObject: ["texto": texto, "canal": "siri", "idioma": idioma])
         do {
             let (datos, resp) = try await URLSession.shared.data(for: req)
             let j = (try? JSONSerialization.jsonObject(with: datos)) as? [String: Any] ?? [:]
@@ -51,6 +59,12 @@ struct CNAtajos: AppShortcutsProvider {
             intent: CNHablarIntent(),
             // Las frases de Siri no admiten texto libre dentro: se dice «Anota en
             // Chinola» y Siri pregunta «¿Qué anoto?»; ahí va la frase entera.
+            // Estas frases NO son texto suelto: son las claves del catálogo
+            // `AppShortcuts.xcstrings`, donde están sus versiones en inglés y
+            // francés. Apple registra los atajos solo para los idiomas en que
+            // la app está localizada, así que sin ese catálogo —y sin los
+            // .lproj de cada idioma— Siri en inglés o en francés no casa con
+            // ninguna y se limita a abrir la app.
             phrases: [
                 "Anota en \(.applicationName)",
                 "Dile a \(.applicationName)",

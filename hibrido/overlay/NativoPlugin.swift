@@ -19,6 +19,7 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "abrirTendencia", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "menuActiva", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "menuTitulos", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "flotante", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "datos", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "tema", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "aviso", returnType: CAPPluginReturnPromise),
@@ -190,6 +191,19 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func menuTitulos(_ call: CAPPluginCall) {
         let on = call.getBool("on") ?? true
         DispatchQueue.main.async { CNMenuEstado.shared.titulos = on; CNMenuEstado.shared.alRepintar(); call.resolve() }
+    }
+
+    /// El botón flotante de Chino: puesto o no, y dónde quedó (0…1).
+    @objc func flotante(_ call: CAPPluginCall) {
+        let puesto = call.getBool("puesto") ?? false
+        let x = CGFloat(call.getDouble("x") ?? 1)
+        let y = CGFloat(call.getDouble("y") ?? 0.72)
+        DispatchQueue.main.async {
+            CNFlotante.shared.puesto = puesto
+            CNFlotante.shared.x = max(0, min(1, x))
+            CNFlotante.shared.y = max(0, min(1, y))
+        }
+        call.resolve()
     }
 
     @objc func abrirTendencia(_ call: CAPPluginCall) {

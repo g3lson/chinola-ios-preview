@@ -233,6 +233,7 @@ class ChinolaViewController: CAPBridgeViewController {
         }
 
         montarBarra()
+        montarFlotante()
         vigilarModo()
         // Lo NATIVO desde el primer fotograma. Sin esto, al abrir se veía el
         // tablero de la WEB hasta que se tocaba una pestaña: la app empezaba
@@ -1853,6 +1854,35 @@ class ChinolaViewController: CAPBridgeViewController {
         let alto = barra.barra.frame.height + view.safeAreaInsets.bottom
         guard alto > 0 else { return }
         eval("document.documentElement.style.setProperty('--menu-alto','\(Int(alto.rounded()))px')")
+    }
+
+    /// EL BOTÓN DE CHINO, POR ENCIMA DE TODO.
+    ///
+    /// Va en su propio contenedor transparente, colocado después de la barra
+    /// del menú: la gracia es poder hablarle sin salir de donde estés, también
+    /// desde encima de la barra. El contenedor no recibe toques salvo en el
+    /// botón (`CNPasaToques`), que si no taparía la pantalla entera.
+    private weak var flotanteVista: UIView?
+    private func montarFlotante() {
+        guard flotanteVista == nil else { return }
+        CNFlotante.shared.alTocar = { [weak self] in self?.abrirCharla() }
+        CNFlotante.shared.alMover = { [weak self] x, y in
+            // Dónde quedó se guarda en la web, que es lo que sobrevive a
+            // cerrar la app.
+            self?.eval("window.__chinolaFlotante && window.__chinolaFlotante(\(x), \(y))")
+        }
+        let host = CNPasaToquesHost(rootView: AnyView(CNBotonFlotante(datos: datos)))
+        host.view.backgroundColor = .clear
+        host.view.isOpaque = false
+        addChild(host); view.addSubview(host.view); host.didMove(toParent: self)
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            host.view.topAnchor.constraint(equalTo: view.topAnchor),
+            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        flotanteVista = host.view
     }
 
     private func montarBarra() {

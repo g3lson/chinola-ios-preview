@@ -7368,3 +7368,114 @@ struct CNMosaico: View {
             .foregroundColor(CNC.line))
     }
 }
+
+// ── El botón de Chino, flotando ─────────────────────────────────────────────
+//
+// Un botón que se arrastra a donde estorbe menos y abre la conversación de un
+// toque. Va por encima de todo —también de la barra del menú— porque la gracia
+// es poder hablarle sin salir de donde estés.
+//
+// Se queda pegado al borde más cercano al soltarlo, como la burbuja de una
+// videollamada: en medio de la pantalla tapa lo que estás mirando, y dejarlo
+// donde el dedo lo soltó acaba siempre estorbando.
+
+/// Dónde vive el botón y si está puesto. Lo manda la web (es un ajuste más) y
+/// la posición se guarda ahí mismo, que es lo que sobrevive a cerrar la app.
+final class CNFlotante: ObservableObject {
+    static let shared = CNFlotante()
+    /// Puesto o no. Falso de partida hasta que la web diga lo suyo.
+    @Published var puesto = false
+    /// Dónde quedó, en proporción de la pantalla (0…1), para que sobreviva a
+    /// girar el teléfono o cambiar de aparato.
+    @Published var x: CGFloat = 1
+    @Published var y: CGFloat = 0.72
+    /// Qué hacer al tocarlo.
+    var alTocar: () -> Void = {}
+    /// Dónde ha quedado, para que la web lo guarde.
+    var alMover: (CGFloat, CGFloat) -> Void = { _, _ in }
+}
+
+struct CNBotonFlotante: View {
+    @ObservedObject var mando = CNFlotante.shared
+    @ObservedObject var datos: CNDatos
+    @State private var arrastre: CGSize = .zero
+    @State private var llevando = false
+
+    private let lado: CGFloat = 56
+    private let margen: CGFloat = 14
+
+    var body: some View {
+        GeometryReader { g in
+            if mando.puesto {
+                let libre = CGRect(x: margen, y: g.safeAreaInsets.top + margen,
+                                   width: max(0, g.size.width - margen * 2 - lado),
+                                   height: max(0, g.size.height - g.safeAreaInsets.top - margen * 2 - lado))
+                boton
+                    .position(x: libre.minX + libre.width * mando.x + lado / 2 + arrastre.width,
+                              y: libre.minY + libre.height * mando.y + lado / 2 + arrastre.height)
+                    .gesture(
+                        DragGesture(minimumDistance: 4)
+                            .onChanged { v in
+                                if !llevando { llevando = true; UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+                                arrastre = v.translation
+                            }
+                            .onEnded { v in
+                                // Al soltar, al borde más cercano: en medio de
+                                // la pantalla tapa justo lo que estás mirando.
+                                let px = libre.minX + libre.width * mando.x + v.translation.width
+                                let py = libre.minY + libre.height * mando.y + v.translation.height
+                                let nx: CGFloat = px + lado / 2 < g.size.width / 2 ? 0 : 1
+                                let ny = max(0, min(1, libre.height > 0 ? (py - libre.minY) / libre.height : 0.5))
+                                arrastre = .zero
+                                llevando = false
+                                withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
+                                    mando.x = nx; mando.y = ny
+                                }
+                                mando.alMover(nx, ny)
+                            }
+                    )
+            }
+        }
+        .ignoresSafeArea()
+        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: mando.puesto)
+    }
+
+    private var boton: some View {
+        Button { UISelectionFeedbackGenerator().selectionChanged(); mando.alTocar() } label: {
+            ZStack {
+                Circle().fill(CNC.acc)
+                // El dibujo de Chino si la web ya lo mandó; si no, su inicial.
+                if let img = cnImagenBase64(datos.mascota?.chinolo ?? "") {
+                    Image(uiImage: img).resizable().scaledToFit().padding(7)
+                } else {
+                    Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                        .font(.system(size: 21, weight: .semibold))
+                        .foregroundColor(cnSobre(CNC.acc))
+                }
+            }
+            .frame(width: lado, height: lado)
+            .shadow(color: .black.opacity(llevando ? 0.28 : 0.18), radius: llevando ? 18 : 10, y: llevando ? 8 : 4)
+            .scaleEffect(llevando ? 1.08 : 1)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(cnT("Hablar con Chino"))
+    }
+}
+
+/// Un contenedor que solo se queda con los toques que caen en algo suyo.
+///
+/// El botón flotante ocupa la pantalla entera para poder colocarse donde sea,
+/// pero si se quedara con todos los toques no se podría usar nada de lo que
+/// hay debajo. Esto deja pasar todo lo que no dé en el botón.
+final class CNPasaToques: UIView {
+    override func point(inside punto: CGPoint, with evento: UIEvent?) -> Bool {
+        for hija in subviews where !hija.isHidden && hija.alpha > 0.01 {
+            if hija.point(inside: convert(punto, to: hija), with: evento) { return true }
+        }
+        return false
+    }
+}
+
+final class CNPasaToquesHost: UIHostingController<AnyView> {
+    override func loadView() { view = CNPasaToques() }
+}
