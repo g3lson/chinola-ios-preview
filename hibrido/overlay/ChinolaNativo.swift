@@ -6897,8 +6897,12 @@ struct CNTarjetaApilada: View {
                 }
             }
         }
+        // El alto, dicho a las claras. Dejándolo al `Spacer` con un `minHeight`
+        // por fuera, la pila se quedaba con su alto natural y el pie no se
+        // llegaba a dibujar: quedaba un bloque de color vacío debajo del
+        // número.
         .padding(17)
-        .frame(maxWidth: .infinity, minHeight: altoFrente, alignment: .topLeading)
+        .frame(maxWidth: .infinity, height: altoFrente, alignment: .topLeading)
         .background(
             ZStack(alignment: .bottomTrailing) {
                 c.color
