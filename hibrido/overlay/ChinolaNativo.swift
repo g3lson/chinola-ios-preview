@@ -3416,46 +3416,156 @@ struct CNPlan: View {
             .labelsHidden()
     }
 
-    /// Lo gastado del mes contra el presupuesto, con su aviso si se pasa.
-    /// Va suelta, como la tarjeta de patrimonio en Cuentas.
+    /// LO GASTADO CONTRA EL PRESUPUESTO.
+    ///
+    /// Los números los saca Swift de la libreta (`CNCalculo`), no la web: ya
+    /// estaban ahí y así se puede decir cuánto te pasaste, a qué ritmo ibas y
+    /// a cuál vas, que con los textos ya formateados que manda la web no se
+    /// podía.
     private func resumenPres(_ m: CNPlanModelo) -> some View {
-        let tinta = m.presColor.isEmpty ? CNC.pos : cnColor(hexString: m.presColor)
-        let aviso = m.presAvisoTinta.isEmpty ? CNC.acc : cnColor(hexString: m.presAvisoTinta)
-        return VStack(alignment: .leading, spacing: 12) {
-            // Cuánto llevas, y a la derecha contra cuánto. El porcentaje va
-            // arriba del todo: es la lectura rápida, y antes había que
-            // deducirlo mirando el largo de la barra.
-            HStack(alignment: .lastTextBaseline, spacing: 10) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(cnT("Gastado")).font(cnLetra(12, .semibold)).foregroundColor(CNC.pmut)
-                    Text(m.presGastado).font(cnLetra(30, .heavy)).foregroundColor(tinta)
-                        .lineLimit(1).minimumScaleFactor(0.6)
-                }
+        let c = cuentasPres()
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(rotuloGastado()).font(cnLetra(13)).foregroundColor(CNC.pmut)
                 Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text("\(Int(m.presPct.rounded()))%")
-                        .font(cnLetra(15, .heavy)).foregroundColor(tinta)
-                    Text("\(m.presDe) \(m.presTotal)").font(cnLetra(12.5))
-                        .foregroundColor(CNC.pmut).lineLimit(1).minimumScaleFactor(0.7)
+                if c.hayLimite {
+                    Text("\(c.pct)%")
+                        .font(cnLetra(13, .heavy)).foregroundColor(c.tinta)
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(c.tinta.opacity(0.12), in: Capsule())
                 }
             }
-            CNBarraProgreso(parte: m.presPct / 100, color: tinta, alto: 10)
-            if !m.presNota.isEmpty {
-                // El aviso, en su propia franja teñida: colgando suelto debajo
-                // de la barra se leía como un pie de página cualquiera.
+            Text(cnDinero(c.gastado)).font(cnLetra(34, .heavy)).foregroundColor(CNC.ink)
+                .lineLimit(1).minimumScaleFactor(0.5)
+            CNBarraPresupuesto(parte: c.parteVerde, excedido: c.excedido, tinta: c.tinta)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(cnT("Tu límite")).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                    Text(c.hayLimite ? cnDinero(c.limite) : "—")
+                        .font(cnLetra(14, .semibold)).foregroundColor(CNC.ink)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(c.excedido ? cnT("Te pasaste") : cnT("Te queda"))
+                        .font(cnLetra(12)).foregroundColor(CNC.pmut)
+                    Text(c.hayLimite ? cnDinero(abs(c.limite - c.gastado)) : "—")
+                        .font(cnLetra(14, .semibold))
+                        .foregroundColor(c.excedido ? CNC.neg : CNC.pos)
+                }
+            }
+            if let nota = notaPres(c) {
                 HStack(alignment: .top, spacing: 9) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(cnLetra(13)).foregroundColor(aviso)
-                    Text(m.presNota).font(cnLetra(12.5)).foregroundColor(CNC.ink.opacity(0.75))
+                    Image(systemName: c.excedido ? "arrow.up.right" : "arrow.right")
+                        .font(cnLetra(12, .bold)).foregroundColor(c.tinta)
+                        .padding(.top, 1)
+                    nota.font(cnLetra(12.5)).foregroundColor(CNC.ink.opacity(0.75))
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 11).padding(.vertical, 9)
-                .background(aviso.opacity(0.12),
-                            in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .padding(.horizontal, 11).padding(.vertical, 10)
+                .background(CNC.soft, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
             }
         }
         .padding(16).tarjetaCN()
+    }
+
+    /// Lo que enseña la tarjeta, sacado de la libreta.
+    private struct CuentasPres {
+        var limite: Double = 0
+        var gastado: Double = 0
+        var pct: Int = 0
+        var hayLimite: Bool { limite > 0 }
+        var excedido: Bool { limite > 0 && gastado > limite }
+        /// Cuánto de la barra va en verde. Pasado el tope, el verde ocupa la
+        /// parte que SÍ cabía y el resto es el exceso.
+        var parteVerde: Double = 0
+        var tinta: Color = CNC.pos
+        /// Ritmo: lo que podías gastar al día y lo que llevas gastando.
+        var porDiaLimite: Double = 0
+        var porDiaReal: Double = 0
+        var diasQuedan: Int = 0
+        /// Las dos categorías que más se pasaron y qué parte del exceso son.
+        var culpables: [String] = []
+        var pctCulpa: Int = 0
+    }
+
+    private func cuentasPres() -> CuentasPres {
+        var c = CuentasPres()
+        let p = datos.periodoCalculo
+        let pres = CNCalculo.presupuesto(datos.libreta, p)
+        c.limite = pres.limiteTotal
+        c.gastado = pres.gastadoTotal
+        guard c.limite > 0 else { return c }
+        c.pct = Int((c.gastado / c.limite * 100).rounded())
+        c.parteVerde = c.gastado > c.limite ? c.limite / c.gastado : c.gastado / c.limite
+        c.tinta = c.gastado > c.limite ? CNC.neg : (c.pct >= 85 ? CNC.acc : CNC.pos)
+
+        // El ritmo. Los días salen del período: de un mes pasado se cuenta
+        // entero, del que corre solo hasta hoy.
+        let (total, pasados) = diasDelPeriodo(p)
+        c.diasQuedan = max(0, total - pasados)
+        c.porDiaLimite = c.limite / Double(max(1, total))
+        c.porDiaReal = c.gastado / Double(max(1, pasados))
+
+        // Quién explica el exceso: las dos que más se pasaron de SU tope.
+        let exceso = c.gastado - c.limite
+        if exceso > 0 {
+            let pasadas = pres.filas
+                .filter { $0.limite > 0 && $0.gastado > $0.limite }
+                .sorted { ($0.gastado - $0.limite) > ($1.gastado - $1.limite) }
+                .prefix(2)
+            if !pasadas.isEmpty {
+                c.culpables = pasadas.map { cnT($0.categoria) }
+                let suyo = pasadas.reduce(0.0) { $0 + ($1.gastado - $1.limite) }
+                c.pctCulpa = Int((min(1, suyo / exceso) * 100).rounded())
+            }
+        }
+        return c
+    }
+
+    /// Cuántos días tiene el período y cuántos van. De un mes que ya pasó van
+    /// todos; del que corre, hasta hoy.
+    private func diasDelPeriodo(_ p: CNCalculo.Periodo) -> (total: Int, pasados: Int) {
+        let cal = Calendar.current
+        let f = CNFormateadores.iso
+        let hoy = Date()
+        if let ds = p.desde, let hs = p.hasta, let d = f.date(from: ds), let h = f.date(from: hs) {
+            let total = (cal.dateComponents([.day], from: d, to: h).day ?? 0) + 1
+            let vividos = (cal.dateComponents([.day], from: d, to: min(hoy, h)).day ?? 0) + 1
+            return (max(1, total), max(1, min(total, vividos)))
+        }
+        let ym = CNFormateadores.formato("yyyy-MM", loc: "en_US_POSIX")
+        guard let ini = ym.date(from: p.mes),
+              let rango = cal.range(of: .day, in: .month, for: ini) else { return (30, 30) }
+        let total = rango.count
+        guard cal.isDate(ini, equalTo: hoy, toGranularity: .month) else { return (total, total) }
+        return (total, max(1, min(total, cal.component(.day, from: hoy))))
+    }
+
+    /// «Gastado en septiembre», o «Gastado en el período» cuando es a medida.
+    private func rotuloGastado() -> String {
+        let p = datos.periodoCalculo
+        guard !p.aMedida,
+              let d = CNFormateadores.formato("yyyy-MM", loc: "en_US_POSIX").date(from: p.mes)
+        else { return cnT("Gastado en el período") }
+        return cnT("Gastado en") + " " + CNFormateadores.plantilla("MMMM").string(from: d)
+    }
+
+    /// La frase de abajo: el ritmo y, si te pasaste, quién lo explica.
+    private func notaPres(_ c: CuentasPres) -> Text? {
+        guard c.hayLimite, c.porDiaLimite > 0 else { return nil }
+        var t = Text(cnT("Ibas a") + " ") + Text(cnDinero(c.porDiaLimite)).fontWeight(.semibold)
+            + Text(" " + cnT("por día") + ". " + cnT("Vas a") + " ")
+            + Text(cnDinero(c.porDiaReal)).fontWeight(.semibold) + Text(".")
+        if c.culpables.count == 1 {
+            t = t + Text(" " + c.culpables[0] + " " + cnT("explica el") + " \(c.pctCulpa)% " + cnT("del exceso") + ".")
+        } else if c.culpables.count > 1 {
+            t = t + Text(" " + c.culpables.joined(separator: " " + cnT("y") + " ")
+                         + " " + cnT("explican el") + " \(c.pctCulpa)% " + cnT("del exceso") + ".")
+        } else if c.diasQuedan > 0 {
+            t = t + Text(" " + cnT("Quedan") + " \(c.diasQuedan) " + cnT("días") + ".")
+        }
+        return t
     }
 
     /// Las categorías del mes, en su sección. Sin botón de «+ Categoría»: el
@@ -3545,6 +3655,70 @@ struct CNPlan: View {
             Text(m.tituloTusMetas).font(cnLetra(13, .semibold))
                 .foregroundColor(CNC.pmut).textCase(nil)
         }
+    }
+}
+
+/// LA BARRA DEL PRESUPUESTO, EN DOS TRAMOS.
+///
+/// Mientras cabe dentro del tope es una barra normal. Cuando te pasas, la
+/// barra entera pasa a ser lo GASTADO: el tramo que sí cabía va en color y el
+/// resto —el exceso— va rayado, con una marca negra justo donde estaba el
+/// límite. Así se ve de un vistazo cuánto te pasaste, que con una barra
+/// normal llena hasta el tope no se distinguía «justo justo» de «el doble».
+struct CNBarraPresupuesto: View {
+    /// 0…1. Dentro del tope, lo gastado sobre el tope. Pasado el tope, la
+    /// parte de lo gastado que sí cabía.
+    let parte: Double
+    let excedido: Bool
+    let tinta: Color
+    var alto: CGFloat = 12
+
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width
+            let x = max(0, min(1, parte)) * w
+            ZStack(alignment: .leading) {
+                // El carril: gris cuando aún cabe, rayado cuando es el exceso.
+                if excedido {
+                    CNRayas(color: tinta)
+                        .frame(width: w, height: alto)
+                        .background(tinta.opacity(0.16))
+                } else {
+                    Rectangle().fill(CNC.soft).frame(width: w, height: alto)
+                }
+                Rectangle().fill(tinta).frame(width: x, height: alto)
+                if excedido {
+                    // Dónde estaba el límite.
+                    Rectangle().fill(CNC.ink)
+                        .frame(width: 2.5, height: alto + 6)
+                        .offset(x: max(0, x - 1.25), y: -3)
+                }
+            }
+            .clipShape(Capsule())
+            .frame(height: alto)
+        }
+        .frame(height: alto)
+    }
+}
+
+/// Las rayas diagonales del exceso.
+struct CNRayas: View {
+    let color: Color
+    var body: some View {
+        GeometryReader { g in
+            let paso: CGFloat = 9
+            let alto = g.size.height
+            Path { p in
+                var x = -alto
+                while x < g.size.width + alto {
+                    p.move(to: CGPoint(x: x, y: alto))
+                    p.addLine(to: CGPoint(x: x + alto, y: 0))
+                    x += paso
+                }
+            }
+            .stroke(color, style: StrokeStyle(lineWidth: 4, lineCap: .butt))
+        }
+        .allowsHitTesting(false)
     }
 }
 
