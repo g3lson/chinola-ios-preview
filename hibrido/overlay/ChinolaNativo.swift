@@ -7069,7 +7069,7 @@ struct CNTarjetaBloques: View {
             CNMosaico(piezas: piezas.map { (id: $0.id, label: $0.label, peso: $0.monto,
                                             color: $0.color, negativo: $0.color != cnColor(0x2f5bc4) && $0.color != cnColor(0x1f7a46)) },
                       queda: r.queda, oculto: oculto)
-                .frame(height: 168)
+                .frame(height: 190)
             HStack(spacing: 14) {
                 leyenda(cnT("Para gastar"), cnColor(0x1f7a46))
                 leyenda(cnT("Ahorro"), cnColor(0x2f5bc4))
@@ -7098,31 +7098,42 @@ struct CNMosaico: View {
     var body: some View {
         let suman = piezas.filter { !$0.negativo }
         let restan = piezas.filter { $0.negativo }
-        return VStack(spacing: 7) {
-            if !suman.isEmpty { fila(suman, alto: restan.isEmpty ? 1 : 0.56) }
-            if !restan.isEmpty { fila(restan, alto: suman.isEmpty ? 1 : 0.44, conQueda: true) }
+        // Las alturas, a mano. Repartiéndolas con prioridades de disposición
+        // la fila de abajo quedaba aplastada y se salía de la tarjeta.
+        return GeometryReader { g in
+            let h = g.size.height
+            let hueco: CGFloat = 7
+            let alto1 = restan.isEmpty ? h : (h - hueco) * 0.58
+            let alto2 = suman.isEmpty ? h : (h - hueco) * 0.42
+            VStack(spacing: hueco) {
+                if !suman.isEmpty {
+                    fila(suman, ancho: g.size.width).frame(height: alto1)
+                }
+                if !restan.isEmpty {
+                    fila(restan, ancho: g.size.width, conQueda: true).frame(height: alto2)
+                }
+            }
         }
     }
 
-    @ViewBuilder
     private func fila(_ ps: [(id: String, label: String, peso: Double, color: Color, negativo: Bool)],
-                      alto: CGFloat, conQueda: Bool = false) -> some View {
-        GeometryReader { g in
-            let total = max(1, ps.reduce(0) { $0 + $1.peso })
-            // El hueco de «te queda» ocupa lo que le toca al lado de las deudas.
-            let extra = conQueda && queda > 0 ? queda : 0
-            let todo = total + extra
-            HStack(spacing: 6) {
-                ForEach(ps, id: \.id) { p in
-                    bloque(p.label, p.peso, p.color, p.negativo)
-                        .frame(width: max(34, (g.size.width - CGFloat(ps.count) * 6) * CGFloat(p.peso / todo)))
-                }
-                if extra > 0 { hueco() }
+                      ancho: CGFloat, conQueda: Bool = false) -> some View {
+        let total = max(1, ps.reduce(0) { $0 + $1.peso })
+        // El hueco de «te queda» ocupa lo que le toca al lado de las deudas.
+        let extra = conQueda && queda > 0 ? queda : 0
+        let todo = total + extra
+        let cuantos = ps.count + (extra > 0 ? 1 : 0)
+        let libre = max(0, ancho - CGFloat(max(0, cuantos - 1)) * 6)
+        return HStack(spacing: 6) {
+            ForEach(ps, id: \.id) { p in
+                bloque(p.label, p.peso, p.color, p.negativo)
+                    .frame(width: max(58, libre * CGFloat(p.peso / todo)))
             }
-            .frame(height: g.size.height)
+            if extra > 0 {
+                elHueco().frame(width: max(72, libre * CGFloat(extra / todo)))
+            }
         }
-        .frame(maxHeight: .infinity)
-        .layoutPriority(alto)
+        .frame(width: ancho, alignment: .leading)
     }
 
     private func bloque(_ t: String, _ v: Double, _ c: Color, _ neg: Bool) -> some View {
@@ -7139,7 +7150,7 @@ struct CNMosaico: View {
         .background(c, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
-    private func hueco() -> some View {
+    private func elHueco() -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(cnT("Te queda")).font(cnLetra(11)).foregroundColor(CNC.pmut)
                 .lineLimit(2).minimumScaleFactor(0.8)
