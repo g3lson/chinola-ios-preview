@@ -579,9 +579,17 @@ struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = "
 
 struct CNMov: Decodable, Identifiable {
     var id: String = ""; var concepto: String = ""; var categoria: String = ""
-    /// Cuándo se anotó: el id empieza por los milisegundos del alta. Dentro
-    /// del mismo día, la última anotada va arriba.
-    var alta: Double { Double(String(id.prefix(13))) ?? 0 }
+    /// Cuándo se anotó. Dentro del mismo día, la última anotada va arriba.
+    ///
+    /// El id NO empieza por los milisegundos: lleva una letra delante —«m» un
+    /// movimiento, «tr» una transferencia, «dp» un duplicado, «im» uno
+    /// importado—. Leer trece caracteres a pelo se tragaba esa letra, `Double`
+    /// devolvía nil y TODOS los movimientos valían cero; entonces, dentro de
+    /// un mismo día, el orden acababa siendo el de inserción y el último que
+    /// anotabas se quedaba abajo. Ahora se salta lo que no sea número.
+    var alta: Double {
+        Double(id.drop(while: { !$0.isNumber }).prefix(13)) ?? 0
+    }
     static func masNuevaPrimero(_ a: CNMov, _ b: CNMov) -> Bool {
         a.fecha != b.fecha ? a.fecha > b.fecha : a.alta > b.alta
     }
