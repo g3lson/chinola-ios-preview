@@ -234,6 +234,9 @@ class ChinolaViewController: CAPBridgeViewController {
 
         montarBarra()
         montarFlotante()
+        // Si la web no da señales en diez segundos, avisar: la app en blanco no
+        // le dice nada a nadie, y su propio cartel queda debajo de lo nativo.
+        CNAvisoDeFallo.shared.vigilar()
         // Los ajustes de pantalla (la tarjeta de Cuentas, el presupuesto en aro,
         // el estilo de las pestañas) los guarda la WEB, que es lo que hace que
         // sean los mismos en el teléfono, en la web y en la PWA. Antes eran

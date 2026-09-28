@@ -59,12 +59,15 @@ struct CNAtajos: AppShortcutsProvider {
             intent: CNHablarIntent(),
             // Las frases de Siri no admiten texto libre dentro: se dice «Anota en
             // Chinola» y Siri pregunta «¿Qué anoto?»; ahí va la frase entera.
-            // Estas frases NO son texto suelto: son las claves del catálogo
-            // `AppShortcuts.xcstrings`, donde están sus versiones en inglés y
-            // francés. Apple registra los atajos solo para los idiomas en que
-            // la app está localizada, así que sin ese catálogo —y sin los
-            // .lproj de cada idioma— Siri en inglés o en francés no casa con
-            // ninguna y se limita a abrir la app.
+            // Estas frases NO son texto suelto: son las claves de los
+            // `AppShortcuts.strings` de cada .lproj, donde están sus versiones
+            // en inglés y francés. Apple registra los atajos solo para los
+            // idiomas en que la app está localizada, así que sin esos archivos
+            // Siri en inglés o en francés no casa con ninguna y se limita a
+            // abrir la app.
+            //
+            // En .strings y no en catálogo (.xcstrings): el catálogo pide iOS
+            // 17 y Chinola arranca en la 15, y Xcode se niega a compilarlo.
             phrases: [
                 "Anota en \(.applicationName)",
                 "Dile a \(.applicationName)",

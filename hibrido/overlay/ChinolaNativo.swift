@@ -364,6 +364,97 @@ var cnSimboloMoneda: String {
 /// La paleta del tema que tiene puesto el usuario. La web tiene 31 temas y los
 /// pinta con variables CSS; el nativo los recibe por `__chinolaTemaJSON` y los
 /// guarda aquí, para que las pantallas nativas cambien de color con la app.
+/**
+ * EL AVISO DE QUE LA APP NO ARRANCÓ.
+ *
+ * Las pantallas nativas van ENCIMA del webview, así que un cartel de error
+ * dibujado por la web queda debajo y no se ve: la app se queda en blanco y
+ * nadie sabe por qué. Esto lo enseña desde aquí, por encima de todo, y se
+ * puede leer y copiar.
+ *
+ * Dos maneras de llegar aquí:
+ *
+ *   · La web dice que reventó, por `Nativo.fallo({ texto })`.
+ *   · La web no dice NADA en diez segundos. El primer tema que manda es la
+ *     señal de que arrancó; si no llega, es que no arrancó —o que ni siquiera
+ *     llegó a cargar su código, que es cuando su propio cartel tampoco sale—.
+ */
+final class CNAvisoDeFallo {
+    static let shared = CNAvisoDeFallo()
+    private var contesto = false
+    private var puesto = false
+    private var reloj: Timer?
+
+    /// Arranca el vigía. Lo llama el controlador al montar.
+    func vigilar() {
+        reloj?.invalidate()
+        reloj = Timer.scheduledTimer(withTimeInterval: 10, repeats: false) { [weak self] _ in
+            guard let s = self, !s.contesto else { return }
+            s.mostrar("La parte web de la app no llegó a arrancar: no mandó señal en diez segundos.\n\n"
+                      + "Si esto sale siempre, la app no puede cargar sus archivos.")
+        }
+    }
+
+    func laWebContesto() {
+        contesto = true
+        reloj?.invalidate()
+        reloj = nil
+    }
+
+    func mostrar(_ texto: String) {
+        guard !puesto else { return }          // uno basta; el segundo taparía al primero
+        puesto = true
+        reloj?.invalidate()
+        guard let raiz = UIApplication.shared.connectedScenes
+            .compactMap({ ($0 as? UIWindowScene)?.keyWindow })
+            .first?.rootViewController else { return }
+        var arriba = raiz
+        while let otro = arriba.presentedViewController { arriba = otro }
+
+        let vista = UIHostingController(rootView: CNPantallaDeFallo(texto: texto))
+        vista.modalPresentationStyle = .fullScreen
+        arriba.present(vista, animated: false)
+    }
+}
+
+/// El cartel, con el texto seleccionable para poder copiarlo o fotografiarlo.
+struct CNPantallaDeFallo: View {
+    let texto: String
+    private var version: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return v + " (" + b + ")"
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Chinola no pudo abrir")
+                    .font(.system(size: 22, weight: .heavy))
+                Text("Esto es un fallo nuestro, no tuyo. Mándanos esta pantalla y lo arreglamos; "
+                     + "tus datos siguen guardados en el teléfono.")
+                    .font(.system(size: 14)).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(texto)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(Color(red: 0.55, green: 0.17, blue: 0.13))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                Text("Versión " + version + " · iOS " + UIDevice.current.systemVersion
+                     + " · " + UIDevice.current.model)
+                    .font(.system(size: 12)).foregroundColor(.secondary)
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(Color(.systemBackground).ignoresSafeArea())
+    }
+}
+
 struct CNPaletaTema {
     // De fábrica, los grises de iOS: los mismos que usan Ajustes y el resto del
     // teléfono, con el verde y el amarillo de Chinola solo donde hacen falta.

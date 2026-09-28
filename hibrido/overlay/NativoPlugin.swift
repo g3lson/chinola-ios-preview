@@ -30,7 +30,8 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "hoja", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "formulario", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "selector", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "hojaPeriodo", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "hojaPeriodo", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "fallo", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -139,9 +140,27 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     // La web manda el tema puesto (31 temas): las pantallas nativas pintan con él.
+    /**
+     * LA WEB DICE QUE NO PUDO ARRANCAR.
+     *
+     * El cartel que pinta la web queda TAPADO por las pantallas nativas, que van
+     * encima del webview: quien abre la app ve blanco y no se entera de nada.
+     * Esto lo enseña desde el lado nativo, por encima de todo.
+     */
+    @objc func fallo(_ call: CAPPluginCall) {
+        let texto = call.getString("texto") ?? "sin detalle"
+        DispatchQueue.main.async {
+            CNAvisoDeFallo.shared.mostrar(texto)
+            call.resolve()
+        }
+    }
+
     @objc func tema(_ call: CAPPluginCall) {
         let json = call.getString("json") ?? ""
         DispatchQueue.main.async {
+            // El primer tema es la señal de que la web arrancó: con él se apaga
+            // el vigía que avisa cuando no llega nada.
+            CNAvisoDeFallo.shared.laWebContesto()
             CNDatos.shared.cargarTema(json: json)
             CNMenuEstado.shared.alRepintar()
             call.resolve()
