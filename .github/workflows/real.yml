@@ -10,7 +10,7 @@ name: El controlador REAL de Chinola, ejecutándose
 on:
   workflow_dispatch:
   push:
-    paths: ['hibrido/real/**', 'hibrido/app/**', 'hibrido/overlay/**', '.github/workflows/real.yml']
+    paths: ['hibrido/real/**', 'hibrido/app/**', 'hibrido/app-clasico/**', 'hibrido/overlay/**', '.github/workflows/real.yml']
 
 jobs:
   correr:
@@ -96,27 +96,29 @@ jobs:
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b || true
           xcrun simctl install "$UDID" "$APP"
-          # Se lanza una vez por combinación, apagando piezas del controlador.
-          # La que vuelva a funcionar señala al culpable. Cada lanzamiento son
-          # 20 segundos: las seis caben de sobra en una sola ejecución.
-          # Dos lanzamientos de la MISMA app: el controlador de fábrica y el de
-          # Chinola. La comparación en la misma página zanja de quién es el
-          # fallo, y de paso dice si este banco es de fiar.
-          echo "=== 1) controlador DE FÁBRICA ==="
-          SIMCTL_CHILD_CN_FABRICA=1 xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
-          sleep 25
-          xcrun simctl io "$UDID" screenshot "1-de-fabrica.png" || true
-
-          n=1
-          for CFG in "CN_SIN=vigia" "CN_SIN=nada" "CN_SIN=vigia,nativo,cortina,barra"; do
+          # DOS PAQUETES, LA MISMA APP.
+          #
+          # Compilar lo nativo cuesta un minuto; cambiar la web que lleva
+          # dentro no cuesta nada. Así que se compila una vez y se relanza con
+          # cada paquete: el de módulos (el que abre en blanco) y el clásico de
+          # un solo archivo. La comparación, en el mismo aparato y el mismo
+          # controlador, zanja si el remedio es ese.
+          PUB=$(dirname "$(find "$APP" -name "index.html" -maxdepth 3 | head -1)")
+          echo "la web va en $PUB"
+          n=0
+          for VAR in app app-clasico; do
             n=$((n+1))
-            echo "=== $CFG ==="
+            echo "=== $n) paquete $VAR ==="
             xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
             sleep 2
-            env "SIMCTL_CHILD_${CFG%%=*}=${CFG#*=}" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
-            sleep 25
-            xcrun simctl io "$UDID" screenshot "$n-$(echo $CFG | tr '=' ' ' | tr ',' '-' | tr ' ' '-').png" || true
+            rm -rf "$PUB"/* && cp -R ../hibrido/$VAR/. "$PUB"/
+            xcrun simctl uninstall "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+            xcrun simctl install "$UDID" "$APP"
+            xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+            sleep 22
+            xcrun simctl io "$UDID" screenshot "$n-$VAR.png" || true
           done
+
           echo "=== lo que dijo la web (y lo nativo) ==="
           xcrun simctl spawn "$UDID" log show --last 4m --style compact \
             --predicate 'process == "App" AND (eventMessage CONTAINS "CN" OR eventMessage CONTAINS "Chinola" OR eventMessage CONTAINS "rror")' 2>/dev/null | head -60 || true
