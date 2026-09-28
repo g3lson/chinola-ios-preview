@@ -22,6 +22,14 @@ jobs:
         with:
           node-version: '22'
 
+      # El Xcode por defecto de macos-15 es el 16.4 y no compila lo nativo de
+      # Chinola, que usa cosas de iOS 26. El mismo paso que el otro banco.
+      - name: Usar el Xcode más nuevo
+        run: |
+          NUEVO=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          sudo xcode-select -s "$NUEVO/Contents/Developer"
+          xcodebuild -version
+
       - name: Montar la app con el controlador real
         run: |
           mkdir -p app/www && cd app
