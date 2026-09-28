@@ -104,6 +104,24 @@ class ChinolaViewController: CAPBridgeViewController {
         arrancarVigiaModo()
     }
 
+    /// CLARO U OSCURO, SEGÚN LA PALETA PUESTA.
+    ///
+    /// Va en el propio controlador ADEMÁS de en la ventana. La ventana no
+    /// siempre existe cuando esto hace falta —en `viewDidLoad` todavía es
+    /// nula— y entonces el ajuste se perdía: con un tema oscuro, las listas
+    /// nativas seguían pidiéndole al sistema sus colores de modo claro y las
+    /// filas salían BLANCAS sobre un fondo negro. Puesto en el controlador
+    /// baja solo a todo lo que cuelga de él.
+    private func ponerModoDeLaPaleta() {
+        let modo: UIUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
+        overrideUserInterfaceStyle = modo
+        view.window?.overrideUserInterfaceStyle = modo
+        // Y lo que se enseña encima (hojas, detalles) va por su cuenta.
+        presentedViewController?.overrideUserInterfaceStyle = modo
+        hojaVC?.overrideUserInterfaceStyle = modo
+        detalleVC?.overrideUserInterfaceStyle = modo
+    }
+
     @objc private func modoDelante() {
         if CNC.pareja.oscuro != nil, sistemaOscuro != CNC.tema.oscuro { avisarDelModo() }
         arrancarVigiaModo()
@@ -760,7 +778,7 @@ class ChinolaViewController: CAPBridgeViewController {
             self.barra.pintar(activa: self.menuEstado.activa, titulos: self.menuEstado.titulos)
             // Claro u oscuro de sistema según el tema: así el vidrio, las hojas
             // y los menús del sistema acompañan a la paleta de la app.
-            self.view.window?.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
+            self.ponerModoDeLaPaleta()
             self.contenedorNativo?.backgroundColor = UIColor(CNC.scr)
             self.setNeedsStatusBarAppearanceUpdate()
         }
@@ -1890,7 +1908,7 @@ class ChinolaViewController: CAPBridgeViewController {
             // estado) en la MISMA pasada que los colores: antes llegaba por
             // otro camino, un rato después, y el cambio de tema se veía en dos
             // tiempos.
-            s.view.window?.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
+            s.ponerModoDeLaPaleta()
             s.contenedorNativo?.backgroundColor = UIColor(CNC.scr)
             s.setNeedsStatusBarAppearanceUpdate()
         }
