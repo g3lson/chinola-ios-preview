@@ -13,7 +13,19 @@
   <script>
     var LIBRETA = {
       nombre:"Casa",
-      cuentas:[{id:1,nombre:"Cuenta de la casa",saldo:48200,color:"#137d41",clase:"banco",icono:"banco"}],
+      cuentas:[
+        {id:1,nombre:"Cuenta de la casa",saldo:48200,color:"#137d41",clase:"banco",icono:"banco"},
+        {id:2,nombre:"Efectivo",saldo:4200,color:"#c9a227",clase:"efectivo",icono:"billete"},
+        {id:3,nombre:"Ahorros",saldo:92000,color:"#3a66c8",clase:"ahorro",icono:"hucha"}
+      ],
+      tarjetas:[
+        {id:10,nombre:"Mastercard",saldo:43200,limite:150000,corte:20,pago:5,color:"#d0463a"},
+        {id:11,nombre:"Visa",saldo:18600,limite:80000,corte:15,pago:2,color:"#d0463a"}
+      ],
+      prestamos:[
+        {id:20,nombre:"Préstamo del carro",total:180000,pagado:180000,sentido:"debo",color:"#7a4fd0"},
+        {id:21,nombre:"Le presté a Juan",total:6000,pagado:1500,sentido:"meDeben",color:"#2f9e5c"}
+      ],
       presupuesto:{ Salud:3000, Servicios:2500, "Educación":4000 },
       categorias:[
         {nombre:"Salud",tipo:"Gasto",color:"#1fa9a0",icono:"salud"},
@@ -27,7 +39,15 @@
         {id:"c",concepto:"Aporte Remodelar la cocina",categoria:"Ahorro",tipo:"Ahorro",monto:8000,fecha:"2026-09-05",medio:"cuenta:1"},
         {id:"d",concepto:"Colegio de los niños",categoria:"Educación",tipo:"Gasto Fijo",monto:9000,fecha:"2026-09-05",medio:"cuenta:1",recurrente:true},
         {id:"e",concepto:"Aporte Remodelar la cocina",categoria:"Ahorro",tipo:"Ahorro",monto:8000,fecha:"2026-09-04",medio:"cuenta:1"},
-        {id:"f",concepto:"Sueldo quincena",categoria:"Ingresos",tipo:"Ingreso",monto:30000,fecha:"2026-09-03",medio:"cuenta:1"}
+        {id:"f",concepto:"Sueldo quincena",categoria:"Ingresos",tipo:"Ingreso",monto:30000,fecha:"2026-09-03",medio:"cuenta:1"},
+        {id:"g",concepto:"Sueldo agosto",categoria:"Ingresos",tipo:"Ingreso",monto:58000,fecha:"2026-08-30",medio:"cuenta:1"},
+        {id:"h",concepto:"Gastos de agosto",categoria:"Alimentación",tipo:"Gasto Variable",monto:41000,fecha:"2026-08-20",medio:"cuenta:1"},
+        {id:"i",concepto:"Sueldo julio",categoria:"Ingresos",tipo:"Ingreso",monto:56000,fecha:"2026-07-30",medio:"cuenta:1"},
+        {id:"j",concepto:"Gastos de julio",categoria:"Alimentación",tipo:"Gasto Variable",monto:47000,fecha:"2026-07-18",medio:"cuenta:1"},
+        {id:"k",concepto:"Sueldo junio",categoria:"Ingresos",tipo:"Ingreso",monto:56000,fecha:"2026-06-30",medio:"cuenta:1"},
+        {id:"l",concepto:"Gastos de junio",categoria:"Alimentación",tipo:"Gasto Variable",monto:52000,fecha:"2026-06-15",medio:"cuenta:1"},
+        {id:"m",concepto:"Sueldo mayo",categoria:"Ingresos",tipo:"Ingreso",monto:55000,fecha:"2026-05-30",medio:"cuenta:1"},
+        {id:"n",concepto:"Gastos de mayo",categoria:"Alimentación",tipo:"Gasto Variable",monto:49000,fecha:"2026-05-12",medio:"cuenta:1"}
       ]
     };
     var log = [];
