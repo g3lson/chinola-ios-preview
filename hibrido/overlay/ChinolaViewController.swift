@@ -924,21 +924,41 @@ class ChinolaViewController: CAPBridgeViewController {
         }
     }
 
+    /// Uno a la vez: al arrancar, `traerDatos` se llama desde varios sitios
+    /// casi a la vez y la huella se fija DESPUÉS de que llegue la libreta, así
+    /// que dos llamadas veían la huella vieja y la libreta entera hacía el
+    /// viaje dos veces. Medido en el simulador: 139 ms y 220 ms para traer lo
+    /// mismo.
+    private var pidiendoLibreta = false
+
     /// Los 153 KB. Solo lo llama `traerDatos`, y solo cuando hace falta.
     private func traerLibretaEntera(intentos: Int = 8) {
+        guard !pidiendoLibreta else { return }
+        pidiendoLibreta = true
+        // Y con salida: si el webview no contesta nunca, esta bandera se
+        // quedaría puesta para siempre y la libreta no volvería a pedirse. Hoy
+        // ya me costó un día una espera que no vencía nunca.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in self?.pidiendoLibreta = false }
         let t0 = Date()
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaDatosJSON && window.__chinolaDatosJSON()) || ''") { [weak self] res, _ in
+        // La huella VIENE EN EL MISMO VIAJE, delante y separada por un carácter
+        // que no aparece en JSON. Pedirla aparte dejaba un hueco en el que la
+        // siguiente llamada la veía vieja y se traía la libreta otra vez.
+        let js = "(function(){var h=(window.__chinolaHuella&&window.__chinolaHuella())||'';"
+            + "var d=(window.__chinolaDatosJSON&&window.__chinolaDatosJSON())||'';return h+'\u0001'+d})()"
+        bridge?.webView?.evaluateJavaScript(js) { [weak self] res, _ in
             guard let self = self else { return }
-            let json = (res as? String) ?? ""
+            self.pidiendoLibreta = false
+            let crudo = (res as? String) ?? ""
+            let corte = crudo.firstIndex(of: "\u{1}")
+            let huella = corte.map { String(crudo[crudo.startIndex..<$0]) } ?? ""
+            let json = corte.map { String(crudo[crudo.index(after: $0)...]) } ?? crudo
             if ProcessInfo.processInfo.environment["CN_CON"]?.contains("cronometro") == true {
                 NSLog("CNRELOJ: la libreta entera · %.0f ms · %d KB", Date().timeIntervalSince(t0) * 1000, json.count / 1024)
             }
             if json.count > 2, let l = CNLibreta.desde(json: json) {
                 CNDatos.shared.libreta = l
                 CNDatos.shared.apuntaQueLlego()
-                self.bridge?.webView?.evaluateJavaScript("(window.__chinolaHuella && window.__chinolaHuella()) || ''") { h, _ in
-                    if let hs = h as? String { self.huellaLibreta = hs }
-                }
+                if !huella.isEmpty { self.huellaLibreta = huella }
                 self.bridge?.webView?.evaluateJavaScript("(window.__chinolaPerfilJSON && window.__chinolaPerfilJSON()) || ''") { p, _ in
                     if let ps = p as? String, ps.count > 2 { CNDatos.shared.cargarPerfil(json: ps) }
                 }
