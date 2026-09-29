@@ -999,6 +999,9 @@ final class CNDatos: ObservableObject {
     /// sitio a la web, que siempre sabe qué enseñar.
     private(set) var llegoAlgo = false
     func apuntaQueLlego() { llegoAlgo = true }
+    /// Las tres opciones de los puntos de la charla: ayuda, reportar, empezar
+    /// de nuevo. Las hace la web, que ya las tenía.
+    var onCharlaAccion: (String) -> Void = { _ in }
     var onNuevoMov: () -> Void = {}
     var onDetalleMov: (String) -> Void = { _ in }
     var onPerfil: (String) -> Void = { _ in }
@@ -7702,9 +7705,16 @@ struct CNBotonFlotante: View {
                                 let py = libre.minY + libre.height * mando.y + v.translation.height
                                 let nx: CGFloat = px + lado / 2 < g.size.width / 2 ? 0 : 1
                                 let ny = max(0, min(1, libre.height > 0 ? (py - libre.minY) / libre.height : 0.5))
-                                arrastre = .zero
+                                // TODO DENTRO DE LA MISMA ANIMACIÓN.
+                                //
+                                // `arrastre` se ponía a cero FUERA: en ese
+                                // mismo fotograma el botón saltaba de golpe a
+                                // la posición nueva y la animación no se veía.
+                                // Desde fuera parecía que aparecía donde
+                                // levantaste el dedo, sin movimiento.
                                 llevando = false
                                 withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
+                                    arrastre = .zero
                                     mando.x = nx; mando.y = ny
                                 }
                                 mando.alMover(nx, ny)
@@ -7760,13 +7770,35 @@ struct CNBotonFlotante: View {
 /// Es el mismo error que hace Capacitor con `view = webView`, y cuesta verlo
 /// por lo mismo: todo lo que se mide dice que está bien.
 ///
-/// Ahora el hospedaje es el de siempre y los toques se arreglan donde tocaba:
-/// una vista de SwiftUI transparente no recibe toques donde no hay nada
-/// dibujado, así que el resto de la pantalla sigue respondiendo sola.
+/// Ahora el hospedaje es el de siempre —el que dibuja— y los toques se
+/// arreglan FUERA, con una caja alrededor.
+///
+/// Y hace falta: di por hecho que una vista de SwiftUI transparente no recibe
+/// toques donde no hay nada dibujado, y es falso. La vista que aloja el SwiftUI
+/// ocupa la pantalla entera y se los quedaba TODOS: la app se veía bien y no
+/// respondía a nada salvo al propio botón. No se podía ni cambiar de pestaña.
 final class CNPasaToquesHost: UIHostingController<AnyView> {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
         view.isOpaque = false
+    }
+}
+
+/// LA CAJA QUE DEJA PASAR LOS TOQUES.
+///
+/// Envuelve al hospedaje del botón y decide, punto por punto, si ahí hay algo
+/// dibujado. La clave está en `v !== hija`: cuando se le pregunta a la vista
+/// del SwiftUI y contesta con ELLA MISMA, es que en ese punto no hay nada
+/// encima —es su lienzo vacío— y el toque tiene que seguir hacia abajo, a la
+/// barra de pestañas o a lo que haya. Solo cuando contesta con algo de dentro
+/// —el botón— el toque se queda aquí.
+final class CNPasaToques: UIView {
+    override func point(inside punto: CGPoint, with evento: UIEvent?) -> Bool {
+        for hija in subviews where !hija.isHidden && hija.alpha > 0.01 {
+            let dentro = convert(punto, to: hija)
+            if let v = hija.hitTest(dentro, with: evento), v !== hija { return true }
+        }
+        return false
     }
 }

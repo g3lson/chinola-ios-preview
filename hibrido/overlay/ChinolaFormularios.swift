@@ -2947,6 +2947,25 @@ struct CNCharlaVista: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(cnT("Cerrar")) { onClose() }
                 }
+                // LOS TRES PUNTOS. Estaban puestos en la charla de la WEB, y
+                // la que se ve en el teléfono es ESTA, la nativa: por eso no
+                // aparecían por más que estuvieran hechos.
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button { datos.onCharlaAccion("ayuda") } label: {
+                            Label(cnT("Qué sabe hacer Chino"), systemImage: "sparkles")
+                        }
+                        Button { datos.onCharlaAccion("reportar") } label: {
+                            Label(cnT("Reportar un problema"), systemImage: "exclamationmark.bubble")
+                        }
+                        Divider()
+                        Button(role: .destructive) { datos.onCharlaAccion("empezar") } label: {
+                            Label(cnT("Empezar de nuevo"), systemImage: "arrow.counterclockwise")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
             }
         }
         .navigationViewStyle(.stack)

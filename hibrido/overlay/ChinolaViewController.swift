@@ -526,6 +526,11 @@ class ChinolaViewController: CAPBridgeViewController {
             s.aWeb("window.__chinolaGuardarHoja", payload)
         }
         datos.onCrearMov = { [weak self] dict in self?.aWeb("window.__chinolaCrearMov", dict) }
+        // Los tres puntos de la charla. Las tres cosas las hace la web, que ya
+        // las tenía montadas; aquí solo se le dice cuál.
+        datos.onCharlaAccion = { [weak self] que in
+            self?.eval("window.__chinolaCharlaMenu && window.__chinolaCharlaMenu(" + (self?.comillas(que) ?? "''") + ")")
+        }
         datos.onInvitar = { [weak self] dict in
             guard let s = self else { return }
             s.aWeb("window.__chinolaInvitar", dict)
@@ -2144,21 +2149,39 @@ class ChinolaViewController: CAPBridgeViewController {
             // cerrar la app.
             self?.eval("window.__chinolaFlotante && window.__chinolaFlotante(\(x), \(y))")
         }
+        // DENTRO DE UNA CAJA que deja pasar los toques.
+        //
+        // La vista que aloja el SwiftUI ocupa la pantalla entera y se queda con
+        // TODOS los toques: con ella suelta, la app se veía bien y no respondía
+        // a nada salvo al propio botón —ni cambiar de pestaña—. La caja
+        // pregunta punto por punto si ahí hay algo dibujado, y si no, el toque
+        // sigue hacia abajo. Ver `CNPasaToques`.
         let host = CNPasaToquesHost(rootView: AnyView(CNBotonFlotante(datos: datos)))
         host.view.backgroundColor = .clear
         host.view.isOpaque = false
-        addChild(host); view.addSubview(host.view); host.didMove(toParent: self)
+        let caja = CNPasaToques()
+        caja.backgroundColor = .clear
+        caja.isOpaque = false
+        addChild(host)
+        caja.addSubview(host.view)
+        view.addSubview(caja)
+        host.didMove(toParent: self)
         host.view.translatesAutoresizingMaskIntoConstraints = false
+        caja.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            host.view.topAnchor.constraint(equalTo: view.topAnchor),
-            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            caja.topAnchor.constraint(equalTo: view.topAnchor),
+            caja.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            caja.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            caja.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            host.view.topAnchor.constraint(equalTo: caja.topAnchor),
+            host.view.leadingAnchor.constraint(equalTo: caja.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: caja.trailingAnchor),
+            host.view.bottomAnchor.constraint(equalTo: caja.bottomAnchor)
         ])
-        flotanteVista = host.view
+        flotanteVista = caja
         // Arriba del todo desde ya: si entra con una pantalla nativa puesta,
         // sin esto nace debajo.
-        view.bringSubviewToFront(host.view)
+        view.bringSubviewToFront(caja)
         NSLog("CNFLOTA: el botón de Chino, montado")
     }
 

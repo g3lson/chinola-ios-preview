@@ -86,7 +86,15 @@ jobs:
           cd app
           xcodebuild -project ios/App/App.xcodeproj -scheme App \
             -configuration Debug -sdk iphonesimulator \
-            -derivedDataPath build CODE_SIGNING_ALLOWED=NO 2>&1 | tail -25
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xcode.log | tail -25
+          # Y si falló, los errores DE VERDAD. `tail -25` se come justo lo que
+          # hace falta —el motivo va mucho antes del resumen final— y eso
+          # cuesta una vuelta entera de integración continua cada vez.
+          if ! grep -q "BUILD SUCCEEDED" /tmp/xcode.log; then
+            echo "=== los errores ==="
+            grep -E "error:|warning: .*deprecat" /tmp/xcode.log | head -40
+            exit 65
+          fi
 
       - name: Ejecutar y fotografiar
         run: |
