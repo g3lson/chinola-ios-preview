@@ -1,12 +1,30 @@
 {
-  "appId": "do.com.fente.chinolasim",
-  "appName": "ChinolaSim",
+  "appId": "do.com.fente.chinolareal",
+  "appName": "Chinola",
   "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#f7f6ee",
+    "limitsNavigationsToAppBoundDomains": false
+  },
   "server": {
     "iosScheme": "capacitor"
   },
-  "ios": {
-    "contentInset": "never",
-    "backgroundColor": "#f7f6ee"
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "DARK"
+    },
+    "Keyboard": {
+      "resize": "none",
+      "resizeOnFullScreen": true
+    },
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 2500,
+      "launchFadeOutDuration": 200,
+      "backgroundColor": "#f7f6ee",
+      "showSpinner": false
+    }
   }
 }

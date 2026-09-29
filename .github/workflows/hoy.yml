@@ -60,10 +60,15 @@ jobs:
             @capacitor/haptics @capacitor/network @capacitor/share @capacitor/clipboard \
             @capacitor/filesystem @capacitor/local-notifications @capacitor/browser \
             @capacitor/preferences >/dev/null 2>&1
-          cat > capacitor.config.json <<'JSON'
-          { "appId": "do.com.fente.chinolareal", "appName": "Chinola", "webDir": "www",
-            "ios": { "contentInset": "never" }, "server": { "iosScheme": "capacitor" } }
-          JSON
+          # LA MISMA CONFIGURACIÓN QUE LA APP, no una de juguete.
+          #
+          # El banco traía la suya, mínima, y por eso no veía el fallo que de
+          # verdad tenía el usuario: la app lleva `launchAutoHide` en la
+          # pantalla de arranque, y el banco no. Con la de juguete el arranque
+          # se quitaba solo y todo parecía ir bien; en el teléfono se quedaba
+          # puesto, crema y liso, tapando la app entera. Un banco que no
+          # reproduce la configuración no reproduce nada.
+          cp ../hibrido/capacitor.config.json capacitor.config.json
           npx cap add ios
           npx cap sync ios
 
