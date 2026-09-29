@@ -1,4 +1,4 @@
-name: "LA DE HOY, LEGIBLE: cinco arranques y el error con su nombre"
+name: "LA DE HOY: cinco arranques con el fallo ya arreglado"
 
 # El otro banco de pruebas monta su propio `TestVC`: el controlador de verdad se
 # compilaba pero nunca se ejecutaba. Y el fallo que perseguimos —la app abre en
@@ -37,7 +37,7 @@ jobs:
           # lo que podía decir: con el controlador real sus módulos SÍ corren.
           # Lo que falta por saber es si la que abre en blanco en el teléfono
           # abre en blanco aquí — y si abre, su propio cartel dice por qué.
-          cp -R ../hibrido/app-legible/* www/
+          cp -R ../hibrido/app-clasico/* www/
           npm init -y >/dev/null
           # Los plugins DE VERDAD. Sin ellos el banco se inventa errores que la
           # app real no tiene («"App" plugin is not implemented on ios») y
