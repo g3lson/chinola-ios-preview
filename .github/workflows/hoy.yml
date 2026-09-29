@@ -157,7 +157,7 @@ jobs:
             echo "=== pantalla $P ==="
             xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
             sleep 2
-            env SIMCTL_CHILD_CN_IR=$P SIMCTL_CHILD_CN_CON=sonda xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+            env SIMCTL_CHILD_CN_IR=$P SIMCTL_CHILD_CN_CON=sonda,flota xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
             sleep 16
             xcrun simctl io "$UDID" screenshot "pestana-$P.png" || true
           done

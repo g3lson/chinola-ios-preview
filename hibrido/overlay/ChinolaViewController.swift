@@ -347,6 +347,14 @@ class ChinolaViewController: CAPBridgeViewController {
         // pide» ni de «lo pide y no se monta», que son tres problemas
         // distintos.
         if ProcessInfo.processInfo.environment["CN_CON"]?.contains("sonda") == true {
+            // En el banco no se entra a la app, así que el botón nunca llega a
+            // ponerse y la mitad de la prueba de los toques —que el botón SÍ
+            // reciba los suyos— se quedaba sin hacer. Aquí se pone a mano.
+            if ProcessInfo.processInfo.environment["CN_CON"]?.contains("flota") == true {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
+                    CNFlotante.shared.puesto = true
+                }
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 12.0) { [weak self] in
                 self?.bridge?.webView?.evaluateJavaScript(
                     "(function(){try{var e=window.__chinolaEtapas||[];"
@@ -382,12 +390,19 @@ class ChinolaViewController: CAPBridgeViewController {
                         // roto.
                         if let yo = self, let caja = f {
                             let ancho = yo.view.bounds.width, alto = yo.view.bounds.height
+                            // El centro del botón, calculado como lo calcula la
+                            // vista (`CNBotonFlotante`): lado 56, margen 14 y el
+                            // hueco de arriba. `ancho * x` caía en el borde de
+                            // la pantalla, que no es donde está el botón.
+                            let lado: CGFloat = 56, margen: CGFloat = 14
+                            let arriba = yo.view.safeAreaInsets.top
+                            let bx = margen + (ancho - margen * 2 - lado) * CNFlotante.shared.x + lado / 2
+                            let by = arriba + margen + (alto - arriba - margen * 2 - lado) * CNFlotante.shared.y + lado / 2
                             let sitios: [(String, CGPoint)] = [
                                 ("centro", CGPoint(x: ancho / 2, y: alto / 2)),
                                 ("arriba-izq", CGPoint(x: 40, y: 120)),
                                 ("abajo-der", CGPoint(x: ancho - 40, y: alto - 120)),
-                                ("donde-el-boton", CGPoint(x: ancho * CGFloat(CNFlotante.shared.x),
-                                                           y: alto * CGFloat(CNFlotante.shared.y)))
+                                ("donde-el-boton", CGPoint(x: bx, y: by))
                             ]
                             var parte = ""
                             for (nombre, punto) in sitios {
@@ -397,9 +412,11 @@ class ChinolaViewController: CAPBridgeViewController {
                                 var deLaCaja = false
                                 var v: UIView? = quien
                                 while let x = v { if x === caja { deLaCaja = true; break }; v = x.superview }
-                                parte += "\(nombre)=\(deLaCaja ? "CAJA" : "web:\(type(of: quien ?? yo.view))") "
+                                parte += "\(nombre)=\(deLaCaja ? "CAJA" : "web") "
                             }
-                            NSLog("CNTOQUE: \(parte)")
+                            NSLog("CNTOQUE: boton-puesto=\(CNFlotante.shared.puesto) \(parte)"
+                                + "| se espera: web en los tres primeros"
+                                + "\(CNFlotante.shared.puesto ? " y CAJA en el del botón" : "")")
                         }
                     }
             }
