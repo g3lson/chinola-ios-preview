@@ -335,6 +335,25 @@ class ChinolaViewController: CAPBridgeViewController {
                 self?.menuEstado.alTocar(ir)
             }
         }
+        // LA SONDA DEL BOTÓN DE CHINO, para el banco.
+        //
+        // Con `CN_CON=sonda` se le pregunta a la web, pasados unos segundos,
+        // las tres cosas que deciden si el botón está: si la IA está
+        // encendida, si el ajuste lo permite y si ya se entró a la app. Sin
+        // esto, «no sale el botón» no se puede distinguir de «la web no lo
+        // pide» ni de «lo pide y no se monta», que son tres problemas
+        // distintos.
+        if ProcessInfo.processInfo.environment["CN_CON"]?.contains("sonda") == true {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 12.0) { [weak self] in
+                self?.bridge?.webView?.evaluateJavaScript(
+                    "(function(){try{var e=window.__chinolaEtapas||[];"
+                    + "return JSON.stringify({etapas:e.slice(-4),"
+                    + "flotante:(window.__chinolaSondaFlotante&&window.__chinolaSondaFlotante())||'sin sonda'})}"
+                    + "catch(x){return 'no se pudo: '+x}})()") { r, _ in
+                        NSLog("CNSONDA: \((r as? String) ?? "sin respuesta")")
+                    }
+            }
+        }
         // LA RED: que la app NUNCA se quede en una pantalla vacía.
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in self?.redDeSeguridad() }
         // La puerta (bienvenida, acceso, nombre, plan) también es nativa.
