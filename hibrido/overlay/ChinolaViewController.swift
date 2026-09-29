@@ -280,7 +280,10 @@ class ChinolaViewController: CAPBridgeViewController {
             // Sin esto, entrar al Resumen nativo viniendo de otra pestaña
             // dejaba el panel vacío, porque la web seguía en la otra.
             self.eval("window.__chinolaMenu && window.__chinolaMenu('\(id)')")
-            if self.nativas.contains(id) {
+            // Nativa SOLO si hay con qué pintarla: si la web nunca mandó nada,
+            // la pantalla nativa es un rectángulo vacío tapando la web que sí
+            // está pintada. Ver `redDeSeguridad`.
+            if self.nativas.contains(id), CNDatos.shared.llegoAlgo {
                 self.mostrarNativo(id)
                 self.refrescarPantalla(id)
             } else {
@@ -317,6 +320,12 @@ class ChinolaViewController: CAPBridgeViewController {
                 }
             }
         }
+        CNAvisoDeFallo.shared.laWebSePinto = { [weak self] contar in
+            guard let w = self?.bridge?.webView else { contar(false); return }
+            w.evaluateJavaScript("(function(){var r=document.getElementById('raiz');return !!(r&&r.children.length)})()") { v, _ in
+                contar((v as? Bool) ?? false)
+            }
+        }
         if !sin("vigia") { CNAvisoDeFallo.shared.vigilar() }
         // Los ajustes de pantalla (la tarjeta de Cuentas, el presupuesto en aro,
         // el estilo de las pestañas) los guarda la WEB, que es lo que hace que
@@ -341,6 +350,8 @@ class ChinolaViewController: CAPBridgeViewController {
         if !sin("nativo") { mostrarNativo(menuEstado.activa) }
         if !sin("cortina") { montarCortina() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in self?.traerDatos() }
+        // LA RED: que la app NUNCA se quede en una pantalla vacía.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in self?.redDeSeguridad() }
         // La puerta (bienvenida, acceso, nombre, plan) también es nativa.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.mirarPuerta() }
     }
@@ -853,6 +864,7 @@ class ChinolaViewController: CAPBridgeViewController {
             let json = (res as? String) ?? ""
             if json.count > 2, let l = CNLibreta.desde(json: json) {
                 CNDatos.shared.libreta = l
+                CNDatos.shared.apuntaQueLlego()
                 self.bridge?.webView?.evaluateJavaScript("(window.__chinolaHuella && window.__chinolaHuella()) || ''") { h, _ in
                     if let hs = h as? String { self.huellaLibreta = hs }
                 }
@@ -1245,6 +1257,30 @@ class ChinolaViewController: CAPBridgeViewController {
         }
     }
 
+    /// SI LO NATIVO NO TIENE NADA QUE PINTAR, MANDA LA WEB.
+    ///
+    /// Las pantallas nativas se ponen encima del webview con un fondo OPACO, y
+    /// se ponen desde el primer fotograma, antes de que la web haya mandado
+    /// nada. Mientras los datos llegan eso no se nota; si NO llegan —la web
+    /// tarda más de la cuenta, el puente no contesta, la libreta está vacía—,
+    /// lo que queda delante es un rectángulo del color del tema y nada más:
+    /// una app en blanco, sin barra, sin texto y sin salida, con la web
+    /// perfectamente pintada justo debajo.
+    ///
+    /// Esto es el último recurso: pasados seis segundos, si lo nativo sigue
+    /// sin haber recibido una sola cosa, se le devuelve el sitio a la web.
+    /// Vale más la app con su diseño de siempre que una pantalla vacía.
+    private func redDeSeguridad() {
+        guard puertaVC == nil, hojaVC == nil, detalleVC == nil else { return }
+        guard !CNDatos.shared.llegoAlgo else { return }
+        NSLog("CNRED: lo nativo no recibió nada en seis segundos; se le devuelve el sitio a la web")
+        quitarCortina()
+        mostrarWeb()   // la barra se queda: sigue sirviendo para cambiar de pestaña
+        // Y se sigue mirando: en cuanto la web conteste, lo nativo vuelve.
+        traerDatos()
+        mirarPuerta()
+    }
+
     private func mostrarWeb() {
         // Vuelve a verse: se despierta antes de destapar, para que no aparezca
         // con las animaciones congeladas.
@@ -1431,6 +1467,7 @@ class ChinolaViewController: CAPBridgeViewController {
                     s.cerrarPuerta()
                 } else {
                     CNDatos.shared.cargarPuerta(json: json)
+                    CNDatos.shared.apuntaQueLlego()
                     s.abrirPuerta()
                 }
                 return

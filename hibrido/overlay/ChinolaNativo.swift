@@ -388,6 +388,14 @@ final class CNAvisoDeFallo {
     /// quien lo tiene a mano. Sin esto el aviso solo puede decir «no contestó»,
     /// que es verdad pero no dice por qué.
     var estadoDeLaWeb: ((@escaping (String) -> Void) -> Void)?
+    /// ¿Se pintó la app? Lo pone el controlador, igual que el anterior.
+    ///
+    /// La señal que apaga el vigía es el primer tema, y ese lo manda la app ya
+    /// montada. Si el puente tarda o el plugin no contesta, la app puede estar
+    /// perfectamente pintada y el cartel sale igual, a pantalla completa y por
+    /// encima: un fallo inventado tapando una app que va. Antes de dar la cara,
+    /// se mira.
+    var laWebSePinto: ((@escaping (Bool) -> Void) -> Void)?
 
     /// Arranca el vigía. Lo llama el controlador al montar.
     func vigilar() {
@@ -403,7 +411,14 @@ final class CNAvisoDeFallo {
                 return
             }
             preguntar { detalle in
-                s.mostrar(cabecera + "Lo que ve el webview:\n" + detalle)
+                guard let mirar = s.laWebSePinto else {
+                    s.mostrar(cabecera + "Lo que ve el webview:\n" + detalle)
+                    return
+                }
+                mirar { pintada in
+                    if pintada { s.laWebContesto(); return }   // va: no estorbar
+                    s.mostrar(cabecera + "Lo que ve el webview:\n" + detalle)
+                }
             }
         }
     }
@@ -957,6 +972,13 @@ final class CNDatos: ObservableObject {
     static let shared = CNDatos()
     @Published var libreta = CNLibreta()
     @Published var perfil = CNPerfilInfo()
+    /// ¿Llegó algo de la web alguna vez? Las pantallas nativas tapan el
+    /// webview con un fondo opaco: si nunca llega nada que pintar, lo que ve
+    /// el usuario es una pantalla vacía —una app en blanco— y no hay forma de
+    /// salir de ahí. Con esto, el controlador sabe que tiene que devolverle el
+    /// sitio a la web, que siempre sabe qué enseñar.
+    private(set) var llegoAlgo = false
+    func apuntaQueLlego() { llegoAlgo = true }
     var onNuevoMov: () -> Void = {}
     var onDetalleMov: (String) -> Void = { _ in }
     var onPerfil: (String) -> Void = { _ in }
