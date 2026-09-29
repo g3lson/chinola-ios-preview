@@ -224,8 +224,19 @@ class ChinolaViewController: CAPBridgeViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // LO PRIMERO: antes de que nada se monte encima.
-        if !sin("raiz") { sacarElWebviewDeLaRaiz() }
+        // EL REPARENTEO, DESCARTADO Y APAGADO.
+        //
+        // Se puso creyendo que meter vistas dentro del WKWebView impedía correr
+        // su JavaScript. La medición lo desmiente: con el Capacitor DE FÁBRICA
+        // —que no mete ninguna— la app abre igual de blanca, y con el paquete
+        // clásico la web se monta en medio segundo con todas las vistas
+        // puestas. Cambiar la vista raíz de un controlador que Capacitor da por
+        // hecho que ES el webview es justo el tipo de cosa que puede dejarlo
+        // sin pintar, así que se queda fuera. Con `CN_CON=raiz` se puede volver
+        // a encender para comprobarlo.
+        if ProcessInfo.processInfo.environment["CN_CON"]?.contains("raiz") == true {
+            sacarElWebviewDeLaRaiz()
+        }
         // Partir por la mitad: con esto el controlador no hace NADA más que lo
         // que hace el de fábrica. Si aun así la web no arranca, el problema no
         // está en lo que hace sino en lo que ES: sus propiedades o el registro

@@ -109,7 +109,7 @@ jobs:
           # así que hay que verla con él apagado: lo de abajo es la app, no un
           # fallo. Y con él encendido, para leer por dónde va el arranque.
           n=0
-          for CFG in "app-clasico:vigia" "app-clasico:" "app:"; do
+          for CFG in "app-clasico:vigia" "app-clasico:" "app-clasico:vigia,nativo,cortina"; do
             VAR=${CFG%%:*}; SIN=${CFG#*:}
             n=$((n+1))
             echo "=== $n) paquete $VAR ${SIN:+· sin $SIN} ==="
