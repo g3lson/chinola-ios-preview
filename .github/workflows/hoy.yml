@@ -136,25 +136,19 @@ jobs:
             xcrun simctl io "$UDID" screenshot "hoy-$n.png" || true
           done
 
-          # Y AHORA, LAS PESTAÑAS.
+          # Y AHORA, LAS PANTALLAS: UNA POR LANZAMIENTO.
           #
-          # El fallo vivía en `avisaTemaNativo`, que corre en CADA repintado: o
-          # sea, en cada cambio de pantalla. Que la portada abra no demuestra
-          # que navegar funcione, y `simctl` no sabe dar toques: lo hace la
-          # propia app con `CN_CON=paseo`, que se recorre sus cinco pestañas.
-          echo "=== el paseo por las cinco pestañas ==="
-          xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
-          sleep 2
-          SIMCTL_CHILD_CN_CON=paseo,cronometro xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
-          # Con margen de sobra: el paseo cambia de pantalla cada seis segundos
-          # a partir del noveno, y aquí se fotografía tres segundos DESPUÉS de
-          # cada cambio. Con cuatro segundos justos las fotos caían encima de
-          # los cambios y salían pantallas repetidas, que no es un fallo de la
-          # app pero se le parece lo bastante como para perder una hora.
-          sleep 12
+          # Con las cinco seguidas había que adivinar cuándo disparar cada foto
+          # y salían cruzadas —«Cuentas» donde tocaba «Movimientos»—, que se
+          # parece lo bastante a un fallo como para perder una hora. Una sola
+          # pantalla por lanzamiento, quieta, no deja lugar a dudas.
           for P in resumen movs cuentas plan perfil; do
+            echo "=== pantalla $P ==="
+            xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+            sleep 2
+            SIMCTL_CHILD_CN_IR=$P xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+            sleep 16
             xcrun simctl io "$UDID" screenshot "pestana-$P.png" || true
-            sleep 6
           done
 
           echo "=== lo que dijo la web (y lo nativo) ==="

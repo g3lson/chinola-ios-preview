@@ -320,13 +320,15 @@ class ChinolaViewController: CAPBridgeViewController {
         // sus cinco pestañas sola y se deja fotografiar.
         //
         // Lee una variable de entorno que en un teléfono de verdad no existe.
-        if ProcessInfo.processInfo.environment["CN_CON"]?.contains("paseo") == true {
-            let orden = ["resumen", "movs", "cuentas", "plan", "perfil"]
-            for (i, id) in orden.enumerated() {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0 + Double(i) * 6.0) { [weak self] in
-                    NSLog("CNPASEO: \(id)")
-                    self?.menuEstado.alTocar(id)
-                }
+        // UNA pantalla por lanzamiento, con `CN_IR=movs`. El paseo por las cinco
+        // seguidas obligaba a adivinar cuándo disparar cada foto, y las fotos
+        // caían entre medias: salía «Cuentas» donde tenía que salir
+        // «Movimientos» y parecía un fallo de la app. Una sola pantalla, quieta,
+        // no deja lugar a dudas.
+        if let ir = ProcessInfo.processInfo.environment["CN_IR"], !ir.isEmpty {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
+                NSLog("CNIR: \(ir)")
+                self?.menuEstado.alTocar(ir)
             }
         }
         // LA RED: que la app NUNCA se quede en una pantalla vacía.
