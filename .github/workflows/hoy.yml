@@ -146,10 +146,15 @@ jobs:
           xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
           sleep 2
           SIMCTL_CHILD_CN_CON=paseo,cronometro xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
-          sleep 10
+          # Con margen de sobra: el paseo cambia de pantalla cada seis segundos
+          # a partir del noveno, y aquí se fotografía tres segundos DESPUÉS de
+          # cada cambio. Con cuatro segundos justos las fotos caían encima de
+          # los cambios y salían pantallas repetidas, que no es un fallo de la
+          # app pero se le parece lo bastante como para perder una hora.
+          sleep 12
           for P in resumen movs cuentas plan perfil; do
             xcrun simctl io "$UDID" screenshot "pestana-$P.png" || true
-            sleep 4
+            sleep 6
           done
 
           echo "=== lo que dijo la web (y lo nativo) ==="

@@ -185,58 +185,8 @@ class ChinolaViewController: CAPBridgeViewController {
         return false
     }
 
-    /// SACAR EL WEBVIEW DE LA RAÍZ.
-    ///
-    /// Capacitor hace `view = webView` en su `loadView`, que es `final`: la
-    /// vista raíz del controlador ES el WKWebView. Así que cada
-    /// `view.addSubview(...)` de esta clase —la barra de abajo, las pantallas
-    /// nativas, el botón flotante— estaba metiendo vistas de UIKit DENTRO del
-    /// webview, en el primer fotograma y antes de que la página hubiera
-    /// ejecutado una línea. Con eso, su JavaScript no arranca: la app abre en
-    /// blanco y no da un solo error, porque no llega a correr nada que pueda
-    /// darlo.
-    ///
-    /// Aquí se pone en su sitio: la raíz pasa a ser una vista normal y el
-    /// webview, un hijo que la llena. No hay que tocar ni una llamada más:
-    /// todo lo que se añadía a `view` se sigue añadiendo a `view`, solo que
-    /// ahora `view` ya no es el webview.
-    private func sacarElWebviewDeLaRaiz() {
-        guard let web = viewIfLoaded, web === (webView as UIView?) else {
-            NSLog("CNRAIZ: NO se hizo · viewIfLoaded=\(String(describing: viewIfLoaded)) webView=\(String(describing: webView))")
-            return
-        }
-        NSLog("CNRAIZ: sacando el webview de la raíz")
-        let contenedor = UIView(frame: web.frame)
-        contenedor.backgroundColor = web.backgroundColor
-        contenedor.autoresizingMask = web.autoresizingMask
-        // Primero la raíz nueva y DESPUÉS se mete el webview: al revés, sería
-        // hijo de sí mismo por un instante.
-        view = contenedor
-        contenedor.addSubview(web)
-        web.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            web.topAnchor.constraint(equalTo: contenedor.topAnchor),
-            web.leadingAnchor.constraint(equalTo: contenedor.leadingAnchor),
-            web.trailingAnchor.constraint(equalTo: contenedor.trailingAnchor),
-            web.bottomAnchor.constraint(equalTo: contenedor.bottomAnchor)
-        ])
-    }
-
     override func viewDidLoad() {
         super.viewDidLoad()
-        // EL REPARENTEO, DESCARTADO Y APAGADO.
-        //
-        // Se puso creyendo que meter vistas dentro del WKWebView impedía correr
-        // su JavaScript. La medición lo desmiente: con el Capacitor DE FÁBRICA
-        // —que no mete ninguna— la app abre igual de blanca, y con el paquete
-        // clásico la web se monta en medio segundo con todas las vistas
-        // puestas. Cambiar la vista raíz de un controlador que Capacitor da por
-        // hecho que ES el webview es justo el tipo de cosa que puede dejarlo
-        // sin pintar, así que se queda fuera. Con `CN_CON=raiz` se puede volver
-        // a encender para comprobarlo.
-        if ProcessInfo.processInfo.environment["CN_CON"]?.contains("raiz") == true {
-            sacarElWebviewDeLaRaiz()
-        }
         // Partir por la mitad: con esto el controlador no hace NADA más que lo
         // que hace el de fábrica. Si aun así la web no arranca, el problema no
         // está en lo que hace sino en lo que ES: sus propiedades o el registro
@@ -373,7 +323,7 @@ class ChinolaViewController: CAPBridgeViewController {
         if ProcessInfo.processInfo.environment["CN_CON"]?.contains("paseo") == true {
             let orden = ["resumen", "movs", "cuentas", "plan", "perfil"]
             for (i, id) in orden.enumerated() {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0 + Double(i) * 4.0) { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0 + Double(i) * 6.0) { [weak self] in
                     NSLog("CNPASEO: \(id)")
                     self?.menuEstado.alTocar(id)
                 }
