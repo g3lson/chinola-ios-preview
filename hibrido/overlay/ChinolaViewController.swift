@@ -58,9 +58,19 @@ class ChinolaViewController: CAPBridgeViewController {
         nativo.menuEstado = menuEstado
         bridge?.registerPluginInstance(CobroPlugin())
         bridge?.registerPluginInstance(nativo)
-        // La IA del propio teléfono. Se registra siempre; ella misma dice si
-        // este aparato puede usarla.
-        bridge?.registerPluginInstance(IALocalPlugin())
+        // LA IA DEL PROPIO TELÉFONO, DE MOMENTO FUERA.
+        //
+        // El código está escrito y funciona en lo suyo, pero los macros de
+        // Apple (`@Generable`, `@Guide`) revientan al compilar y el compilador
+        // no dice por qué: ni con el registro entero delante hay un solo
+        // «error:» que agarrar. Tener la app sin compilar por una función que
+        // encima no se puede probar en el simulador —no lleva Apple
+        // Intelligence— no compensa.
+        //
+        // Se vuelve a poner en cuanto el compilador diga qué le pasa. Mientras,
+        // la web ya lo trata como «este teléfono no puede» y no se rompe nada:
+        // la opción no aparece y Chino sigue por donde iba.
+        // bridge?.registerPluginInstance(IALocalPlugin())
     }
 
     /// El teléfono cambió de claro a oscuro (o al revés).
