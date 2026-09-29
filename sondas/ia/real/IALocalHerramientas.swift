@@ -83,8 +83,10 @@ struct CNMirarElMes: Tool {
         let pedido = a.mes.trimmingCharacters(in: .whitespaces)
         let mes = pedido.count == 7 ? pedido : String(cnHoy().prefix(7))
         let t = CNCalculo.totales(l, CNCalculo.Periodo(mes: mes))
-        return "Este mes entró \(cnDinero(t.ingresos)), salió \(cnDinero(t.gastos)) "
-            + "y el balance es \(cnDinero(t.ingresos - t.gastos))."
+        // `bal` ya viene restado —ingresos menos gastos menos ahorro—, así que
+        // no se recalcula aquí: si un día cambia la regla, cambia en un sitio.
+        return "Este mes entró \(cnDinero(t.ing)), salió \(cnDinero(t.gas)), "
+            + "ahorraste \(cnDinero(t.aho)) y el balance es \(cnDinero(t.bal))."
     }
 }
 
