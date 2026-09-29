@@ -71,11 +71,17 @@ struct CNMirarElMes: Tool {
     let description = "Dice cuánto entró, cuánto salió y qué balance hay en el mes que la persona está mirando."
 
     @Generable
-    struct Arguments {}
+    struct Arguments {
+        // Un macro de generación no sabe qué hacer con una estructura vacía,
+        // así que lleva una que además sirve: el mes a mirar, si lo dijeron.
+        @Guide(description: "El mes en formato 2026-09. Déjalo vacío para el mes que está mirando.")
+        var mes: String
+    }
 
-    func call(arguments: Arguments) async throws -> String {
+    func call(arguments a: Arguments) async throws -> String {
         let l = await MainActor.run { CNDatos.shared.libreta }
-        let mes = String(cnHoy().prefix(7))
+        let pedido = a.mes.trimmingCharacters(in: .whitespaces)
+        let mes = pedido.count == 7 ? pedido : String(cnHoy().prefix(7))
         let t = CNCalculo.totales(l, CNCalculo.Periodo(mes: mes))
         return "Este mes entró \(cnDinero(t.ingresos)), salió \(cnDinero(t.gastos)) "
             + "y el balance es \(cnDinero(t.ingresos - t.gastos))."
@@ -88,11 +94,17 @@ struct CNGastosPorCategoria: Tool {
     let description = "Dice en qué se le va el dinero a la persona este mes, por categorías y de mayor a menor."
 
     @Generable
-    struct Arguments {}
+    struct Arguments {
+        // Un macro de generación no sabe qué hacer con una estructura vacía,
+        // así que lleva una que además sirve: el mes a mirar, si lo dijeron.
+        @Guide(description: "El mes en formato 2026-09. Déjalo vacío para el mes que está mirando.")
+        var mes: String
+    }
 
-    func call(arguments: Arguments) async throws -> String {
+    func call(arguments a: Arguments) async throws -> String {
         let l = await MainActor.run { CNDatos.shared.libreta }
-        let mes = String(cnHoy().prefix(7))
+        let pedido = a.mes.trimmingCharacters(in: .whitespaces)
+        let mes = pedido.count == 7 ? pedido : String(cnHoy().prefix(7))
         let filas = CNCalculo.porCategoria(l, CNCalculo.Periodo(mes: mes)).prefix(6)
         guard !filas.isEmpty else { return "Este mes todavía no hay gastos anotados." }
         return filas.map { "\($0.categoria): \(cnDinero($0.gastado))" }.joined(separator: ", ") + "."
@@ -105,9 +117,14 @@ struct CNCuantoTengo: Tool {
     let description = "Dice cuánto dinero tiene la persona en sus cuentas, cuánto debe y su patrimonio."
 
     @Generable
-    struct Arguments {}
+    struct Arguments {
+        // Un macro de generación no sabe qué hacer con una estructura vacía,
+        // así que lleva una que además sirve: el mes a mirar, si lo dijeron.
+        @Guide(description: "El mes en formato 2026-09. Déjalo vacío para el mes que está mirando.")
+        var mes: String
+    }
 
-    func call(arguments: Arguments) async throws -> String {
+    func call(arguments _: Arguments) async throws -> String {
         let l = await MainActor.run { CNDatos.shared.libreta }
         return "En cuentas tienes \(cnDinero(CNCalculo.saldoCuentas(l))), "
             + "debes \(cnDinero(CNCalculo.deudaTarjetas(l) + CNCalculo.pendientePrestamos(l))) "

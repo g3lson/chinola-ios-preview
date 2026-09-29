@@ -112,7 +112,10 @@ jobs:
           # cuesta una vuelta entera de integración continua cada vez.
           if ! grep -q "BUILD SUCCEEDED" /tmp/xcode.log; then
             echo "=== los errores ==="
-            grep -E "error:|warning: .*deprecat" /tmp/xcode.log | head -40
+            grep -E "error:|error |failed|Failed" /tmp/xcode.log | head -40
+            echo "=== y el final del log, por si el error no lleva la palabra ==="
+            tail -60 /tmp/xcode.log
+            cp /tmp/xcode.log xcode.log || true
             exit 65
           fi
 
@@ -174,4 +177,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hoy
-          path: app/*.png
+          path: |
+            app/*.png
+            app/xcode.log
