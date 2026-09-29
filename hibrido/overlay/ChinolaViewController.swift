@@ -944,7 +944,8 @@ class ChinolaViewController: CAPBridgeViewController {
         // que no aparece en JSON. Pedirla aparte dejaba un hueco en el que la
         // siguiente llamada la veía vieja y se traía la libreta otra vez.
         let js = "(function(){var h=(window.__chinolaHuella&&window.__chinolaHuella())||'';"
-            + "var d=(window.__chinolaDatosJSON&&window.__chinolaDatosJSON())||'';return h+'\u0001'+d})()"
+            + "var d=(window.__chinolaDatosJSON&&window.__chinolaDatosJSON())||'';"
+            + "return h+String.fromCharCode(1)+d})()"
         bridge?.webView?.evaluateJavaScript(js) { [weak self] res, _ in
             guard let self = self else { return }
             self.pidiendoLibreta = false
