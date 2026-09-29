@@ -1115,16 +1115,69 @@ final class CNDatos: ObservableObject {
         detalle = d
     }
     func cargarDetalle(json: String) { detalle = CNDetalle.desde(json: json) }
+    /// LO ÚLTIMO QUE SE PINTÓ, GUARDADO EN EL TELÉFONO.
+    ///
+    /// Las pantallas nativas dibujan modelos que calcula la web, y hasta ahora
+    /// vivían solo en memoria: al abrir la app no había NADA que enseñar hasta
+    /// que la web arrancaba, calculaba y contestaba. Si tardaba, veías una
+    /// pantalla vacía; si fallaba, la veías vacía para siempre, con tus datos
+    /// ahí mismo en el teléfono.
+    ///
+    /// Ahora cada modelo que llega se guarda, y al arrancar se pintan los de la
+    /// última vez antes de preguntarle nada a nadie. La app se ve al instante
+    /// y con datos de verdad —los tuyos, los de la última vez que la usaste— y
+    /// se refrescan solos cuando la web contesta.
+    ///
+    /// No es lo mismo que calcularlo aquí, y no pretende serlo: si cambias de
+    /// mes sin que la web conteste, verás el mes de antes. Pero la diferencia
+    /// entre eso y una pantalla en blanco es toda.
+    private static let guardados = "cn.modelos."
+    private func guarda(_ que: String, _ json: String) {
+        guard json.count > 2 else { return }          // un modelo vacío no se guarda
+        UserDefaults.standard.set(json, forKey: Self.guardados + que)
+    }
+    private static func guardado(_ que: String) -> String? {
+        UserDefaults.standard.string(forKey: guardados + que)
+    }
+
+    /// FUERA LO GUARDADO. Al cerrar sesión, lo de la última vez es de OTRA
+    /// persona: pintarlo en el próximo arranque sería enseñarle sus cifras a
+    /// quien entre después. Lo llama el controlador en cuanto la web dice que
+    /// ya no se está dentro.
+    func olvidaLoGuardado() {
+        for que in ["libreta", "tema", "resumen", "cuentas", "plan", "ajustes", "perfil", "mascota"] {
+            UserDefaults.standard.removeObject(forKey: Self.guardados + que)
+        }
+    }
+
+    /// La libreta que acaba de llegar, guardada para el próximo arranque.
+    func guardaLaLibreta(_ json: String) { guarda("libreta", json) }
+
+    /// Los de la última vez, antes de preguntarle nada a la web. Lo llama el
+    /// controlador nada más arrancar.
+    func pintaLoDeLaUltimaVez() {
+        if let j = Self.guardado("libreta"), let l = CNLibreta.desde(json: j) { libreta = l; apuntaQueLlego() }
+        if let j = Self.guardado("tema") { cargarTema(json: j) }
+        if let j = Self.guardado("resumen") { cargarResumen(json: j) }
+        if let j = Self.guardado("cuentas") { cargarCuentas(json: j) }
+        if let j = Self.guardado("plan") { cargarPlan(json: j) }
+        if let j = Self.guardado("ajustes") { cargarAjustes(json: j) }
+        if let j = Self.guardado("perfil") { cargarPerfil(json: j) }
+        if let j = Self.guardado("mascota") { cargarMascota(json: j) }
+    }
+
     /// Un modelo a medias (leído mientras la web repinta) NO pisa al bueno:
     /// así la pantalla no se queda en blanco al cambiar de pestaña.
     func cargarPlan(json: String) {
         defer { refrescarPlan() }
         guard let m = CNPlanModelo.desde(json: json) else { return }
+        if m.listo { guarda("plan", json) }
         if m.listo || plan == nil { plan = m }
     }
     func cargarCuentas(json: String) {
         defer { refrescarCuentas() }
         guard let m = CNCuentasModelo.desde(json: json) else { return }
+        if m.listo { guarda("cuentas", json) }
         if m.listo || cuentas == nil { cuentas = m }
     }
     func cargarMovDetalle(json: String) { movDetalle = CNMovDetalle.desde(json: json) }
@@ -1158,6 +1211,9 @@ final class CNDatos: ObservableObject {
     private var dibujoChino = ""
     func cargarMascota(json: String) {
         guard var m = CNMascota.desde(json: json) else { return }
+        // Con dibujo dentro: es lo que hace que al abrir se vea Chino y no un
+        // hueco. Sin dibujo llega cuando no cambió, y ese no vale para guardar.
+        if !m.chinolo.isEmpty { guarda("mascota", json) }
         // Si viene sin dibujo es que no cambió: se le pega el que ya había.
         if m.chinolo.isEmpty { m.chinolo = dibujoChino } else { dibujoChino = m.chinolo }
         mascota = m
@@ -1261,7 +1317,7 @@ final class CNDatos: ObservableObject {
         resumen?.cabecera.entraFmt = cnDinero(t.ing)
         resumen?.cabecera.saleFmt = cnDinero(t.gas)
     }
-    func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p } }
+    func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p; guarda("perfil", json) } }
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
     /// con los colores nuevos (los de CNC son calculados).
     @Published var selloTema = 0
@@ -1271,11 +1327,15 @@ final class CNDatos: ObservableObject {
         seccion = x
     }
     func cargarAjustes(json: String) {
-        if let a = CNAjustes.desde(json: json) { ajustes = a }
+        if let a = CNAjustes.desde(json: json) { ajustes = a; guarda("ajustes", json) }
     }
     func cargarResumen(json: String) {
         guard let m = CNResumenModelo.desde(json: json) else { return }
         defer { refrescarCifras() }
+        // Solo se guarda el completo: el que llega desde otra pestaña trae la
+        // cabecera pero no las tarjetas, y guardarlo dejaría la próxima
+        // apertura con medio resumen.
+        if m.listo { guarda("resumen", json) }
         if m.listo || resumen == nil {
             resumen = m
             return
@@ -1288,6 +1348,7 @@ final class CNDatos: ObservableObject {
         resumen = actual
     }
     func cargarTema(json: String) {
+        guarda("tema", json)
         guard let p = CNPaletaTema.desde(json: json) else { return }
         CNC.tema = p
         selloTema += 1

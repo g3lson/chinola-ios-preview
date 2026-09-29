@@ -202,6 +202,10 @@ class ChinolaViewController: CAPBridgeViewController {
         }
         // Las tipografías de la marca, antes de pintar nada.
         if !sin("fuentes") { CNFuentes.registrar() }
+        // LO DE LA ÚLTIMA VEZ, YA. Antes de preguntarle nada a la web: así la
+        // app se ve con datos desde el primer fotograma, y si la web tarda —o
+        // no llega— sigues viendo tus cifras en vez de una pantalla vacía.
+        if !sin("guardado") { CNDatos.shared.pintaLoDeLaUltimaVez() }
         // Y el tema de la última vez: la primera pantalla sale ya con sus
         // colores, su letra y su moneda.
         if !sin("tema") { datos.temaGuardado() }
@@ -910,6 +914,7 @@ class ChinolaViewController: CAPBridgeViewController {
             }
             if json.count > 2, let l = CNLibreta.desde(json: json) {
                 CNDatos.shared.libreta = l
+                CNDatos.shared.guardaLaLibreta(json)
                 CNDatos.shared.apuntaQueLlego()
                 if !huella.isEmpty { self.huellaLibreta = huella }
                 self.bridge?.webView?.evaluateJavaScript("(window.__chinolaPerfilJSON && window.__chinolaPerfilJSON()) || ''") { p, _ in
@@ -1528,6 +1533,10 @@ class ChinolaViewController: CAPBridgeViewController {
                 if let m = CNPuerta.desde(json: json), m.paso == "app" {
                     s.cerrarPuerta()
                 } else {
+                    // Fuera de la app: o es alguien nuevo o alguien que cerró
+                    // sesión. Lo guardado es de la persona de antes y no puede
+                    // salir en el próximo arranque.
+                    CNDatos.shared.olvidaLoGuardado()
                     CNDatos.shared.cargarPuerta(json: json)
                     CNDatos.shared.apuntaQueLlego()
                     s.abrirPuerta()
