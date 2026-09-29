@@ -63,6 +63,20 @@ jobs:
               FALLOS=$((FALLOS+1))
             fi
           done
+          # Y AHORA EL ARCHIVO DE VERDAD, con sus vecinos de verdad.
+          #
+          # Los trozos de arriba dicen que los macros de Apple van bien, así
+          # que lo que falla es algo escrito por mí. Solo hay una forma de que
+          # el compilador lo diga: darle el archivo tal cual, con lo que usa.
+          # `ChinolaNativo` y `CNCalculo` no tocan Capacitor, así que entran
+          # tal cual — sin remiendos que cambien lo que se está midiendo.
+          echo ""
+          echo "════════ el de verdad, con ChinolaNativo y CNCalculo ════════"
+          swiftc -typecheck -sdk "$SDK" \
+            -target arm64-apple-ios26.0-simulator \
+            -swift-version 5 sondas/ia/real/*.swift 2>&1 | head -80 \
+            && echo "✓ pasa" || echo "✗ NO PASA"
+
           echo ""
           echo "trozos que no pasan: $FALLOS"
           # La sonda no falla nunca: viene a informar, no a aprobar. Si falla,
