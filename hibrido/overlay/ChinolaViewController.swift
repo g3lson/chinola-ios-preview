@@ -361,6 +361,24 @@ class ChinolaViewController: CAPBridgeViewController {
         if !sin("nativo") { mostrarNativo(menuEstado.activa) }
         if !sin("cortina") { montarCortina() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in self?.traerDatos() }
+        // EL PASEO POR LAS PESTAÑAS, PARA EL BANCO DE PRUEBAS.
+        //
+        // El fallo que dejó la app en blanco vivía en `avisaTemaNativo`, que
+        // corre en CADA repintado: o sea, en cada cambio de pantalla. Que la
+        // primera pantalla abra no demuestra que navegar funcione, y el
+        // simulador no sabe dar toques. Con `CN_CON=paseo` la app se recorre
+        // sus cinco pestañas sola y se deja fotografiar.
+        //
+        // Lee una variable de entorno que en un teléfono de verdad no existe.
+        if ProcessInfo.processInfo.environment["CN_CON"]?.contains("paseo") == true {
+            let orden = ["resumen", "movs", "cuentas", "plan", "perfil"]
+            for (i, id) in orden.enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0 + Double(i) * 4.0) { [weak self] in
+                    NSLog("CNPASEO: \(id)")
+                    self?.menuEstado.alTocar(id)
+                }
+            }
+        }
         // LA RED: que la app NUNCA se quede en una pantalla vacía.
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in self?.redDeSeguridad() }
         // La puerta (bienvenida, acceso, nombre, plan) también es nativa.

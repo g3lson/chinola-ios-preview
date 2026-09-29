@@ -38,6 +38,19 @@ jobs:
           # Lo que falta por saber es si la que abre en blanco en el teléfono
           # abre en blanco aquí — y si abre, su propio cartel dice por qué.
           cp -R ../hibrido/app-clasico/* www/
+          # UNA LIBRETA DE EJEMPLO, solo aquí. Sin datos, lo único que se ve es
+          # la bienvenida, y las pantallas que hay que mirar —las nativas, las
+          # que tapan el webview— salen vacías porque no hay nada que pintar.
+          cp ../hibrido/siembra.js www/siembra.js
+          python3 - <<'PYX'
+          import re, pathlib
+          p = pathlib.Path('www/index.html')
+          h = p.read_text()
+          assert '<script defer src=' in h, 'no encontré el script de la app'
+          h = h.replace('<script defer src=', '<script src="/siembra.js"></script>\n  <script defer src=', 1)
+          p.write_text(h)
+          print('siembra puesta antes del script de la app')
+          PYX
           npm init -y >/dev/null
           # Los plugins DE VERDAD. Sin ellos el banco se inventa errores que la
           # app real no tiene («"App" plugin is not implemented on ios») y
@@ -116,6 +129,22 @@ jobs:
             xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
             sleep 22
             xcrun simctl io "$UDID" screenshot "hoy-$n.png" || true
+          done
+
+          # Y AHORA, LAS PESTAÑAS.
+          #
+          # El fallo vivía en `avisaTemaNativo`, que corre en CADA repintado: o
+          # sea, en cada cambio de pantalla. Que la portada abra no demuestra
+          # que navegar funcione, y `simctl` no sabe dar toques: lo hace la
+          # propia app con `CN_CON=paseo`, que se recorre sus cinco pestañas.
+          echo "=== el paseo por las cinco pestañas ==="
+          xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+          sleep 2
+          SIMCTL_CHILD_CN_CON=paseo xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+          sleep 10
+          for P in resumen movs cuentas plan perfil; do
+            xcrun simctl io "$UDID" screenshot "pestana-$P.png" || true
+            sleep 4
           done
 
           echo "=== lo que dijo la web (y lo nativo) ==="
