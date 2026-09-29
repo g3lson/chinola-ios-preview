@@ -105,18 +105,22 @@ jobs:
           # controlador, zanja si el remedio es ese.
           PUB=$(dirname "$(find "$APP" -name "index.html" -maxdepth 3 | head -1)")
           echo "la web va en $PUB"
+          # El vigía tapa la app con su cartel a los 15 s si la web no le saluda,
+          # así que hay que verla con él apagado: lo de abajo es la app, no un
+          # fallo. Y con él encendido, para leer por dónde va el arranque.
           n=0
-          for VAR in app app-clasico; do
+          for CFG in "app-clasico:vigia" "app-clasico:" "app:"; do
+            VAR=${CFG%%:*}; SIN=${CFG#*:}
             n=$((n+1))
-            echo "=== $n) paquete $VAR ==="
+            echo "=== $n) paquete $VAR ${SIN:+· sin $SIN} ==="
             xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
             sleep 2
             rm -rf "$PUB"/* && cp -R ../hibrido/$VAR/. "$PUB"/
             xcrun simctl uninstall "$UDID" do.com.fente.chinolareal 2>/dev/null || true
             xcrun simctl install "$UDID" "$APP"
-            xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+            SIMCTL_CHILD_CN_SIN="$SIN" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
             sleep 22
-            xcrun simctl io "$UDID" screenshot "$n-$VAR.png" || true
+            xcrun simctl io "$UDID" screenshot "$n-$VAR${SIN:+-sin-$SIN}.png" || true
           done
 
           echo "=== lo que dijo la web (y lo nativo) ==="
