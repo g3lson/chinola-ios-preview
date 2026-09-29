@@ -58,6 +58,9 @@ class ChinolaViewController: CAPBridgeViewController {
         nativo.menuEstado = menuEstado
         bridge?.registerPluginInstance(CobroPlugin())
         bridge?.registerPluginInstance(nativo)
+        // La IA del propio teléfono. Se registra siempre; ella misma dice si
+        // este aparato puede usarla.
+        bridge?.registerPluginInstance(IALocalPlugin())
     }
 
     /// El teléfono cambió de claro a oscuro (o al revés).
