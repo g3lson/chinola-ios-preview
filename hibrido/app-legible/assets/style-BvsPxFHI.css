@@ -1,0 +1,183 @@
+/* GENERADO por `npm run sync` desde diseno/Finanzas.dc.html — no editar a mano. */
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overscroll-behavior:none;font-family:var(--fuente, "Plus Jakarta Sans", system-ui, sans-serif);-webkit-font-smoothing:antialiased}
+body{-webkit-tap-highlight-color:transparent}
+input,select,button{font-family:inherit;font-size:15px}
+a{color:oklch(0.44 0.11 155);text-decoration:none}
+.noscroll::-webkit-scrollbar{display:none}
+@keyframes flota{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-10px) rotate(2deg)}}
+@keyframes parpadeo{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(0.12)}}
+@keyframes brinca{0%,100%{transform:translateY(0)}30%{transform:translateY(-7px)}60%{transform:translateY(0)}}
+@keyframes cae{0%{transform:translateY(0);opacity:1}100%{transform:translateY(22px) scale(0.6);opacity:0}}
+@keyframes burbuja{0%{transform:translateY(0);opacity:0.8}100%{transform:translateY(-18px);opacity:0}}
+@keyframes pesa{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@keyframes saluda{0%,100%{transform:rotate(-18deg)}50%{transform:rotate(18deg)}}
+@keyframes chispa{0%,100%{opacity:0;transform:scale(0.4) rotate(0deg)}50%{opacity:1;transform:scale(1) rotate(25deg)}}
+@keyframes burbujaIn{from{opacity:0;transform:translateY(6px) scale(0.9)}to{opacity:1;transform:none}}
+@keyframes toastIn{from{opacity:0;transform:translateY(24px) scale(0.94)}to{opacity:1;transform:none}}
+@keyframes entra{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes aparece{from{opacity:0}to{opacity:1}}
+/* Feel nativo: cada botón se hunde un pelín al tocarlo y se quita el flash gris
+   del WebView. Da respuesta táctil inmediata en toda la app sin tocar nada más. */
+*{-webkit-tap-highlight-color:transparent}
+button{transition:transform .12s cubic-bezier(0.32,0.72,0,1), opacity .12s ease}
+button:active{transform:scale(0.96);opacity:0.82}
+@media (prefers-reduced-motion:reduce){button{transition:none}button:active{transform:none;opacity:1}}
+
+/* EL BOTÓN FLOTANTE DE CHINO EN LA WEB Y LA PWA.
+   En la app lo dibuja SwiftUI; aquí es un botón del documento, fijo por encima
+   de todo. El touch-action a none es lo que permite arrastrarlo: sin eso el dedo
+   se lo lleva el scroll de la página y el botón nunca se mueve. */
+.chino-flotante{
+  position:fixed;width:56px;height:56px;border-radius:50%;border:none;padding:0;
+  z-index:60;
+  background:var(--acento);color:var(--sobre-acento);
+  display:flex;align-items:center;justify-content:center;cursor:grab;
+  box-shadow:0 6px 20px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.14);
+  touch-action:none;
+}
+.chino-flotante svg{width:26px;height:26px;pointer-events:none}
+/* Mientras el dedo lo lleva no se hunde como los demás botones: hundirse al
+   arrastrar hace que parezca que se está tocando algo, no moviéndolo. */
+.chino-flotante.llevado{cursor:grabbing;transform:scale(1.06);transition:transform 0.1s ease-out}
+.chino-flotante.llevado:active{transform:scale(1.06)}
+/* Ningún campo por debajo de 16 píxeles: el navegador de iOS da un zoom al
+   enfocar uno más pequeño y al salir deja la pantalla desplazada. El suelo se
+   pone aquí para los campos que no traen tamaño propio; los que sí lo traen
+   pasan por el mismo max en la plantilla. */
+input,textarea,select{font-size:max(16px, calc(15px * var(--letra, 1)))}
+/* Lo que está fuera de pantalla no se calcula ni se pinta. La altura de partida
+   que lleva la regla le da al navegador una altura de partida para lo que aún no ha medido, y así
+   la barra de desplazamiento no baila mientras se recorre la lista. Se marca
+   cada movimiento y no cada día: un día suelto puede llevar trescientos y su
+   altura no se puede adivinar, mientras que una fila mide 62 píxeles clavados.
+   La medida que se declara son 38 y no 62 porque lo que sustituye es el
+   contenido: los 24 del relleno se los suma el navegador aparte, y con 62
+   la lista se creía un 40 % más larga de lo que es. La palabra «auto»
+   de delante hace que se quede con la altura de verdad en cuanto la mide una
+   vez, que es lo que evita el salto al volver hacia arriba. */
+[data-mov]{content-visibility:auto;contain-intrinsic-size:auto 38px}
+/* Las de dentro llevan un píxel menos de relleno arriba y abajo, y las de un
+   aporte o un abono son de un solo renglón. */
+[data-mov="det"]{contain-intrinsic-size:auto 40px}
+[data-pago]{content-visibility:auto;contain-intrinsic-size:auto 22px}
+/* El teclado. La variable --teclado la pone el plugin al abrirse; en el
+   navegador vale 0
+   y ninguna de estas reglas hace nada. La hoja se sube entera en vez de dejar
+   el campo debajo del teclado, y su relleno de abajo deja de contar el hueco
+   del botón de inicio, que el teclado ya tapa. */
+.con-teclado [style*="position:absolute"][style*="bottom:0"]{
+  transform:translateY(calc(-1 * var(--teclado, 0px)));
+  transition:transform 0.25s cubic-bezier(0.32,0.72,0,1);
+}
+.con-teclado [style*="env(safe-area-inset-bottom)"]{--sab-tapado:1}
+/* --- capa nativa (añadida por sync.mjs, no viene del diseño) --- */
+@keyframes menea{from{transform:rotate(-0.5deg)}to{transform:rotate(0.5deg)}}
+@keyframes brota{from{opacity:0;transform:translateY(-8px) scale(0.96)}to{opacity:1;transform:none}}
+/* El cruce al cambiar de pestaña: un cruce suave, no un deslizamiento. */
+@keyframes cruzaVista{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* La pantalla que se empuja encima entra desde la derecha, con la curva de iOS. */
+@keyframes empuja{from{transform:translateX(100%)}to{transform:translateX(0)}}
+/* Las hojas de abajo suben al abrirse. Sin fill-mode a propósito: al acabar la
+   animación el elemento vuelve a su transform en línea, que es el que mueve el
+   dedo al arrastrar. */
+@keyframes sube{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+/* El carrusel de bienvenida. Van por parejas A/B porque para que una animación
+   CSS se repita hay que cambiarle el nombre: si se le pone el mismo, el
+   navegador entiende que es la misma y no la reinicia. */
+@keyframes laminaDerA{from{opacity:0;transform:translateX(48px)}to{opacity:1;transform:translateX(0)}}
+@keyframes laminaDerB{from{opacity:0;transform:translateX(48px)}to{opacity:1;transform:translateX(0)}}
+@keyframes laminaIzqA{from{opacity:0;transform:translateX(-48px)}to{opacity:1;transform:translateX(0)}}
+@keyframes laminaIzqB{from{opacity:0;transform:translateX(-48px)}to{opacity:1;transform:translateX(0)}}
+body,input,select,button,textarea{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+}
+/* El documento no se mueve: la app ocupa la pantalla y el scroll vive dentro de
+   sus propias zonas. Sin esto, arrastrar una fila que se desplaza en horizontal
+   —los filtros de movimientos, por ejemplo— tira del documento entero y la
+   pantalla se va de sitio. */
+html,body{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  overscroll-behavior:none;
+}
+/* Y lo que sí rueda dentro no le pasa el tirón a lo que tiene detrás. */
+[style*="overflow-x:auto"],[style*="overflow-x: auto"]{overscroll-behavior-x:contain}
+/* Una columna que rueda no encoge lo que lleva dentro.
+   Sin esto, flexbox reparte el hueco que falta entre las tarjetas —todas
+   encogen un poco— y una tarjeta con overflow:hidden se queda sin la mitad de
+   sus filas sin decirlo. Así desapareció la verificación en dos pasos de la
+   pantalla de Seguridad: la tarjeta medía 45 px y sus dos filas, 104. */
+[style*="overflow-y:auto"] > *, [style*="overflow-y: auto"] > *{flex-shrink:0}
+/* Una lista desplegable con la flecha de la app. Lleva !important porque el
+   fondo va en línea con la forma corta (background: a secas), y esa forma corta
+   borra la imagen aunque solo diga un color. */
+select.lista{
+  appearance:none; -webkit-appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8f88' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>") !important;
+  background-repeat:no-repeat !important;
+  background-position:right 13px center !important;
+  background-size:15px !important;
+}
+/* Y el campo de fecha, con la misma flecha. Se le cambia el dibujo al botón que
+   pone el navegador en vez de quitarlo: es el que abre la rueda del sistema. */
+input[type="date"]::-webkit-calendar-picker-indicator{
+  -webkit-appearance:none; appearance:none;
+  width:15px; height:15px; margin:0; padding:0; cursor:pointer; opacity:1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8f88' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat:no-repeat;
+  background-size:15px;
+}
+/* Una tira de pastillas que se desplaza de lado asienta siempre en una pastilla
+   entera: sin esto el dedo la deja parada por la mitad contra el borde y la
+   pastilla cortada parece un fallo de maquetación. */
+.noscroll[style*="overflow-x:auto"]{scroll-snap-type:x proximity;scroll-padding-left:2px}
+.noscroll[style*="overflow-x:auto"]>*{scroll-snap-align:start}
+body{
+  user-select:none;-webkit-user-select:none;
+  -webkit-text-size-adjust:100%;text-size-adjust:100%;
+  -webkit-touch-callout:none;
+  touch-action:manipulation;
+  overscroll-behavior:none;
+}
+input,textarea,select,[contenteditable]{user-select:text;-webkit-user-select:text}
+button{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+/* El dedo tapa el botón: la única confirmación de que respondió es que se hunda. */
+button:active{transform:scale(0.97);transition:transform 0.06s ease-out}
+/* Una fila de lista no se encoge como un botón: apenas se hunde. */
+button[style*="width:100%"]:active{transform:scale(0.985)}
+button{transition:transform 0.16s ease-out}
+img,svg{-webkit-user-drag:none;user-drag:none}
+/* El scroll de dentro no arrastra a la app entera. */
+[style*="overflow-y:auto"],[style*="overflow-y: auto"]{overscroll-behavior:contain}
+/* Scroll con inercia en todo lo que rueda. En la vista web de iOS el
+   desplazamiento por momento —soltar y que siga rodando— no siempre viene de
+   serie; sin esto la lista se para en seco al levantar el dedo y se siente de
+   página web, no de app. */
+[style*="overflow-y:auto"],[style*="overflow-y: auto"],
+[style*="overflow-x:auto"],[style*="overflow-x: auto"]{-webkit-overflow-scrolling:touch}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:0.01ms !important;transition-duration:0.01ms !important}
+}
+/* GENERADO por `npm run sync` desde diseno/Finanzas.dc.html — no editar a mano. */
+:root{--positivo:oklch(0.52 0.13 152);--negativo:oklch(0.62 0.16 30);--ahorro:oklch(0.56 0.14 300);--aviso:oklch(0.66 0.14 70);--balance:oklch(0.46 0.11 255)}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Plus Jakarta Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-wrap:pretty}
+input,select,button{font-family:inherit;font-size:14px}
+a{color:oklch(0.44 0.11 155);text-decoration:none}
+a:hover{color:oklch(0.32 0.09 155)}
+@keyframes flota{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-10px) rotate(2deg)}}
+@keyframes parpadeo{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(0.12)}}
+@keyframes brinca{0%,100%{transform:translateY(0)}30%{transform:translateY(-7px)}60%{transform:translateY(0)}}
+@keyframes cae{0%{transform:translateY(0);opacity:1}100%{transform:translateY(24px) scale(0.6);opacity:0}}
+@keyframes burbuja{0%{transform:translateY(0);opacity:0.8}100%{transform:translateY(-20px);opacity:0}}
+@keyframes pesa{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@keyframes entra{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes aparece{from{opacity:0}to{opacity:1}}
+@keyframes saluda{0%,100%{transform:rotate(-20deg)}50%{transform:rotate(20deg)}}
+@keyframes chispa{0%,100%{opacity:0;transform:scale(0.4) rotate(0deg)}50%{opacity:1;transform:scale(1) rotate(25deg)}}
+@keyframes burbujaIn{from{opacity:0;transform:translateY(6px) scale(0.92)}to{opacity:1;transform:none}}
+@keyframes toastIn{from{opacity:0;transform:translateY(24px) scale(0.94)}to{opacity:1;transform:none}}

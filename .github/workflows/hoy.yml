@@ -1,4 +1,4 @@
-name: "LA DE HOY: cinco arranques seguidos, a ver si la carrera se acabó"
+name: "LA DE HOY, LEGIBLE: cinco arranques y el error con su nombre"
 
 # El otro banco de pruebas monta su propio `TestVC`: el controlador de verdad se
 # compilaba pero nunca se ejecutaba. Y el fallo que perseguimos —la app abre en
@@ -10,7 +10,7 @@ name: "LA DE HOY: cinco arranques seguidos, a ver si la carrera se acabó"
 on:
   workflow_dispatch:
   push:
-    paths: ['hibrido/app-clasico/**', 'hibrido/overlay/**', '.github/workflows/hoy.yml']
+    paths: ['hibrido/app-legible/**', 'hibrido/app-clasico/**', 'hibrido/overlay/**', '.github/workflows/hoy.yml']
 
 jobs:
   correr:
@@ -37,9 +37,16 @@ jobs:
           # lo que podía decir: con el controlador real sus módulos SÍ corren.
           # Lo que falta por saber es si la que abre en blanco en el teléfono
           # abre en blanco aquí — y si abre, su propio cartel dice por qué.
-          cp -R ../hibrido/app-clasico/* www/
+          cp -R ../hibrido/app-legible/* www/
           npm init -y >/dev/null
-          npm i @capacitor/core@latest @capacitor/cli@latest @capacitor/ios@latest >/dev/null 2>&1
+          # Los plugins DE VERDAD. Sin ellos el banco se inventa errores que la
+          # app real no tiene («"App" plugin is not implemented on ios») y
+          # ensucian justo lo que se viene a medir.
+          npm i @capacitor/core@latest @capacitor/cli@latest @capacitor/ios@latest \
+            @capacitor/app @capacitor/status-bar @capacitor/keyboard @capacitor/splash-screen \
+            @capacitor/haptics @capacitor/network @capacitor/share @capacitor/clipboard \
+            @capacitor/filesystem @capacitor/local-notifications @capacitor/browser \
+            @capacitor/preferences >/dev/null 2>&1
           cat > capacitor.config.json <<'JSON'
           { "appId": "do.com.fente.chinolareal", "appName": "Chinola", "webDir": "www",
             "ios": { "contentInset": "never" }, "server": { "iosScheme": "capacitor" } }
