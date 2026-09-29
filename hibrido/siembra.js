@@ -23,6 +23,20 @@
   const json = (o) => new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json' } });
   window.fetch = function (u, o) {
     const url = String((u && u.url) || u || '');
+    // `/yo` es lo que decide si se ENTRA: sin esto la app se queda en la
+    // pantalla de acceso (`paso: auth`) y no hay nada que mirar.
+    if (/\/yo(\?|$)/.test(url)) {
+      return Promise.resolve(json({
+        usuario: { email: 'gelson@banco', nombre: 'Gelson', plan: 'pro', ia: 1 },
+        prefs: { tema: 'sistema', idioma: 'es', personaje: 'auto', notis: false }
+      }));
+    }
+    // Las libretas las pone la siembra en el almacén local; aquí se contesta
+    // vacío para que la bajada no pise lo sembrado.
+    if (/\/libretas(\?|$)/.test(url)) {
+      const d = JSON.parse(localStorage.getItem('chinola-datos-v3') || '{}');
+      return Promise.resolve(json({ libretas: d.libretas || [] }));
+    }
     if (url.includes('/integraciones/voz')) {
       return Promise.resolve(json({ ia: true, hayIA: true, alexa: {}, whatsapp: {}, telegram: {} }));
     }
