@@ -1321,6 +1321,11 @@ class ChinolaViewController: CAPBridgeViewController {
         contenedorNativo = host.view
         ajustarHueco(host)
         view.bringSubviewToFront(barra.barra)
+        // Y el botón de Chino con ella. Se monta una vez y cada pantalla
+        // nativa que entra después se le pone ENCIMA y lo tapa: se montaba
+        // bien, la web lo pedía bien, y no se veía. La barra ya se subía aquí;
+        // el botón no, y es el único que va por encima de la barra.
+        if let f = flotanteVista { view.bringSubviewToFront(f) }
         // La libreta solo si cambió, y DESPUÉS de que entre la pantalla: si se
         // pide aquí mismo, el puente se come los primeros fotogramas de la
         // animación y el cambio se siente pesado.
@@ -2134,6 +2139,10 @@ class ChinolaViewController: CAPBridgeViewController {
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         flotanteVista = host.view
+        // Arriba del todo desde ya: si entra con una pantalla nativa puesta,
+        // sin esto nace debajo.
+        view.bringSubviewToFront(host.view)
+        NSLog("CNFLOTA: el botón de Chino, montado")
     }
 
     private func montarBarra() {
