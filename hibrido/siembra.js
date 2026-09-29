@@ -42,6 +42,18 @@
     }
   }
 
+  // TRES DEL MISMO DÍA, para mirar el orden dentro del grupo: el último
+  // anotado tiene que encabezar la lista. Los ids son como los que genera la
+  // app de verdad: los milisegundos de cuando se anotó, y tres cifras detrás.
+  var t0 = Date.now();
+  ['PRIMERO', 'SEGUNDO', 'TERCERO'].forEach(function (n, i) {
+    tx.unshift({
+      id: String(t0 + i * 1000) + String(100 + i), concepto: n, categoria: 'Otros',
+      tipo: 'Gasto Variable', monto: 100 * (i + 1),
+      fecha: new Date().toISOString().slice(0, 10), recurrente: false, medio: 'cuenta:1'
+    });
+  });
+
   var libreta = {
     id: 'lb-banco-de-pruebas', nombre: 'Personal', tipo: 'Personal', color: COLS[0],
     miembros: [{ email: 'local', nombre: 'Gelson', rol: 'Dueño' }],
