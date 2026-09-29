@@ -351,6 +351,19 @@ class ChinolaViewController: CAPBridgeViewController {
                     + "flotante:(window.__chinolaSondaFlotante&&window.__chinolaSondaFlotante())||'sin sonda'})}"
                     + "catch(x){return 'no se pudo: '+x}})()") { r, _ in
                         NSLog("CNSONDA: \((r as? String) ?? "sin respuesta")")
+                        // Y el lado NATIVO: que la web lo pida y que se monte
+                        // no basta; puede estar montado y no verse. Esto dice
+                        // dónde está, de qué tamaño y si el mando lo da por
+                        // puesto.
+                        let f = self?.flotanteVista
+                        NSLog("CNFLOTA2: vista=\(f == nil ? "NO EXISTE" : "sí") "
+                            + "puesto=\(CNFlotante.shared.puesto) "
+                            + "x=\(CNFlotante.shared.x) y=\(CNFlotante.shared.y) "
+                            + "frame=\(f?.frame ?? .zero) alpha=\(f?.alpha ?? -1) "
+                            + "oculta=\(f?.isHidden ?? true) "
+                            + "enPantalla=\(f?.window != nil) "
+                            + "indice=\(f.flatMap { self?.view.subviews.firstIndex(of: $0) } ?? -1) "
+                            + "de=\(self?.view.subviews.count ?? 0)")
                     }
             }
         }
