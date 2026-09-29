@@ -74,8 +74,17 @@ jobs:
           echo "════════ el de verdad, con ChinolaNativo y CNCalculo ════════"
           swiftc -typecheck -sdk "$SDK" \
             -target arm64-apple-ios26.0-simulator \
-            -swift-version 5 sondas/ia/real/*.swift 2>&1 | head -80 \
+            -swift-version 5 sondas/ia/real/*.swift > /tmp/real.txt 2>&1 \
             && echo "✓ pasa" || echo "✗ NO PASA"
+          # Separado por archivo. Con todo junto, los errores del que importa
+          # se pierden entre los de los vecinos, que solo están ahí para que
+          # el que importa tenga con qué compilar.
+          echo "--- cuántos errores, y de quién ---"
+          grep -oE "^sondas/ia/real/[A-Za-z]+\.swift" /tmp/real.txt | sort | uniq -c
+          echo "--- LOS DE LA IA, enteros ---"
+          grep -A6 "^sondas/ia/real/IALocal" /tmp/real.txt | head -80
+          echo "--- los de los vecinos, por si me falta algún archivo ---"
+          grep -E "^sondas/ia/real/(Chinola|CN)" /tmp/real.txt | head -25
 
           echo ""
           echo "trozos que no pasan: $FALLOS"
