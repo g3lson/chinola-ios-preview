@@ -7700,6 +7700,20 @@ struct CNBotonFlotante: View {
                                    width: max(0, g.size.width - margen * 2 - lado),
                                    height: max(0, g.size.height - g.safeAreaInsets.top - margen * 2 - lado))
                 boton
+                    // EL BOTÓN DICE DÓNDE ESTÁ, Y SE MIDE AQUÍ, ANTES DE
+                    // `.position`.
+                    //
+                    // `.position` devuelve una vista que ocupa TODO el hueco
+                    // disponible y coloca el contenido dentro. Medido después,
+                    // el botón apuntaba la pantalla entera como suya y la caja
+                    // se quedaba hasta el último toque: la app, muerta otra
+                    // vez. Medido aquí son sus 56 puntos, y `.global` ya trae
+                    // dónde acabaron.
+                    .background(GeometryReader { p in
+                        Color.clear
+                            .onAppear { mando.marco = p.frame(in: .global) }
+                            .onChange(of: p.frame(in: .global)) { nuevo in mando.marco = nuevo }
+                    })
                     .position(x: libre.minX + libre.width * mando.x + lado / 2 + arrastre.width,
                               y: libre.minY + libre.height * mando.y + lado / 2 + arrastre.height)
                     .gesture(
@@ -7730,16 +7744,6 @@ struct CNBotonFlotante: View {
                                 mando.alMover(nx, ny)
                             }
                     )
-                    // EL BOTÓN DICE DÓNDE ESTÁ.
-                    //
-                    // Es lo único que sabe su sitio de verdad: aquí entran el
-                    // arrastre, la animación de vuelta al borde y el hueco de
-                    // arriba. La caja que reparte los toques lee esto.
-                    .background(GeometryReader { p in
-                        Color.clear
-                            .onAppear { mando.marco = p.frame(in: .global) }
-                            .onChange(of: p.frame(in: .global)) { nuevo in mando.marco = nuevo }
-                    })
             } else {
                 // Sin botón puesto no hay marco: si se quedara el de antes, la
                 // caja seguiría quedándose los toques de un botón que ya no
@@ -7829,6 +7833,10 @@ final class CNPasaToques: UIView {
     override func point(inside punto: CGPoint, with evento: UIEvent?) -> Bool {
         let m = CNFlotante.shared.marco
         guard CNFlotante.shared.puesto, !m.isEmpty else { return false }
+        // Un marco más grande que el botón es un marco mal medido, y creerlo
+        // cuesta la app entera. De los dos fallos posibles este se queda con el
+        // barato: se pierde el botón, no la pantalla.
+        guard m.width < 120, m.height < 120 else { return false }
         return m.contains(convert(punto, to: nil))
     }
 }

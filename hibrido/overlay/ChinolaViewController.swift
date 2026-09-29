@@ -414,7 +414,7 @@ class ChinolaViewController: CAPBridgeViewController {
                                 while let x = v { if x === caja { deLaCaja = true; break }; v = x.superview }
                                 parte += "\(nombre)=\(deLaCaja ? "CAJA" : "web") "
                             }
-                            NSLog("CNTOQUE: boton-puesto=\(CNFlotante.shared.puesto) \(parte)"
+                            NSLog("CNTOQUE: boton-puesto=\(CNFlotante.shared.puesto) marco=\(CNFlotante.shared.marco) \(parte)"
                                 + "| se espera: web en los tres primeros"
                                 + "\(CNFlotante.shared.puesto ? " y CAJA en el del botón" : "")")
                         }
