@@ -244,8 +244,15 @@ struct CNFormato {
 /// Lee del formato que manda la web y escribe de vuelta por el puente. El valor
 /// que se ve es siempre el de la web: no se guarda una copia aquí que luego
 /// discrepe de la del navegador.
-func cnAjuste<T>(_ clave: String, _ leer: @escaping () -> T, _ aJS: @escaping (T) -> Any) -> Binding<T> {
-    Binding(get: leer, set: { nuevo in CNC.alPoner?(clave, aJS(nuevo)) })
+/// `Equatable` a propósito: sin comparar, SwiftUI vuelve a llamar al `set`
+/// cuando el valor de la web llega y coincide, y se escribe por el puente otra
+/// vez para nada. Con un interruptor que dispara una ACCIÓN eso es peor que un
+/// desperdicio: la deshace. Ver la prueba `interruptores-nativos`.
+func cnAjuste<T: Equatable>(_ clave: String, _ leer: @escaping () -> T, _ aJS: @escaping (T) -> Any) -> Binding<T> {
+    Binding(get: leer, set: { nuevo in
+        guard nuevo != leer() else { return }
+        CNC.alPoner?(clave, aJS(nuevo))
+    })
 }
 
 /// Un tamaño de letra del diseño, ya escalado por el ajuste del usuario.
@@ -3841,7 +3848,13 @@ struct CNPlan: View {
     private func pestanasSistema(_ m: CNPlanModelo) -> some View {
         Picker("", selection: Binding(
             get: { m.tabs.firstIndex { $0.puesta } ?? 0 },
-            set: { i in guard i >= 0, i < m.tabs.count else { return }; ponerTab(m.tabs[i]) })) {
+            // Y sin repetir: al llegar la pestaña de la web, SwiftUI vuelve a
+            // llamar al `set` con el mismo índice y se pedía otra vez.
+            set: { i in
+                guard i >= 0, i < m.tabs.count else { return }
+                guard i != (m.tabs.firstIndex { $0.puesta } ?? 0) else { return }
+                ponerTab(m.tabs[i])
+            })) {
                 ForEach(m.tabs.indices, id: \.self) { i in Text(m.tabs[i].label).tag(i) }
             }
             .pickerStyle(.segmented)
@@ -6506,8 +6519,24 @@ struct CNSeccionVista: View {
                     }
                 }
                 Spacer(minLength: 8)
+                // EL VALOR NUEVO MANDA, y no «se tocó».
+                //
+                // Esto ignoraba el valor y disparaba la acción siempre. Al
+                // tocar se encendía en el servidor, llegaba la respuesta,
+                // `q.puesto` pasaba a puesto, SwiftUI volvía a llamar al `set`
+                // con ESE valor… y la acción se disparaba otra vez, apagándolo.
+                // Un segundo después de encenderlo. Quedó en la auditoría:
+                // «Encendió Chino con IA» y «Apagó Chino con IA» seguidos, una
+                // y otra vez, y la IA sin funcionar en la app, en WhatsApp y en
+                // Telegram.
+                //
+                // Con esto, cuando el valor que llega ya coincide con el que
+                // hay, no se dispara nada.
                 Toggle("", isOn: Binding(get: { q.puesto },
-                                         set: { _ in datos.onSeccionAccion(q.accion, nil) }))
+                                         set: { nuevo in
+                                             guard nuevo != q.puesto else { return }
+                                             datos.onSeccionAccion(q.accion, nil)
+                                         }))
                     // Del mismo verde que el resto de lo nativo. En amarillo
                     // era el único control que no seguía el tinte de la app.
                     .labelsHidden().tint(CNC.pos)
@@ -6631,8 +6660,11 @@ struct CNSeccionVista: View {
                             }
                         }
                         Spacer(minLength: 8)
+                        // El valor nuevo manda, igual que arriba: si ya
+                        // coincide, no se vuelve a disparar.
                         Toggle("", isOn: Binding(get: { k.puesto },
-                                                 set: { _ in
+                                                 set: { nuevo in
+                                                     guard nuevo != k.puesto else { return }
                                                      UISelectionFeedbackGenerator().selectionChanged()
                                                      datos.marcarEnSeccion(bloque: bi, llave: i)
                                                      datos.onSeccionAccion(k.accion, nil)

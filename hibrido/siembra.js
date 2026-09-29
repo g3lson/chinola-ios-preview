@@ -8,6 +8,30 @@
  *
  * Esto NO va en la app: se copia solo dentro del paquete que usa el banco.
  */
+/**
+ * Y UNA CUENTA FINGIDA, con Chino con IA encendido.
+ *
+ * Lo que decide si sale el botón flotante viene del servidor
+ * (`/integraciones/voz`), y en el banco no hay servidor: sin esto no se puede
+ * comprobar ni que el botón sale ni que la charla abre. Se responde a las
+ * pocas rutas que hacen falta y lo demás sigue su camino.
+ *
+ * Solo para el banco: este archivo no va dentro de la app.
+ */
+(function () {
+  const orig = window.fetch;
+  const json = (o) => new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json' } });
+  window.fetch = function (u, o) {
+    const url = String((u && u.url) || u || '');
+    if (url.includes('/integraciones/voz')) {
+      return Promise.resolve(json({ ia: true, hayIA: true, alexa: {}, whatsapp: {}, telegram: {} }));
+    }
+    if (url.includes('/mi-ia')) return Promise.resolve(json({ mia: null, presets: [] }));
+    if (url.includes('/ia/permisos')) return Promise.resolve(json({ texto: 'Mirar y anotar', catalogo: [] }));
+    return orig.call(this, u, o);
+  };
+})();
+
 (function () {
   if (localStorage.getItem('chinola-datos-v3')) return;   // ya hay algo: no tocar
   var COLS = ['oklch(0.42 0.10 155)', 'oklch(0.46 0.11 255)', 'oklch(0.60 0.13 95)',
@@ -77,8 +101,12 @@
   };
 
   localStorage.setItem('chinola-datos-v3', JSON.stringify({ libretas: [libreta], activa: libreta.id }));
+  // Con sesión: sin token, la app no pide nada al servidor y el estado de la
+  // IA no llega nunca.
+  localStorage.setItem('chinola-token', 'banco-de-pruebas');
+  localStorage.setItem('chinola-usuario', JSON.stringify({ email: 'gelson@banco', nombre: 'Gelson', plan: 'pro' }));
   localStorage.setItem('chinola-sesion-v3', JSON.stringify({
-    sesion: null, local: true, tema: 'sistema', personaje: 'auto', idioma: 'es', notis: false,
+    sesion: { email: 'gelson@banco', nombre: 'Gelson' }, local: false, tema: 'sistema', personaje: 'auto', idioma: 'es', notis: false,
     cabecera: 'auto', cabeceraColor: '', cabeceraTarjeta: false, empiezaFuera: [], letra: 'normal',
     nombreLocal: 'Gelson', temaAuto: true, temaClaro: 'sistema', temaOscuro: 'sistema_noche'
   }));

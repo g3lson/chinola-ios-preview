@@ -2052,6 +2052,33 @@ private struct CNAltoGlobo: PreferenceKey {
 // El icono del perfil es su dibujo, y se mantiene pulsado para verlo en grande;
 // por detrás, los pagos que vienen. Es la misma tarjeta de siempre: delante el
 // personaje, detrás lo que hay que pagar, y se voltea al tocarla.
+/// CHINO ESTÁ ESCRIBIENDO.
+///
+/// Eran unos puntos suspensivos quietos, y quieto no se lee como «está
+/// pensando»: se lee como un mensaje vacío. Tres puntos que laten por turnos,
+/// como en cualquier chat. Con «Reducir movimiento» puesto se quedan quietos,
+/// que para eso está el ajuste.
+struct CNLatido: View {
+    @Environment(\.accessibilityReduceMotion) private var quieto
+    @State private var late = false
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<3, id: \.self) { i in
+                Circle()
+                    .fill(CNC.pmut)
+                    .frame(width: 6, height: 6)
+                    .opacity(late ? 1 : 0.3)
+                    .offset(y: late ? -3 : 0)
+                    .animation(quieto ? nil : .easeInOut(duration: 0.6)
+                        .repeatForever().delay(Double(i) * 0.18), value: late)
+            }
+        }
+        .frame(height: 14)
+        .onAppear { if !quieto { late = true } }
+        .accessibilityLabel(Text("Chino está escribiendo"))
+    }
+}
+
 struct CNMascota {
     struct Aviso: Identifiable { var id: Int; var titulo = ""; var detalle = ""; var color = "" }
     var chinolo = ""
@@ -2869,8 +2896,8 @@ struct CNCharlaVista: View {
                         }
                         if m.pensando {
                             HStack {
-                                Text("…").font(cnLetra(15)).foregroundColor(CNC.pmut)
-                                    .padding(.horizontal, 14).padding(.vertical, 10)
+                                CNLatido()
+                                    .padding(.horizontal, 14).padding(.vertical, 12)
                                     .background(CNC.card, in: CNBurbuja(mia: false))
                                 Spacer(minLength: 50)
                             }
