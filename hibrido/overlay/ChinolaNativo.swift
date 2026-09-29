@@ -388,6 +388,8 @@ final class CNAvisoDeFallo {
     /// quien lo tiene a mano. Sin esto el aviso solo puede decir «no contestó»,
     /// que es verdad pero no dice por qué.
     var estadoDeLaWeb: ((@escaping (String) -> Void) -> Void)?
+    /// Cuántas veces se ha dado más tiempo. Ver `vigilar`.
+    private var esperas = 0
     /// ¿Se pintó la app? Lo pone el controlador, igual que el anterior.
     ///
     /// La señal que apaga el vigía es el primer tema, y ese lo manda la app ya
@@ -417,6 +419,17 @@ final class CNAvisoDeFallo {
                 }
                 mirar { pintada in
                     if pintada { s.laWebContesto(); return }   // va: no estorbar
+                    // NI SIQUIERA HA CARGADO LA PÁGINA: no es un fallo, es que
+                    // va lenta. Pasa en el primer arranque después de instalar
+                    // —el webview sigue en `about:blank` y no hay ni un script
+                    // que contar—, y dar ahí el cartel es acusar a una app que
+                    // todavía no existe. Se le dan dos plazos más.
+                    if detalle.contains("about:blank") || detalle.contains("raiz: no"), s.esperas < 2 {
+                        s.esperas += 1
+                        NSLog("CNVIGIA: la web aún no ha cargado; otro plazo (\(s.esperas) de 2)")
+                        s.vigilar()
+                        return
+                    }
                     s.mostrar(cabecera + "Lo que ve el webview:\n" + detalle)
                 }
             }
