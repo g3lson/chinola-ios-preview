@@ -7758,15 +7758,30 @@ struct CNBotonFlotante: View {
 /// El botón flotante ocupa la pantalla entera para poder colocarse donde sea,
 /// pero si se quedara con todos los toques no se podría usar nada de lo que
 /// hay debajo. Esto deja pasar todo lo que no dé en el botón.
-final class CNPasaToques: UIView {
-    override func point(inside punto: CGPoint, with evento: UIEvent?) -> Bool {
-        for hija in subviews where !hija.isHidden && hija.alpha > 0.01 {
-            if hija.point(inside: convert(punto, to: hija), with: evento) { return true }
-        }
-        return false
-    }
-}
-
+/// EL BOTÓN DE CHINO, SIN ROBAR LOS TOQUES DE LA PANTALLA.
+///
+/// Esto sobreescribía `loadView` con una `UIView` normal:
+///
+///     override func loadView() { view = CNPasaToques() }
+///
+/// Y ahí estaba el fallo. `UIHostingController` crea en su `loadView` la vista
+/// especial que ALOJA Y DIBUJA el SwiftUI; cambiándola por una vista corriente,
+/// el contenido se queda sin nada que lo pinte. El contenedor existía, ocupaba
+/// la pantalla entera, estaba visible y por encima de todo —lo dijo la sonda,
+/// `frame=(0,0,402,874) alpha=1 oculta=false enPantalla=true indice=3 de 4`— y
+/// estaba VACÍO. El botón nunca se vio, por más vueltas que se le diera al lado
+/// de la web.
+///
+/// Es el mismo error que hace Capacitor con `view = webView`, y cuesta verlo
+/// por lo mismo: todo lo que se mide dice que está bien.
+///
+/// Ahora el hospedaje es el de siempre y los toques se arreglan donde tocaba:
+/// una vista de SwiftUI transparente no recibe toques donde no hay nada
+/// dibujado, así que el resto de la pantalla sigue respondiendo sola.
 final class CNPasaToquesHost: UIHostingController<AnyView> {
-    override func loadView() { view = CNPasaToques() }
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .clear
+        view.isOpaque = false
+    }
 }

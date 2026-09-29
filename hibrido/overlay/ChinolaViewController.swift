@@ -2112,7 +2112,8 @@ class ChinolaViewController: CAPBridgeViewController {
     /// Va en su propio contenedor transparente, colocado después de la barra
     /// del menú: la gracia es poder hablarle sin salir de donde estés, también
     /// desde encima de la barra. El contenedor no recibe toques salvo en el
-    /// botón (`CNPasaToques`), que si no taparía la pantalla entera.
+    /// botón: una vista de SwiftUI transparente no recibe toques donde no hay
+    /// nada dibujado, así que el resto de la pantalla sigue respondiendo sola.
     private weak var flotanteVista: UIView?
 
     /// La web dice que quiere el botón. Solo entonces se monta.
