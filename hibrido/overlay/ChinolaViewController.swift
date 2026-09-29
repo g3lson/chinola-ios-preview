@@ -367,6 +367,40 @@ class ChinolaViewController: CAPBridgeViewController {
                             + "enPantalla=\(f?.window != nil) "
                             + "indice=\(f.flatMap { self?.view.subviews.firstIndex(of: $0) } ?? -1) "
                             + "de=\(self?.view.subviews.count ?? 0)")
+                        // Y AHORA LO QUE DE VERDAD IMPORTA: ¿PASAN LOS TOQUES?
+                        //
+                        // Que compile y que el botón se monte no dice nada de
+                        // esto. La capa del botón está a pantalla completa por
+                        // encima del webview, así que si se queda los toques
+                        // donde no hay nada dibujado, la app entera queda
+                        // muerta y solo responde el botón. Ya pasó una vez, y
+                        // el banco lo dio por bueno porque compilaba.
+                        //
+                        // No hace falta un dedo: se le pregunta al propio
+                        // sistema de toques quién contestaría en cada punto. Si
+                        // contesta la capa del botón donde no hay botón, está
+                        // roto.
+                        if let yo = self, let caja = f {
+                            let ancho = yo.view.bounds.width, alto = yo.view.bounds.height
+                            let sitios: [(String, CGPoint)] = [
+                                ("centro", CGPoint(x: ancho / 2, y: alto / 2)),
+                                ("arriba-izq", CGPoint(x: 40, y: 120)),
+                                ("abajo-der", CGPoint(x: ancho - 40, y: alto - 120)),
+                                ("donde-el-boton", CGPoint(x: ancho * CGFloat(CNFlotante.shared.x),
+                                                           y: alto * CGFloat(CNFlotante.shared.y)))
+                            ]
+                            var parte = ""
+                            for (nombre, punto) in sitios {
+                                let quien = yo.view.hitTest(punto, with: nil)
+                                // ¿La respuesta sale de dentro de la caja del
+                                // botón, o del webview que hay debajo?
+                                var deLaCaja = false
+                                var v: UIView? = quien
+                                while let x = v { if x === caja { deLaCaja = true; break }; v = x.superview }
+                                parte += "\(nombre)=\(deLaCaja ? "CAJA" : "web:\(type(of: quien ?? yo.view))") "
+                            }
+                            NSLog("CNTOQUE: \(parte)")
+                        }
                     }
             }
         }
