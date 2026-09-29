@@ -978,13 +978,24 @@ class ChinolaViewController: CAPBridgeViewController {
     /// Lo que cambia sin que cambie la libreta: el mes elegido, los colores,
     /// los ajustes. Todo esto son modelos ya calculados y pequeños —entre 3 y
     /// 9 KB—, así que pedirlos siempre no cuesta nada.
+    ///
+    /// Solo el de la pantalla que se está viendo. Antes se pedían los cinco en
+    /// cada refresco —29 KB— aunque cuatro no se fueran a enseñar; con este
+    /// corte quedan entre 6 y 15 KB. Las demás se piden solas al entrar en
+    /// ellas, que para eso está `refrescarPantalla`.
+    ///
+    /// El tema sí va siempre: lo usan la barra de abajo y el modo claro u
+    /// oscuro del sistema, que se ven estés donde estés.
     private func refrescarLoDeLaPantalla() {
         traerTema()
-        traerResumen(intentos: 6)
-        traerAjustes()
-        traerCuentas()
-        traerPlan()
-        traerMascota()
+        traerMascota()          // barato: solo el sello si el dibujo no cambió
+        switch menuEstado.activa {
+        case "resumen": traerResumen(intentos: 6)
+        case "cuentas": traerCuentas()
+        case "plan": traerPlan()
+        case "perfil": traerAjustes()
+        default: break          // «movs» pinta con la libreta, que ya está
+        }
     }
 
     /// El TEMA que tiene puesto el usuario, leído del webview. Al llegar, la
