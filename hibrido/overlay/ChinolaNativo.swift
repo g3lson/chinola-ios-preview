@@ -1645,7 +1645,6 @@ struct CNMovs: View {
         }
         .frame(maxWidth: .infinity).padding(.vertical, 26)
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(CNC.line, lineWidth: 1))
     }
 
 }
@@ -2218,7 +2217,6 @@ struct CNTendencia: View {
                         CNArea(valores: puntos.map { $0.valor }).frame(height: 130)
                     }
                     .padding(16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(CNC.line, lineWidth: 1))
 
                     VStack(spacing: 0) {
                         let filas = Array(puntos.reversed())
@@ -2237,7 +2235,6 @@ struct CNTendencia: View {
                         }
                     }
                     .padding(.horizontal, 16).background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(CNC.line, lineWidth: 1))
 
                     Color.clear.frame(height: 24)
                 }
@@ -2539,7 +2536,6 @@ enum CNIconos {
 extension View { func tarjetaCN() -> some View {
     self.padding(14).frame(maxWidth: .infinity)
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 0.5))
 } }
 
 // ── Pantallas de DETALLE nativas (al tocar un item) ─────────────────────────
@@ -2614,7 +2610,7 @@ struct CNDetCifra: View {
             } }
         }
         .padding(.vertical, 18).padding(.horizontal, 16).frame(maxWidth: .infinity)
-        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(CNC.line, lineWidth: 0.5))
+        .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 struct CNBotonAncho: View {
@@ -2878,7 +2874,6 @@ struct CNDetalleVista: View {
             }
         }
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
     }
 
     /// Mes a mes: sale cuando el periodo abarca más de un mes.
@@ -2953,7 +2948,6 @@ struct CNDetalleVista: View {
                 }
             }
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
         }
     }
 }
@@ -4393,7 +4387,6 @@ func cnVacioCard(_ titulo: String, _ texto: String) -> some View {
     }
     .frame(maxWidth: .infinity).padding(.vertical, 22).padding(.horizontal, 16)
     .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
 }
 
 /// La categoría cuyo presupuesto se está cambiando.
@@ -5430,7 +5423,6 @@ struct CNResumen: View {
         .padding(.horizontal, 16).padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
     }
 }
 
@@ -6178,7 +6170,6 @@ struct CNPerfil: View {
             .padding(15)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(CNC.line, lineWidth: 1))
             if !u.modoPie.isEmpty {
                 Text(u.modoPie).font(cnLetra(12)).foregroundColor(CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
@@ -6198,7 +6189,6 @@ struct CNPerfil: View {
                 }
             }
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
             if !g.pie.isEmpty {
                 Text(g.pie).font(cnLetra(12)).foregroundColor(CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 6)
@@ -6606,7 +6596,6 @@ struct CNSeccionVista: View {
                 }
             }
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
             if !q.pie.isEmpty { rotulo(q.pie) }
         }
     }
@@ -6712,7 +6701,6 @@ struct CNSeccionVista: View {
             }
             .background(CNC.card)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
             if !q.pie.isEmpty { rotulo(q.pie) }
         }
     }
@@ -6733,7 +6721,6 @@ struct CNSeccionVista: View {
             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
             .background(CNC.card)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
             .animation(.easeOut(duration: 0.18), value: q.escala)
         }
     }
@@ -6769,7 +6756,6 @@ struct CNSeccionVista: View {
                 .padding(.horizontal, 15).padding(.vertical, 14)
                 .background(CNC.card)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
             }
         }
     }
@@ -6924,7 +6910,6 @@ struct CNSeccionVista: View {
                 }
             }
             .background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
             if !q.pie.isEmpty { rotulo(q.pie) }
         }
     }

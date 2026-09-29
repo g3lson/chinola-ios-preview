@@ -184,7 +184,7 @@ func cnHojaTitulo(_ t: String) -> some View {
     Text(t.uppercased()).font(cnLetra(12.5, .semibold)).tracking(0.3).foregroundColor(CNC.pmut).padding(.leading, 16).frame(maxWidth: .infinity, alignment: .leading)
 }
 func cnGrupoHoja<C: View>(@ViewBuilder _ c: () -> C) -> some View {
-    VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)).overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 0.5))
+    VStack(spacing: 0) { c() }.background(CNC.card).clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 }
 func cnDiviHoja() -> some View { Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 16) }
 func cnCuadroHoja(_ ic: String, _ tinte: Color) -> some View {
@@ -1531,7 +1531,6 @@ struct CNLibretasHoja: View {
                             }
                             .background(CNC.card)
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(CNC.line, lineWidth: 1))
                         }
                     }
                     // Gestionar las que hay (crear va en el «+» de arriba).
@@ -1542,7 +1541,6 @@ struct CNLibretasHoja: View {
                         }
                         .background(CNC.card)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(CNC.line, lineWidth: 1))
                     }
                     // Hasta debajo del indicador de inicio: la hoja llega al pie.
                     Color.clear.frame(height: 6 + cnMargenAbajo())
@@ -1837,7 +1835,6 @@ struct CNFormInvitar: View {
                     }
                     .background(CNC.card)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 0.5))
                 }
             }
             if !m.pie.isEmpty {
