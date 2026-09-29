@@ -1,0 +1,70 @@
+name: "SONDA: qué le pasa a la IA del teléfono"
+
+# El banco grande compila la app entera para decir «falló» sin decir por qué:
+# tres minutos para nada. Esta sonda le pregunta al compilador SOLO por los
+# archivos de la IA de Apple, uno a uno, y cada uno cuenta su propio error.
+#
+# Sin simulador, sin proyecto de Xcode, sin app: solo `swiftc -typecheck`. Y en
+# trozos que van de lo más pequeño que se puede escribir a lo de verdad, para
+# que el error salga en el trozo que lo tiene y no escondido entre los demás.
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['sondas/ia/**', '.github/workflows/ia-del-telefono.yml']
+
+jobs:
+  preguntar:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Usar el Xcode más nuevo
+        run: |
+          NUEVO=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          sudo xcode-select -s "$NUEVO/Contents/Developer"
+          xcodebuild -version
+          swiftc --version
+
+      - name: ¿Está el módulo en el SDK?
+        run: |
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          echo "SDK: $SDK"
+          echo "--- ¿hay FoundationModels? ---"
+          find "$SDK" -iname "FoundationModels*" -maxdepth 6 2>/dev/null | head -20
+          echo "--- y su interfaz, que dice la forma exacta de todo ---"
+          IFACE=$(find "$SDK" -iname "FoundationModels.swiftinterface" 2>/dev/null | head -1)
+          echo "interfaz: ${IFACE:-NO LA HAY}"
+          if [ -n "$IFACE" ]; then
+            echo "=== lo de Tool ==="
+            grep -nE "protocol Tool|associatedtype|func call|var parameters|var name|var description" "$IFACE" | head -30
+            echo "=== lo de GenerationSchema ==="
+            grep -nE "struct GenerationSchema|public init|struct Property" "$IFACE" | head -25
+            echo "=== lo de la sesión ==="
+            grep -nE "class LanguageModelSession|public init|func respond" "$IFACE" | head -25
+          fi
+
+      - name: Preguntar por cada trozo
+        run: |
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          FALLOS=0
+          for f in sondas/ia/*.swift; do
+            echo ""
+            echo "════════ $f ════════"
+            # `-typecheck` no genera nada: solo dice si le cuadra. Y a
+            # diferencia de xcodebuild, cuando algo no le cuadra lo dice.
+            if swiftc -typecheck -sdk "$SDK" \
+                 -target arm64-apple-ios26.0-simulator \
+                 -swift-version 5 "$f" 2>&1; then
+              echo "✓ pasa"
+            else
+              echo "✗ NO PASA (arriba está el motivo)"
+              FALLOS=$((FALLOS+1))
+            fi
+          done
+          echo ""
+          echo "trozos que no pasan: $FALLOS"
+          # La sonda no falla nunca: viene a informar, no a aprobar. Si falla,
+          # GitHub esconde la mitad del informe detrás de un paso rojo.
+          exit 0
