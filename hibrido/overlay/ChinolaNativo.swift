@@ -7668,6 +7668,16 @@ final class CNFlotante: ObservableObject {
     /// girar el teléfono o cambiar de aparato.
     @Published var x: CGFloat = 1
     @Published var y: CGFloat = 0.72
+    /// DÓNDE ESTÁ DIBUJADO, en coordenadas de la ventana.
+    ///
+    /// Lo escribe el propio botón al colocarse. No es `@Published` a propósito:
+    /// solo lo lee la caja de los toques, y publicarlo volvería a dibujar en
+    /// mitad de un dibujo.
+    ///
+    /// Antes la caja lo adivinaba preguntándole a SwiftUI, y SwiftUI contesta
+    /// siempre lo mismo esté donde esté el dedo, así que el botón se quedaba
+    /// sin recibir un solo toque. Que lo diga quien lo sabe.
+    var marco: CGRect = .zero
     /// Qué hacer al tocarlo.
     var alTocar: () -> Void = {}
     /// Dónde ha quedado, para que la web lo guarde.
@@ -7720,6 +7730,21 @@ struct CNBotonFlotante: View {
                                 mando.alMover(nx, ny)
                             }
                     )
+                    // EL BOTÓN DICE DÓNDE ESTÁ.
+                    //
+                    // Es lo único que sabe su sitio de verdad: aquí entran el
+                    // arrastre, la animación de vuelta al borde y el hueco de
+                    // arriba. La caja que reparte los toques lee esto.
+                    .background(GeometryReader { p in
+                        Color.clear
+                            .onAppear { mando.marco = p.frame(in: .global) }
+                            .onChange(of: p.frame(in: .global)) { nuevo in mando.marco = nuevo }
+                    })
+            } else {
+                // Sin botón puesto no hay marco: si se quedara el de antes, la
+                // caja seguiría quedándose los toques de un botón que ya no
+                // está, y ese trozo de pantalla se moriría.
+                Color.clear.onAppear { mando.marco = .zero }
             }
         }
         .ignoresSafeArea()
@@ -7787,18 +7812,23 @@ final class CNPasaToquesHost: UIHostingController<AnyView> {
 
 /// LA CAJA QUE DEJA PASAR LOS TOQUES.
 ///
-/// Envuelve al hospedaje del botón y decide, punto por punto, si ahí hay algo
-/// dibujado. La clave está en `v !== hija`: cuando se le pregunta a la vista
-/// del SwiftUI y contesta con ELLA MISMA, es que en ese punto no hay nada
-/// encima —es su lienzo vacío— y el toque tiene que seguir hacia abajo, a la
-/// barra de pestañas o a lo que haya. Solo cuando contesta con algo de dentro
-/// —el botón— el toque se queda aquí.
+/// Esta capa está a pantalla completa por encima del webview, así que quedarse
+/// un toque de más mata la app entera y quedarse uno de menos mata el botón.
+/// Las dos cosas han pasado ya.
+///
+/// La primera versión le preguntaba a SwiftUI —«¿hay algo tuyo en este
+/// punto?»— dando por hecho que contestar con su propia vista significaba
+/// «aquí no hay nada». Falso: SwiftUI dibuja el botón en el lienzo de esa misma
+/// vista y contesta lo mismo esté el dedo donde esté. Resultado: «aquí no hay
+/// nada» siempre, y el botón sin recibir un solo toque.
+///
+/// Ahora no se adivina: el botón apunta su propio marco al colocarse y aquí
+/// solo se mira si el punto cae dentro. Sin marco —botón sin poner, o todavía
+/// sin dibujar— pasa todo, que es lo que menos daño hace.
 final class CNPasaToques: UIView {
     override func point(inside punto: CGPoint, with evento: UIEvent?) -> Bool {
-        for hija in subviews where !hija.isHidden && hija.alpha > 0.01 {
-            let dentro = convert(punto, to: hija)
-            if let v = hija.hitTest(dentro, with: evento), v !== hija { return true }
-        }
-        return false
+        let m = CNFlotante.shared.marco
+        guard CNFlotante.shared.puesto, !m.isEmpty else { return false }
+        return m.contains(convert(punto, to: nil))
     }
 }
