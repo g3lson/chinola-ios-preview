@@ -1151,7 +1151,17 @@ final class CNDatos: ObservableObject {
     func cargarLibretaNueva(json: String) { libretaNueva = CNLibretaNueva.desde(json: json) }
     func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
     func cargarTour(json: String) { tour = CNTour.desde(json: json) }
-    func cargarMascota(json: String) { mascota = CNMascota.desde(json: json) }
+    /// Los dos PNG de Chino, que casi nunca cambian.
+    ///
+    /// Pesan 106 KB entre los dos y viajaban por el puente en cada refresco. Se
+    /// guardan aquí y se vuelven a pegar cuando el modelo llega sin ellos.
+    private var dibujoChino = ""
+    func cargarMascota(json: String) {
+        guard var m = CNMascota.desde(json: json) else { return }
+        // Si viene sin dibujo es que no cambió: se le pega el que ya había.
+        if m.chinolo.isEmpty { m.chinolo = dibujoChino } else { dibujoChino = m.chinolo }
+        mascota = m
+    }
     /// La puerta se vuelve a pedir cada poco mientras está puesta; si la web
     /// contesta lo mismo, no se repinta (lo que se escribe en un campo no se
     /// mueve). Con la puerta quitada, el mismo JSON de antes SÍ vale: es una

@@ -783,12 +783,29 @@ class ChinolaViewController: CAPBridgeViewController {
         refrescarPronto()
     }
     /// El dibujo de Chino y los pagos que vienen, para el icono del perfil.
+    /// EL SELLO DEL DIBUJO. Dice qué Chino toca sin mandar el dibujo.
+    private var selloMascota = ""
+
+    /// Los avisos de Chino, y su dibujo SOLO si cambió.
+    ///
+    /// El dibujo son 49 KB en base64 y esto se llama en cada refresco —y otra
+    /// vez un segundo después—. El personaje cambia cuando lo cambias tú o
+    /// cuando cambia el ánimo del mes: no en cada toque de pestaña. Se pregunta
+    /// primero cuál toca (unos caracteres) y solo se pide el dibujo cuando de
+    /// verdad es otro.
     fileprivate func traerMascota() {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaMascotaJSON && window.__chinolaMascotaJSON()) || ''") { [weak self] res, _ in
-            guard let json = res as? String, json.count > 2 else { return }
-            CNDatos.shared.cargarMascota(json: json)
-            // Y al menú: el icono de Perfil es Chino.
-            self?.barra.ponerChinolo(CNDatos.shared.mascota?.chinolo ?? "")
+        bridge?.webView?.evaluateJavaScript("(window.__chinolaMascotaSello && window.__chinolaMascotaSello()) || ''") { [weak self] res, _ in
+            guard let s = self else { return }
+            let sello = (res as? String) ?? ""
+            // Sin sello (una web vieja) se pide con dibujo, como siempre.
+            let conDibujo = sello.isEmpty || sello != s.selloMascota || CNDatos.shared.mascota?.chinolo.isEmpty != false
+            if !sello.isEmpty { s.selloMascota = sello }
+            s.bridge?.webView?.evaluateJavaScript("(window.__chinolaMascotaJSON && window.__chinolaMascotaJSON(\(conDibujo))) || ''") { r2, _ in
+                guard let json = r2 as? String, json.count > 2 else { return }
+                CNDatos.shared.cargarMascota(json: json)
+                // Y al menú: el icono de Perfil es Chino.
+                s.barra.ponerChinolo(CNDatos.shared.mascota?.chinolo ?? "")
+            }
         }
     }
 
@@ -874,23 +891,48 @@ class ChinolaViewController: CAPBridgeViewController {
     /// las transiciones se sintieran pesadas. Ahora se pregunta primero por una
     /// huella barata —largos de lista y un par de ids— y solo se trae la
     /// libreta si de verdad es otra.
-    private func traerDatosSiCambio() {
+    private func traerDatosSiCambio() { traerDatos() }
+
+    /// LA LIBRETA, SOLO SI CAMBIÓ.
+    ///
+    /// `traerDatos` se llama desde veinte sitios —cambiar de pestaña, volver de
+    /// una hoja, despertar la app, guardar algo— y cada llamada serializaba la
+    /// libreta ENTERA, la mandaba por el puente en texto y la decodificaba
+    /// aquí. Medido con dos años de movimientos: 153 KB por viaje. Serializar
+    /// cuesta poco (0,26 ms); lo caro es el viaje y el decodificado, y se hacía
+    /// aunque no hubiera cambiado ni una coma.
+    ///
+    /// La huella ya existía y cuesta 0,1 KB, pero solo la usaban dos de las
+    /// veinte llamadas. Ahora la usan todas: se pregunta primero, y los 153 KB
+    /// solo viajan cuando de verdad hay algo nuevo. Lo demás —el tema, el
+    /// resumen, las cuentas, el plan— se refresca igual, porque eso sí cambia
+    /// sin que cambie la libreta (al cambiar de mes, por ejemplo) y es barato.
+    private func traerDatos(intentos: Int = 8) {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaHuella && window.__chinolaHuella()) || ''") { [weak self] res, _ in
             guard let s = self else { return }
             let h = (res as? String) ?? ""
             // Sin huella (una web vieja, o todavía arrancando) se hace lo de
             // siempre: más vale traerla de más que quedarse sin ella.
-            guard !h.isEmpty else { s.traerDatos(); return }
-            guard h != s.huellaLibreta else { return }
-            s.huellaLibreta = h
-            s.traerDatos()
+            if !h.isEmpty, h == s.huellaLibreta, CNDatos.shared.llegoAlgo {
+                if ProcessInfo.processInfo.environment["CN_CON"]?.contains("cronometro") == true {
+                    NSLog("CNRELOJ: la libreta no cambió · 0 KB por el puente")
+                }
+                s.refrescarLoDeLaPantalla()
+                return
+            }
+            s.traerLibretaEntera(intentos: intentos)
         }
     }
 
-    private func traerDatos(intentos: Int = 8) {
+    /// Los 153 KB. Solo lo llama `traerDatos`, y solo cuando hace falta.
+    private func traerLibretaEntera(intentos: Int = 8) {
+        let t0 = Date()
         bridge?.webView?.evaluateJavaScript("(window.__chinolaDatosJSON && window.__chinolaDatosJSON()) || ''") { [weak self] res, _ in
             guard let self = self else { return }
             let json = (res as? String) ?? ""
+            if ProcessInfo.processInfo.environment["CN_CON"]?.contains("cronometro") == true {
+                NSLog("CNRELOJ: la libreta entera · %.0f ms · %d KB", Date().timeIntervalSince(t0) * 1000, json.count / 1024)
+            }
             if json.count > 2, let l = CNLibreta.desde(json: json) {
                 CNDatos.shared.libreta = l
                 CNDatos.shared.apuntaQueLlego()
@@ -901,20 +943,27 @@ class ChinolaViewController: CAPBridgeViewController {
                     if let ps = p as? String, ps.count > 2 { CNDatos.shared.cargarPerfil(json: ps) }
                 }
                 self.quitarCortina()
-                self.traerTema()
-                self.traerResumen(intentos: 6)
-                self.traerAjustes()
-                self.traerCuentas()
-                self.traerPlan()
+                self.refrescarLoDeLaPantalla()
                 // El dibujo de Chino tarda un poco en estar en PNG: se pide
                 // ahora y otra vez un segundo después.
-                self.traerMascota()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { self.traerMascota() }
                 return
             }
             guard intentos > 1 else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self.traerDatos(intentos: intentos - 1) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self.traerLibretaEntera(intentos: intentos - 1) }
         }
+    }
+
+    /// Lo que cambia sin que cambie la libreta: el mes elegido, los colores,
+    /// los ajustes. Todo esto son modelos ya calculados y pequeños —entre 3 y
+    /// 9 KB—, así que pedirlos siempre no cuesta nada.
+    private func refrescarLoDeLaPantalla() {
+        traerTema()
+        traerResumen(intentos: 6)
+        traerAjustes()
+        traerCuentas()
+        traerPlan()
+        traerMascota()
     }
 
     /// El TEMA que tiene puesto el usuario, leído del webview. Al llegar, la
