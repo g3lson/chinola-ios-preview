@@ -63,7 +63,11 @@ public class IALocalPlugin: CAPPlugin, CAPBridgedPlugin {
     /// conversación. Así el modelo local y los de fuera se usan igual desde
     /// arriba.
     @objc func pregunta(_ call: CAPPluginCall) {
-        let sistema = call.getString("sistema") ?? ""
+        // Lo que se le dice SIEMPRE, venga lo que venga de la web: con un
+        // modelo pequeño, inventarse un gasto es el fallo caro.
+        let reglas = " Si no entiendes de cuánto es un gasto o de qué era, NO lo anotes: "
+            + "dilo y pregunta. Nunca te inventes cifras ni categorías."
+        let sistema = (call.getString("sistema") ?? "") + reglas
         let entrada = call.getString("entrada") ?? ""
         guard !entrada.isEmpty else { call.reject("No hay nada que preguntar."); return }
 
@@ -71,7 +75,14 @@ public class IALocalPlugin: CAPPlugin, CAPBridgedPlugin {
         if #available(iOS 26.0, *) {
             Task {
                 do {
-                    let sesion = LanguageModelSession(instructions: sistema)
+                    // CON HERRAMIENTAS: así Chino no solo conversa, anota.
+                    // Son las mismas de siempre, escritas otra vez en Swift
+                    // porque aquí quien ejecuta es el teléfono. Ver
+                    // `IALocalHerramientas.swift`.
+                    let sesion = LanguageModelSession(
+                        tools: [CNAnotarMovimiento(), CNMirarElMes(),
+                                CNGastosPorCategoria(), CNCuantoTengo()],
+                        instructions: sistema)
                     let r = try await sesion.respond(to: entrada)
                     call.resolve(["texto": r.content])
                 } catch {
