@@ -335,10 +335,28 @@ class ChinolaViewController: CAPBridgeViewController {
         if let ir = ProcessInfo.processInfo.environment["CN_IR"], !ir.isEmpty {
             // Y CON DOS PUNTOS, UNA SUBPANTALLA: `CN_IR=perfil:colores`.
             //
-            // Perfil tiene doce subpantallas y el banco solo sabía cambiar de
-            // pestaña, así que ninguna de las doce se fotografiaba nunca. Todo
+            // Perfil tiene TRECE subpantallas y el banco solo sabía cambiar de
+            // pestaña, así que ninguna de las trece se fotografiaba nunca. Todo
             // lo que se rompiera dentro —una lista vacía, un bloque que no se
             // dibuja, unos datos que nadie pidió— se quedaba sin ver.
+            //
+            // Y con arroba, UNA HOJA: `CN_IR=perfil@clave`. Las cinco hojas de
+            // Perfil —cambiar el correo, la contraseña, darse de baja— se
+            // dibujan nativas y no se habían fotografiado nunca, porque solo se
+            // abren tocando su fila.
+            if ir.contains("@") {
+                let t = ir.split(separator: "@", maxSplits: 1).map(String.init)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
+                    guard let s = self else { return }
+                    NSLog("CNIR: \(t[0]) · hoja \(t[1])")
+                    s.menuEstado.alTocar(t[0])
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        s.eval("window.__chinolaAccion && window.__chinolaAccion('hoja',\(s.comillas(t[1])))")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { s.webTemporal() }
+                    }
+                }
+                return
+            }
             let partes = ir.split(separator: ":", maxSplits: 1).map(String.init)
             DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
                 NSLog("CNIR: \(ir)")
