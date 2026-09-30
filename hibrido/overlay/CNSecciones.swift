@@ -31,7 +31,7 @@ import Foundation
 enum CNSecciones {
 
     /// Las que este lado sabe armar. Lo demás sigue viniendo de la web.
-    static let sabeHacer: Set<String> = ["dosPasos"]
+    static let sabeHacer: Set<String> = ["dosPasos", "seguridad"]
 
     /**
      * Lo que se le ha pedido al servidor, guardado mientras dure la app.
@@ -53,13 +53,21 @@ enum CNSecciones {
     @MainActor static func arma(_ id: String) -> CNSeccion? {
         switch id {
         case "dosPasos": return dosPasos()
+        case "seguridad": return seguridad()
         default: return nil
         }
     }
 
     /// Qué hay que pedirle al servidor para armar esta subpantalla.
-    static func rutaDe(_ id: String) -> String? {
-        id == "dosPasos" ? "/mfa/metodos" : nil
+    ///
+    /// Varias rutas porque una pantalla puede necesitar más de una cosa, y se
+    /// piden a la vez: en serie, «Seguridad» tardaría el doble por nada.
+    static func rutasDe(_ id: String) -> [String] {
+        switch id {
+        case "dosPasos": return ["/mfa/metodos"]
+        case "seguridad": return ["/sesiones", "/actividad", "/mfa/metodos"]
+        default: return []
+        }
     }
 
     /* ------------------------ verificación en dos pasos ------------------- */
@@ -138,4 +146,126 @@ enum CNSecciones {
         s.bloques = [explica, lista]
         return s
     }
+
+    /* ------------------------------ seguridad ----------------------------- */
+
+    /**
+     * La contraseña, la verificación en dos pasos, y dónde tienes la sesión.
+     *
+     * Las sesiones y la actividad son del SERVIDOR: no hay copia local de eso,
+     * y por eso esta pantalla salía en blanco recién abierta la app. Ahora se
+     * piden aquí.
+     *
+     * DOS COSAS QUE NO SE VEN Y HAY QUE CONSERVAR:
+     *
+     * **La sesión de este mismo aparato no se puede cerrar.** Cerrarse a uno
+     * mismo desde aquí te deja fuera con un botón que parecía de limpiar.
+     *
+     * **Los aparatos y la actividad solo salen si hay.** Un rótulo «Dónde
+     * tienes la sesión abierta» con la lista vacía se lee como que algo falló.
+     */
+    @MainActor private static func seguridad() -> CNSeccion? {
+        var s = CNSeccion()
+        s.id = "seguridad"
+        s.titulo = cnT("Seguridad")
+
+        // Las dos primeras filas no dependen del servidor: se dibujan siempre,
+        // aunque no haya red. La de dos pasos dice su estado si se sabe.
+        let mfa = ((delServidor["/mfa/metodos"]?["usuario"] as? [String: Any])?["mfa"] as? Bool)
+        var arriba = CNSeccion.Bloque(); arriba.tipo = "grupo"
+        arriba.filas = [
+            CNSeccion.Fila(label: cnT("Cambiar mi contraseña"),
+                           icono: CNCatalogos.iconosDeAjuste["clave"] ?? "",
+                           entra: true, abre: "hoja:clave"),
+            CNSeccion.Fila(label: cnT("Verificación en dos pasos"),
+                           valor: mfa == nil ? "" : (mfa! ? cnT("Activada") : cnT("Desactivada")),
+                           icono: CNCatalogos.iconosDeAjuste["dosPasos"] ?? "",
+                           tinta: mfa == true ? "var(--positivo)" : "",
+                           entra: true, abre: "dosPasos")
+        ]
+        s.bloques = [arriba]
+
+        // Bloquear con Face ID: esto es del TELÉFONO y solo del teléfono, así
+        // que no hay nada que pedirle a nadie.
+        var bio = CNSeccion.Bloque()
+        bio.tipo = "interruptor"
+        bio.label = cnT("Bloquear con Face ID")
+        bio.texto = cnT("Al volver a la app pide tu cara, tu huella o el código del teléfono.")
+        // Donde ya lo guarda el puente. No hay una segunda copia: una copia es
+        // lo que un día dice «apagado» con el bloqueo puesto.
+        bio.puesto = UserDefaults.standard.bool(forKey: "cnBloqueo")
+        bio.abre = "bloqueoBio"
+        s.bloques.append(bio)
+
+        // Los aparatos. Solo si hay: un rótulo con la lista vacía se lee como
+        // que algo falló, y aquí lo normal es que haya al menos este.
+        let ses = (delServidor["/sesiones"]?["sesiones"] as? [[String: Any]]) ?? []
+        if !ses.isEmpty {
+            var b = CNSeccion.Bloque(); b.tipo = "lista"
+            b.titulo = cnT("Dónde tienes la sesión abierta")
+            b.items = ses.map { q in
+                let equipo = (q["equipo"] as? String) ?? ""
+                let actual = (q["actual"] as? Bool) ?? false
+                let movil = equipo.range(of: "iPhone|iPad|Android", options: [.regularExpression, .caseInsensitive]) != nil
+                var it = CNSeccion.Item()
+                it.titulo = cnT(equipo) + (actual ? " · " + cnT("este equipo") : "")
+                it.detalle = cnT("Entró") + " " + cnHaceCuanto(q["creado"] as? String)
+                    + " · " + cnT("visto") + " " + cnHaceCuanto(q["visto"] as? String)
+                it.icono = CNCatalogos.iconosDeAjuste[movil ? "telefono" : "monitor"] ?? ""
+                it.color = actual ? "var(--positivo)" : ""
+                // La de este aparato NO lleva el botón de cerrar: cerrarse a uno
+                // mismo desde aquí te deja fuera con un botón que parecía de
+                // limpiar. Para eso está «Cerrar sesión», que avisa.
+                if !actual, let id = q["id"] {
+                    it.acciones = [CNSeccion.AccionItem(
+                        label: cnT("Cerrar"), peligro: true, abre: "cerrarSesion:\(id)")]
+                }
+                return it
+            }
+            s.bloques.append(b)
+        }
+
+        // Y lo último que pasó. Doce como en la web: es un vistazo, no un
+        // registro, y con cincuenta deja de leerse.
+        let act = (delServidor["/actividad"]?["actividad"] as? [[String: Any]]) ?? []
+        if !act.isEmpty {
+            var b = CNSeccion.Bloque(); b.tipo = "lista"
+            b.titulo = cnT("Lo último que pasó")
+            b.items = act.prefix(12).map { a in
+                var it = CNSeccion.Item()
+                it.titulo = (a["accion"] as? String) ?? ""
+                it.detalle = cnHaceCuanto(a["creado"] as? String)
+                    + " · " + cnT((a["origen"] as? String) ?? "")
+                return it
+            }
+            s.bloques.append(b)
+        }
+        return s
+    }
+}
+
+/**
+ * «hace un momento», «hace 3 h», «ayer».
+ *
+ * Los mismos cortes que la web, a propósito: noventa segundos para «un
+ * momento», y un mes como tope. Poner otros haría que el mismo aparato dijera
+ * «hace 2 h» en el teléfono y «hace 1 h» en el ordenador, que es la clase de
+ * diferencia que hace dudar de si son el mismo dato.
+ */
+func cnHaceCuanto(_ iso: String?) -> String {
+    guard let iso = iso, !iso.isEmpty else { return "" }
+    let f = ISO8601DateFormatter()
+    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    let d = f.date(from: iso) ?? ISO8601DateFormatter().date(from: iso)
+    guard let d = d else { return "" }
+    let seg = max(0, Int((Date().timeIntervalSince(d)).rounded()))
+    if seg < 90 { return cnT("hace un momento") }
+    let min = Int((Double(seg) / 60).rounded())
+    if min < 60 { return cnT("hace {n} min").replacingOccurrences(of: "{n}", with: String(min)) }
+    let h = Int((Double(min) / 60).rounded())
+    if h < 24 { return cnT("hace {n} h").replacingOccurrences(of: "{n}", with: String(h)) }
+    let dias = Int((Double(h) / 24).rounded())
+    if dias == 1 { return cnT("ayer") }
+    if dias < 30 { return cnT("hace {n} días").replacingOccurrences(of: "{n}", with: String(dias)) }
+    return cnT("hace más de un mes")
 }

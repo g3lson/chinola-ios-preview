@@ -679,6 +679,43 @@ class ChinolaViewController: CAPBridgeViewController {
             // Una «sección» que empieza por «hoja:» no es una pantalla de
             // ajustes: es un formulario nativo. Hoy solo invitar.
             if id == "importar" { s.pedirCsv(); return }
+
+            // LO QUE PIDEN LAS SUBPANTALLAS ARMADAS AQUÍ.
+            //
+            // Van por NOMBRE y no por el número de una lista: ese número solo
+            // vale si la lista la hizo la web, y estas las hace el teléfono.
+
+            // El bloqueo con Face ID es del aparato: no hay nada que preguntar
+            // ni a la web ni al servidor. Se le avisa a la web para que su
+            // propia pantalla diga lo mismo.
+            if id == "bloqueoBio" {
+                let on = !UserDefaults.standard.bool(forKey: "cnBloqueo")
+                UserDefaults.standard.set(on, forKey: "cnBloqueo")
+                // Puente propio: NO es una preferencia de la cuenta, es del
+                // aparato. No sube a la nube ni sigue a nadie de su iPhone a su
+                // iPad, y meterlo con las demás sería prometer justo eso.
+                s.eval("window.__chinolaBloqueoPuesto && window.__chinolaBloqueoPuesto(" + (on ? "true" : "false") + ")")
+                if let hecha = CNSecciones.arma("seguridad") { s.ponSeccion(hecha, si: "seguridad") }
+                return
+            }
+
+            // Cerrar la sesión de OTRO aparato. Es un dato del servidor y es
+            // suyo: aquí sí se escribe, y la libreta sigue sin tocarse.
+            if id.hasPrefix("cerrarSesion:") {
+                let cual = String(id.dropFirst("cerrarSesion:".count))
+                Task { @MainActor in
+                    _ = await CNApi.intenta("/sesiones/" + cual, metodo: "DELETE")
+                    // Y se vuelve a preguntar: la lista de aparatos acaba de
+                    // cambiar, y dejar el que se cerró en pantalla es peor que
+                    // esperar medio segundo.
+                    CNSecciones.olvida("/sesiones")
+                    if let r = await CNApi.intenta("/sesiones") {
+                        CNSecciones.delServidor["/sesiones"] = r
+                        if let hecha = CNSecciones.arma("seguridad") { s.ponSeccion(hecha, si: "seguridad") }
+                    }
+                }
+                return
+            }
             if id == "organizar" { s.irAOrganizar(); return }
             if id == "charla" { s.abrirCharla(); return }
             // Nueva libreta desde «Libretas y permisos»: el mismo camino que el
@@ -742,17 +779,22 @@ class ChinolaViewController: CAPBridgeViewController {
             // ¿ESTA LA SABE ARMAR EL TELÉFONO? Entonces se le pide al servidor
             // directamente, que es como funciona una app normal: lo que vive
             // solo en el servidor no tiene por qué pasar por la web.
-            if CNSecciones.sabeHacer.contains(id), let ruta = CNSecciones.rutaDe(id) {
+            if CNSecciones.sabeHacer.contains(id) {
                 Task { @MainActor in
-                    // Lo que ya se supiera se enseña mientras llega lo nuevo.
-                    if let ya = CNSecciones.arma(id), s.datos.seccion?.id == id || s.datos.seccionPedida == id {
-                        s.datos.seccion = ya
+                    // Lo que ya se supiera se enseña mientras llega lo nuevo: es
+                    // la misma pantalla con los mismos valores, así que lo que
+                    // llegue encima no se nota.
+                    if let ya = CNSecciones.arma(id) { s.ponSeccion(ya, si: id) }
+                    // Las rutas A LA VEZ. En serie, «Seguridad» —que pide tres—
+                    // tardaría el triple sin ganar nada.
+                    let rutas = CNSecciones.rutasDe(id)
+                    await withTaskGroup(of: (String, [String: Any]?).self) { grupo in
+                        for r in rutas { grupo.addTask { (r, await CNApi.intenta(r)) } }
+                        for await (r, datos) in grupo where datos != nil {
+                            CNSecciones.delServidor[r] = datos
+                        }
                     }
-                    if let r = await CNApi.intenta(ruta) {
-                        CNSecciones.delServidor[ruta] = r
-                        guard s.datos.seccionPedida == id || s.datos.seccion?.id == id else { return }
-                        if let hecha = CNSecciones.arma(id) { s.datos.seccion = hecha }
-                    }
+                    if let hecha = CNSecciones.arma(id) { s.ponSeccion(hecha, si: id) }
                 }
             }
             s.eval("window.__chinolaSeccionEntrar && window.__chinolaSeccionEntrar(\(s.comillas(id)))")
@@ -1458,6 +1500,19 @@ class ChinolaViewController: CAPBridgeViewController {
     }
 
     /// El modelo de una subpantalla del perfil.
+    /**
+     * Pone una subpantalla SOLO si sigue siendo la que se está mirando.
+     *
+     * Entre que se le pregunta al servidor y contesta, la persona puede haber
+     * salido o haber entrado en otra. Sin esta comprobación, la respuesta tardía
+     * pisaría la pantalla nueva con la vieja — y eso, tocando ajustes seguidos,
+     * es de lo que peor se entiende: la pantalla cambia sola.
+     */
+    @MainActor private func ponSeccion(_ x: CNSeccion, si id: String) {
+        guard datos.seccionPedida == id || datos.seccion?.id == id else { return }
+        datos.seccion = x
+    }
+
     private func traerSeccion(_ id: String) {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaSeccionJSON && window.__chinolaSeccionJSON(\(comillas(id)))) || ''") { res, _ in
             guard let json = res as? String, json.count > 2 else { return }
