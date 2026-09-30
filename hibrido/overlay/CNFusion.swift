@@ -185,13 +185,22 @@ enum CNFusion {
     /**
      * Una libreta entera.
      *
-     * Sin base no hay nada que comparar: gana la mía campo a campo, y lo que
-     * solo tenga el servidor se conserva.
+     * **SIN BASE NO SE BORRA NADA.** Antes, sin base, se devolvía la mía campo a
+     * campo, y eso sustituye la lista de movimientos del servidor por la mía
+     * ENTERA: lo que el otro aparato hubiera anotado desaparecía sin aviso.
+     *
+     * Y es un caso que pasa: arrancas sin cobertura —la bajada falla, así que no
+     * hay base de nada—, anotas, y al volver la red el servidor rechaza tu
+     * libreta por atrasada. Justo ahí se conciliaba borrando lo del otro.
+     *
+     * Una base vacía dice lo correcto: no sé qué había antes, así que no sé qué
+     * borró nadie. Resucitar una fila que yo había borrado se arregla borrándola
+     * otra vez; perder lo que escribió el otro no se arregla de ninguna manera.
      */
     static func fusiona(_ base: [String: Any]?, _ mia: [String: Any]?, _ suya: [String: Any]?) -> [String: Any]? {
         guard let suya else { return mia }
         guard let mia else { return suya }
-        guard let base else { return suya.merging(mia) { _, dela in dela } }
+        let base = base ?? [:]
 
         var salida = suya
         var claves = Set(base.keys)

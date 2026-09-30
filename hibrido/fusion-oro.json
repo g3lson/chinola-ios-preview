@@ -230,7 +230,7 @@
       }
     },
     "sin base": {
-      "porque": "La primera vez no hay con qué comparar: la mía manda campo a campo.",
+      "porque": "SIN BASE NO SE BORRA NADA. No sé qué había antes, así que no sé qué borró nadie: se queda todo lo de los dos lados y, donde los dos tenemos algo distinto, lo mío. Antes se devolvía la mía campo a campo, y eso sustituía la lista del servidor por la mía entera.",
       "base": null,
       "mia": {
         "nombre": "mía",
@@ -248,6 +248,35 @@
           }
         ],
         "color": "#137d41"
+      }
+    },
+    "arranqué sin cobertura": {
+      "porque": "El caso de verdad por el que importa lo de arriba: la bajada falló, así que no hay base de nada; anoto, vuelve la red y el servidor rechaza mi libreta por atrasada. Lo que el otro anotó mientras tanto TIENE que seguir ahí.",
+      "base": null,
+      "mia": {
+        "id": "lb-a",
+        "tx": [
+          {
+            "id": "m-mio",
+            "monto": 500,
+            "concepto": "Anotado sin red"
+          }
+        ]
+      },
+      "suya": {
+        "id": "lb-a",
+        "tx": [
+          {
+            "id": "m-mio",
+            "monto": 500,
+            "concepto": "Anotado sin red"
+          },
+          {
+            "id": "m-del-otro",
+            "monto": 900,
+            "concepto": "Lo anotó el otro"
+          }
+        ]
       }
     },
     "la versión la pone el servidor": {
@@ -602,10 +631,30 @@
         "nombre": "mía",
         "tx": [
           {
+            "id": "m3"
+          },
+          {
             "id": "m2"
           }
         ],
         "color": "#137d41"
+      }
+    },
+    "arranqué sin cobertura": {
+      "sale": {
+        "id": "lb-a",
+        "tx": [
+          {
+            "id": "m-mio",
+            "monto": 500,
+            "concepto": "Anotado sin red"
+          },
+          {
+            "id": "m-del-otro",
+            "monto": 900,
+            "concepto": "Lo anotó el otro"
+          }
+        ]
       }
     },
     "la versión la pone el servidor": {

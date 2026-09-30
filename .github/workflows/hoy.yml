@@ -15,7 +15,7 @@ on:
     # Faltaban: corregí el oro, lo empujé, y este banco —el único que lo
     # comprueba— no se despertó. Un camino que no despierta a quien lo
     # comprueba es un cambio que nadie mira.
-    paths: ['hibrido/app-legible/**', 'hibrido/app-clasico/**', 'hibrido/overlay/**',
+    paths: ['hibrido/app-clasico/**', 'hibrido/overlay/**',
             'hibrido/siembra.js', 'hibrido/calculo-oro.json', 'hibrido/fusion-oro.json',
             'sondas/**', '.github/workflows/hoy.yml']
 
