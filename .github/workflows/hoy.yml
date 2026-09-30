@@ -229,6 +229,18 @@ jobs:
             xcrun simctl io "$UDID" screenshot "perfil-$P.png"
           done
 
+          # ¿QUIÉN ARMÓ CADA SUBPANTALLA: el teléfono o la web?
+          #
+          # «Libretas y permisos» estuvo armándose en la web mientras la nativa
+          # existía y devolvía nil por no tener datos. La pantalla salía IGUAL
+          # DE BIEN: lo único que la delató fue un chip de más en una captura,
+          # mirada por casualidad. Esto lo comprueba en vez de adivinarlo.
+          echo "=== ¿quién armó cada subpantalla? ==="
+          xcrun simctl spawn "$UDID" log show --last 6m --style compact \
+            --predicate 'eventMessage CONTAINS "CNSECCION"' 2>/dev/null > /tmp/sec.txt || true
+          python3 ../sondas/quien-armo-perfil.py /tmp/sec.txt \
+            cuenta seguridad dosPasos libretas panel dinero menu letra cabecera colores icono-app
+
           # Y LAS HOJAS de Perfil, que se dibujan nativas y no se habían
           # fotografiado nunca: solo se abren tocando su fila.
           for H in perfil correo clave baja borrarLocal; do

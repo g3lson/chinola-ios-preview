@@ -82,6 +82,21 @@ enum CNSecciones {
      * que una pantalla a medias. Pedir los datos es cosa aparte (`traer`).
      */
     @MainActor static func arma(_ id: String) -> CNSeccion? {
+        let hecha = armaDeVerdad(id)
+        // QUIÉN ARMÓ ESTA PANTALLA, dicho en voz alta para el banco.
+        //
+        // «Libretas y permisos» estuvo armándose en la web mientras la versión
+        // nativa existía, estaba probada y devolvía nil por no tener datos. La
+        // pantalla salía IGUAL DE BIEN: lo único que la delató fue un chip de
+        // más en una captura. Eso no se puede encontrar mirando fotos una por
+        // una, así que ahora se dice, y el banco lo comprueba.
+        if ProcessInfo.processInfo.environment["CN_CON"]?.contains("sonda") == true {
+            NSLog("CNSECCION: %@ %@", id, hecha == nil ? "web" : "nativa")
+        }
+        return hecha
+    }
+
+    @MainActor private static func armaDeVerdad(_ id: String) -> CNSeccion? {
         switch id {
         case "dosPasos": return dosPasos()
         case "seguridad": return seguridad()
