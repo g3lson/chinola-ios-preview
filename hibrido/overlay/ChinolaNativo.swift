@@ -995,6 +995,23 @@ func cnDinero(_ n: Double) -> String {
     CNFormateadores.dinero.string(from: NSNumber(value: abs(n))) ?? ""
 }
 
+/**
+ * El nombre corto de un mes «2026-09», en el idioma de la app.
+ *
+ * Va por el idioma puesto y no por el del teléfono: quien tiene la app en
+ * francés con el móvil en español espera ver los meses en francés, como el
+ * resto de la pantalla. Y si la fecha no se entiende, se devuelven los dos
+ * dígitos: una etiqueta rara es mejor que una columna sin nombre.
+ */
+func cnMesCorto(_ mes: String) -> String {
+    let f = CNFormateadores.iso
+    guard let d = f.date(from: mes + "-01") else { return String(mes.suffix(2)) }
+    let n = DateFormatter()
+    n.locale = Locale(identifier: CNC.fmt.loc)
+    n.setLocalizedDateFormatFromTemplate("MMM")
+    return n.string(from: d)
+}
+
 // Fecha "d MMM" desde ISO.
 func cnFechaCorta(_ iso: String) -> String {
     guard let d = CNFormateadores.iso.date(from: iso) else { return iso }
