@@ -10,7 +10,14 @@ name: "LA DE HOY: cinco arranques con el fallo ya arreglado"
 on:
   workflow_dispatch:
   push:
-    paths: ['hibrido/app-legible/**', 'hibrido/app-clasico/**', 'hibrido/overlay/**', '.github/workflows/hoy.yml']
+    # Y la SIEMBRA y el fichero de ORO, que también deciden lo que pasa aquí.
+    #
+    # Faltaban: corregí el oro, lo empujé, y este banco —el único que lo
+    # comprueba— no se despertó. Un camino que no despierta a quien lo
+    # comprueba es un cambio que nadie mira.
+    paths: ['hibrido/app-legible/**', 'hibrido/app-clasico/**', 'hibrido/overlay/**',
+            'hibrido/siembra.js', 'hibrido/calculo-oro.json',
+            'sondas/**', '.github/workflows/hoy.yml']
 
 jobs:
   correr:
