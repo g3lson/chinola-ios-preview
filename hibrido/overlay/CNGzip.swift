@@ -42,12 +42,19 @@ enum CNGzip {
      */
     static func comprime(_ datos: Data) -> Data? {
         guard !datos.isEmpty else { return nil }
-        let destino = UnsafeMutablePointer<UInt8>.allocate(capacity: datos.count + 4096)
+        // SITIO DE SOBRA PARA EL PEOR CASO. Comprimir puede AGRANDAR cuando lo
+        // que entra no se deja comprimir, y lo que crece es proporcional al
+        // tamaño: con un margen fijo de 4 KB, un megabyte que no comprima se
+        // queda sin sitio y devuelve cero. Justo el caso para el que existe
+        // esto —las libretas grandes—, o sea que el margen fijo fallaba donde
+        // más falta hace. El de DEFLATE es n/16 + 64, y se redondea hacia
+        // arriba.
+        let sitio = datos.count + datos.count / 16 + 4096
+        let destino = UnsafeMutablePointer<UInt8>.allocate(capacity: sitio)
         defer { destino.deallocate() }
         let n = datos.withUnsafeBytes { origen -> Int in
             guard let base = origen.bindMemory(to: UInt8.self).baseAddress else { return 0 }
-            return compression_encode_buffer(destino, datos.count + 4096,
-                                             base, datos.count, nil, COMPRESSION_ZLIB)
+            return compression_encode_buffer(destino, sitio, base, datos.count, nil, COMPRESSION_ZLIB)
         }
         guard n > 0 else { return nil }
 
