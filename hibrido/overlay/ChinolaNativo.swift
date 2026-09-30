@@ -1408,30 +1408,67 @@ final class CNDatos: ObservableObject {
         for i in m.prestamos.indices where i < l.prestamos.count {
             m.prestamos[i].valor = cnDinero(max(0, l.prestamos[i].total - l.prestamos[i].pagado))
         }
-        m.totalCuentas.valor = cnDineroFirmado(CNCalculo.saldoCuentas(l))
-        m.totalTarjetas.valor = cnDinero(CNCalculo.deudaTarjetas(l))
-        m.totalPrestamos.valor = cnDinero(CNCalculo.pendientePrestamos(l))
-        m.patrimonio.valor = cnDineroFirmado(CNCalculo.patrimonio(l))
-        m.patrimonio.activos = cnDinero(CNCalculo.saldoCuentas(l))
-        m.patrimonio.pasivos = cnDinero(CNCalculo.deudaTarjetas(l) + CNCalculo.deudaPrestamos(l))
+        // Los tres totales y el patrimonio, por el módulo. Aquí se calculaban a
+        // mano, y el de préstamos se quedaba a medias: solo se escribía el
+        // NÚMERO y el rótulo seguía siendo el que mandó la web. Si cobrabas el
+        // último préstamo que debías, la pantalla se quedaba diciendo «Debes» y
+        // debajo la cifra de lo que te deben a ti. No fallaba nada: mentía.
+        let tc = CNCuentasTotales.cuentas(l)
+        let tt = CNCuentasTotales.tarjetas(l)
+        let tp = CNCuentasTotales.prestamos(l)
+        m.totalCuentas.rotulo = tc.rotulo; m.totalCuentas.valor = tc.valor
+        m.totalTarjetas.rotulo = tt.rotulo; m.totalTarjetas.valor = tt.valor
+        m.totalPrestamos.rotulo = tp.rotulo; m.totalPrestamos.valor = tp.valor
+        let pat = CNCuentasTotales.patrimonio(l)
+        m.patrimonio.valor = pat.valor
+        m.patrimonio.activos = pat.activos
+        m.patrimonio.pasivos = pat.pasivos
         cuentas = m
     }
 
-    /// Las cifras de PLAN: el gastado y el tope del mes, y el relleno de cada
-    /// barra.
-    ///
-    /// Las filas van en el mismo orden que en la web —las categorías de gasto,
-    /// sin las de ingreso y sin Ahorro—, así que se emparejan por posición.
-    /// Los textos («te quedan…», el pie) los sigue escribiendo la web: eso es
-    /// redacción, no cálculo, y copiarla a mano sería inventarse el tono.
+    /**
+     * EL PLAN, RECALCULADO AQUÍ.
+     *
+     * Las filas van en el mismo orden que en la web —las categorías de gasto,
+     * sin las de ingreso y sin Ahorro—, así que se emparejan por posición.
+     *
+     * Aquí solo se movía el RELLENO de la barra. Anotabas un gasto y la barra
+     * se llenaba mientras el texto de al lado seguía diciendo lo que te quedaba
+     * ANTES, y seguía en verde después de pasarte del tope. La barra decía una
+     * cosa y las dos letras de su derecha decían otra, en la misma fila.
+     *
+     * El texto no se inventa: es el mismo que escribe la web, palabra por
+     * palabra, y vive en `CNPlanCuentas` para que no se puedan separar.
+     *
+     * Lo que NO se toca es el nombre, el icono, ni lo que sale al deslizar: eso
+     * no cambia porque anotes un movimiento.
+     */
     func refrescarPlan() {
         guard var m = plan else { return }
         let pres = CNCalculo.presupuesto(libreta, periodoCalculo)
         m.presGastado = cnDinero(pres.gastadoTotal)
         m.presTotal = cnDinero(pres.limiteTotal)
         m.presPct = Double(pres.pctTotal)
-        for i in m.filas.indices where i < pres.filas.count {
-            m.filas[i].pct = Double(pres.filas[i].pct)
+        // El color y el texto de cada fila, por el módulo. Los colores del tema
+        // salen del modelo que mandó la web: cambian con la paleta que haya
+        // puesta, no con los números.
+        let t = CNPlanCuentas.Tinte(
+            positivo: resumen?.cabecera.positivo ?? "",
+            ambar: resumen?.cabecera.aviso ?? "",
+            negativo: resumen?.cabecera.negativo ?? "")
+        let filas = CNPlanCuentas.filas(libreta, periodoCalculo, tinte: t)
+        for i in m.filas.indices where i < filas.count {
+            m.filas[i].pct = Double(filas[i].pct)
+            m.filas[i].queda = filas[i].queda
+            // «RD$3,200 de RD$5,000»: los dos números, y el «de» tal como venga,
+            // que es una palabra traducida y no me la invento. Se quedaba viejo
+            // igual que el otro texto: la barra se llenaba y el pie seguía
+            // diciendo el gasto de antes.
+            m.filas[i].pie = [filas[i].gastado, m.presDe, filas[i].limite]
+                .filter { !$0.isEmpty }.joined(separator: " ")
+            // El color solo si de verdad hay uno: con la paleta sin llegar
+            // todavía, pintar de vacío deja la barra transparente.
+            if !filas[i].color.isEmpty { m.filas[i].color = filas[i].color }
         }
         plan = m
     }
@@ -1820,8 +1857,11 @@ struct CNMovs: View {
             }
         }
         guard !q.isEmpty else { return t }
-        let n = q.lowercased()
-        return t.filter { $0.concepto.lowercased().contains(n) || $0.categoria.lowercased().contains(n) }
+        // SIN TILDES, como en la web. Bajando solo a minúsculas, quien escribe
+        // «cafe» no encuentra «Café»: en un teclado de teléfono la tilde cuesta,
+        // y una búsqueda que obliga a ponerla es una búsqueda que no se usa.
+        let n = CNMovimientos.normal(q)
+        return t.filter { CNMovimientos.normal($0.concepto + " " + $0.categoria).contains(n) }
     }
     private var porDia: [(String, [CNMov])] {
         var orden: [String] = []; var mapa: [String: [CNMov]] = [:]
@@ -1940,12 +1980,19 @@ struct CNMovs: View {
     private func fila(_ m: CNMov) -> some View {
         let entra = m.esIngreso
         let color: Color = entra ? CNC.pos : (m.esTransfer ? CNC.ink : CNC.neg)
-        // El icono y el color los manda la web (la categoría puede no tener
-        // icono propio y entonces manda su tabla por nombre): así la lista
-        // nativa enseña exactamente los mismos que la PWA.
+        // El icono y el color los manda la web si los mandó, y si no los saca
+        // `CNCategorias` de la propia libreta.
+        //
+        // Venían SOLO de la web, y del modelo del RESUMEN además: entrando
+        // directo a Movimientos —abriendo la app en esta pestaña, o volviendo a
+        // ella— el resumen podía no haber llegado todavía y la lista salía
+        // entera con el mismo iconito ámbar. No fallaba: se leía peor, y solo a
+        // veces, que es lo difícil de ver.
         let ic = datos.resumen?.catIconos[m.categoria]
+        let propio = CNCategorias.color(m.categoria, en: datos.libreta)
         let tinte = entra ? CNC.pos : (m.esTransfer ? CNC.info
-                                       : (ic.map { cnColor(hexString: $0.color) } ?? cnColor(0xe0a92e)))
+                                       : (ic.map { cnColor(hexString: $0.color) }
+                                          ?? cnColor(hexString: propio)))
         return Button { datos.onDetalleMov(m.id) } label: {
             HStack(spacing: 12) {
                 Group {
@@ -1953,7 +2000,11 @@ struct CNMovs: View {
                         cnGlifo("banknote.fill", tam: 17)
                     } else if m.esTransfer {
                         cnGlifo("arrow.left.arrow.right", tam: 17)
-                    } else if let p = ic?.path, !p.isEmpty {
+                    } else if let p = ic?.path ?? CNIconos.paths[CNCategorias.icono(m.categoria, en: datos.libreta)],
+                              !p.isEmpty {
+                        // El de la web si lo mandó; si no, el que le toca a la
+                        // categoría por la libreta. La etiqueta genérica queda
+                        // solo para una categoría que no esté ni en el catálogo.
                         CNSVGShape(d: p)
                             .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
                             .frame(width: 18, height: 18)
@@ -2848,11 +2899,12 @@ enum CNIconos {
         "cripto": "M9 4v16M7 8h5a2 2 0 0 1 0 4H7h5a2 2 0 0 1 0 4H7M12 4v2M12 18v2",
         "candado": "M6 11h12v10H6zM9 11V8a3 3 0 0 1 6 0v3M12 15v3"
     ]
-    static let cat: [String: String] = [
-        "Ingresos": "grafico", "Vivienda": "casa", "Alimentación": "comida", "Servicios": "rayo",
-        "Transporte": "auto", "Educación": "birrete", "Salud": "salud", "Donaciones": "iglesia",
-        "Entretenimiento": "cine", "Deudas": "tarjeta", "Personal": "usuario", "Ahorro": "hucha", "Otros": "puntos"
-    ]
+    // El icono que le toca a cada categoría NO vive aquí. Vivía: había un mapa
+    // gemelo del de `CNCategorias.porNombre`, palabra por palabra, y no lo usaba
+    // nadie. Dos mapas iguales son un mapa y una trampa: el día que alguien
+    // añada una categoría, la cambia en uno y se pregunta por qué no sale.
+    // `CNCategorias` es el que manda, porque además mira el icono que la persona
+    // haya elegido, que este no miraba.
 }
 
 // Dibuja un glifo por nombre: si está en el catálogo del diseño lo pinta con

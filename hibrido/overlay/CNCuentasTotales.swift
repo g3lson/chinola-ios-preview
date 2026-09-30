@@ -71,13 +71,22 @@ enum CNCuentasTotales {
     /**
      * El patrimonio: lo que tienes menos lo que debes.
      *
-     * Lo que te deben NO suma. Es dinero que existe pero no es tuyo todavía, y
-     * contarlo hincha el patrimonio con algo que a lo mejor no vuelve.
+     * LO QUE TE DEBEN SÍ SUMA, y aquí estaba escrito al contrario. El dinero
+     * prestado a alguien sigue siendo tuyo, solo que está fuera; restándolo,
+     * prestarle dinero a un amigo te empobrecía en la pantalla. Y como los
+     * pasivos se enseñan aparte, estaba mal por dos sitios: el número de abajo
+     * decía que debías lo que te debían a ti.
+     *
+     * No se calcula aquí: se le pregunta a `CNCalculo`, que es quien lo sabe.
+     * Habiendo dos cuentas del patrimonio en la misma app, una de las dos
+     * miente, y el día que cambie la regla solo se cambia una.
      */
     static func patrimonio(_ l: CNLibreta, oculto: Bool = false) -> (valor: String, activos: String, pasivos: String) {
-        let activos = l.cuentas.reduce(0.0) { $0 + $1.saldo }
-        let pasivos = CNCalculo.deudaTarjetas(l) + CNCalculo.pendientePrestamos(l)
-        return (oculto ? TAPADO : cnDinero(activos - pasivos),
+        // Lo que tienes: en cuentas, más lo que está prestado y va a volver.
+        let activos = CNCalculo.saldoCuentas(l) + CNCalculo.porCobrarPrestamos(l)
+        // Lo que debes: tarjetas y los préstamos que debes TÚ.
+        let pasivos = CNCalculo.deudaTarjetas(l) + CNCalculo.deudaPrestamos(l)
+        return (oculto ? TAPADO : cnDinero(CNCalculo.patrimonio(l)),
                 oculto ? TAPADO : cnDinero(activos),
                 oculto ? TAPADO : cnDinero(pasivos))
     }
