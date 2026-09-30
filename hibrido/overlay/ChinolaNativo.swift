@@ -231,6 +231,11 @@ struct CNFormato {
     /// subpantalla se abre desde Perfil.
     var cabecera = "auto"; var cabeceraColor = ""
     var cabeceraTarjeta = false; var cabeceraIntegrada = false
+    /// Cuál tema está puesto, y los de día y de noche por separado. No son
+    /// siempre el mismo: con «Automático» hay uno para cada momento.
+    var temaId = "chinola"; var temaAuto = false
+    var temaClaro = ""; var temaOscuro = ""
+    var paletaId = "clasica"
     /// Qué se ve en la pestaña de Perfil: «chino» o «perfil».
     /// La inicial del usuario, para el icono redondo.
     var inicial = ""
@@ -267,6 +272,11 @@ struct CNFormato {
         if let t = o["cabeceraColor"] as? String { f.cabeceraColor = t }
         f.cabeceraTarjeta = (o["cabeceraTarjeta"] as? Bool) ?? f.cabeceraTarjeta
         f.cabeceraIntegrada = (o["cabeceraIntegrada"] as? Bool) ?? f.cabeceraIntegrada
+        if let t = o["temaId"] as? String, !t.isEmpty { f.temaId = t }
+        f.temaAuto = (o["temaAuto"] as? Bool) ?? f.temaAuto
+        if let t = o["temaClaro"] as? String { f.temaClaro = t }
+        if let t = o["temaOscuro"] as? String { f.temaOscuro = t }
+        if let t = o["paletaId"] as? String, !t.isEmpty { f.paletaId = t }
         if let t = o["inicial"] as? String { f.inicial = t }
         if let v = o["panelVivo"] as? Bool { f.panelVivo = v }
         if let t = o["tarjetaCuentas"] as? String, !t.isEmpty { f.tarjetaCuentas = t }

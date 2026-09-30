@@ -699,6 +699,17 @@ class ChinolaViewController: CAPBridgeViewController {
             // Cambiar el papel de alguien, o quitarlo. Toca la LIBRETA, que
             // tiene un solo dueño —la copia que la web sincroniza—, así que se
             // le pide a ella: aquí no se escribe.
+            // El modo de color. Va aparte de `pon:` porque no es UN ajuste:
+            // «Automático» toca cuatro a la vez y cada uno tiene su respaldo.
+            // Lo decide la MISMA función que usa la web.
+            if id.hasPrefix("modo:") {
+                s.eval("window.__chinolaModoColor && window.__chinolaModoColor("
+                       + s.comillas(String(id.dropFirst(5))) + ")")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    if let hecha = CNSecciones.arma("colores") { s.ponSeccion(hecha, si: "colores") }
+                }
+                return
+            }
             if id.hasPrefix("rol:") || id.hasPrefix("quitar:") {
                 let quitar = id.hasPrefix("quitar:")
                 let resto = String(id.dropFirst(quitar ? 7 : 4))

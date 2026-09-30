@@ -31,7 +31,7 @@ import Foundation
 enum CNSecciones {
 
     /// Las que este lado sabe armar. Lo demás sigue viniendo de la web.
-    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra", "cabecera"]
+    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores"]
 
     /**
      * Lo que se le ha pedido al servidor, guardado mientras dure la app.
@@ -79,6 +79,7 @@ enum CNSecciones {
         case "menu": return menu()
         case "letra": return letra()
         case "cabecera": return cabecera()
+        case "colores": return colores()
         // «libreta:3» es una libreta por dentro: sus miembros y sus permisos.
         case let x where x.hasPrefix("libreta:"): return unaLibreta(String(x.dropFirst(8)))
         default: return nil
@@ -98,7 +99,7 @@ enum CNSecciones {
         // el teléfono. Se dibujan enteras antes de que la web despierte.
         // Los miembros vienen DENTRO de la libreta, no de la API: la web los
         // cambia en local y la sincronización los sube. Ver `CNLibretas.Fila`.
-        case "panel", "dinero", "libretas", "menu", "letra", "cabecera": return []
+        case "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores": return []
         default: return []
         }
     }
@@ -344,6 +345,131 @@ enum CNSecciones {
         ]
 
         s.bloques = [mon, cent]
+        return s
+    }
+
+    /* -------------------------------- colores ----------------------------- */
+
+    /// Los temas de día que se ofrecen, y en este orden.
+    ///
+    /// No son todos los que hay: son los que DE VERDAD se distinguen. Con
+    /// treinta y tres miniaturas casi iguales no se elige, se renuncia.
+    private static let CLAROS = ["sistema", "chinola", "claro", "hoja", "oceano",
+                                 "menta", "uva", "cacao", "semillas", "flor"]
+    private static let OSCUROS = ["sistema_noche", "chinola_noche", "noche", "carbon",
+                                  "medianoche", "bosque", "ciruela", "cafe_noche"]
+
+    /**
+     * El modo, el tema de día, el de noche y los colores de las cifras.
+     *
+     * LO QUE NO SE VE Y HAY QUE CONSERVAR:
+     *
+     * **Cada miniatura se pinta con SU tema, no con el puesto.** Elegir un tema
+     * por su nombre es elegir a ciegas; el dibujito ES la decisión.
+     *
+     * **«Automático» enseña las dos mitades**, la de día y la de noche, porque
+     * eso es justo lo que hace: seguir al teléfono.
+     *
+     * **El de día y el de noche se marcan por separado.** Con «Automático»
+     * puesto hay dos elegidos a la vez, y marcar solo el que se está viendo
+     * ahora haría parecer que el otro no está.
+     */
+    @MainActor private static func colores() -> CNSeccion? {
+        let f = CNC.fmt
+        let esOscuroAhora = CNCatalogos.claroDe[f.temaId] != nil
+        // Cuál es el de día y cuál el de noche, con los mismos respaldos que la
+        // web: si no se ha elegido uno, el que le toca al que está puesto.
+        let claroAhora = f.temaAuto
+            ? (f.temaClaro.isEmpty
+                ? (esOscuroAhora ? (CNCatalogos.claroDe[f.temaId] ?? "chinola") : f.temaId)
+                : f.temaClaro)
+            : (esOscuroAhora ? "" : f.temaId)
+        let oscuroAhora = f.temaAuto
+            ? (f.temaOscuro.isEmpty
+                ? (CNCatalogos.oscuroDe[claroAhora] ?? "noche")
+                : f.temaOscuro)
+            : (esOscuroAhora ? f.temaId : "")
+
+        /// Una miniatura pintada con los colores de ESE tema.
+        func mini(_ k: String, _ o: inout CNSeccion.Opcion) {
+            let t = CNCatalogos.temas[k]
+            o.fondo = t?.bg ?? ""
+            o.franja = t?.side ?? ""
+            o.tarjeta = t?.card ?? ""
+            o.tinta = t?.tinta ?? ""
+            o.acento = CNCatalogos.acentos[k] ?? ""
+            o.oscuro = CNCatalogos.claroDe[k] != nil
+        }
+
+        var s = CNSeccion()
+        s.id = "colores"
+        s.titulo = cnT("Colores")
+
+        // ── el modo ────────────────────────────────────────────────────────
+        var modo = CNSeccion.Bloque(); modo.tipo = "telefonos"
+        modo.titulo = cnT("Modo")
+        modo.pie = cnT("Automático sigue el modo claro u oscuro del teléfono.")
+        let cualModo = f.temaAuto ? "auto" : (esOscuroAhora ? "oscuro" : "claro")
+        var auto = CNSeccion.Opcion()
+        auto.label = cnT("Automático"); auto.puesta = cualModo == "auto"
+        auto.vista = "modo"; auto.valor = "auto"; auto.abre = "modo:auto"
+        mini(claroAhora.isEmpty ? f.temaId : claroAhora, &auto)
+        // La mitad de noche: es lo que hace «Automático», y enseñar solo la de
+        // día lo dejaría igual que «Claro».
+        let deNoche = CNCatalogos.temas[oscuroAhora.isEmpty ? "noche" : oscuroAhora]
+        auto.nocheFondo = deNoche?.bg ?? ""
+        auto.nocheFranja = deNoche?.side ?? ""
+        auto.nocheTarjeta = deNoche?.card ?? ""
+
+        var claro = CNSeccion.Opcion()
+        claro.label = cnT("Claro"); claro.puesta = cualModo == "claro"
+        claro.vista = "modo"; claro.valor = "claro"; claro.abre = "modo:claro"
+        mini(claroAhora.isEmpty ? (CNCatalogos.claroDe[f.temaId] ?? "chinola") : claroAhora, &claro)
+
+        var oscuro = CNSeccion.Opcion()
+        oscuro.label = cnT("Oscuro"); oscuro.puesta = cualModo == "oscuro"
+        oscuro.vista = "modo"; oscuro.valor = "oscuro"; oscuro.abre = "modo:oscuro"
+        mini(oscuroAhora.isEmpty ? (CNCatalogos.oscuroDe[f.temaId] ?? "noche") : oscuroAhora, &oscuro)
+        modo.opciones = [auto, claro, oscuro]
+
+        // ── los temas, de día y de noche ───────────────────────────────────
+        func rejilla(_ titulo: String, _ cuales: [String], _ elegido: String) -> CNSeccion.Bloque {
+            var b = CNSeccion.Bloque(); b.tipo = "telefonos"
+            b.titulo = titulo
+            b.opciones = cuales.compactMap { k in
+                guard let t = CNCatalogos.temas[k] else { return nil }
+                var o = CNSeccion.Opcion()
+                o.label = cnT(t.nombre)
+                o.puesta = k == elegido
+                o.vista = "tema"
+                o.abre = "pon:tema=" + k
+                mini(k, &o)
+                return o
+            }
+            return b
+        }
+
+        // ── los colores de las cifras ──────────────────────────────────────
+        var cifras = CNSeccion.Bloque(); cifras.tipo = "telefonos"
+        cifras.titulo = cnT("Colores de las cifras")
+        cifras.pie = cnT("Lo que entra, lo que sale y lo que apartas. Hay una que se distingue con daltonismo.")
+        cifras.opciones = CNCatalogos.paletas.map { p in
+            var o = CNSeccion.Opcion()
+            o.label = cnT(p.nombre); o.sub = cnT(p.pista)
+            o.puesta = p.id == f.paletaId
+            o.vista = "paleta"
+            o.fondo = CNC.hexScr
+            o.tarjeta = CNC.hexCard
+            o.oscuro = CNC.tema.oscuro
+            o.puntos = [p.positivo, p.negativo, p.ahorro]
+            o.abre = "pon:paleta=" + p.id
+            return o
+        }
+
+        s.bloques = [modo,
+                     rejilla(cnT("Tema de día"), CLAROS, claroAhora),
+                     rejilla(cnT("Tema de noche"), OSCUROS, oscuroAhora),
+                     cifras]
         return s
     }
 
