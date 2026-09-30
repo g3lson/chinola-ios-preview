@@ -237,6 +237,53 @@ struct CNFormato {
     }
 }
 
+/**
+ * LO QUE ACABAS DE TOCAR, HASTA QUE LA WEB CONFIRME.
+ *
+ * Aquí estaba lo que hace que Perfil se sienta prestado. El valor que se ve
+ * sale SIEMPRE de la web: tocas un interruptor, el aviso cruza el puente, la
+ * web cambia su estado, rearma la pantalla entera, la manda de vuelta y
+ * entonces —y solo entonces— el interruptor se mueve. Entre medias no pasa
+ * nada, y ese hueco es exactamente lo que se nota.
+ *
+ * Y la decisión de no guardar copia aquí tenía su motivo, que sigue siendo
+ * bueno: dos copias del mismo ajuste acaban discrepando y ganando la
+ * equivocada. Así que esto no es una segunda copia — es un apunte de lo que
+ * acabas de tocar, con hora, que vale UN RATO CORTO:
+ *
+ * - Mientras vale, manda él: el control se mueve en el mismo fotograma.
+ * - En cuanto la web manda un valor, manda la web y el apunte se tira. No hay
+ *   nada que pueda quedarse discrepando.
+ * - Y si la web no contesta —porque rechazó el cambio, o se cayó—, el apunte
+ *   caduca solo y el control vuelve a lo que de verdad hay. Mejor que se
+ *   deshaga a la vista que quedarse mintiendo.
+ *
+ * Un segundo y medio es de sobra: el viaje real son decenas de milisegundos.
+ */
+enum CNRecienTocado {
+    private static var apuntes: [String: (valor: Any, cuando: Date)] = [:]
+    /// Cuánto vale un apunte sin confirmar.
+    private static let dura: TimeInterval = 1.5
+
+    /// Apunta lo que se acaba de tocar.
+    static func pon(_ clave: String, _ valor: Any) {
+        apuntes[clave] = (valor, Date())
+    }
+
+    /// Lo apuntado, si todavía vale. `nil` = manda lo que diga la web.
+    static func de<T>(_ clave: String, _ tipo: T.Type) -> T? {
+        guard let a = apuntes[clave] else { return nil }
+        if Date().timeIntervalSince(a.cuando) > dura { apuntes.removeValue(forKey: clave); return nil }
+        return a.valor as? T
+    }
+
+    /// La web mandó lo suyo: a partir de aquí manda ella.
+    static func confirma(_ clave: String) { apuntes.removeValue(forKey: clave) }
+
+    /// Llegó una pantalla nueva entera: todo lo apuntado queda confirmado.
+    static func llegoLaPantalla() { apuntes.removeAll() }
+}
+
 /// Un ajuste de pantalla como Binding, para que los Picker sigan siendo Picker.
 ///
 /// Lee del formato que manda la web y escribe de vuelta por el puente. El valor
@@ -247,10 +294,15 @@ struct CNFormato {
 /// vez para nada. Con un interruptor que dispara una ACCIÓN eso es peor que un
 /// desperdicio: la deshace. Ver la prueba `interruptores-nativos`.
 func cnAjuste<T: Equatable>(_ clave: String, _ leer: @escaping () -> T, _ aJS: @escaping (T) -> Any) -> Binding<T> {
-    Binding(get: leer, set: { nuevo in
-        guard nuevo != leer() else { return }
-        CNC.alPoner?(clave, aJS(nuevo))
-    })
+    Binding(
+        // Lo que acabas de tocar manda mientras la web no diga lo suyo: sin
+        // esto el control no se mueve hasta que vuelve del puente.
+        get: { CNRecienTocado.de(clave, T.self) ?? leer() },
+        set: { nuevo in
+            guard nuevo != (CNRecienTocado.de(clave, T.self) ?? leer()) else { return }
+            CNRecienTocado.pon(clave, nuevo)
+            CNC.alPoner?(clave, aJS(nuevo))
+        })
 }
 
 /// Un tamaño de letra del diseño, ya escalado por el ajuste del usuario.
@@ -1065,6 +1117,22 @@ final class CNDatos: ObservableObject {
     /// La última subpantalla pedida. Un JSON de otra (uno que llegó tarde) se
     /// tira: era lo que hacía que, al tocar una opción, saliera otra cosa.
     var seccionPedida = ""
+    /**
+     * LA ÚLTIMA VEZ QUE SE VIO CADA SUBPANTALLA.
+     *
+     * Al entrar en una se vaciaba la pantalla y se esperaba a que la web la
+     * armara. Tocabas, se quedaba en blanco, y al rato aparecía el contenido:
+     * eso es el salto raro. Con lo de la vez pasada puesto desde el primer
+     * fotograma, la transición tiene qué animar y el modelo nuevo llega encima
+     * sin que se note.
+     *
+     * Solo en memoria a propósito. Guardarlo en disco haría que, tras
+     * actualizar la app, la primera entrada enseñara una pantalla de la versión
+     * anterior — con opciones que a lo mejor ya no existen. Perder esto al
+     * cerrar la app cuesta un parpadeo una vez; lo otro cuesta enseñar algo
+     * falso.
+     */
+    var seccionesVistas: [String: CNSeccion] = [:]
     /// Lo que lleva recorrido el dedo desde la orilla en la subpantalla de
     /// Perfil. Lo mueve el reconocedor de UIKit; aquí solo se dibuja.
     @Published var arrastreSec: CGFloat = 0
@@ -1332,6 +1400,12 @@ final class CNDatos: ObservableObject {
     func cargarSeccion(json: String) {
         guard let x = CNSeccion.desde(json: json) else { return }
         if !seccionPedida.isEmpty && x.id != seccionPedida { return }
+        // La web acaba de decir lo suyo: a partir de aquí manda ella y lo que
+        // se apuntó al tocar ya no pinta nada. Es lo que impide que existan dos
+        // copias del mismo ajuste discrepando — que era el motivo de no
+        // guardar copia aquí en primer lugar.
+        CNRecienTocado.llegoLaPantalla()
+        seccionesVistas[x.id] = x
         seccion = x
     }
     func cargarAjustes(json: String) {
@@ -6512,11 +6586,17 @@ struct CNSeccionVista: View {
                 //
                 // Con esto, cuando el valor que llega ya coincide con el que
                 // hay, no se dispara nada.
-                Toggle("", isOn: Binding(get: { q.puesto },
-                                         set: { nuevo in
-                                             guard nuevo != q.puesto else { return }
-                                             datos.onSeccionAccion(q.accion, nil)
-                                         }))
+                // El apunte se guarda por ACCIÓN y no por clave: un
+                // interruptor de sección no dice qué ajuste toca, solo a qué
+                // fila pertenece. Basta para lo que hace falta — que se mueva
+                // ya— y se tira en cuanto llega la pantalla nueva.
+                Toggle("", isOn: Binding(
+                    get: { CNRecienTocado.de("sec:" + String(q.accion), Bool.self) ?? q.puesto },
+                    set: { nuevo in
+                        guard nuevo != (CNRecienTocado.de("sec:" + String(q.accion), Bool.self) ?? q.puesto) else { return }
+                        CNRecienTocado.pon("sec:" + String(q.accion), nuevo)
+                        datos.onSeccionAccion(q.accion, nil)
+                    }))
                     // Del mismo verde que el resto de lo nativo. En amarillo
                     // era el único control que no seguía el tinte de la app.
                     .labelsHidden().tint(CNC.pos)

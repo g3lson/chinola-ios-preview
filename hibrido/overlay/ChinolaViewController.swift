@@ -665,12 +665,19 @@ class ChinolaViewController: CAPBridgeViewController {
                 }
                 return
             }
-            // Fuera lo que hubiera: la subpantalla se enseña en cuanto
-            // `seccion` deja de ser nula, así que si se queda la anterior
-            // puesta se ve ESA hasta que llega la nueva del otro lado. Al
-            // pedir otra distinta se vacía primero; pidiendo la misma (un
-            // refresco) se deja, que si no parpadea.
-            if s.datos.seccion?.id != id { s.datos.seccion = nil }
+            // LO DE LA VEZ PASADA, MIENTRAS LLEGA LO DE AHORA.
+            //
+            // Esto se vaciaba: la subpantalla se enseña en cuanto `seccion`
+            // deja de ser nula, y dejando la anterior puesta se veía ESA hasta
+            // que llegaba la nueva — la de otra pantalla, que es peor. Pero
+            // vaciar deja la pantalla en blanco mientras la web arma, y eso es
+            // el salto raro al entrar.
+            //
+            // La tercera opción es la buena: si esta subpantalla ya se vio, se
+            // pone la suya de la vez pasada. Es la misma pantalla con los
+            // mismos valores, así que la transición tiene qué animar y lo que
+            // llega encima no se nota. Si no se vio nunca, se vacía como antes.
+            if s.datos.seccion?.id != id { s.datos.seccion = s.datos.seccionesVistas[id] }
             s.datos.seccionPedida = id
             s.traerSeccion(id)
         }
@@ -679,24 +686,35 @@ class ChinolaViewController: CAPBridgeViewController {
             // Con el id de la sección: la web guarda las acciones por sección
             // y así el número apunta a la fila que se tocó, no a la de la
             // última sección que se pidió.
-            if let v = valor {
-                s.eval("window.__chinolaSeccionAccion && window.__chinolaSeccionAccion(\(i),\(s.comillas(v)),\(s.comillas(id)))")
-            } else {
-                s.eval("window.__chinolaSeccionAccion && window.__chinolaSeccionAccion(\(i),undefined,\(s.comillas(id)))")
-            }
-            // Algunas acciones abren una hoja de la web (cambiar la clave, crear
-            // una libreta…): se enseña la web y se cierra lo nativo.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                s.bridge?.webView?.evaluateJavaScript("!!(window.__chinolaHayHoja && window.__chinolaHayHoja())") { r, _ in
-                    if (r as? Bool) == true {
-                        // La sección se queda debajo: si lo que se abrió es una
-                        // hoja, se dibuja nativa encima y al guardar se vuelve.
-                        s.webTemporal()
-                    } else {
-                        s.traerSeccion(id)
-                        s.traerAjustes(); s.traerTema()
-                        // «Mi plan» cambia de paso sin abrir hoja: es la puerta.
-                        s.mirarPuerta(intentos: 2)
+            let arg = valor.map { s.comillas($0) } ?? "undefined"
+            // LA RESPUESTA VIENE EN LA MISMA LLAMADA.
+            //
+            // Esto esperaba un cuarto de segundo y preguntaba después si se
+            // había abierto una hoja, porque no había forma de saberlo en el
+            // momento. Un cuarto de segundo muerto en CADA toque de Perfil, se
+            // abriera hoja o no — y eso, tocando ajustes seguidos, es lo que
+            // hace que la pantalla se sienta pegajosa.
+            //
+            // Ahora la propia acción contesta si dejó una hoja abierta, así que
+            // el caso normal —un interruptor, una opción— se resuelve sin
+            // esperar nada.
+            s.eval("window.__chinolaSeccionAccion ? window.__chinolaSeccionAccion(\(i),\(arg),\(s.comillas(id))) : false") { r in
+                if (r as? Bool) == true {
+                    // La sección se queda debajo: si lo que se abrió es una
+                    // hoja, se dibuja nativa encima y al guardar se vuelve.
+                    s.webTemporal()
+                    return
+                }
+                s.traerSeccion(id)
+                s.traerAjustes(); s.traerTema()
+                // «Mi plan» cambia de paso sin abrir hoja: es la puerta.
+                s.mirarPuerta(intentos: 2)
+                // Y UN REPASO TARDÍO, solo para las que tardan. Las que hablan
+                // con el servidor abren su hoja después de contestar, y sin
+                // esto se quedarían sin enseñarla.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    s.bridge?.webView?.evaluateJavaScript("!!(window.__chinolaHayHoja && window.__chinolaHayHoja())") { r2, _ in
+                        if (r2 as? Bool) == true { s.webTemporal() } else { s.traerSeccion(id) }
                     }
                 }
             }
@@ -921,6 +939,14 @@ class ChinolaViewController: CAPBridgeViewController {
         // el módulo arranca entonces.
         if sin("eval") { return }
         bridge?.webView?.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    /// El mismo, pero esperando lo que conteste. Es lo que deja resolver en una
+    /// sola llamada lo que antes costaba una espera a ciegas y una pregunta.
+    private func eval(_ js: String, _ luego: @escaping (Any?) -> Void) {
+        if sin("eval") { luego(nil); return }
+        guard let w = bridge?.webView else { luego(nil); return }
+        w.evaluateJavaScript(js) { r, _ in DispatchQueue.main.async { luego(r) } }
     }
 
     /// LEE los datos directamente del webview (sin plugin). El empuje por el
