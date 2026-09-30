@@ -343,8 +343,15 @@ enum CNSecciones {
 
     /* -------------------------- libretas y permisos ----------------------- */
 
-    /// Lo último que mandó la web. Es la MISMA copia que se sincroniza.
-    @MainActor static var lasLibretas: CNLibretas? = nil
+    /**
+     * La lista de libretas: la que ya tiene `CNDatos`, no una copia.
+     *
+     * Aquí había una segunda, y además fallaba al compilar —se escribía desde
+     * fuera del hilo principal—. Quitarla arregla las dos cosas: dos listas de
+     * libretas es una libreta que aparece en un sitio y no en el otro, y el
+     * comentario que justificaba la copia decía exactamente eso.
+     */
+    @MainActor static var lasLibretas: CNLibretas? { CNDatos.shared.libretas }
 
     /**
      * La lista de libretas, con quién está en cada una.

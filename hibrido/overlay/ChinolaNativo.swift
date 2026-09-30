@@ -1344,13 +1344,7 @@ final class CNDatos: ObservableObject {
         sec.bloques[bi] = q
         seccion = sec
     }
-    func cargarLibretas(json: String) {
-        libretas = CNLibretas.desde(json: json)
-        // La misma lista le sirve a «Libretas y permisos», que se arma aquí.
-        // Es una sola copia a propósito: dos listas de libretas es una libreta
-        // que aparece en un sitio y no en el otro.
-        CNSecciones.lasLibretas = libretas
-    }
+    func cargarLibretas(json: String) { libretas = CNLibretas.desde(json: json) }
     func cargarLibretaNueva(json: String) { libretaNueva = CNLibretaNueva.desde(json: json) }
     func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
     func cargarTour(json: String) { tour = CNTour.desde(json: json) }
