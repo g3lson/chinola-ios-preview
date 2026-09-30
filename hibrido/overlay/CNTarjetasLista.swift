@@ -83,7 +83,15 @@ enum CNTarjetasLista {
             // solo el nombre: con tres filas seguidas, «Visa» y «Visa» no se
             // distinguen si una es el corte y otra la cuota de un préstamo.
             let que = p.tipo == "tarjeta" ? cnT("Pago") : cnT("Cuota")
-            return Fila(titulo: que + " " + p.nombre, detalle: cnDinero(p.monto),
+            // El detalle dice cuánto y, en una tarjeta, DESDE CUÁNDO cuenta:
+            // «RD$3,200 · corte día 15». Sin el corte la fila dice cuánto hay
+            // que pagar y cuándo, pero no qué periodo se está pagando, que es
+            // justo lo que uno mira para saber si el gasto de ayer ya entró.
+            var detalle = cnDinero(p.monto)
+            if p.tipo == "tarjeta" && p.corte > 0 {
+                detalle += " · " + cnT("corte día {n}").replacingOccurrences(of: "{n}", with: String(p.corte))
+            }
+            return Fila(titulo: que + " " + p.nombre, detalle: detalle,
                         monto: plazo, montoColor: color,
                         sigla: "!", color: color, categoria: "")
         }

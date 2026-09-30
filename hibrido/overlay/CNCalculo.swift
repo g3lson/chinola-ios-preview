@@ -283,6 +283,10 @@ enum CNCalculo {
         var nombre: String
         var monto: Double
         var dias: Int
+        /// El día del corte de la tarjeta. La web lo enseña en el detalle —«RD$X
+        /// · corte día 15»— y sin él la fila dice cuánto y cuándo hay que pagar
+        /// pero no desde cuándo cuenta. En un préstamo no hay corte: va en 0.
+        var corte: Int = 0
     }
 
     /// Los pagos que vienen, del más cercano al más lejano: el corte de cada
@@ -291,13 +295,21 @@ enum CNCalculo {
         var salida: [Pago] = []
         for t in l.tarjetas where t.saldo > 0 {
             salida.append(Pago(tipo: "tarjeta", referencia: t.id, nombre: t.nombre,
-                               monto: t.saldo, dias: diasHastaElDia(t.pago, desde: desde)))
+                               monto: t.saldo, dias: diasHastaElDia(t.pago, desde: desde),
+                               corte: t.corte))
         }
         for p in l.prestamos where p.sentido != "meDeben" {
             let pendiente = max(0, p.total - p.pagado)
             guard pendiente > 0 else { continue }
+            // Lo que se recuerda de un préstamo es la CUOTA del mes y el día en
+            // que vence, no lo que falta por pagar entero. Aquí iba `dias: 0`,
+            // así que TODAS las cuotas salían como «hoy», en rojo y arriba: el
+            // recordatorio decía que hoy vence todo lo que debes. Y el monto era
+            // el pendiente completo, que en un préstamo a tres años es una cifra
+            // que no tiene nada que ver con lo que hay que pagar este mes.
             salida.append(Pago(tipo: "prestamo", referencia: p.id, nombre: p.nombre,
-                               monto: pendiente, dias: 0))
+                               monto: p.cuota > 0 ? p.cuota : pendiente,
+                               dias: diasHastaElDia(p.dia, desde: desde)))
         }
         return salida.sorted { $0.dias != $1.dias ? $0.dias < $1.dias : $0.monto > $1.monto }
     }
