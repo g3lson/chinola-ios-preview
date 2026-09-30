@@ -32,9 +32,14 @@ import sys
 import zlib
 
 # Cuánto tiene que cambiar la imagen, de 0 a 255, para decir que hay otra cosa
-# delante. Abrir la app cambia la pantalla ENTERA: sale por encima de 20. El
-# reloj avanzando un minuto no llega ni a 1.
-CAMBIO_MINIMO = 8.0
+# delante.
+#
+# Dos por lo medido, no por lo supuesto: con la misma foto sale 0,0 —el reloj
+# avanzando un minuto no mueve la aguja— y con la app delante sale 5 o más,
+# incluso cuando lo que enseña es una página casi en blanco, que es el peor caso
+# posible para esta comprobación. Empecé poniendo 8 «por si acaso» y tumbé un
+# banco que estaba bien: entre 0 y 5 hay sitio de sobra.
+CAMBIO_MINIMO = 2.0
 # En cuántas casillas se resume cada foto. Con 16x32 se ve la forma de la
 # pantalla y no el detalle, que es lo que interesa: no se compara el contenido.
 COLUMNAS, FILAS = 16, 32
