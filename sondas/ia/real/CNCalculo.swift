@@ -92,11 +92,24 @@ enum CNCalculo {
 
     // MARK: - Por categoría
 
-    /// Lo gastado en cada categoría del período, de más a menos.
-    /// Solo cuenta gastos: los ingresos y las transferencias no van a ninguna.
+    /**
+     * Lo que salió en cada categoría del período, de más a menos.
+     *
+     * NO ES SOLO `esGasto`, y esto se decidió mirando la web en vez de
+     * suponerlo: lo que no entra son los ingresos y las transferencias. El
+     * AHORRO SÍ CUENTA, porque también salió del mes y la gente tiene su
+     * categoría «Ahorro» como cualquier otra. Con `esGasto` —que es solo
+     * «Gasto Fijo» y «Gasto Variable»— el gráfico de categorías se quedaba sin
+     * el ahorro y no cuadraba con la web.
+     *
+     * El plan es otra cosa y ahí el ahorro SÍ se excluye: allí se compara
+     * contra un tope que te pusiste, y apartar dinero a propósito no es pasarse
+     * de ningún tope. Que las dos pantallas no cuenten igual no es un descuido:
+     * responden a preguntas distintas.
+     */
     static func porCategoria(_ l: CNLibreta, _ p: Periodo) -> [(categoria: String, gastado: Double)] {
         var suma: [String: Double] = [:]
-        for x in l.tx where x.esGasto && enPeriodo(x.fecha, p) {
+        for x in l.tx where x.tipo != "Ingreso" && !x.esTransfer && enPeriodo(x.fecha, p) {
             suma[x.categoria, default: 0] += abs(x.monto)
         }
         return suma.map { (categoria: $0.key, gastado: $0.value) }

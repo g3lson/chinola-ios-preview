@@ -73,7 +73,7 @@ jobs:
           npx cap sync ios
 
           # Los Swift REALES de la app, el controlador incluido.
-          for f in ChinolaNativo ChinolaFormularios ChinolaViewController CNCalculo Cobro NativoPlugin ChinolaIntents IALocal IALocalHerramientas CNTarjetasCifra CNTarjetasGrafico CNTarjetasLista CNCuentasTotales CNMovimientos CNPlanCuentas CNSerieTiempo; do
+          for f in ChinolaNativo ChinolaFormularios ChinolaViewController CNCalculo Cobro NativoPlugin ChinolaIntents IALocal IALocalHerramientas CNTarjetasCifra CNTarjetasGrafico CNTarjetasLista CNCuentasTotales CNMovimientos CNPlanCuentas CNSerieTiempo CNCategorias; do
             cp ../hibrido/overlay/$f.swift ios/App/App/$f.swift
           done
           cp -R ../hibrido/overlay/Fuentes ios/App/App/Fuentes
@@ -86,7 +86,7 @@ jobs:
             g = (p.main_group['App'] || p.main_group)
             t = p.targets.first
             ya = t.source_build_phase.files.map { |f| f.file_ref&.path }.compact
-            %w[ChinolaNativo.swift ChinolaFormularios.swift ChinolaViewController.swift CNCalculo.swift Cobro.swift NativoPlugin.swift ChinolaIntents.swift IALocal.swift IALocalHerramientas.swift CNTarjetasCifra.swift CNTarjetasGrafico.swift CNTarjetasLista.swift CNCuentasTotales.swift CNMovimientos.swift CNPlanCuentas.swift CNSerieTiempo.swift].each do |n|
+            %w[ChinolaNativo.swift ChinolaFormularios.swift ChinolaViewController.swift CNCalculo.swift Cobro.swift NativoPlugin.swift ChinolaIntents.swift IALocal.swift IALocalHerramientas.swift CNTarjetasCifra.swift CNTarjetasGrafico.swift CNTarjetasLista.swift CNCuentasTotales.swift CNMovimientos.swift CNPlanCuentas.swift CNSerieTiempo.swift CNCategorias.swift].each do |n|
               next if ya.include?(n)
               t.add_file_references([g.new_file(n)])
             end
