@@ -181,12 +181,25 @@ jobs:
             xcrun simctl io "$UDID" screenshot "pestana-$P.png"
           done
 
+          # Y LAS SUBPANTALLAS DE PERFIL, que son doce y no se fotografiaban
+          # nunca: el banco solo sabía cambiar de pestaña. Todo lo que se
+          # rompiera dentro —una lista vacía, un bloque que no se dibuja, unos
+          # datos que nadie pidió— se quedaba sin ver.
+          for P in cuenta seguridad libretas integraciones colores letra personaje icono-app; do
+            echo "=== perfil · $P ==="
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+            sleep 2
+            env SIMCTL_CHILD_CN_IR=perfil:$P SIMCTL_CHILD_CN_CON=sonda,flota xcrun simctl launch "$UDID" "$ID"
+            sleep 18
+            xcrun simctl io "$UDID" screenshot "perfil-$P.png"
+          done
+
           # ¿SALE LA APP EN LAS FOTOS, o es el escritorio? Las diez capturas de
           # este banco fueron el escritorio del iPhone y el banco pasaba.
           echo "=== ¿sale la app en las capturas? ==="
-          for f in pestana-*.png hoy-*.png; do cp "$f" "cap-${f}"; done
+          for f in pestana-*.png hoy-*.png perfil-*.png; do cp "$f" "cap-${f}"; done
           python3 ../sondas/hay-app-en-la-foto.py
-          rm -f cap-pestana-*.png cap-hoy-*.png
+          rm -f cap-pestana-*.png cap-hoy-*.png cap-perfil-*.png
 
           echo "=== lo que dijo la web (y lo nativo) ==="
           xcrun simctl spawn "$UDID" log show --last 4m --style compact \

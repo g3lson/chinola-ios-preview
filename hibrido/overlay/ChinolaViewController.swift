@@ -333,9 +333,23 @@ class ChinolaViewController: CAPBridgeViewController {
         // «Movimientos» y parecía un fallo de la app. Una sola pantalla, quieta,
         // no deja lugar a dudas.
         if let ir = ProcessInfo.processInfo.environment["CN_IR"], !ir.isEmpty {
+            // Y CON DOS PUNTOS, UNA SUBPANTALLA: `CN_IR=perfil:colores`.
+            //
+            // Perfil tiene doce subpantallas y el banco solo sabía cambiar de
+            // pestaña, así que ninguna de las doce se fotografiaba nunca. Todo
+            // lo que se rompiera dentro —una lista vacía, un bloque que no se
+            // dibuja, unos datos que nadie pidió— se quedaba sin ver.
+            let partes = ir.split(separator: ":", maxSplits: 1).map(String.init)
             DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
                 NSLog("CNIR: \(ir)")
-                self?.menuEstado.alTocar(ir)
+                self?.menuEstado.alTocar(partes[0])
+                guard partes.count > 1 else { return }
+                // Después de la pestaña, para que la subpantalla se abra sobre
+                // ella y no sobre la que hubiera antes.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    NSLog("CNIR: subpantalla \(partes[1])")
+                    CNDatos.shared.onAbrirSeccion(partes[1])
+                }
             }
         }
         // LA SONDA DEL BOTÓN DE CHINO, para el banco.
