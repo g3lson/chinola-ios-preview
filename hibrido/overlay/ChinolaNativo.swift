@@ -60,6 +60,30 @@ final class CNCache<K: Hashable, V> {
     }
 }
 
+/**
+ * El camino de vuelta: un color, escrito como texto.
+ *
+ * Hace falta porque los modelos de las tarjetas llevan los colores como texto
+ * —así llegan de la web— y algunas tarjetas se rehacen ya aquí, con colores que
+ * solo existen en la paleta (la franja del tema, por ejemplo). Sin esto habría
+ * que mandar la paleta otra vez por el puente solo para volver a leerla.
+ *
+ * Sale en `#rrggbb`, que es lo que `cnColor(hexString:)` lee sin dudar. Se
+ * pierde el alfa a propósito: los colores de la paleta son opacos, y un alfa a
+ * medias en un texto que luego se vuelve a leer es de donde salen los grises
+ * raros.
+ */
+func cnHexDe(_ c: Color) -> String {
+    #if canImport(UIKit)
+    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+    guard UIColor(c).getRed(&r, green: &g, blue: &b, alpha: &a) else { return "#000000" }
+    let n = { (v: CGFloat) in Int((max(0, min(1, v)) * 255).rounded()) }
+    return String(format: "#%02x%02x%02x", n(r), n(g), n(b))
+    #else
+    return "#000000"
+    #endif
+}
+
 func cnColor(hexString s: String) -> Color {
     cnColoresLeidos.valor(s) { cnColorLeer(s) }
 }
@@ -1412,6 +1436,25 @@ final class CNDatos: ObservableObject {
         plan = m
     }
 
+    /**
+     * EL PANEL ENTERO, RECALCULADO AQUÍ EN CUANTO CAMBIAN LOS DATOS.
+     *
+     * La cabecera ya lo hacía; las tarjetas no, y se quedaban con lo que la web
+     * hubiera mandado la última vez. Anotabas un gasto y el balance de arriba
+     * se movía al instante mientras la tarjeta de «Gastos del mes» —la misma
+     * cifra, dos centímetros más abajo— seguía con el número viejo hasta que la
+     * web rearmara y volviera. Dos números distintos para lo mismo en la misma
+     * pantalla.
+     *
+     * Se recalculan las trece que los módulos saben hacer: las cinco cifras,
+     * los tres gráficos, las tres listas, el consejo y la serie de tiempo. La
+     * que no sepa ninguno se queda tal cual vino: es mejor una tarjeta con el
+     * dato de hace un segundo que una tarjeta en blanco.
+     *
+     * DE CADA TARJETA SOLO SE TOCA EL CONTENIDO. Su sitio, su ancho, su icono y
+     * a dónde lleva siguen siendo de la web: eso no cambia porque anotes un
+     * movimiento, y tocarlo sería arriesgar el aspecto para arreglar un número.
+     */
     func refrescarCifras() {
         guard resumen != nil else { return }
         let t = CNCalculo.totales(libreta, periodoCalculo)
@@ -1420,6 +1463,191 @@ final class CNDatos: ObservableObject {
         resumen?.cabecera.gasFmt = cnDinero(t.gas)
         resumen?.cabecera.entraFmt = cnDinero(t.ing)
         resumen?.cabecera.saleFmt = cnDinero(t.gas)
+
+        // Los colores salen del modelo que mandó la web, no de aquí: cambian
+        // con la paleta que cada quien tenga puesta.
+        let cab = resumen?.cabecera ?? CNResumenModelo.Cabecera()
+        let tinte = CNTarjetasCifra.Tinte(
+            tinta: cab.tinta, positivo: cab.positivo,
+            negativo: cab.negativo, ambar: cab.aviso)
+        // La franja de la dona es el verde oscuro del tema —el mismo de la
+        // cabecera—, y ese no viene en el modelo: viene en la paleta, que es la
+        // que cambia cuando alguien cambia de tema.
+        let tinteG = CNTarjetasGrafico.Tinte(
+            franja: cnHexDe(CNC.side), negativo: cab.negativo, lila: cab.ahorro)
+        let tinteL = CNTarjetasLista.Tinte(
+            gris: cab.gris, positivo: cab.positivo, negativo: cab.negativo,
+            lila: cab.ahorro, ambar: cab.aviso)
+
+        guard let widgets = resumen?.widgets else { return }
+        for (i, w) in widgets.enumerated() {
+            switch w.tipoPanel {
+
+            // ── las cinco cifras ───────────────────────────────────────────
+            case let kpi where CNTarjetasCifra.sabeHacer.contains(kpi):
+                guard let c = CNTarjetasCifra.de(kpi, libreta: libreta,
+                                                 periodo: periodoCalculo, tinte: tinte) else { break }
+                resumen?.widgets[i].valor = c.valor
+                resumen?.widgets[i].nota = c.nota
+                resumen?.widgets[i].color = c.color
+
+            // ── los tres gráficos ──────────────────────────────────────────
+            case "barras-categorias":
+                resumen?.widgets[i].filas = CNTarjetasGrafico.porCategoria(libreta, periodoCalculo)
+                    .map { f in filaBarraDe(f) }
+
+            case "columnas-tendencia":
+                resumen?.widgets[i].columnas = CNTarjetasGrafico
+                    .tendencia(libreta, hasta: periodoCalculo.mes)
+                    // Sin color ni peso: el color de las dos barras es el del
+                    // rótulo de arriba —`entraColor` y `saleColor`—, y el del
+                    // mes lo pone la vista. Es lo que manda la web también.
+                    .map { CNResumenModelo.Columna(label: $0.label, a: Double($0.a),
+                                                   b: Double($0.b), peso: 500, color: "") }
+
+            case "dona-mezcla":
+                let d = CNTarjetasGrafico.mezcla(libreta, periodoCalculo, tinte: tinteG)
+                resumen?.widgets[i].total = d.total
+                resumen?.widgets[i].tramos = d.trozos.map {
+                    CNResumenModelo.Tramo(color: $0.color, desde: Double($0.desde), hasta: Double($0.hasta))
+                }
+                resumen?.widgets[i].filasDona = d.trozos.map {
+                    CNResumenModelo.FilaDona(label: $0.label, valor: $0.valor, color: $0.color)
+                }
+
+            // ── las tres listas ────────────────────────────────────────────
+            case "lista-recientes":
+                resumen?.widgets[i].items = CNTarjetasLista
+                    .recientes(libreta, periodoCalculo, tinte: tinteL).map { itemDe($0) }
+
+            case "lista-recordatorios":
+                resumen?.widgets[i].items = CNTarjetasLista
+                    .recordatorios(libreta, tinte: tinteL).map { itemDe($0) }
+
+            case "lista-metas":
+                resumen?.widgets[i].items = CNTarjetasLista
+                    .metas(libreta, tinte: tinteL).map { itemDe($0) }
+
+            // ── el consejo ─────────────────────────────────────────────────
+            case "texto-consejo":
+                resumen?.widgets[i].texto = CNTarjetasLista.consejo(libreta, periodoCalculo)
+
+            // ── la serie de tiempo, que es la única configurable ───────────
+            case "serie-tiempo":
+                if var x = resumen?.widgets[i] {
+                    aplicaSerie(&x, tinte: tinteG)
+                    resumen?.widgets[i] = x
+                }
+
+            // Lo que ningún módulo sabe hacer se queda con lo que vino de la
+            // web: mejor el dato de hace un segundo que una tarjeta en blanco.
+            default: break
+            }
+        }
+    }
+
+    /// Una fila de barra del módulo, con su icono y su color de categoría.
+    private func filaBarraDe(_ f: CNTarjetasGrafico.FilaBarra) -> CNResumenModelo.FilaBarra {
+        let nombre = CNCategorias.icono(f.categoria, en: libreta)
+        let color = CNCategorias.color(f.categoria, en: libreta)
+        // El fondo del cuadro se deja VACÍO a propósito: la vista pone el color
+        // propio al 15%, que es lo mismo que la web manda resuelto. Calcularlo
+        // aquí obligaría a escribir un `color-mix` que en Swift se lee como
+        // negro, y de ahí salían los cuadros negros.
+        return CNResumenModelo.FilaBarra(label: f.label, valor: f.valor, pct: Double(f.pct),
+                                         color: color,
+                                         iconoPath: CNIconos.paths[nombre] ?? "",
+                                         iconoBg: "")
+    }
+
+    /**
+     * Una fila de lista del módulo, en el item que dibuja la tarjeta.
+     *
+     * Las tres listas se pintan distinto y es lo que más fácil se equivoca al
+     * rehacerlas, porque ninguna de las dos maneras falla: solo se ve peor.
+     *
+     * **Los movimientos llevan el icono de su categoría**, del color de la
+     * categoría, sobre ese mismo color al 15%. Su cifra va de OTRO color —el
+     * del tipo: verde si entró, coral si salió, lila si se apartó, gris si fue
+     * un traspaso—. Son dos colores distintos en la misma fila, y usar uno para
+     * las dos cosas es la confusión fácil: con el del tipo, todas las filas de
+     * gasto salen coral y el icono deja de decir de qué eran.
+     *
+     * **Los recordatorios y las metas no llevan icono**, llevan su sigla en
+     * BLANCO sobre el color entero. Ahí el color sí es uno solo —la urgencia,
+     * el color de la meta—, y la sigla del mismo color que su fondo es una
+     * burbuja de color vacía: se lee como un fallo de carga.
+     */
+    private func itemDe(_ f: CNTarjetasLista.Fila) -> CNResumenModelo.Item {
+        guard !f.categoria.isEmpty else {
+            // Sin categoría: la sigla en blanco sobre el color entero.
+            return CNResumenModelo.Item(
+                tieneIcono: false, iconoPath: "", color: f.color, fondo: f.color,
+                sigla: f.sigla, siglaColor: "#ffffff", titulo: f.titulo,
+                detalle: f.detalle, monto: f.monto, montoColor: f.montoColor)
+        }
+        let nombre = CNCategorias.icono(f.categoria, en: libreta)
+        let path = CNIconos.paths[nombre] ?? ""
+        let catColor = CNCategorias.color(f.categoria, en: libreta)
+        return CNResumenModelo.Item(
+            // Sin icono en el catálogo queda la sigla, que es lo que hay.
+            tieneIcono: !path.isEmpty, iconoPath: path,
+            color: path.isEmpty ? f.color : catColor,
+            // El fondo se deja VACÍO: la vista pone el color propio al 15%, que
+            // es lo que la web manda ya resuelto. Escribirlo aquí obligaría a
+            // un `color-mix` que en Swift se lee como negro.
+            fondo: path.isEmpty ? catColor : "",
+            sigla: f.sigla, siglaColor: "#ffffff", titulo: f.titulo,
+            detalle: f.detalle, monto: f.monto, montoColor: f.montoColor)
+    }
+
+    /**
+     * La serie de tiempo, con la configuración que tenga puesta la tarjeta.
+     *
+     * Es la única que se configura desde la propia tarjeta —cuántos meses, qué
+     * series, qué forma—, así que la configuración se lee del widget y no de
+     * ningún sitio fijo. Las series se pintan del color que la web ya les dio,
+     * que es el que tiene la leyenda: recalcularlos aquí las dejaría de un
+     * color y la leyenda de otro.
+     */
+    private func aplicaSerie(_ w: inout CNResumenModelo.Widget, tinte: CNTarjetasGrafico.Tinte) {
+        let puestas = w.series.filter { $0.puesta }
+        let series = puestas.compactMap { CNSerieTiempo.Serie(rawValue: $0.id) }
+        guard !series.isEmpty else { return }
+        let forma = CNSerieTiempo.Forma(rawValue: w.cfgGrafico) ?? .linea
+        let d = CNSerieTiempo.dibujo(libreta, hasta: periodoCalculo.mes,
+                                     meses: Int(w.cfgRango) ?? 12,
+                                     series: series, forma: forma)
+        // El color de cada serie, el que ya tenía puesto en su interruptor.
+        var color: [String: String] = [:]
+        for t in puestas { color[t.id] = t.color }
+        let colorDe: (CNSerieTiempo.Serie) -> String = { color[$0.rawValue] ?? tinte.franja }
+
+        w.etiquetas = d.etiquetas
+        w.leyenda = d.leyenda.map {
+            CNResumenModelo.Serie(label: $0.etiqueta, color: colorDe($0.serie), ultimo: $0.ultimo)
+        }
+        // El SVG quiere los puntos como texto, con dos decimales, igual que los
+        // manda la web: con más, la cadena crece sin que se vea nada.
+        let comoTexto: ([CNSerieTiempo.Punto]) -> String = { ps in
+            ps.map { String(format: "%.2f,%.2f", $0.x, $0.y) }.joined(separator: " ")
+        }
+        // La línea va SIEMPRE que haya trazo, incluso con área: el área la
+        // rellena y la línea le da el borde de arriba, que es lo que se sigue
+        // con la vista.
+        w.lineas = d.trazos.map {
+            CNResumenModelo.Traza(puntos: comoTexto($0.puntos), color: colorDe($0.serie))
+        }
+        w.areas = d.areas.map {
+            CNResumenModelo.Traza(puntos: comoTexto($0.puntos), color: colorDe($0.serie))
+        }
+        w.puntos = forma == .puntos
+            ? d.trazos.flatMap { t in t.puntos.map {
+                CNResumenModelo.Punto(x: $0.x, y: $0.y, color: colorDe(t.serie)) } }
+            : []
+        w.barras = d.barras.map {
+            CNResumenModelo.Barra(x: $0.x, y: $0.y, w: $0.w, h: $0.h, color: colorDe($0.serie))
+        }
     }
     func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p; guarda("perfil", json) } }
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
@@ -4550,6 +4778,10 @@ struct CNResumenModelo {
         var hayUso = false; var usado: Double = 0; var usadoLabel = ""; var usadoColor = ""
         var abierta = true
         var positivo = ""; var negativo = ""
+        /// El lila del ahorro y el ámbar del aviso, para las tarjetas que se
+        /// rehacen aquí: sin ellos, el ahorro sale coral y un recordatorio a
+        /// cinco días sale del color de uno a un día.
+        var ahorro = ""; var aviso = ""
         var meses: [MesTira] = []
         /// La «viva»: la frase bajo el balance y las cuatro cifras en color.
         var frase = ""
@@ -4581,6 +4813,10 @@ struct CNResumenModelo {
         var indice = 0; var titulo = ""; var periodo = ""; var chica = false; var oculta = false
         /// La entrada del panel a la que corresponde (para poder editarla).
         var wid = ""; var ancho = 2; var puedeChica = false
+        /// De qué tipo es: «kpi-balance», «lista-recientes». El `wid` es «w1» e
+        /// identifica la entrada; esto dice QUÉ enseña, y es lo que deja
+        /// recalcular la tarjeta aquí sin preguntarle a la web.
+        var tipoPanel = ""
         var cfgGrafico = "linea"; var cfgRango = "12"; var series: [SerieCfg] = []
         var clase = "texto"
         var valor = ""; var nota = ""; var color = ""
@@ -4632,6 +4868,7 @@ struct CNResumenModelo {
         cab.hayUso = b(c, "hayUso"); cab.usado = n(c, "usado"); cab.usadoLabel = s(c, "usadoLabel")
         cab.usadoColor = s(c, "usadoColor"); cab.abierta = (c?["abierta"] as? Bool) ?? true
         cab.positivo = s(c, "positivo"); cab.negativo = s(c, "negativo")
+        cab.ahorro = s(c, "ahorro"); cab.aviso = s(c, "aviso")
         if let f = c?["fondo"] as? [String: Any] {
             cab.fondo = Fondo(tipo: s(f, "tipo"), color: s(f, "color"), angulo: n(f, "angulo"),
                               paradas: ((f["paradas"] as? [[String: Any]]) ?? []).map {
@@ -4661,6 +4898,7 @@ struct CNResumenModelo {
             var x = Widget()
             x.indice = Int(n(w, "indice")); x.titulo = s(w, "titulo"); x.periodo = s(w, "periodo")
             x.chica = b(w, "chica"); x.oculta = b(w, "oculta"); x.clase = s(w, "clase")
+            x.tipoPanel = s(w, "tipoPanel")
             x.wid = s(w, "wid"); x.ancho = Int(n(w, "ancho")); x.puedeChica = b(w, "puedeChica")
             x.cfgGrafico = s(w, "cfgGrafico"); x.cfgRango = s(w, "cfgRango")
             x.series = lista(w, "series").map { SerieCfg(id: s($0, "id"), label: s($0, "label"),
@@ -5880,7 +6118,14 @@ struct CNTarjetaWidget: View {
                             .foregroundColor(cnColor(hexString: r.color))
                             .frame(width: 19, height: 19)
                             .frame(width: 34, height: 34)
-                            .background(cnColor(hexString: r.iconoBg))
+                            // Sin fondo puesto, el color propio al 15%. Es lo
+                            // mismo que la web calcula con `color-mix(… 15%,
+                            // transparent)` y lo que se usa cuando la tarjeta
+                            // se rehace aquí: leer un `color-mix` en Swift daba
+                            // NEGRO, y los cuadros salían negros.
+                            .background(r.iconoBg.isEmpty
+                                ? cnColor(hexString: r.color).opacity(0.15)
+                                : cnColor(hexString: r.iconoBg))
                             .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                     }
                     VStack(spacing: 5) {
@@ -5922,8 +6167,13 @@ struct CNTarjetaWidget: View {
                                 columna(t.b, w.saleColor)
                             }
                             .frame(maxHeight: .infinity, alignment: .bottom)
+                            // Sin color puesto, el gris de las etiquetas. La
+                            // web no manda ninguno para el mes, y una cadena
+                            // vacía se lee como «transparent»: los seis meses
+                            // estaban escritos y no se veía ni uno.
                             Text(t.label).font(cnLetra(10, t.peso >= 700 ? .bold : .regular))
-                                .foregroundColor(cnColor(hexString: t.color)).lineLimit(1)
+                                .foregroundColor(t.color.isEmpty ? CNC.pmut : cnColor(hexString: t.color))
+                                .lineLimit(1)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -6007,7 +6257,11 @@ struct CNTarjetaWidget: View {
                             .foregroundColor(cnColor(hexString: it.color))
                             .frame(width: 18, height: 18)
                             .frame(width: 34, height: 34)
-                            .background(cnColor(hexString: it.fondo))
+                            // Sin fondo puesto, el color propio al 15%: lo
+                            // mismo que la web resuelve con `color-mix`.
+                            .background(it.fondo.isEmpty
+                                ? cnColor(hexString: it.color).opacity(0.15)
+                                : cnColor(hexString: it.fondo))
                             .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                     } else {
                         Text(it.sigla).font(cnLetra(11, .heavy))

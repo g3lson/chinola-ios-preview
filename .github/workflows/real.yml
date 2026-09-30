@@ -52,22 +52,38 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
-          # Los Swift REALES de la app, el controlador incluido.
-          for f in ChinolaNativo ChinolaFormularios ChinolaViewController CNCalculo Cobro NativoPlugin ChinolaIntents; do
-            cp ../hibrido/overlay/$f.swift ios/App/App/$f.swift
+          # TODOS los Swift de la app, sin lista a mano.
+          #
+          # Aquí había siete nombres escritos, y la app ya tiene diecisiete: el
+          # banco compilaba una app a la que le faltaban diez ficheros y fallaba
+          # con «cannot find IALocalPlugin in scope», que no es un fallo de la
+          # app sino del banco. Un banco con una lista que hay que acordarse de
+          # actualizar es un banco que miente el día que te olvidas, y ese es
+          # justo el día que lo necesitas.
+          #
+          # AppDelegate y SceneDelegate NO se copian del overlay: los pone
+          # Capacitor al crear el proyecto y el de escena lo manda el banco
+          # (`hibrido/real/`), que es el que quita el storyboard.
+          for f in ../hibrido/overlay/*.swift; do
+            n=$(basename "$f")
+            case "$n" in AppDelegate.swift|SceneDelegate.swift) continue;; esac
+            cp "$f" "ios/App/App/$n"
           done
           cp -R ../hibrido/overlay/Fuentes ios/App/App/Fuentes
           cp ../hibrido/real/SceneDelegate.swift ios/App/App/SceneDelegate.swift
+          echo "Swift de la app: $(ls ios/App/App/*.swift | wc -l | tr -d ' ')"
 
           gem install xcodeproj --no-document --quiet
+          # Y al proyecto, los que estén: se leen del disco, no de una lista.
           ruby -e "
             require 'xcodeproj'
             p = Xcodeproj::Project.open('ios/App/App.xcodeproj')
             g = (p.main_group['App'] || p.main_group)
             t = p.targets.first
             ya = t.source_build_phase.files.map { |f| f.file_ref&.path }.compact
-            %w[ChinolaNativo.swift ChinolaFormularios.swift ChinolaViewController.swift CNCalculo.swift Cobro.swift NativoPlugin.swift ChinolaIntents.swift].each do |n|
+            Dir['ios/App/App/*.swift'].map { |f| File.basename(f) }.sort.each do |n|
               next if ya.include?(n)
+              puts \"  + #{n}\"
               t.add_file_references([g.new_file(n)])
             end
             r = g.new_reference('Fuentes'); r.set_last_known_file_type('folder'); t.add_resources([r])

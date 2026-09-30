@@ -36,7 +36,7 @@ enum CNSerieTiempo {
 
     /// Qué se puede pintar. Las claves son las mismas que guarda el panel.
     enum Serie: String, CaseIterable {
-        case ingresos, gastos, balance, ahorro, neto
+        case ingresos, gastos, balance, ahorro, patrimonio
 
         /// De dónde sale el número de esta serie en un mes.
         func valor(_ t: CNCalculo.Totales) -> Double {
@@ -45,16 +45,26 @@ enum CNSerieTiempo {
             case .gastos: return t.gas
             case .balance: return t.bal
             case .ahorro: return t.aho
-            // El neto no es el balance: el balance ya descuenta el ahorro, y
-            // este descuenta también lo apartado otra vez a propósito — es lo
-            // que sobra de verdad después de todo.
-            case .neto: return t.ing - t.gas - t.aho
+            // El patrimonio de ESTA tarjeta no es el de la tarjeta de cifra:
+            // aquí es lo que sobró en el mes —ingresos menos gastos menos lo
+            // apartado—, no activos menos pasivos. Se llaman igual en la web y
+            // son dos cosas distintas; «arreglarlo» aquí para que cuadren haría
+            // que la línea dijera algo que su leyenda no dice.
+            case .patrimonio: return t.ing - t.gas - t.aho
             }
         }
     }
 
-    /// Cómo se dibuja.
-    enum Forma: String { case linea, area, puntos, barras }
+    /**
+     * Cómo se dibuja.
+     *
+     * `barras` y `columnas` son las dos de barra y NO son lo mismo: en `barras`
+     * todas las series comparten el hueco del mes —una barra ancha, unas sobre
+     * otras—, y en `columnas` el hueco se reparte y van una al lado de otra.
+     * Confundirlas no rompe nada: hace que el gráfico que alguien eligió salga
+     * siendo el otro.
+     */
+    enum Forma: String { case linea, area, puntos, barras, columnas }
 
     struct Punto { var x: Double; var y: Double }
     struct Trazo { var serie: Serie; var puntos: [Punto] }
@@ -64,6 +74,8 @@ enum CNSerieTiempo {
     struct Dibujo {
         var etiquetas: [String] = []
         var trazos: [Trazo] = []
+        /// El mismo trazo cerrado por abajo, para poder rellenarlo. Solo `area`.
+        var areas: [Trazo] = []
         var barras: [Barra] = []
         var leyenda: [Leyenda] = []
         /// Cada cuántas etiquetas se escribe una: con doce meses no caben todas.
@@ -106,28 +118,52 @@ enum CNSerieTiempo {
         let py: (Double) -> Double = { v in 1 + (ALTO - 2) * (1 - ((v - minV) / rango)) }
 
         var d = Dibujo()
-        d.etiquetas = filas.map { cnMesCorto($0.mes) }
         // Con doce meses no caben doce etiquetas: se escribe una de cada
         // tantas, para que nunca haya más de ocho.
         d.cadaCuantas = max(1, Int(ceil(Double(filas.count) / 8)))
+        // Las que no se escriben van EN BLANCO, no se quitan: quitándolas, las
+        // que quedan se reparten el ancho entero y dejan de caer debajo de su
+        // mes.
+        //
+        // Y la cuenta va DESDE EL FINAL, que es lo que hace la app. Contando
+        // desde el principio, con doce meses y una de cada dos, la última —el
+        // mes en el que estás, que es el que se mira— se queda sin escribir o
+        // hay que escribirla aparte, pegada a la anterior.
+        //
+        // Lleva el año de dos cifras: con veinticuatro meses hay dos
+        // septiembres y sin el año son la misma etiqueta dos veces.
+        d.etiquetas = filas.enumerated().map { i, f in
+            (filas.count - 1 - i) % d.cadaCuantas == 0
+                ? cnMesCorto(f.mes) + " " + String(f.mes.prefix(4).suffix(2)) : ""
+        }
 
         for (si, k) in activas.enumerated() {
             d.leyenda.append(Leyenda(serie: k, etiqueta: cnT(k.rawValue.capitalized),
                                      ultimo: cnDinero(k.valor(filas[filas.count - 1].t))))
             switch forma {
             case .linea, .area, .puntos:
-                d.trazos.append(Trazo(serie: k, puntos: filas.enumerated().map {
+                let puntos = filas.enumerated().map {
                     Punto(x: px($0.offset), y: py(k.valor($0.element.t)))
-                }))
-            case .barras:
-                // Con varias series, cada una ocupa su parte del hueco del mes
-                // y van una al lado de otra. Con una sola, la barra es ancha.
+                }
+                d.trazos.append(Trazo(serie: k, puntos: puntos))
+                // El área lleva su línea ENCIMA, y se cierra bajando a la base
+                // por los dos lados. Sin cerrarla, el relleno sale por donde
+                // quiera; sin la línea, el borde de arriba se pierde dentro del
+                // relleno y deja de poder seguirse con la vista.
+                if forma == .area {
+                    d.areas.append(Trazo(serie: k, puntos:
+                        [Punto(x: 0, y: ALTO)] + puntos + [Punto(x: 100, y: ALTO)]))
+                }
+            case .barras, .columnas:
+                // En `barras` todas las series comparten el hueco del mes; en
+                // `columnas` el hueco se reparte y van una al lado de otra.
                 let paso = 100 / Double(filas.count)
-                let ancho = activas.count > 1 ? (paso * 0.62) / Double(activas.count) : paso * 0.62
+                let ancho = forma == .barras ? paso * 0.62 : (paso * 0.62) / Double(activas.count)
                 for (i, f) in filas.enumerated() {
                     let v = k.valor(f.t)
                     let y0 = py(max(0, minV)), y1 = py(v)
-                    let x = Double(i) * paso + paso * 0.19 + (activas.count > 1 ? Double(si) * ancho : 0)
+                    let x = Double(i) * paso + paso * 0.19
+                          + (forma == .barras ? 0 : Double(si) * ancho)
                     // Nunca más fina que 0,6: un mes en cero dibujaría una
                     // barra invisible y parecería que falta el dato.
                     d.barras.append(Barra(serie: k, x: x, y: min(y0, y1), w: ancho,
