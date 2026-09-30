@@ -67,13 +67,30 @@ enum CNCuentasTotales {
      * cifra va en verde. Con un único «Debes», alguien que solo presta dinero
      * vería su pantalla diciendo que debe lo que le deben a él.
      */
+    /// En qué sentido van los préstamos, y cuál de los dos manda.
+    ///
+    /// Aparte para poder ejecutarlo contra el fichero de oro: es la decisión que
+    /// se pierde al rehacer la pantalla, y la que hace que alguien que solo
+    /// presta dinero vea su pantalla diciendo que debe lo que le deben a él.
+    struct Sentido {
+        var debo: Double = 0
+        var meDeben: Double = 0
+        var soloMeDeben = false
+        var cuanto: Double = 0
+    }
+
+    static func sentidoDeLosPrestamos(_ prestamos: [CNPrestamo]) -> Sentido {
+        let debo = prestamos.filter { !mio($0) }.reduce(0.0) { $0 + falta($1) }
+        let meDeben = prestamos.filter(mio).reduce(0.0) { $0 + falta($1) }
+        let solo = debo == 0 && meDeben > 0
+        return Sentido(debo: debo, meDeben: meDeben, soloMeDeben: solo,
+                       cuanto: solo ? meDeben : debo)
+    }
+
     static func prestamos(_ l: CNLibreta, oculto: Bool = false) -> Total {
-        let debo = l.prestamos.filter { !mio($0) }.reduce(0.0) { $0 + falta($1) }
-        let meDeben = l.prestamos.filter(mio).reduce(0.0) { $0 + falta($1) }
-        let soloMeDeben = debo == 0 && meDeben > 0
-        let cuanto = soloMeDeben ? meDeben : debo
-        return Total(rotulo: soloMeDeben ? cnT("Te deben") : cnT("Debes"),
-                     valor: oculto ? TAPADO : cnDinero(cuanto), positivo: soloMeDeben)
+        let v = sentidoDeLosPrestamos(l.prestamos)
+        return Total(rotulo: v.soloMeDeben ? cnT("Te deben") : cnT("Debes"),
+                     valor: oculto ? TAPADO : cnDinero(v.cuanto), positivo: v.soloMeDeben)
     }
 
     /**
@@ -108,6 +125,12 @@ enum CNCuentasTotales {
      * apunta el límite de su tarjeta, y esa tarjeta tiene que salir igual.
      */
     static func usoDelLimite(_ t: CNTarjeta) -> Double {
-        t.limite > 0 ? min(1, t.saldo / t.limite) : 0
+        usoDelLimite(saldo: t.saldo, limite: t.limite)
+    }
+
+    /// La misma cuenta con los dos números sueltos, para poder ejecutarla contra
+    /// el fichero de oro sin fabricar una tarjeta entera.
+    static func usoDelLimite(saldo: Double, limite: Double) -> Double {
+        limite > 0 ? min(1, saldo / limite) : 0
     }
 }

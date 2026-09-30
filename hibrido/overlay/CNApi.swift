@@ -22,10 +22,20 @@ import Foundation
  * algún día cambia, cambia en `src/nube.js` y aquí, y una prueba compara las
  * dos: dos direcciones distintas es media app hablando con otro servidor.
  *
- * **Un 401 no se traga.** Si el servidor dice que la sesión no vale, se le
- * cuenta a la web para que cierre sesión ella también. Sin eso, la web seguiría
- * creyendo que hay sesión y las dos mitades de la app dirían cosas distintas
- * sobre si estás dentro.
+ * **UN 401 AQUÍ NO CIERRA LA SESIÓN, y esto es lo más importante del fichero.**
+ *
+ * Lo hacía, y estaba mal. `caducoLaSesion()` de la web vacía `libretas: []` y
+ * manda a la pantalla de acceso: es lo correcto cuando falla la SINCRONIZACIÓN,
+ * porque ahí sí se acabó. Pero estas llamadas son lecturas opcionales de una
+ * pantalla de ajustes, y darles ese poder significa que abrir «Seguridad» con
+ * el servidor de mal humor te borra la app de delante.
+ *
+ * Es exactamente lo que pasó: tocabas un ajuste y desaparecían los datos, y no
+ * volvían hasta reiniciar. Una pantalla que no puede leer tus claves de API
+ * enseña lo que ya sabía; no te saca de tu propia cuenta.
+ *
+ * La sesión la sigue vigilando la web por su camino de siempre, que es el que
+ * de verdad sabe si se acabó.
  */
 enum CNApi {
 
@@ -64,10 +74,6 @@ enum CNApi {
         case sinRed
     }
 
-    /// Lo que se hace cuando el servidor dice que la sesión caducó. Lo pone el
-    /// controlador, que es quien sabe hablar con la web.
-    static var alCaducar: () -> Void = {}
-
     /**
      * Una petición a la API.
      *
@@ -93,12 +99,10 @@ enum CNApi {
         let estado = (resp as? HTTPURLResponse)?.statusCode ?? 0
         let j = (try? JSONSerialization.jsonObject(with: datos)) as? [String: Any] ?? [:]
 
-        // Un 401 se cuenta: la web tiene que cerrar sesión también, o las dos
-        // mitades de la app dirían cosas distintas sobre si estás dentro.
-        if estado == 401 {
-            await MainActor.run { alCaducar() }
-            throw Fallo.sesionCaducada
-        }
+        // Un 401 se devuelve como fallo y NADA MÁS. Ver la cabecera: cerrar la
+        // sesión desde aquí vacía la app de delante, y esto son lecturas
+        // opcionales de una pantalla de ajustes.
+        if estado == 401 { throw Fallo.sesionCaducada }
         if estado >= 300 {
             throw Fallo.servidor(estado, (j["error"] as? String) ?? "")
         }

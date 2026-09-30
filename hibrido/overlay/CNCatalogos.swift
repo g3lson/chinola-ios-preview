@@ -189,6 +189,26 @@ enum CNCatalogos {
         "candado": "Fondo bloqueado"
     ]
 
+    /// El icono que le toca a cada categoría de fábrica, por su nombre.
+    ///
+    /// Los nombres van en español porque así se crean: una libreta en inglés
+    /// las tiene igual por dentro y traducidas solo al enseñarlas.
+    static let iconoPorCategoria: [String: String] = [
+        "Ingresos": "grafico",
+        "Vivienda": "casa",
+        "Alimentación": "comida",
+        "Servicios": "rayo",
+        "Transporte": "auto",
+        "Educación": "birrete",
+        "Salud": "salud",
+        "Donaciones": "iglesia",
+        "Entretenimiento": "cine",
+        "Deudas": "tarjeta",
+        "Personal": "usuario",
+        "Ahorro": "hucha",
+        "Otros": "puntos"
+    ]
+
     /// Los de las filas de ajustes, que son otros y viven aparte.
     static let iconosDeAjuste: [String: String] = [
         "notis": "M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0",

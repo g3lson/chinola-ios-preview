@@ -54,6 +54,41 @@ enum CNPlanCuentas {
     private static let AVISO = 85
 
     /**
+     * CÓMO VA UNA CATEGORÍA CONTRA SU TOPE.
+     *
+     * La misma decisión que `comoVaElTope` de la web, y el fichero de oro
+     * ejecuta las dos y las compara. Solo la decisión: el TEXTO lo pone cada
+     * lado —la web dice «1.200 libre» y aquí se dice «Agotado» cuando has
+     * gastado justo el tope— y eso está bien que sea distinto.
+     *
+     * OJO CON LOS DOS «SÍ O NO»: `excedida` es haberse PASADO y `agotada` es
+     * haber llegado justo. Gastar exactamente el tope no es pasarse, pero
+     * tampoco deja nada, y decir «te quedan RD$0» es peor que decir «agotado».
+     *
+     * Y el porcentaje va en dos: el recortado a 100 para la barra —que no puede
+     * pasar de llena— y el CRUDO para el color, porque con el recortado una
+     * categoría al 150 % y otra al 100 % darían el mismo aviso.
+     */
+    struct Tope {
+        var crudo = 0
+        var pct = 0
+        var excedida = false
+        var agotada = false
+        var avisa = false
+        var queda: Double = 0
+        var pasado: Double = 0
+    }
+
+    static func comoVaElTope(_ limite: Double, _ gastado: Double) -> Tope {
+        let crudo = limite > 0 ? Int((gastado / limite * 100).rounded()) : 0
+        return Tope(crudo: crudo, pct: min(100, crudo),
+                    excedida: limite > 0 && gastado > limite,
+                    agotada: limite > 0 && gastado >= limite,
+                    avisa: crudo > AVISO,
+                    queda: limite - gastado, pasado: gastado - limite)
+    }
+
+    /**
      * Las filas del plan, con su texto y su color.
      *
      * Ojo con el orden de los tres casos: «agotado» tiene que mirarse DESPUÉS
@@ -62,25 +97,22 @@ enum CNPlanCuentas {
      */
     static func filas(_ l: CNLibreta, _ p: CNCalculo.Periodo, tinte t: Tinte) -> [Fila] {
         CNCalculo.presupuesto(l, p).filas.map { f in
-            // El porcentaje SIN recortar, solo para decidir el color: con el
-            // recortado, una categoría al 150 % y otra al 100 % darían el mismo
-            // aviso.
-            let crudo = f.limite > 0 ? Int((f.gastado / f.limite * 100).rounded()) : 0
+            let v = comoVaElTope(f.limite, f.gastado)
             let queda: String
-            if f.excedida {
+            if v.excedida {
                 // Cuánto de más, en negativo. Es el dato que la barra no puede
                 // enseñar porque ya está llena.
-                queda = "−" + cnDinero(f.gastado - f.limite)
-            } else if f.limite > 0 && f.gastado >= f.limite {
+                queda = "−" + cnDinero(v.pasado)
+            } else if v.agotada {
                 queda = cnT("Agotado")
             } else {
-                queda = cnDinero(f.limite - f.gastado)
+                queda = cnDinero(v.queda)
             }
             return Fila(categoria: f.categoria,
                         limite: cnDinero(f.limite), gastado: cnDinero(f.gastado),
-                        pct: f.pct, queda: queda,
-                        color: f.excedida ? t.negativo : (crudo > AVISO ? t.ambar : t.positivo),
-                        excedida: f.excedida)
+                        pct: v.pct, queda: queda,
+                        color: v.excedida ? t.negativo : (v.avisa ? t.ambar : t.positivo),
+                        excedida: v.excedida)
         }
     }
 

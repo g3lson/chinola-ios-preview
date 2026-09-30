@@ -19,7 +19,16 @@
         "nombre": "Visa",
         "saldo": 12000,
         "limite": 60000,
+        "corte": 15,
         "pago": 5
+      },
+      {
+        "id": 11,
+        "nombre": "Popular",
+        "saldo": 0,
+        "limite": 30000,
+        "corte": 20,
+        "pago": 25
       }
     ],
     "prestamos": [
@@ -28,14 +37,18 @@
         "nombre": "Carro",
         "total": 300000,
         "pagado": 120000,
-        "sentido": "debo"
+        "sentido": "debo",
+        "cuota": 8500,
+        "dia": 10
       },
       {
         "id": 21,
         "nombre": "Le presté a Juan",
         "total": 40000,
         "pagado": 15000,
-        "sentido": "meDeben"
+        "sentido": "meDeben",
+        "cuota": 2000,
+        "dia": 20
       }
     ],
     "categorias": [
@@ -62,6 +75,19 @@
         "nombre": "Ahorro",
         "color": "#825eb9",
         "ingreso": false
+      },
+      {
+        "id": 5,
+        "nombre": "Alimentación",
+        "color": "",
+        "icono": "comida",
+        "ingreso": false
+      },
+      {
+        "id": 6,
+        "nombre": "Gastos Personales",
+        "color": "#2d6cdf",
+        "ingreso": false
       }
     ],
     "presupuesto": {
@@ -69,7 +95,32 @@
       "Préstamo": 16000,
       "Ahorro": 9999
     },
-    "metas": [],
+    "metas": [
+      {
+        "id": 1,
+        "nombre": "Viaje a Samaná",
+        "meta": 60000,
+        "ahorrado": 15000,
+        "mensual": 5000,
+        "color": ""
+      },
+      {
+        "id": 2,
+        "nombre": "Fondo de emergencia",
+        "meta": 20000,
+        "ahorrado": 20000,
+        "mensual": 3000,
+        "color": "#137d41"
+      },
+      {
+        "id": 3,
+        "nombre": "Casa",
+        "meta": 900000,
+        "ahorrado": 50000,
+        "mensual": 0,
+        "color": "#825eb9"
+      }
+    ],
     "tx": [
       {
         "id": "1",
@@ -77,6 +128,7 @@
         "monto": 82000,
         "fecha": "2026-09-25",
         "categoria": "Sueldo",
+        "concepto": "Sueldo de septiembre",
         "medio": "cuenta:1"
       },
       {
@@ -85,6 +137,7 @@
         "monto": 18500,
         "fecha": "2026-09-23",
         "categoria": "Préstamo",
+        "concepto": "Cuota del carro",
         "medio": "cuenta:1"
       },
       {
@@ -93,6 +146,7 @@
         "monto": 2480,
         "fecha": "2026-09-26",
         "categoria": "Comida",
+        "concepto": "Supermercado",
         "medio": "tarjeta:10"
       },
       {
@@ -101,6 +155,7 @@
         "monto": 10000,
         "fecha": "2026-09-10",
         "categoria": "Ahorro",
+        "concepto": "Aporte al fondo",
         "medio": "cuenta:1"
       },
       {
@@ -109,6 +164,7 @@
         "monto": 5000,
         "fecha": "2026-09-12",
         "categoria": "",
+        "concepto": "Pago de la Visa",
         "medio": "cuenta:1",
         "destino": "tarjeta:10"
       },
@@ -118,6 +174,7 @@
         "monto": 1200,
         "fecha": "2026-08-14",
         "categoria": "Comida",
+        "concepto": "Colmado",
         "medio": "cuenta:2"
       },
       {
@@ -126,18 +183,46 @@
         "monto": 4000,
         "fecha": "2026-08-02",
         "categoria": "Extra",
+        "concepto": "Trabajito",
         "medio": "cuenta:2"
+      },
+      {
+        "id": "m1758840000000",
+        "tipo": "Gasto Variable",
+        "monto": 900,
+        "fecha": "2026-09-26",
+        "categoria": "Alimentación",
+        "concepto": "Café con Ana",
+        "medio": "cuenta:2"
+      },
+      {
+        "id": "m1758860000000",
+        "tipo": "Gasto Variable",
+        "monto": 640,
+        "fecha": "2026-09-26",
+        "categoria": "Alimentación",
+        "concepto": "Almuerzo",
+        "medio": "cuenta:2"
+      },
+      {
+        "id": "m1758820000000",
+        "tipo": "Gasto Fijo",
+        "monto": 3100,
+        "fecha": "2026-09-26",
+        "categoria": "Gastos Personales",
+        "concepto": "Gimnasio",
+        "medio": "cuenta:1"
       }
     ]
   },
   "totales": {
     "2026-09": {
       "ing": 82000,
-      "gas": 20980,
-      "fij": 18500,
-      "vari": 2480,
+      "gas": 25620,
+      "fij": 21600,
+      "vari": 4020,
       "aho": 10000,
-      "bal": 51020
+      "bal": 46380
     },
     "2026-08": {
       "ing": 4000,
@@ -217,7 +302,16 @@
             "nombre": "Visa",
             "saldo": 14480,
             "limite": 60000,
+            "corte": 15,
             "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
           }
         ]
       },
@@ -228,7 +322,16 @@
             "nombre": "Visa",
             "saldo": 9520,
             "limite": 60000,
+            "corte": 15,
             "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
           }
         ]
       }
@@ -283,7 +386,16 @@
             "nombre": "Visa",
             "saldo": 7000,
             "limite": 60000,
+            "corte": 15,
             "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
           }
         ]
       },
@@ -306,7 +418,16 @@
             "nombre": "Visa",
             "saldo": 17000,
             "limite": 60000,
+            "corte": 15,
             "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
           }
         ]
       }
@@ -370,6 +491,96 @@
           }
         ]
       }
+    },
+    "m1758840000000": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 2100
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3900
+          }
+        ]
+      }
+    },
+    "m1758860000000": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 2360
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3640
+          }
+        ]
+      }
+    },
+    "m1758820000000": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 46900
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 53100
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      }
     }
   },
   "saldos": {
@@ -396,12 +607,1204 @@
           "gastado": 18500,
           "pct": 100,
           "excedida": true
+        },
+        {
+          "categoria": "Alimentación",
+          "limite": 0,
+          "gastado": 1540,
+          "pct": 0,
+          "excedida": false
+        },
+        {
+          "categoria": "Gastos Personales",
+          "limite": 0,
+          "gastado": 3100,
+          "pct": 0,
+          "excedida": false
         }
       ],
       "limiteTotal": 34000,
-      "gastadoTotal": 20980,
-      "pctTotal": 62,
+      "gastadoTotal": 25620,
+      "pctTotal": 75,
       "excedidas": 1
+    }
+  },
+  "cuentas": {
+    "conDeuda": {
+      "debo": 180000,
+      "meDeben": 25000,
+      "soloMeDeben": false,
+      "cuanto": 180000
+    },
+    "soloMeDeben": {
+      "debo": 0,
+      "meDeben": 25000,
+      "soloMeDeben": true,
+      "cuanto": 25000
+    },
+    "ninguno": {
+      "debo": 0,
+      "meDeben": 0,
+      "soloMeDeben": false,
+      "cuanto": 0
+    }
+  },
+  "usoDelLimite": {
+    "12000/60000": 0.2,
+    "0/60000": 0,
+    "5000/0": 0,
+    "70000/60000": 1
+  },
+  "cifraDelPanel": {
+    "2026-09|kpi-ingresos": {
+      "monto": 82000,
+      "nota": "del mes",
+      "pct": 0,
+      "tono": "positivo"
+    },
+    "2026-09|kpi-gastos": {
+      "monto": 25620,
+      "nota": "% de tus ingresos",
+      "pct": 31,
+      "tono": "negativo"
+    },
+    "2026-09|kpi-balance": {
+      "monto": 46380,
+      "pct": 0,
+      "nota": "disponible este mes",
+      "tono": "tinta"
+    },
+    "2026-09|kpi-deuda": {
+      "monto": 217000,
+      "nota": "tarjetas + préstamos",
+      "pct": 0,
+      "tono": "ambar"
+    },
+    "2026-09|kpi-patrimonio": {
+      "monto": -114000,
+      "nota": "cuentas − deudas",
+      "pct": 0,
+      "tono": "negativo"
+    },
+    "2026-08|kpi-ingresos": {
+      "monto": 4000,
+      "nota": "del mes",
+      "pct": 0,
+      "tono": "positivo"
+    },
+    "2026-08|kpi-gastos": {
+      "monto": 1200,
+      "nota": "% de tus ingresos",
+      "pct": 30,
+      "tono": "negativo"
+    },
+    "2026-08|kpi-balance": {
+      "monto": 2800,
+      "pct": 0,
+      "nota": "disponible este mes",
+      "tono": "tinta"
+    },
+    "2026-08|kpi-deuda": {
+      "monto": 217000,
+      "nota": "tarjetas + préstamos",
+      "pct": 0,
+      "tono": "ambar"
+    },
+    "2026-08|kpi-patrimonio": {
+      "monto": -114000,
+      "nota": "cuentas − deudas",
+      "pct": 0,
+      "tono": "negativo"
+    },
+    "sinIngresos|kpi-gastos": {
+      "monto": 5000,
+      "nota": "% de tus ingresos",
+      "pct": 0,
+      "tono": "negativo"
+    }
+  },
+  "comoVaElTope": {
+    "18000/2480": {
+      "crudo": 14,
+      "pct": 14,
+      "excedida": false,
+      "agotada": false,
+      "avisa": false,
+      "queda": 15520,
+      "pasado": -15520
+    },
+    "16000/16000": {
+      "crudo": 100,
+      "pct": 100,
+      "excedida": false,
+      "agotada": true,
+      "avisa": true,
+      "queda": 0,
+      "pasado": 0
+    },
+    "16000/18500": {
+      "crudo": 116,
+      "pct": 100,
+      "excedida": true,
+      "agotada": true,
+      "avisa": true,
+      "queda": -2500,
+      "pasado": 2500
+    },
+    "0/5000": {
+      "crudo": 0,
+      "pct": 0,
+      "excedida": false,
+      "agotada": false,
+      "avisa": false,
+      "queda": -5000,
+      "pasado": 5000
+    },
+    "10000/8600": {
+      "crudo": 86,
+      "pct": 86,
+      "excedida": false,
+      "agotada": false,
+      "avisa": true,
+      "queda": 1400,
+      "pasado": -1400
+    }
+  },
+  "barrasDeCategorias": {
+    "2026-09": [
+      {
+        "categoria": "Préstamo",
+        "gastado": 18500,
+        "pct": 100
+      },
+      {
+        "categoria": "Ahorro",
+        "gastado": 10000,
+        "pct": 54
+      },
+      {
+        "categoria": "Gastos Personales",
+        "gastado": 3100,
+        "pct": 17
+      },
+      {
+        "categoria": "Comida",
+        "gastado": 2480,
+        "pct": 13
+      },
+      {
+        "categoria": "Alimentación",
+        "gastado": 1540,
+        "pct": 8
+      }
+    ],
+    "2026-08": [
+      {
+        "categoria": "Comida",
+        "gastado": 1200,
+        "pct": 100
+      }
+    ]
+  },
+  "tendencia": {
+    "2026-09/6": {
+      "tope": 82000,
+      "columnas": [
+        {
+          "mes": "2026-04",
+          "ing": 0,
+          "gas": 0,
+          "a": 3,
+          "b": 3
+        },
+        {
+          "mes": "2026-05",
+          "ing": 0,
+          "gas": 0,
+          "a": 3,
+          "b": 3
+        },
+        {
+          "mes": "2026-06",
+          "ing": 0,
+          "gas": 0,
+          "a": 3,
+          "b": 3
+        },
+        {
+          "mes": "2026-07",
+          "ing": 0,
+          "gas": 0,
+          "a": 3,
+          "b": 3
+        },
+        {
+          "mes": "2026-08",
+          "ing": 4000,
+          "gas": 1200,
+          "a": 5,
+          "b": 3
+        },
+        {
+          "mes": "2026-09",
+          "ing": 82000,
+          "gas": 35620,
+          "a": 100,
+          "b": 43
+        }
+      ]
+    },
+    "2026-09/1": {
+      "tope": 82000,
+      "columnas": [
+        {
+          "mes": "2026-09",
+          "ing": 82000,
+          "gas": 35620,
+          "a": 100,
+          "b": 43
+        }
+      ]
+    }
+  },
+  "mezcla": {
+    "2026-09": {
+      "total": 35620,
+      "fijos": 21600,
+      "variables": 4020,
+      "ahorro": 10000,
+      "a": 61,
+      "c": 11,
+      "hasta": 72
+    },
+    "2026-08": {
+      "total": 1200,
+      "fijos": 0,
+      "variables": 1200,
+      "ahorro": 0,
+      "a": 0,
+      "c": 100,
+      "hasta": 100
+    }
+  },
+  "serie": {
+    "2026-09|linea|ingresos,gastos|12": {
+      "alto": 40,
+      "meses": [
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01",
+        "2026-02",
+        "2026-03",
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09"
+      ],
+      "cadaCuantas": 2,
+      "rotula": [
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true
+      ],
+      "minV": 0,
+      "maxV": 82000,
+      "trazos": [
+        {
+          "serie": "ingresos",
+          "puntos": [
+            {
+              "x": 0,
+              "y": 39
+            },
+            {
+              "x": 9.0909,
+              "y": 39
+            },
+            {
+              "x": 18.1818,
+              "y": 39
+            },
+            {
+              "x": 27.2727,
+              "y": 39
+            },
+            {
+              "x": 36.3636,
+              "y": 39
+            },
+            {
+              "x": 45.4545,
+              "y": 39
+            },
+            {
+              "x": 54.5455,
+              "y": 39
+            },
+            {
+              "x": 63.6364,
+              "y": 39
+            },
+            {
+              "x": 72.7273,
+              "y": 39
+            },
+            {
+              "x": 81.8182,
+              "y": 39
+            },
+            {
+              "x": 90.9091,
+              "y": 37.1463
+            },
+            {
+              "x": 100,
+              "y": 1
+            }
+          ]
+        },
+        {
+          "serie": "gastos",
+          "puntos": [
+            {
+              "x": 0,
+              "y": 39
+            },
+            {
+              "x": 9.0909,
+              "y": 39
+            },
+            {
+              "x": 18.1818,
+              "y": 39
+            },
+            {
+              "x": 27.2727,
+              "y": 39
+            },
+            {
+              "x": 36.3636,
+              "y": 39
+            },
+            {
+              "x": 45.4545,
+              "y": 39
+            },
+            {
+              "x": 54.5455,
+              "y": 39
+            },
+            {
+              "x": 63.6364,
+              "y": 39
+            },
+            {
+              "x": 72.7273,
+              "y": 39
+            },
+            {
+              "x": 81.8182,
+              "y": 39
+            },
+            {
+              "x": 90.9091,
+              "y": 38.4439
+            },
+            {
+              "x": 100,
+              "y": 27.1273
+            }
+          ]
+        }
+      ],
+      "areas": [],
+      "barras": [],
+      "leyenda": [
+        {
+          "serie": "ingresos",
+          "ultimo": 82000
+        },
+        {
+          "serie": "gastos",
+          "ultimo": 25620
+        }
+      ]
+    },
+    "2026-09|area|balance|12": {
+      "alto": 40,
+      "meses": [
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01",
+        "2026-02",
+        "2026-03",
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09"
+      ],
+      "cadaCuantas": 2,
+      "rotula": [
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true
+      ],
+      "minV": 0,
+      "maxV": 46380,
+      "trazos": [
+        {
+          "serie": "balance",
+          "puntos": [
+            {
+              "x": 0,
+              "y": 39
+            },
+            {
+              "x": 9.0909,
+              "y": 39
+            },
+            {
+              "x": 18.1818,
+              "y": 39
+            },
+            {
+              "x": 27.2727,
+              "y": 39
+            },
+            {
+              "x": 36.3636,
+              "y": 39
+            },
+            {
+              "x": 45.4545,
+              "y": 39
+            },
+            {
+              "x": 54.5455,
+              "y": 39
+            },
+            {
+              "x": 63.6364,
+              "y": 39
+            },
+            {
+              "x": 72.7273,
+              "y": 39
+            },
+            {
+              "x": 81.8182,
+              "y": 39
+            },
+            {
+              "x": 90.9091,
+              "y": 36.7059
+            },
+            {
+              "x": 100,
+              "y": 1
+            }
+          ]
+        }
+      ],
+      "areas": [
+        {
+          "serie": "balance",
+          "puntos": [
+            {
+              "x": 0,
+              "y": 40
+            },
+            {
+              "x": 0,
+              "y": 39
+            },
+            {
+              "x": 9.0909,
+              "y": 39
+            },
+            {
+              "x": 18.1818,
+              "y": 39
+            },
+            {
+              "x": 27.2727,
+              "y": 39
+            },
+            {
+              "x": 36.3636,
+              "y": 39
+            },
+            {
+              "x": 45.4545,
+              "y": 39
+            },
+            {
+              "x": 54.5455,
+              "y": 39
+            },
+            {
+              "x": 63.6364,
+              "y": 39
+            },
+            {
+              "x": 72.7273,
+              "y": 39
+            },
+            {
+              "x": 81.8182,
+              "y": 39
+            },
+            {
+              "x": 90.9091,
+              "y": 36.7059
+            },
+            {
+              "x": 100,
+              "y": 1
+            },
+            {
+              "x": 100,
+              "y": 40
+            }
+          ]
+        }
+      ],
+      "barras": [],
+      "leyenda": [
+        {
+          "serie": "balance",
+          "ultimo": 46380
+        }
+      ]
+    },
+    "2026-09|puntos|patrimonio|6": {
+      "alto": 40,
+      "meses": [
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09"
+      ],
+      "cadaCuantas": 1,
+      "rotula": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "minV": 0,
+      "maxV": 46380,
+      "trazos": [
+        {
+          "serie": "patrimonio",
+          "puntos": [
+            {
+              "x": 0,
+              "y": 39
+            },
+            {
+              "x": 20,
+              "y": 39
+            },
+            {
+              "x": 40,
+              "y": 39
+            },
+            {
+              "x": 60,
+              "y": 39
+            },
+            {
+              "x": 80,
+              "y": 36.7059
+            },
+            {
+              "x": 100,
+              "y": 1
+            }
+          ]
+        }
+      ],
+      "areas": [],
+      "barras": [],
+      "leyenda": [
+        {
+          "serie": "patrimonio",
+          "ultimo": 46380
+        }
+      ]
+    },
+    "2026-09|barras|ingresos,gastos|6": {
+      "alto": 40,
+      "meses": [
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09"
+      ],
+      "cadaCuantas": 1,
+      "rotula": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "minV": 0,
+      "maxV": 82000,
+      "trazos": [],
+      "areas": [],
+      "barras": [
+        {
+          "serie": "ingresos",
+          "x": 3.1667,
+          "y": 39,
+          "w": 10.3333,
+          "h": 0.6
+        },
+        {
+          "serie": "ingresos",
+          "x": 19.8333,
+          "y": 39,
+          "w": 10.3333,
+          "h": 0.6
+        },
+        {
+          "serie": "ingresos",
+          "x": 36.5,
+          "y": 39,
+          "w": 10.3333,
+          "h": 0.6
+        },
+        {
+          "serie": "ingresos",
+          "x": 53.1667,
+          "y": 39,
+          "w": 10.3333,
+          "h": 0.6
+        },
+        {
+          "serie": "ingresos",
+          "x": 69.8333,
+          "y": 37.1463,
+          "w": 10.3333,
+          "h": 1.8537
+        },
+        {
+          "serie": "ingresos",
+          "x": 86.5,
+          "y": 1,
+          "w": 10.3333,
+          "h": 38
+        },
+        {
+          "serie": "gastos",
+          "x": 3.1667,
+          "y": 39,
+          "w": 10.3333,
+          "h": 0.6
+        },
+        {
+          "serie": "gastos",
+          "x": 19.8333,
+          "y": 39,
+          "w": 10.3333,
+          "h": 0.6
+        },
+        {
+          "serie": "gastos",
+          "x": 36.5,
+          "y": 39,
+          "w": 10.3333,
+          "h": 0.6
+        },
+        {
+          "serie": "gastos",
+          "x": 53.1667,
+          "y": 39,
+          "w": 10.3333,
+          "h": 0.6
+        },
+        {
+          "serie": "gastos",
+          "x": 69.8333,
+          "y": 38.4439,
+          "w": 10.3333,
+          "h": 0.6
+        },
+        {
+          "serie": "gastos",
+          "x": 86.5,
+          "y": 27.1273,
+          "w": 10.3333,
+          "h": 11.8727
+        }
+      ],
+      "leyenda": [
+        {
+          "serie": "ingresos",
+          "ultimo": 82000
+        },
+        {
+          "serie": "gastos",
+          "ultimo": 25620
+        }
+      ]
+    },
+    "2026-09|columnas|ingresos,gastos,ahorro|6": {
+      "alto": 40,
+      "meses": [
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09"
+      ],
+      "cadaCuantas": 1,
+      "rotula": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "minV": 0,
+      "maxV": 82000,
+      "trazos": [],
+      "areas": [],
+      "barras": [
+        {
+          "serie": "ingresos",
+          "x": 3.1667,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "ingresos",
+          "x": 19.8333,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "ingresos",
+          "x": 36.5,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "ingresos",
+          "x": 53.1667,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "ingresos",
+          "x": 69.8333,
+          "y": 37.1463,
+          "w": 3.4444,
+          "h": 1.8537
+        },
+        {
+          "serie": "ingresos",
+          "x": 86.5,
+          "y": 1,
+          "w": 3.4444,
+          "h": 38
+        },
+        {
+          "serie": "gastos",
+          "x": 6.6111,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "gastos",
+          "x": 23.2778,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "gastos",
+          "x": 39.9444,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "gastos",
+          "x": 56.6111,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "gastos",
+          "x": 73.2778,
+          "y": 38.4439,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "gastos",
+          "x": 89.9444,
+          "y": 27.1273,
+          "w": 3.4444,
+          "h": 11.8727
+        },
+        {
+          "serie": "ahorro",
+          "x": 10.0556,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "ahorro",
+          "x": 26.7222,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "ahorro",
+          "x": 43.3889,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "ahorro",
+          "x": 60.0556,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "ahorro",
+          "x": 76.7222,
+          "y": 39,
+          "w": 3.4444,
+          "h": 0.6
+        },
+        {
+          "serie": "ahorro",
+          "x": 93.3889,
+          "y": 34.3659,
+          "w": 3.4444,
+          "h": 4.6341
+        }
+      ],
+      "leyenda": [
+        {
+          "serie": "ingresos",
+          "ultimo": 82000
+        },
+        {
+          "serie": "gastos",
+          "ultimo": 25620
+        },
+        {
+          "serie": "ahorro",
+          "ultimo": 10000
+        }
+      ]
+    },
+    "2026-09|linea|ingresos|1": {
+      "alto": 40,
+      "meses": [
+        "2026-09"
+      ],
+      "cadaCuantas": 1,
+      "rotula": [
+        true
+      ],
+      "minV": 0,
+      "maxV": 82000,
+      "trazos": [
+        {
+          "serie": "ingresos",
+          "puntos": [
+            {
+              "x": 50,
+              "y": 1
+            }
+          ]
+        }
+      ],
+      "areas": [],
+      "barras": [],
+      "leyenda": [
+        {
+          "serie": "ingresos",
+          "ultimo": 82000
+        }
+      ]
+    },
+    "2026-09|linea||6": {
+      "alto": 40,
+      "meses": [
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09"
+      ],
+      "cadaCuantas": 1,
+      "rotula": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "minV": 0,
+      "maxV": 82000,
+      "trazos": [
+        {
+          "serie": "ingresos",
+          "puntos": [
+            {
+              "x": 0,
+              "y": 39
+            },
+            {
+              "x": 20,
+              "y": 39
+            },
+            {
+              "x": 40,
+              "y": 39
+            },
+            {
+              "x": 60,
+              "y": 39
+            },
+            {
+              "x": 80,
+              "y": 37.1463
+            },
+            {
+              "x": 100,
+              "y": 1
+            }
+          ]
+        }
+      ],
+      "areas": [],
+      "barras": [],
+      "leyenda": [
+        {
+          "serie": "ingresos",
+          "ultimo": 82000
+        }
+      ]
+    }
+  },
+  "pagos": {
+    "desde": "2026-09-26",
+    "lista": [
+      {
+        "tipo": "tarjeta",
+        "nombre": "Visa",
+        "monto": 12000,
+        "corte": 15,
+        "dia": 5,
+        "dias": 9,
+        "plazo": "en 9 d",
+        "tono": "positivo"
+      },
+      {
+        "tipo": "prestamo",
+        "nombre": "Carro",
+        "monto": 8500,
+        "corte": 0,
+        "dia": 10,
+        "dias": 14,
+        "plazo": "en 14 d",
+        "tono": "positivo"
+      }
+    ]
+  },
+  "consejo": {
+    "2026-09": {
+      "clave": "cuotas",
+      "monto": 10500,
+      "pct": 13
+    },
+    "corto": {
+      "clave": "corto",
+      "monto": 0,
+      "pct": 0
+    },
+    "sinCuotas": {
+      "clave": "sinCuotas",
+      "monto": 0,
+      "pct": 0
+    }
+  },
+  "metas": {
+    "1": {
+      "pct": 25,
+      "restante": 45000,
+      "meses": 9,
+      "completada": false
+    },
+    "2": {
+      "pct": 100,
+      "restante": 0,
+      "meses": 0,
+      "completada": true
+    },
+    "3": {
+      "pct": 6,
+      "restante": 850000,
+      "meses": 0,
+      "completada": false
+    }
+  },
+  "visibles": {
+    "2026-09|Todos|": [
+      "m1758860000000",
+      "m1758840000000",
+      "m1758820000000",
+      "3",
+      "1",
+      "2",
+      "5",
+      "4"
+    ],
+    "2026-09|Ingresos|": [
+      "1"
+    ],
+    "2026-09|Fijos|": [
+      "m1758820000000",
+      "2"
+    ],
+    "2026-09|Variables|": [
+      "m1758860000000",
+      "m1758840000000",
+      "3"
+    ],
+    "2026-09|Ahorro|": [
+      "4"
+    ],
+    "2026-09|Todos|cafe": [
+      "m1758840000000"
+    ],
+    "2026-09|Todos|ALIMENTACION": [
+      "m1758860000000",
+      "m1758840000000"
+    ],
+    "2026-09|Todos|  supermercado ": [
+      "3"
+    ],
+    "2026-09|Todos|nada de esto": []
+  },
+  "porDias": {
+    "2026-09": [
+      {
+        "fecha": "2026-09-26",
+        "total": -7120
+      },
+      {
+        "fecha": "2026-09-25",
+        "total": 82000
+      },
+      {
+        "fecha": "2026-09-23",
+        "total": -18500
+      },
+      {
+        "fecha": "2026-09-12",
+        "total": 0
+      },
+      {
+        "fecha": "2026-09-10",
+        "total": -10000
+      }
+    ],
+    "2026-08": [
+      {
+        "fecha": "2026-08-14",
+        "total": -1200
+      },
+      {
+        "fecha": "2026-08-02",
+        "total": 4000
+      }
+    ]
+  },
+  "categorias": {
+    "Comida": {
+      "icono": "puntos",
+      "color": "#e0a92e",
+      "inicial": "C"
+    },
+    "Alimentación": {
+      "icono": "comida",
+      "color": "oklch(0.32 0.03 155)",
+      "inicial": "A"
+    },
+    "Gastos Personales": {
+      "icono": "puntos",
+      "color": "#2d6cdf",
+      "inicial": "GP"
+    },
+    "Ahorro": {
+      "icono": "hucha",
+      "color": "#825eb9",
+      "inicial": "A"
+    },
+    "Lo que sea": {
+      "icono": "puntos",
+      "color": "oklch(0.32 0.03 155)",
+      "inicial": "LQ"
+    },
+    "": {
+      "icono": "puntos",
+      "color": "oklch(0.32 0.03 155)",
+      "inicial": "?"
     }
   },
   "porCategoria": {
@@ -415,8 +1818,16 @@
         "gastado": 10000
       },
       {
+        "categoria": "Gastos Personales",
+        "gastado": 3100
+      },
+      {
         "categoria": "Comida",
         "gastado": 2480
+      },
+      {
+        "categoria": "Alimentación",
+        "gastado": 1540
       }
     ],
     "2026-08": [

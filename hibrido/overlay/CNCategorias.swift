@@ -29,25 +29,12 @@ enum CNCategorias {
     /**
      * El icono de cada una de las trece de fábrica.
      *
-     * Son las que trae una libreta nueva. Los nombres son los de la app en
-     * español porque así se crean; una libreta en inglés las tiene igual por
-     * dentro y traducidas solo al enseñarlas.
+     * GENERADO: sale de `CAT_ICONO` de la web por `npm run sync`. Estaba escrito
+     * a mano aquí, trece entradas, y es exactamente lo que le pasó a los ochenta
+     * y cinco glifos: uno se desvió —`banco` dibujaba una casa en el teléfono y
+     * un banco en la web— y eso no se encuentra buscándolo.
      */
-    static let porNombre: [String: String] = [
-        "Ingresos": "grafico",
-        "Vivienda": "casa",
-        "Alimentación": "comida",
-        "Servicios": "rayo",
-        "Transporte": "auto",
-        "Educación": "birrete",
-        "Salud": "salud",
-        "Donaciones": "iglesia",
-        "Entretenimiento": "cine",
-        "Deudas": "tarjeta",
-        "Personal": "usuario",
-        "Ahorro": "hucha",
-        "Otros": "puntos"
-    ]
+    static let porNombre: [String: String] = CNCatalogos.iconoPorCategoria
 
     /// El que se usa cuando no hay nada mejor.
     static let POR_DEFECTO = "puntos"
@@ -82,12 +69,20 @@ enum CNCategorias {
     /**
      * La inicial que se enseña cuando no hay icono que valga.
      *
-     * En mayúscula y una sola letra. Con las categorías vacías —que existen, se
-     * pueden crear sin nombre— devuelve «·», porque una burbuja en blanco se ve
-     * como un fallo de carga.
+     * DOS letras, no una: la primera de las dos primeras palabras. Es lo que
+     * hace la web (`ini`), y aquí era una sola, así que la misma categoría
+     * —«Gastos Personales»— salía «GP» en la web y «G» en el teléfono, en la
+     * misma app. La burbuja es pequeña y dos letras distinguen lo que una no:
+     * con «Comida» y «Casa» delante, una «C» sola no dice cuál es.
+     *
+     * Y con las categorías vacías —que existen, se pueden crear sin nombre—
+     * devuelve «?», también como la web: una burbuja en blanco se ve como un
+     * fallo de carga.
      */
     static func inicial(_ nombre: String) -> String {
-        let t = nombre.trimmingCharacters(in: .whitespaces)
-        return t.isEmpty ? "·" : String(t.prefix(1)).uppercased()
+        let palabras = nombre.split(whereSeparator: { $0.isWhitespace })
+        let primera = palabras.first.map { String($0.prefix(1)) } ?? "?"
+        let segunda = palabras.count > 1 ? String(palabras[1].prefix(1)) : ""
+        return (primera + segunda).uppercased()
     }
 }

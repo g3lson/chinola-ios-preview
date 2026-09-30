@@ -69,7 +69,9 @@ enum CNSerieTiempo {
     struct Punto { var x: Double; var y: Double }
     struct Trazo { var serie: Serie; var puntos: [Punto] }
     struct Barra { var serie: Serie; var x: Double; var y: Double; var w: Double; var h: Double }
-    struct Leyenda { var serie: Serie; var etiqueta: String; var ultimo: String }
+    /// `ultimo` es el último valor ya escrito; `valor`, el mismo número sin
+    /// formato, para poder compararlo con el de la web.
+    struct Leyenda { var serie: Serie; var etiqueta: String; var ultimo: String; var valor: Double = 0 }
 
     struct Dibujo {
         var etiquetas: [String] = []
@@ -80,6 +82,11 @@ enum CNSerieTiempo {
         var leyenda: [Leyenda] = []
         /// Cada cuántas etiquetas se escribe una: con doce meses no caben todas.
         var cadaCuantas = 1
+        /// Los meses dibujados, sin rótulo: «2026-09». Para poder comparar.
+        var meses: [String] = []
+        /// La escala que comparten todas las series. Incluye el cero.
+        var minV: Double = 0
+        var maxV: Double = 1
     }
 
     /**
@@ -118,6 +125,9 @@ enum CNSerieTiempo {
         let py: (Double) -> Double = { v in 1 + (ALTO - 2) * (1 - ((v - minV) / rango)) }
 
         var d = Dibujo()
+        d.meses = filas.map { $0.mes }
+        d.minV = minV
+        d.maxV = maxV
         // Con doce meses no caben doce etiquetas: se escribe una de cada
         // tantas, para que nunca haya más de ocho.
         d.cadaCuantas = max(1, Int(ceil(Double(filas.count) / 8)))
@@ -142,7 +152,8 @@ enum CNSerieTiempo {
                                      // Con signo: balance y patrimonio pueden ser negativos, y la
             // leyenda dice el último valor de la línea. Sin él, una línea
             // dibujada por debajo del cero venía rotulada en positivo.
-            ultimo: cnDineroFirmado(k.valor(filas[filas.count - 1].t))))
+            ultimo: cnDineroFirmado(k.valor(filas[filas.count - 1].t)),
+                                     valor: k.valor(filas[filas.count - 1].t)))
             switch forma {
             case .linea, .area, .puntos:
                 let puntos = filas.enumerated().map {

@@ -65,15 +65,24 @@ enum CNTarjetasGrafico {
     /**
      * GASTOS POR CATEGORÍA: las cinco mayores, medidas contra la mayor.
      */
-    static func porCategoria(_ l: CNLibreta, _ p: CNCalculo.Periodo) -> [FilaBarra] {
+    /// La lista entera, sin formato y sin cortar: cada pantalla corta las que le
+    /// caben —cinco en el teléfono, seis en el escritorio—. Va aparte para que el
+    /// fichero de oro pueda ejecutarla contra la de la web.
+    static func barrasCrudas(_ l: CNLibreta, _ p: CNCalculo.Periodo)
+        -> [(categoria: String, gastado: Double, pct: Int)] {
         let todas = CNCalculo.porCategoria(l, p)
         // Contra la MAYOR y no contra el total: contra el total, un mes
         // repartido entre ocho categorías da ocho barritas iguales de nada.
         let mayor = todas.first?.gastado ?? 0
+        return todas.map { (categoria: $0.categoria, gastado: $0.gastado,
+                            pct: pct($0.gastado, mayor)) }
+    }
+
+    static func porCategoria(_ l: CNLibreta, _ p: CNCalculo.Periodo) -> [FilaBarra] {
         // Cinco: con doce barras de tres píxeles no se compara nada.
-        return todas.prefix(5).map {
+        barrasCrudas(l, p).prefix(5).map {
             FilaBarra(label: $0.categoria, valor: cnDinero($0.gastado),
-                      pct: pct($0.gastado, mayor), categoria: $0.categoria)
+                      pct: $0.pct, categoria: $0.categoria)
         }
     }
 
@@ -82,18 +91,32 @@ enum CNTarjetasGrafico {
      *
      * @param meses  cuántos hacia atrás, contando el actual
      */
-    static func tendencia(_ l: CNLibreta, hasta mes: String, meses: Int = 6) -> [Columna] {
+    /// La misma cuenta sin el rótulo: el mes tal cual y las dos alturas.
+    ///
+    /// Va aparte porque el fichero de oro la EJECUTA contra la web, y el rótulo
+    /// depende del idioma que tenga puesto cada quien.
+    struct Tendencia {
+        var tope: Double = 1
+        var columnas: [(mes: String, ing: Double, gas: Double, a: Int, b: Int)] = []
+    }
+
+    static func tendenciaCruda(_ l: CNLibreta, hasta mes: String, meses: Int = 6) -> Tendencia {
         let serie = CNCalculo.porMeses(l, hasta: mes, cuantos: meses)
         // La escala la manda el mes más alto de los dos lados; el 1 evita
         // dividir por cero cuando no hay nada en ninguno.
         let tope = max(1, serie.map { max($0.t.ing, $0.t.gas + $0.t.aho) }.max() ?? 1)
-        return serie.map { fila in
+        return Tendencia(tope: tope, columnas: serie.map { fila in
             // Nunca por debajo de 3: sin ese suelo, un mes sin movimientos
             // desaparece del gráfico y parece que no existió.
-            Columna(label: cnMesCorto(fila.mes),
-                    a: max(3, Int((fila.t.ing / tope * 100).rounded())),
-                    b: max(3, Int(((fila.t.gas + fila.t.aho) / tope * 100).rounded())))
-        }
+            (mes: fila.mes, ing: fila.t.ing, gas: fila.t.gas + fila.t.aho,
+             a: max(3, Int((fila.t.ing / tope * 100).rounded())),
+             b: max(3, Int(((fila.t.gas + fila.t.aho) / tope * 100).rounded())))
+        })
+    }
+
+    static func tendencia(_ l: CNLibreta, hasta mes: String, meses: Int = 6) -> [Columna] {
+        tendenciaCruda(l, hasta: mes, meses: meses)
+            .columnas.map { Columna(label: cnMesCorto($0.mes), a: $0.a, b: $0.b) }
     }
 
     /**
@@ -102,11 +125,31 @@ enum CNTarjetasGrafico {
      * Reparte sobre gastos MÁS ahorro. Lo apartado también salió del mes:
      * dejarlo fuera hincharía los porcentajes de los otros dos.
      */
+    /// El reparto, en números: lo que mide cada trozo de la dona.
+    ///
+    /// Aparte del formato para que el fichero de oro pueda ejecutarlo contra la
+    /// web: lo que no puede cambiar es que reparta sobre gastos MÁS ahorro.
+    struct Reparto {
+        var total: Double = 0
+        var fijos: Double = 0
+        var variables: Double = 0
+        var ahorro: Double = 0
+        var a = 0
+        var c = 0
+        var hasta = 0
+    }
+
+    static func reparto(_ x: CNCalculo.Totales) -> Reparto {
+        let tot = x.gas + x.aho
+        let a = pct(x.fij, tot), c = pct(x.vari, tot)
+        return Reparto(total: tot, fijos: x.fij, variables: x.vari, ahorro: x.aho,
+                       a: a, c: c, hasta: a + c)
+    }
+
     static func mezcla(_ l: CNLibreta, _ p: CNCalculo.Periodo, tinte t: Tinte) -> (total: String, trozos: [Trozo]) {
         let x = CNCalculo.totales(l, p)
-        let tot = x.gas + x.aho
-        let a = pct(x.fij, tot)
-        let c = pct(x.vari, tot)
+        let r = reparto(x)
+        let tot = r.total, a = r.a, c = r.c
         return (cnDinero(tot), [
             Trozo(label: cnT("Fijos"), valor: cnDinero(x.fij), color: t.franja, desde: 0, hasta: a),
             Trozo(label: cnT("Variables"), valor: cnDinero(x.vari), color: t.negativo, desde: a, hasta: a + c),

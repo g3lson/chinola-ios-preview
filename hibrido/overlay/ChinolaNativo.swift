@@ -7338,7 +7338,8 @@ struct CNSeccionVista: View {
                                 .background(it.fondo.isEmpty ? CNC.soft : cnColor(hexString: it.fondo),
                                             in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         } else if !it.fondo.isEmpty {
-                            Text(String(it.titulo.prefix(1)).uppercased())
+                            // La MISMA regla de siglas que la web: dos letras.
+                            Text(CNCategorias.inicial(it.titulo))
                                 .font(cnLetra(12, .heavy)).foregroundColor(.white)
                                 .frame(width: 32, height: 32)
                                 .background(cnColor(hexString: it.fondo),

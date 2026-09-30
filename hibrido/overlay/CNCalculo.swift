@@ -287,6 +287,10 @@ enum CNCalculo {
         /// · corte día 15»— y sin él la fila dice cuánto y cuándo hay que pagar
         /// pero no desde cuándo cuenta. En un préstamo no hay corte: va en 0.
         var corte: Int = 0
+        /// El día del mes en que se paga. En un préstamo es lo que la web enseña
+        /// en el detalle —«RD$8,500 · día 10»—, y sin él la fila dice cuánto
+        /// falta pero no cuándo toca.
+        var dia: Int = 0
     }
 
     /// Los pagos que vienen, del más cercano al más lejano: el corte de cada
@@ -296,7 +300,7 @@ enum CNCalculo {
         for t in l.tarjetas where t.saldo > 0 {
             salida.append(Pago(tipo: "tarjeta", referencia: t.id, nombre: t.nombre,
                                monto: t.saldo, dias: diasHastaElDia(t.pago, desde: desde),
-                               corte: t.corte))
+                               corte: t.corte, dia: t.pago))
         }
         for p in l.prestamos where p.sentido != "meDeben" {
             let pendiente = max(0, p.total - p.pagado)
@@ -309,7 +313,7 @@ enum CNCalculo {
             // que no tiene nada que ver con lo que hay que pagar este mes.
             salida.append(Pago(tipo: "prestamo", referencia: p.id, nombre: p.nombre,
                                monto: p.cuota > 0 ? p.cuota : pendiente,
-                               dias: diasHastaElDia(p.dia, desde: desde)))
+                               dias: diasHastaElDia(p.dia, desde: desde), dia: p.dia))
         }
         return salida.sorted { $0.dias != $1.dias ? $0.dias < $1.dias : $0.monto > $1.monto }
     }

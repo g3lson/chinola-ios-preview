@@ -100,6 +100,26 @@ enum CNMovimientos {
     }
 
     /**
+     * LO QUE ENTRÓ Y SALIÓ EN UN DÍA.
+     *
+     * Una TRANSFERENCIA no cuenta: es un traspaso entre cuentas tuyas, no entra
+     * ni sale, y restándola un día en que moviste dinero de un sitio a otro
+     * parecía un día de gasto enorme.
+     *
+     * Aparte de `porDias` porque el fichero de oro ejecuta esta cuenta contra la
+     * de la web y las compara.
+     */
+    static func totalDelDia(_ movs: [CNMov]) -> Double {
+        movs.reduce(0.0) { suma, m in
+            switch m.tipo {
+            case "Transferencia": return suma
+            case "Ingreso": return suma + m.monto
+            default: return suma - m.monto
+            }
+        }
+    }
+
+    /**
      * Los mismos, agrupados por día, del más nuevo al más viejo.
      *
      * El total de cada día NO cuenta las transferencias: un traspaso entre
@@ -111,13 +131,7 @@ enum CNMovimientos {
         for m in movs { mapa[m.fecha, default: []].append(m) }
         return mapa.keys.sorted(by: >).map { fecha in
             let delDia = mapa[fecha] ?? []
-            let total = delDia.reduce(0.0) { suma, m in
-                switch m.tipo {
-                case "Transferencia": return suma
-                case "Ingreso": return suma + m.monto
-                default: return suma - m.monto
-                }
-            }
+            let total = totalDelDia(delDia)
             return Dia(fecha: fecha, label: cnDiaCorto(fecha),
                        total: (total >= 0 ? "+" : "−") + cnDinero(total),
                        positivo: total >= 0, movimientos: delDia)

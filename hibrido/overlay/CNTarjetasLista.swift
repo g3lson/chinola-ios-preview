@@ -49,8 +49,14 @@ enum CNTarjetasLista {
     /* ------------------------- últimos movimientos ------------------------ */
 
     static func recientes(_ l: CNLibreta, _ p: CNCalculo.Periodo, tinte t: Tinte) -> [Fila] {
-        let vis = l.tx.filter { CNCalculo.enPeriodo($0.fecha, p) }
-            .sorted { $0.fecha != $1.fecha ? $0.fecha > $1.fecha : $0.id > $1.id }
+        // El MISMO orden que la pantalla de Movimientos, y por la misma razón.
+        //
+        // Aquí desempataba por identificador —un texto— en vez de por la hora de
+        // alta, y eso no es lo mismo: los identificadores llevan una letra
+        // delante («m», «tr», «dp»), así que una transferencia y un movimiento
+        // del mismo día salían ordenados por esa letra. Dos listas del mismo día
+        // en la misma pantalla, cada una en su orden.
+        let vis = CNMovimientos.visibles(l, periodo: p)
         return vis.prefix(CABEN).map { x in
             // Una transferencia no lleva signo: es un traspaso entre cuentas
             // tuyas, no entra ni sale. Ponerle uno la convierte en un gasto o
@@ -64,21 +70,38 @@ enum CNTarjetasLista {
                         // vista al repasar la lista.
                         detalle: x.categoria + " · " + cnFechaCorta(x.fecha),
                         monto: signo + cnDinero(x.monto), montoColor: color,
-                        sigla: String(x.categoria.prefix(1)).uppercased(),
+                        sigla: CNCategorias.inicial(x.categoria),
                         color: color, categoria: x.categoria)
         }
     }
 
     /* ------------------------ recordatorios de pago ----------------------- */
 
+    /**
+     * CÓMO SE ROTULA UN PAGO QUE VIENE, sin formato ni traducción.
+     *
+     * La misma que `pagosQueVienen` de la web, y el fichero de oro ejecuta las
+     * dos y las compara. El tono va por cercanía —rojo si es esta semana corta,
+     * ámbar si es la que viene, verde si aún queda—, que es lo que deja barrer
+     * la lista sin leer los días.
+     */
+    struct Aviso {
+        var esHoy = false
+        var plazo = ""
+        var tono = ""
+    }
+
+    static func avisoDe(_ dias: Int) -> Aviso {
+        // «hoy» y no «en 0 d»: nadie dice «en cero días».
+        Aviso(esHoy: dias == 0, plazo: dias == 0 ? "hoy" : "en \(dias) d",
+              tono: dias <= 3 ? "negativo" : (dias <= 7 ? "ambar" : "positivo"))
+    }
+
     static func recordatorios(_ l: CNLibreta, tinte t: Tinte, desde: Date = Date()) -> [Fila] {
         CNCalculo.pagosQueVienen(l, desde: desde).map { p in
-            // Por cercanía: rojo si es esta semana corta, ámbar si es la que
-            // viene, y verde si aún queda. Es lo que deja barrer la lista sin
-            // leer los días.
-            let color = p.dias <= 3 ? t.negativo : (p.dias <= 7 ? t.ambar : t.positivo)
-            // «hoy» y no «en 0 d»: nadie dice «en cero días».
-            let plazo = p.dias == 0 ? cnT("hoy") : cnT("en {n} d").replacingOccurrences(of: "{n}", with: String(p.dias))
+            let av = avisoDe(p.dias)
+            let color = av.tono == "negativo" ? t.negativo : (av.tono == "ambar" ? t.ambar : t.positivo)
+            let plazo = av.esHoy ? cnT("hoy") : cnT("en {n} d").replacingOccurrences(of: "{n}", with: String(p.dias))
             // El título dice QUÉ es —un pago de tarjeta o una cuota— y no
             // solo el nombre: con tres filas seguidas, «Visa» y «Visa» no se
             // distinguen si una es el corte y otra la cuota de un préstamo.
@@ -99,14 +122,36 @@ enum CNTarjetasLista {
 
     /* ---------------------------- avance de metas ------------------------- */
 
+    /**
+     * CÓMO VA UNA META: el porcentaje, lo que falta y en cuántos meses se llega.
+     *
+     * La misma que `avanceDeMeta` de la web. Sin aporte mensual no hay
+     * proyección —cero meses—, y una meta terminada dice «completada» y no
+     * «listo en ~0 meses».
+     */
+    struct Avance {
+        var pct = 0
+        var restante: Double = 0
+        var meses = 0
+        var completada = false
+    }
+
+    static func avanceDeMeta(_ g: CNMeta) -> Avance {
+        let restante = max(0, g.meta - g.ahorrado)
+        return Avance(pct: g.meta > 0 ? min(100, Int((g.ahorrado / g.meta * 100).rounded())) : 0,
+                      restante: restante,
+                      meses: g.mensual > 0 ? Int(ceil(restante / g.mensual)) : 0,
+                      completada: restante == 0)
+    }
+
     static func metas(_ l: CNLibreta, tinte t: Tinte) -> [Fila] {
         l.metas.map { g in
-            let pct = g.meta > 0 ? min(100, Int((g.ahorrado / g.meta * 100).rounded())) : 0
+            let pct = avanceDeMeta(g).pct
             let color = g.color.isEmpty ? t.lila : g.color
             return Fila(titulo: g.nombre,
                         detalle: cnDinero(g.ahorrado) + " " + cnT("de") + " " + cnDinero(g.meta),
                         monto: String(pct) + "%", montoColor: color,
-                        sigla: String(g.nombre.prefix(1)).uppercased(),
+                        sigla: CNCategorias.inicial(g.nombre),
                         color: color, categoria: "")
         }
     }
@@ -119,15 +164,31 @@ enum CNTarjetasLista {
      * Tres, en orden de urgencia. La primera es la única que pide hacer algo
      * hoy; las otras dos cuentan cómo estás.
      */
-    static func consejo(_ l: CNLibreta, _ p: CNCalculo.Periodo) -> String {
-        let t = CNCalculo.totales(l, p)
-        if t.bal < 0 { return cnT("Este mes va corto: empieza por los gastos variables.") }
+    /// Cuál de las tres frases toca, y con qué números. Sin la frase: la escribe
+    /// cada pantalla, y en el escritorio no dice lo mismo.
+    struct Consejo {
+        var clave = ""
+        var monto: Double = 0
+        var pct = 0
+    }
+
+    static func consejoDeChino(_ l: CNLibreta, _ t: CNCalculo.Totales) -> Consejo {
+        if t.bal < 0 { return Consejo(clave: "corto") }
         let cuotas = l.prestamos.filter { $0.total - $0.pagado > 0 }.reduce(0.0) { $0 + $1.cuota }
         if cuotas > 0 {
-            let pct = t.ing > 0 ? Int((cuotas / t.ing * 100).rounded()) : 0
+            return Consejo(clave: "cuotas", monto: cuotas,
+                           pct: t.ing > 0 ? Int((cuotas / t.ing * 100).rounded()) : 0)
+        }
+        return Consejo(clave: "sinCuotas")
+    }
+
+    static func consejo(_ l: CNLibreta, _ p: CNCalculo.Periodo) -> String {
+        let c = consejoDeChino(l, CNCalculo.totales(l, p))
+        if c.clave == "corto" { return cnT("Este mes va corto: empieza por los gastos variables.") }
+        if c.clave == "cuotas" {
             return cnT("Tus cuotas fijas son {monto}, un {pct}% de tus ingresos.")
-                .replacingOccurrences(of: "{monto}", with: cnDinero(cuotas))
-                .replacingOccurrences(of: "{pct}", with: String(pct))
+                .replacingOccurrences(of: "{monto}", with: cnDinero(c.monto))
+                .replacingOccurrences(of: "{pct}", with: String(c.pct))
         }
         return cnT("Sin cuotas este mes: buen momento para aportar a tus metas.")
     }

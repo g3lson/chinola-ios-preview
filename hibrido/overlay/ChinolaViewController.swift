@@ -239,12 +239,6 @@ class ChinolaViewController: CAPBridgeViewController {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.pedirDesbloqueo() }
         }
 
-        // Si el servidor le dice al TELÉFONO que la sesión no vale, la web
-        // tiene que enterarse: si no, seguiría creyendo que hay sesión y las
-        // dos mitades de la app dirían cosas distintas sobre si estás dentro.
-        CNApi.alCaducar = { [weak self] in
-            self?.eval("window.__chinolaSesionCaducada && window.__chinolaSesionCaducada()")
-        }
         menuEstado.alTocar = { [weak self] id in
             guard let self = self else { return }
             self.menuEstado.activa = id
@@ -863,6 +857,17 @@ class ChinolaViewController: CAPBridgeViewController {
             // pone la suya de la vez pasada. Es la misma pantalla con los
             // mismos valores, así que la transición tiene qué animar y lo que
             // llega encima no se nota. Si no se vio nunca, se vacía como antes.
+            // Y ANTES DE NADA, QUE NO QUEDE UNA HOJA FANTASMA EN LA WEB.
+            //
+            // Una subpantalla se abre desde la lista de ajustes, donde no puede
+            // haber ninguna hoja puesta. Si la web cree que sí —porque se
+            // cerró deslizándola y no se enteró— pasan dos cosas, las dos
+            // malas: cualquier toque la vuelve a enseñar, y `vigilarVuelta` deja
+            // de devolver a lo nativo porque siempre le dicen que hay algo
+            // abierto. Es la misma hoja fantasma, y esto la barre.
+            if s.presentedViewController == nil {
+                s.eval("window.__chinolaHojaCerrar && window.__chinolaHojaCerrar()")
+            }
             if s.datos.seccion?.id != id { s.datos.seccion = s.datos.seccionesVistas[id] }
             s.datos.seccionPedida = id
             s.traerSeccion(id)
@@ -2373,6 +2378,15 @@ class ChinolaViewController: CAPBridgeViewController {
             hoja.prefersGrabberVisible = false
             hoja.preferredCornerRadius = 28
         }
+        // Y SI SE CIERRA DESLIZÁNDOLA, que es como se cierra una hoja en iOS.
+        //
+        // El aviso a la web salía solo del botón de cerrar. Deslizándola hacia
+        // abajo nadie se lo decía, así que la web se quedaba creyendo que la
+        // hoja seguía abierta — y a partir de ahí, CUALQUIER toque en ajustes
+        // preguntaba «¿hay algo abierto?», le decían que sí, y se volvía a
+        // enseñar esa hoja vieja. Cambiabas de moneda y se te abría «Editar mi
+        // perfil», que era la última que habías mirado.
+        host.presentationController?.delegate = self
         hojaWebVC = host
         if let actual = presentedViewController {
             actual.dismiss(animated: true) { [weak self] in self?.present(host, animated: true) }
@@ -2438,6 +2452,8 @@ class ChinolaViewController: CAPBridgeViewController {
                 hoja.prefersGrabberVisible = false
                 hoja.preferredCornerRadius = 28
             }
+            // También con el arrastre: ver `presentarHojaWeb`.
+            host.presentationController?.delegate = self
             self.hojaVC = host
             self.present(host, animated: true)
         }
@@ -2614,6 +2630,33 @@ class ChinolaViewController: CAPBridgeViewController {
         host.additionalSafeAreaInsets.bottom = max(0, alto - view.safeAreaInsets.bottom)
     }
 
+}
+
+/**
+ * CUANDO UNA HOJA SE CIERRA DESLIZÁNDOLA.
+ *
+ * En iOS una hoja se cierra arrastrándola hacia abajo, y eso NO pasa por el
+ * botón de cerrar. El aviso a la web salía solo del botón, así que deslizándola
+ * la web se quedaba creyendo que seguía abierta.
+ *
+ * Y a partir de ahí, cualquier toque en ajustes preguntaba «¿hay algo
+ * abierto?», le decían que sí, y se volvía a enseñar ESA hoja vieja: cambiabas
+ * de moneda y se te abría «Editar mi perfil», que era la última que habías
+ * mirado. Parecía caché y era una hoja que nadie había cerrado.
+ */
+extension ChinolaViewController: UIAdaptivePresentationControllerDelegate {
+    func presentationControllerDidDismiss(_ p: UIPresentationController) {
+        // La de la web hay que contársela a ella; la nativa solo se olvida.
+        if p.presentedViewController === hojaWebVC {
+            eval("window.__chinolaHojaCerrar && window.__chinolaHojaCerrar()")
+            hojaWebVC = nil
+            CNDatos.shared.hojaWeb = nil
+            traerDatos(intentos: 3); traerResumen(intentos: 4); traerAjustes()
+        } else if p.presentedViewController === hojaVC {
+            hojaVC = nil
+            traerDatos(intentos: 3)
+        }
+    }
 }
 
 extension ChinolaViewController: UIGestureRecognizerDelegate {

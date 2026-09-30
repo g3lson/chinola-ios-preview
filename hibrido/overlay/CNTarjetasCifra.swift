@@ -51,6 +51,53 @@ enum CNTarjetasCifra {
      *
      * @param tipo  la clave del catálogo (`kpi-balance`, `kpi-deuda`…)
      */
+    /**
+     * LA DECISIÓN DE CADA TARJETA, sin formato.
+     *
+     * La misma que `cifraDelPanel` de la web, y el fichero de oro ejecuta las
+     * dos y las compara. El formato lo pone cada lado; lo que no puede cambiar
+     * es CUÁNDO cambia cada cosa, y aquí hay tres reglas que se pierden al
+     * rehacer la pantalla de memoria:
+     *
+     * - En gastos la nota es un PORCENTAJE de lo que entró, y sin ingresos es
+     *   0, no una división rota.
+     * - En el balance cambian la nota Y el tono. Son dos tarjetas en una.
+     * - En el patrimonio cambia el TONO pero NO la nota: la nota explica de
+     *   dónde sale el número, no cómo va la cosa.
+     *
+     * La nota va en español sin traducir: es la clave, y se traduce al pintar.
+     */
+    struct Decision {
+        var monto: Double = 0
+        var nota = ""
+        var pct = 0
+        var tono = ""
+    }
+
+    static func decision(_ tipo: String, _ total: CNCalculo.Totales,
+                         deuda: Double, patrimonio: Double) -> Decision? {
+        switch tipo {
+        case "kpi-ingresos":
+            return Decision(monto: total.ing, nota: "del mes", tono: "positivo")
+        case "kpi-gastos":
+            return Decision(monto: total.gas, nota: "% de tus ingresos",
+                            pct: total.ing > 0 ? Int((total.gas / total.ing * 100).rounded()) : 0,
+                            tono: "negativo")
+        case "kpi-balance":
+            let bien = total.bal >= 0
+            return Decision(monto: total.bal,
+                            nota: bien ? "disponible este mes" : "déficit del mes",
+                            tono: bien ? "tinta" : "negativo")
+        case "kpi-deuda":
+            return Decision(monto: deuda, nota: "tarjetas + préstamos", tono: "ambar")
+        case "kpi-patrimonio":
+            return Decision(monto: patrimonio, nota: "cuentas − deudas",
+                            tono: patrimonio >= 0 ? "tinta" : "negativo")
+        default:
+            return nil
+        }
+    }
+
     static func de(_ tipo: String, libreta l: CNLibreta,
                    periodo p: CNCalculo.Periodo, tinte t: Tinte) -> Cifra? {
         let total = CNCalculo.totales(l, p)
