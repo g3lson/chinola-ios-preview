@@ -144,19 +144,24 @@ jobs:
           # El vigía tapa la app con su cartel a los 15 s si la web no le saluda,
           # así que hay que verla con él apagado: lo de abajo es la app, no un
           # fallo. Y con él encendido, para leer por dónde va el arranque.
+          # El identificador, SACADO DE LA CONFIGURACIÓN y no escrito aquí.
+          # Estaba a mano y dejó de ser el suyo: el lanzamiento no encontraba
+          # nada y el `|| true` se tragaba el error.
+          ID=$(node -p "require('./capacitor.config.json').appId")
+          echo "identificador: $ID"
           n=0
           for CFG in "app-clasico:" "app-clasico:vigia" "app-clasico:vigia,nativo,cortina"; do
             VAR=${CFG%%:*}; SIN=${CFG#*:}
             n=$((n+1))
             echo "=== $n) paquete $VAR ${SIN:+· sin $SIN} ==="
-            xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
             sleep 2
             rm -rf "$PUB"/* && cp -R ../hibrido/$VAR/. "$PUB"/
-            xcrun simctl uninstall "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+            xcrun simctl uninstall "$UDID" "$ID" 2>/dev/null || true
             xcrun simctl install "$UDID" "$APP"
-            SIMCTL_CHILD_CN_SIN="$SIN" xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+            SIMCTL_CHILD_CN_SIN="$SIN" xcrun simctl launch "$UDID" "$ID"
             sleep 22
-            xcrun simctl io "$UDID" screenshot "$n-$VAR${SIN:+-sin-$SIN}.png" || true
+            xcrun simctl io "$UDID" screenshot "$n-$VAR${SIN:+-sin-$SIN}.png"
           done
 
           echo "=== lo que dijo la web (y lo nativo) ==="
@@ -165,7 +170,7 @@ jobs:
           echo "=== ¿se hizo el reparenteo? ==="
           xcrun simctl spawn "$UDID" log show --last 3m --predicate 'eventMessage CONTAINS "CNRAIZ"' --style compact 2>/dev/null | head -5 || true
           echo "=== ¿sigue vivo el proceso? ==="
-          xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolareal || echo "(NO está vivo → crasheó)"
+          xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i "$ID" || echo "(NO está vivo → crasheó)"
           echo "=== crash ==="
           find ~/Library/Logs/DiagnosticReports -name "App-*.ips" 2>/dev/null | sort | tail -1 | while read f; do sed -n '1,40p' "$f"; done
 

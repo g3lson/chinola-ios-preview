@@ -139,6 +139,18 @@ jobs:
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b || true
           xcrun simctl install "$UDID" "$APP"
+          # El identificador, SACADO DE LA CONFIGURACIÓN y no escrito aquí.
+          #
+          # Estaba escrito a mano —`do.com.fente.chinolareal`— y dejó de ser el
+          # suyo el día que la configuración pasó a ser la de la app. El
+          # lanzamiento no encontraba nada, el `|| true` se tragaba el error, y
+          # las capturas salieron siendo el ESCRITORIO del iPhone: los tres
+          # bancos decían «success» sin haber mirado la app ni una vez.
+          ID=$(node -p "require('./capacitor.config.json').appId")
+          echo "identificador: $ID"
+          # El escritorio, ANTES de arrancar. Es contra esto contra lo que se
+          # comprueba luego que en las fotos salga la app.
+          xcrun simctl io "$UDID" screenshot "cap-0-escritorio.png"
           # CINCO ARRANQUES SEGUIDOS.
           #
           # La de ayer, recompilada hoy, falló uno de cada tres: era una
@@ -147,11 +159,11 @@ jobs:
           # lado bueno de la ruleta—, así que van cinco.
           for n in 1 2 3 4 5; do
             echo "=== intento $n ==="
-            xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
             sleep 2
-            xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+            xcrun simctl launch "$UDID" "$ID"
             sleep 22
-            xcrun simctl io "$UDID" screenshot "hoy-$n.png" || true
+            xcrun simctl io "$UDID" screenshot "hoy-$n.png"
           done
 
           # Y AHORA, LAS PANTALLAS: UNA POR LANZAMIENTO.
@@ -162,12 +174,19 @@ jobs:
           # pantalla por lanzamiento, quieta, no deja lugar a dudas.
           for P in resumen movs cuentas plan perfil; do
             echo "=== pantalla $P ==="
-            xcrun simctl terminate "$UDID" do.com.fente.chinolareal 2>/dev/null || true
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
             sleep 2
-            env SIMCTL_CHILD_CN_IR=$P SIMCTL_CHILD_CN_CON=sonda,flota xcrun simctl launch "$UDID" do.com.fente.chinolareal || true
+            env SIMCTL_CHILD_CN_IR=$P SIMCTL_CHILD_CN_CON=sonda,flota xcrun simctl launch "$UDID" "$ID"
             sleep 16
-            xcrun simctl io "$UDID" screenshot "pestana-$P.png" || true
+            xcrun simctl io "$UDID" screenshot "pestana-$P.png"
           done
+
+          # ¿SALE LA APP EN LAS FOTOS, o es el escritorio? Las diez capturas de
+          # este banco fueron el escritorio del iPhone y el banco pasaba.
+          echo "=== ¿sale la app en las capturas? ==="
+          for f in pestana-*.png hoy-*.png; do cp "$f" "cap-${f}"; done
+          python3 ../sondas/hay-app-en-la-foto.py
+          rm -f cap-pestana-*.png cap-hoy-*.png
 
           echo "=== lo que dijo la web (y lo nativo) ==="
           xcrun simctl spawn "$UDID" log show --last 4m --style compact \
@@ -175,7 +194,7 @@ jobs:
           echo "=== ¿se hizo el reparenteo? ==="
           xcrun simctl spawn "$UDID" log show --last 3m --predicate 'eventMessage CONTAINS "CNRAIZ"' --style compact 2>/dev/null | head -5 || true
           echo "=== ¿sigue vivo el proceso? ==="
-          xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i chinolareal || echo "(NO está vivo → crasheó)"
+          xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i "$ID" || echo "(NO está vivo → crasheó)"
           echo "=== crash ==="
           find ~/Library/Logs/DiagnosticReports -name "App-*.ips" 2>/dev/null | sort | tail -1 | while read f; do sed -n '1,40p' "$f"; done
 
