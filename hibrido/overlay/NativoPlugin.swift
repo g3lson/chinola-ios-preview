@@ -333,7 +333,21 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func nubeEmpujar(_ call: CAPPluginCall) {
-        let libretas = call.getArray("libretas", [String: Any].self) ?? []
+        // SI NO SE PUEDEN LEER LAS LIBRETAS, NO SE SUBE NADA.
+        //
+        // Un empuje va marcado como «completo», y eso le dice al servidor que
+        // pode las libretas que no vengan en él. Una lista vacía por un fallo de
+        // lectura —un tipo que no casa, un puente a medias— sería decirle al
+        // servidor que esta cuenta ya no tiene ninguna, y borrarlas TODAS.
+        //
+        // Se distingue «no se pudo leer» (nulo) de «de verdad no hay ninguna»
+        // (lista vacía), que son dos cosas muy distintas: la primera se rechaza
+        // y la web lo reintenta por su cuenta; la segunda es legítima —a quien
+        // solo le han compartido libretas de lectura no sube ninguna—.
+        guard let libretas = call.getArray("libretas", [String: Any].self) else {
+            call.reject("no pude leer las libretas: no subo nada")
+            return
+        }
         Task {
             do {
                 let r = try await CNNube.empujar(libretas)

@@ -25,6 +25,13 @@ import Foundation
  */
 enum CNNube {
 
+    /// Lo que puede salir mal aquí y no en `CNApi`.
+    enum Fallo: Error {
+        /// Se iba a subir una lista vacía teniendo libretas que subir: algo se
+        /// leyó mal, y subirla borraría las del servidor.
+        case nadaQueSubir
+    }
+
     /// ¿Toca correr el ciclo de prueba del banco?
     static var pedido: Bool { ProcessInfo.processInfo.environment["CN_SINCRO"] == "1" }
 
@@ -101,7 +108,18 @@ enum CNNube {
      * arreglan nada y pueden no acabar nunca.
      */
     static func empujar(_ libretas: [[String: Any]], segundaVuelta: Bool = false) async throws -> Resultado {
+        // Ni siquiera se intenta con la lista vacía cuando el que llama creía
+        // tener libretas: `completo` haría que el servidor podara las de la
+        // cuenta. Que no quede nada que subir es normal —todas de lectura, todas
+        // pendientes de aceptar— y entonces tampoco hay nada que podar, porque
+        // el servidor solo poda las PROPIAS; pero si el que llama traía libretas
+        // y no queda ninguna, algo se leyó mal y es mejor no tocar nada.
         let carga = CNSincro.queSeSube(libretas, versiones: versiones)
+        if carga.isEmpty && !libretas.isEmpty && libretas.contains(where: { l in
+            (l["__rol"] as? String) != "Lector" && (l["__estado"] as? String) != "pendiente"
+        }) {
+            throw Fallo.nadaQueSubir
+        }
         // `completo` solo en la primera vuelta: con él, el servidor poda las
         // libretas propias que no vayan en el envío. En la segunda va apagado
         // porque esa subida lleva solo las rescatadas, y si dijera que va
