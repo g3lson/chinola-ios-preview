@@ -214,6 +214,17 @@ jobs:
             xcrun simctl io "$UDID" screenshot "pestana-$P.png"
           done
 
+          # UN SERVIDOR DE MENTIRA PARA EL TELÉFONO.
+          #
+          # La siembra reemplaza `window.fetch`, y eso solo intercepta a la WEB.
+          # El teléfono usa `URLSession` y salía a internet de verdad con un vale
+          # inventado: 401, y las tres subpantallas que hablan con el servidor
+          # caían a la de la web. Lo peor no es que fallaran: es que NO fallaban.
+          python3 ../sondas/api-de-mentira.py &
+          sleep 2
+          curl -s -o /dev/null -w "api de mentira: %{http_code}\n" \
+            -H "authorization: Bearer x" http://127.0.0.1:8099/api/yo
+
           # Y LAS SUBPANTALLAS DE PERFIL, que son doce y no se fotografiaban
           # nunca: el banco solo sabía cambiar de pestaña. Todo lo que se
           # rompiera dentro —una lista vacía, un bloque que no se dibuja, unos
@@ -224,7 +235,8 @@ jobs:
             echo "=== perfil · $P ==="
             xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
             sleep 2
-            env SIMCTL_CHILD_CN_IR=perfil:$P SIMCTL_CHILD_CN_CON=sonda,flota xcrun simctl launch "$UDID" "$ID"
+            env SIMCTL_CHILD_CN_IR=perfil:$P SIMCTL_CHILD_CN_CON=sonda,flota \
+              SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
             sleep 18
             xcrun simctl io "$UDID" screenshot "perfil-$P.png"
           done
@@ -247,7 +259,8 @@ jobs:
             echo "=== hoja · $H ==="
             xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
             sleep 2
-            env SIMCTL_CHILD_CN_IR=perfil@$H SIMCTL_CHILD_CN_CON=sonda,flota xcrun simctl launch "$UDID" "$ID"
+            env SIMCTL_CHILD_CN_IR=perfil@$H SIMCTL_CHILD_CN_CON=sonda,flota \
+              SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
             sleep 18
             xcrun simctl io "$UDID" screenshot "hoja-$H.png"
           done

@@ -29,8 +29,22 @@ import Foundation
  */
 enum CNApi {
 
-    /// La misma dirección que usa la web. Ver `SITIO` en `src/nube.js`.
-    static let sitio = "https://chinola.fente.com.do"
+    /**
+     * La misma dirección que usa la web. Ver `SITIO` en `src/nube.js`.
+     *
+     * Se puede apuntar a otra con `CN_API`, y eso es lo que usa el banco.
+     * Hasta ahora no había manera: la siembra del banco reemplaza
+     * `window.fetch`, que solo intercepta las llamadas de la WEB, así que el
+     * teléfono salía a internet de verdad con un vale inventado, le contestaban
+     * 401, y las tres subpantallas que hablan con el servidor caían a la web —
+     * pareciendo que funcionaban, porque la pantalla sale igual—.
+     *
+     * En un teléfono esa variable no existe y queda la de siempre.
+     */
+    static let sitio: String = {
+        let otra = ProcessInfo.processInfo.environment["CN_API"] ?? ""
+        return otra.isEmpty ? "https://chinola.fente.com.do" : otra
+    }()
 
     /// El vale de sesión, o vacío si no hay.
     static var vale: String {
