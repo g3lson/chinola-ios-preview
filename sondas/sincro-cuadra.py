@@ -17,6 +17,7 @@ quitar aunque todas las pantallas sean nativas.
 
 Se le pasa el log del simulador. El Swift escupe una línea `CNSINCRO {...}`.
 """
+import base64
 import json
 import re
 import sys
@@ -31,20 +32,22 @@ def main():
     # ¿LLEGÓ LA WEB A PREGUNTAR quién sincroniza? Es lo único que prueba, desde
     # fuera, que el puente está enchufado. Si no pregunta, sigue hablando ella
     # con el servidor y todo lo nativo sería adorno.
-    mando = re.findall(r'CNMANDO: (\S+) · copia=(\S+) vale=(\S+)', log)
+    mando = re.findall(r'CNMANDO: (\S+) copia=(\S+) vale=(\S+)', log)
     if not mando:
         print('La web NO preguntó quién sincroniza: el puente no está enchufado.')
         return 1
     quien, copia, vale = mando[-1]
     print('manda: ' + quien + ' (copia=' + copia + ', vale=' + vale + ')')
 
-    m = re.findall(r'CNSINCRO (\{.*)', log)
+    # En base64, por lo mismo que el fichero de oro: `log show` reescribe los
+    # caracteres raros y las barras invertidas.
+    m = re.findall(r'CNSINCRO ([A-Za-z0-9+/=]+)', log)
     if not m:
         print('El teléfono no sincronizó nada. ¿Arrancó con CN_SINCRO=1?')
         return 1
     try:
-        r = json.loads(m[-1].strip())
-    except json.JSONDecodeError as e:
+        r = json.loads(base64.b64decode(m[-1].strip()).decode('utf-8'))
+    except (ValueError, UnicodeDecodeError) as e:
         print('No entiendo lo que dijo el Swift: ' + str(e))
         print(m[-1][:300])
         return 1

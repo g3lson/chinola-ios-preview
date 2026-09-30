@@ -418,44 +418,25 @@ enum CNOro {
      * Van numerados para poder pegarlos en orden y saber si falta alguno.
      */
     private static func escupe(_ texto: String) {
-        let limpio = soloAscii(texto)
-        // Quinientos: os_log corta cerca de mil y el prefijo ocupa lo suyo.
+        // EN BASE64, y no el JSON tal cual.
+        //
+        // `log show` no saca el mensaje tal como se escribió: los caracteres no
+        // ASCII los reescribe, y las BARRAS INVERTIDAS también —`\u2212` salía
+        // como `\134u2212`—, así que escaparlos yo tampoco valía: el log
+        // escapaba mi escape. En base64 no hay ni barras invertidas ni nada
+        // fuera del ASCII, solo letras, números y `+/=`, y el log no toca nada.
+        //
+        // Van numerados para poder pegarlos en orden y saber si falta alguno:
+        // os_log corta cerca de los mil caracteres.
+        guard let d = texto.data(using: .utf8) else { return }
+        let b = Array(d.base64EncodedString())
         let tamano = 500
-        let u = Array(limpio)
-        let partes = stride(from: 0, to: u.count, by: tamano).map { i in
-            String(u[i..<min(i + tamano, u.count)])
+        let partes = stride(from: 0, to: b.count, by: tamano).map {
+            String(b[$0..<min($0 + tamano, b.count)])
         }
         for (i, parte) in partes.enumerated() {
             NSLog("CNORO %d/%d %@", i + 1, partes.count, parte)
         }
-    }
-
-    /**
-     * EL JSON, SIN UN SOLO CARÁCTER RARO.
-     *
-     * `log show` no saca los bytes tal cual: los que no son ASCII los escribe
-     * como `\M-b\M^@\M-&`, y eso dentro de una cadena JSON es una barra
-     * inválida. El banco decía «no entiendo lo que dijo el Swift» y la culpa no
-     * era del Swift ni del JSON: era del log.
-     *
-     * Y nuestro JSON está lleno de ellos —«Préstamo», «Alimentación», el signo
-     * menos de «cuentas − deudas»—. Escritos como `\uXXXX` siguen siendo el
-     * mismo JSON y el log ya no tiene nada que escapar.
-     */
-    static func soloAscii(_ t: String) -> String {
-        var salida = ""
-        for u in t.unicodeScalars {
-            if u.value < 128 {
-                salida.unicodeScalars.append(u)
-            } else if u.value > 0xFFFF {
-                // Fuera del plano básico va en pareja, como manda JSON.
-                let v = u.value - 0x10000
-                salida += String(format: "\\u%04x\\u%04x", 0xD800 + (v >> 10), 0xDC00 + (v & 0x3FF))
-            } else {
-                salida += String(format: "\\u%04x", u.value)
-            }
-        }
-        return salida
     }
 
     private static func leer(_ nombre: String = "calculo-oro") -> Data? {

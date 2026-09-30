@@ -313,9 +313,11 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         // Queda dicho en el log: es la única manera de saber DESDE FUERA quién
         // está hablando con el servidor. Si esto no sale, la web ni preguntó —o
         // sea que el puente no está enchufado y sigue sincronizando ella—.
-        NSLog("CNMANDO: %@ · copia=%@ vale=%@", si ? "teléfono" : "web",
-              CNAlmacen.libretas().isEmpty ? "no" : "sí",
-              CNAlmacen.vale().isEmpty ? "no" : "sí")
+        // Sin acentos: `log show` reescribe lo que no es ASCII y la sonda
+        // dejaría de reconocer su propia línea.
+        NSLog("CNMANDO: %@ copia=%@ vale=%@", si ? "telefono" : "web",
+              CNAlmacen.libretas().isEmpty ? "no" : "si",
+              CNAlmacen.vale().isEmpty ? "no" : "si")
         call.resolve(["si": si])
     }
 

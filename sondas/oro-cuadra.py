@@ -20,6 +20,7 @@ implementaciones y tiene que salir lo mismo.
 Se le pasa el fichero de oro y el log del simulador; busca la línea `CNORO:` que
 escupe el Swift y compara los dos árboles, número a número.
 """
+import base64
 import json
 import re
 import sys
@@ -42,7 +43,7 @@ def pegaLosTrozos(log):
     pero al que le faltan apartados, y entonces el banco compararía media verdad
     y diría que cuadra.
     """
-    trozos = re.findall(r'CNORO (\d+)/(\d+) (.*)', log)
+    trozos = re.findall(r'CNORO (\d+)/(\d+) ([A-Za-z0-9+/=]+)', log)
     if not trozos:
         # Por si queda una app vieja con el formato de una sola línea.
         viejo = re.findall(r'CNORO:\s*(\{.*)', log)
@@ -58,7 +59,16 @@ def pegaLosTrozos(log):
         print('El Swift dijo ' + str(len(partes)) + ' trozos de ' + str(total)
               + ': falta(n) el ' + ', '.join(faltan))
         return None
-    return ''.join(partes[i] for i in range(1, total + 1)).strip()
+    # VIENE EN BASE64: `log show` reescribe los caracteres no ASCII y las barras
+    # invertidas —`\u2212` salía como `\134u2212`—, así que escaparlos tampoco
+    # valía, porque el log escapaba el escape. En base64 no hay ninguno de los
+    # dos y el log no toca nada.
+    pegado = ''.join(partes[i] for i in range(1, total + 1)).strip()
+    try:
+        return base64.b64decode(pegado).decode('utf-8')
+    except (ValueError, UnicodeDecodeError) as e:
+        print('Los trozos no forman un base64 válido: ' + str(e))
+        return None
 
 
 def compara(camino, espera, hay, fallos):

@@ -255,11 +255,11 @@ enum CNNube {
         } catch {
             salida["error"] = String(describing: error)
         }
-        if let j = try? JSONSerialization.data(withJSONObject: salida),
-           let texto = String(data: j, encoding: .utf8) {
-            // Sin caracteres raros, por lo mismo que el fichero de oro: `log
-            // show` los escribe con barras y el JSON deja de poder leerse.
-            NSLog("CNSINCRO %@", CNOro.soloAscii(texto))
+        // En base64, por lo mismo que el fichero de oro: `log show` reescribe
+        // los caracteres raros Y las barras invertidas, así que escaparlos no
+        // sirve —escapa el escape—. En base64 no hay ninguno de los dos.
+        if let j = try? JSONSerialization.data(withJSONObject: salida) {
+            NSLog("CNSINCRO %@", j.base64EncodedString())
         }
     }
 }
