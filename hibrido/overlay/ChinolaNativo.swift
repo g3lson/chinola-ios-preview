@@ -283,7 +283,7 @@ struct CNFormato {
         var f = CNFormato()
         if let m = o["moneda"] as? String, !m.isEmpty { f.moneda = m }
         if let c = o["centavos"] as? Bool { f.centavos = c }
-        if let l = o["loc"] as? String, !l.isEmpty { f.loc = l }
+        if let l = o["loc"] as? String, !l.isEmpty { f.loc = l; CNTextos.recuerdaIdioma(l) }
         if let t = o["fuente"] as? String, !t.isEmpty { f.fuente = t }
         if let t = o["fuenteTitulo"] as? String, !t.isEmpty { f.fuenteTitulo = t }
         if let t = o["letraId"] as? String, !t.isEmpty { f.letraId = t }
@@ -390,9 +390,40 @@ func cnPt(_ v: CGFloat) -> CGFloat { v * CNC.fmt.letra }
 /// Se escriben SIEMPRE en español en el código: así lo que se lee aquí es lo
 /// que se ve, y `sync` comprueba que cada uno tenga traducción.
 enum CNTextos {
+    /// Lo que manda la web por el puente. Manda por encima de lo generado: si
+    /// algún día la web sabe un texto que el teléfono no, gana el suyo.
     static var mapa: [String: String] = [:]
+
+    /**
+     * EN QUÉ IDIOMA ESTÁ LA APP, sabido por el teléfono solo.
+     *
+     * Hasta ahora esto lo decía la web, así que al abrir la app en inglés las
+     * pantallas nativas salían en español hasta que la web arrancaba. Y era una
+     * atadura: el día que el webview se quite, lo nativo se queda sin idioma.
+     *
+     * Primero el que la web haya dicho la última vez —que es el que la persona
+     * eligió y puede no ser el del teléfono—, y si no hay, el del teléfono.
+     */
+    static var idioma: String {
+        let guardado = UserDefaults.standard.string(forKey: "cnIdioma") ?? ""
+        if !guardado.isEmpty { return guardado }
+        return String((Locale.preferredLanguages.first ?? "es").prefix(2))
+    }
+
+    /// Se recuerda para el próximo arranque, que es cuando hace falta.
+    static func recuerdaIdioma(_ loc: String) {
+        let corto = String(loc.prefix(2))
+        guard !corto.isEmpty else { return }
+        UserDefaults.standard.set(corto, forKey: "cnIdioma")
+    }
 }
-func cnT(_ es: String) -> String { CNTextos.mapa[es] ?? es }
+
+/// El texto en el idioma puesto: lo que mandó la web, y si no, la tabla
+/// generada del mismo diccionario. En español los dos sobran: el propio Swift
+/// está escrito en español.
+func cnT(_ es: String) -> String {
+    CNTextos.mapa[es] ?? CNTextosGenerados.de(CNTextos.idioma)[es] ?? es
+}
 /// Como `cnT`, pero con un hueco: cnT("Presupuesto de {n}", nombre).
 func cnT(_ es: String, _ hueco: String) -> String {
     cnT(es).replacingOccurrences(of: "{n}", with: hueco)

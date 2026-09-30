@@ -351,7 +351,8 @@ enum CNOro {
                                             c["suya"] as? [String: Any])
                 // El oro guarda el caso entero —base, mía, suya y el porqué— y
                 // aquí solo se devuelve lo que SALE: es lo único que se compara.
-                out[nombre] = ["sale": sale ?? NSNull()]
+                let valor: Any = sale ?? NSNull()
+                out[nombre] = ["sale": valor]
             }
             salida["fusion"] = out
         }

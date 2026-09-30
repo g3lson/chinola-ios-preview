@@ -99,7 +99,10 @@ enum CNNube {
             if let id = l["id"] as? String, aceptadas[id] != nil { bases[id] = l }
         }
 
-        let quien = (r["yo"] as? String) ?? (await miCorreo())
+        // Sin `??`: el lado derecho de `??` es un autoclosure y ahí dentro no se
+        // puede esperar a nada.
+        var quien = (r["yo"] as? String) ?? ""
+        if quien.isEmpty { quien = await miCorreo() }
         let c = CNSincro.comoClasificar((r["conflictos"] as? [[String: Any]]) ?? [],
                                         libretas, quien, segundaVuelta: segundaVuelta)
 
