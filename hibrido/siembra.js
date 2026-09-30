@@ -103,8 +103,16 @@
       { id: 3, nombre: 'Ahorros', banco: 'Popular', saldo: 118000, color: COLS[4] }
     ],
     tarjetas: [{ id: 1, nombre: 'Visa Popular', banco: 'Popular', limite: 80000, saldo: 23400, corte: 20, pago: 10, color: COLS[3] }],
-    prestamos: [{ id: 1, nombre: 'Carro', banco: 'Banreservas', saldo: 210000, cuota: 12500, dia: 5, color: COLS[4] }],
-    metas: [{ id: 1, nombre: 'Viaje', objetivo: 120000, ahorrado: 45000, aporte: 8000, color: COLS[2] }],
+    // OJO CON LOS NOMBRES DE LOS CAMPOS.
+    //
+    // Un préstamo se guarda con `total` y `pagado`, no con `saldo`; y una meta
+    // con `meta` y `mensual`, no con `objetivo` y `aporte`. Estaban puestos los
+    // que no eran, así que el préstamo y la meta salían en CERO en todas las
+    // capturas: el banco enseñaba una pantalla sin el caso que había que mirar
+    // y nadie se enteraba, porque una cifra en cero se lee como «no hay nada».
+    prestamos: [{ id: 1, nombre: 'Carro', banco: 'Banreservas', total: 210000, pagado: 60000,
+      sentido: 'debo', cuota: 12500, dia: 5, color: COLS[4] }],
+    metas: [{ id: 1, nombre: 'Viaje', meta: 120000, ahorrado: 45000, mensual: 8000, color: COLS[2] }],
     panel: [
       { id: 'w1', tipo: 'kpi-balance', ancho: 2 },
       { id: 'w5', tipo: 'barras-categorias', ancho: 2 },
