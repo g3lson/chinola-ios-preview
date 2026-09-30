@@ -239,6 +239,12 @@ class ChinolaViewController: CAPBridgeViewController {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.pedirDesbloqueo() }
         }
 
+        // Si el servidor le dice al TELÉFONO que la sesión no vale, la web
+        // tiene que enterarse: si no, seguiría creyendo que hay sesión y las
+        // dos mitades de la app dirían cosas distintas sobre si estás dentro.
+        CNApi.alCaducar = { [weak self] in
+            self?.eval("window.__chinolaSesionCaducada && window.__chinolaSesionCaducada()")
+        }
         menuEstado.alTocar = { [weak self] id in
             guard let self = self else { return }
             self.menuEstado.activa = id
@@ -733,6 +739,22 @@ class ChinolaViewController: CAPBridgeViewController {
             // Va aquí y no en `traerSeccion` porque ese se llama también al
             // refrescar y al precargar las doce de golpe: sería una llamada al
             // servidor por cada interruptor que alguien toque.
+            // ¿ESTA LA SABE ARMAR EL TELÉFONO? Entonces se le pide al servidor
+            // directamente, que es como funciona una app normal: lo que vive
+            // solo en el servidor no tiene por qué pasar por la web.
+            if CNSecciones.sabeHacer.contains(id), let ruta = CNSecciones.rutaDe(id) {
+                Task { @MainActor in
+                    // Lo que ya se supiera se enseña mientras llega lo nuevo.
+                    if let ya = CNSecciones.arma(id), s.datos.seccion?.id == id || s.datos.seccionPedida == id {
+                        s.datos.seccion = ya
+                    }
+                    if let r = await CNApi.intenta(ruta) {
+                        CNSecciones.delServidor[ruta] = r
+                        guard s.datos.seccionPedida == id || s.datos.seccion?.id == id else { return }
+                        if let hecha = CNSecciones.arma(id) { s.datos.seccion = hecha }
+                    }
+                }
+            }
             s.eval("window.__chinolaSeccionEntrar && window.__chinolaSeccionEntrar(\(s.comillas(id)))")
             // Cuando el servidor conteste, la web rearma la sección: se vuelve
             // a pedir el modelo para recogerlo. Dos veces, porque la respuesta
