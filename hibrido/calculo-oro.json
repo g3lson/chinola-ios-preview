@@ -3857,6 +3857,26 @@
         "mensual": 1000
       },
       "antes": 1
+    },
+    "categoría nueva con su tope": {
+      "que": "categoria",
+      "f": {
+        "nombre": "Mascotas",
+        "limite": 3000,
+        "color": "#2d6cdf",
+        "icono": "perro"
+      },
+      "antes": null
+    },
+    "renombrar una categoría se lleva sus movimientos": {
+      "que": "categoria",
+      "f": {
+        "nombre": "Alimentos",
+        "limite": 18000,
+        "color": "#e0a92e",
+        "icono": "comida"
+      },
+      "antes": 1
     }
   },
   "crear": {
@@ -3948,6 +3968,60 @@
             "ahorrado": 50000,
             "mensual": 0
           }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "ingreso": false
+          },
+          {
+            "id": 2,
+            "nombre": "Préstamo",
+            "ingreso": false
+          },
+          {
+            "id": 3,
+            "nombre": "Sueldo",
+            "ingreso": true
+          },
+          {
+            "id": 4,
+            "nombre": "Ahorro",
+            "ingreso": false
+          },
+          {
+            "id": 5,
+            "nombre": "Alimentación",
+            "ingreso": false
+          },
+          {
+            "id": 6,
+            "nombre": "Gastos Personales",
+            "ingreso": false
+          },
+          {
+            "id": 7,
+            "nombre": "Vivienda",
+            "ingreso": false
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000,
+          "Préstamo": 16000,
+          "Ahorro": 9999
+        },
+        "categoriasDeTx": [
+          "Sueldo",
+          "Préstamo",
+          "Comida",
+          "Ahorro",
+          "",
+          "Comida",
+          "Extra",
+          "Alimentación",
+          "Alimentación",
+          "Gastos Personales"
         ]
       }
     },
@@ -4033,6 +4107,60 @@
             "ahorrado": 50000,
             "mensual": 0
           }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "ingreso": false
+          },
+          {
+            "id": 2,
+            "nombre": "Préstamo",
+            "ingreso": false
+          },
+          {
+            "id": 3,
+            "nombre": "Sueldo",
+            "ingreso": true
+          },
+          {
+            "id": 4,
+            "nombre": "Ahorro",
+            "ingreso": false
+          },
+          {
+            "id": 5,
+            "nombre": "Alimentación",
+            "ingreso": false
+          },
+          {
+            "id": 6,
+            "nombre": "Gastos Personales",
+            "ingreso": false
+          },
+          {
+            "id": 7,
+            "nombre": "Vivienda",
+            "ingreso": false
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000,
+          "Préstamo": 16000,
+          "Ahorro": 9999
+        },
+        "categoriasDeTx": [
+          "Sueldo",
+          "Préstamo",
+          "Comida",
+          "Ahorro",
+          "",
+          "Comida",
+          "Extra",
+          "Alimentación",
+          "Alimentación",
+          "Gastos Personales"
         ]
       }
     },
@@ -4126,6 +4254,60 @@
             "ahorrado": 50000,
             "mensual": 0
           }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "ingreso": false
+          },
+          {
+            "id": 2,
+            "nombre": "Préstamo",
+            "ingreso": false
+          },
+          {
+            "id": 3,
+            "nombre": "Sueldo",
+            "ingreso": true
+          },
+          {
+            "id": 4,
+            "nombre": "Ahorro",
+            "ingreso": false
+          },
+          {
+            "id": 5,
+            "nombre": "Alimentación",
+            "ingreso": false
+          },
+          {
+            "id": 6,
+            "nombre": "Gastos Personales",
+            "ingreso": false
+          },
+          {
+            "id": 7,
+            "nombre": "Vivienda",
+            "ingreso": false
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000,
+          "Préstamo": 16000,
+          "Ahorro": 9999
+        },
+        "categoriasDeTx": [
+          "Sueldo",
+          "Préstamo",
+          "Comida",
+          "Ahorro",
+          "",
+          "Comida",
+          "Extra",
+          "Alimentación",
+          "Alimentación",
+          "Gastos Personales"
         ]
       }
     },
@@ -4219,6 +4401,60 @@
             "ahorrado": 50000,
             "mensual": 0
           }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "ingreso": false
+          },
+          {
+            "id": 2,
+            "nombre": "Préstamo",
+            "ingreso": false
+          },
+          {
+            "id": 3,
+            "nombre": "Sueldo",
+            "ingreso": true
+          },
+          {
+            "id": 4,
+            "nombre": "Ahorro",
+            "ingreso": false
+          },
+          {
+            "id": 5,
+            "nombre": "Alimentación",
+            "ingreso": false
+          },
+          {
+            "id": 6,
+            "nombre": "Gastos Personales",
+            "ingreso": false
+          },
+          {
+            "id": 7,
+            "nombre": "Vivienda",
+            "ingreso": false
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000,
+          "Préstamo": 16000,
+          "Ahorro": 9999
+        },
+        "categoriasDeTx": [
+          "Sueldo",
+          "Préstamo",
+          "Comida",
+          "Ahorro",
+          "",
+          "Comida",
+          "Extra",
+          "Alimentación",
+          "Alimentación",
+          "Gastos Personales"
         ]
       }
     },
@@ -4312,6 +4548,60 @@
             "ahorrado": 50000,
             "mensual": 0
           }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "ingreso": false
+          },
+          {
+            "id": 2,
+            "nombre": "Préstamo",
+            "ingreso": false
+          },
+          {
+            "id": 3,
+            "nombre": "Sueldo",
+            "ingreso": true
+          },
+          {
+            "id": 4,
+            "nombre": "Ahorro",
+            "ingreso": false
+          },
+          {
+            "id": 5,
+            "nombre": "Alimentación",
+            "ingreso": false
+          },
+          {
+            "id": 6,
+            "nombre": "Gastos Personales",
+            "ingreso": false
+          },
+          {
+            "id": 7,
+            "nombre": "Vivienda",
+            "ingreso": false
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000,
+          "Préstamo": 16000,
+          "Ahorro": 9999
+        },
+        "categoriasDeTx": [
+          "Sueldo",
+          "Préstamo",
+          "Comida",
+          "Ahorro",
+          "",
+          "Comida",
+          "Extra",
+          "Alimentación",
+          "Alimentación",
+          "Gastos Personales"
         ]
       }
     },
@@ -4404,6 +4694,60 @@
             "ahorrado": 0,
             "mensual": 5000
           }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "ingreso": false
+          },
+          {
+            "id": 2,
+            "nombre": "Préstamo",
+            "ingreso": false
+          },
+          {
+            "id": 3,
+            "nombre": "Sueldo",
+            "ingreso": true
+          },
+          {
+            "id": 4,
+            "nombre": "Ahorro",
+            "ingreso": false
+          },
+          {
+            "id": 5,
+            "nombre": "Alimentación",
+            "ingreso": false
+          },
+          {
+            "id": 6,
+            "nombre": "Gastos Personales",
+            "ingreso": false
+          },
+          {
+            "id": 7,
+            "nombre": "Vivienda",
+            "ingreso": false
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000,
+          "Préstamo": 16000,
+          "Ahorro": 9999
+        },
+        "categoriasDeTx": [
+          "Sueldo",
+          "Préstamo",
+          "Comida",
+          "Ahorro",
+          "",
+          "Comida",
+          "Extra",
+          "Alimentación",
+          "Alimentación",
+          "Gastos Personales"
         ]
       }
     },
@@ -4489,6 +4833,344 @@
             "ahorrado": 50000,
             "mensual": 0
           }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "ingreso": false
+          },
+          {
+            "id": 2,
+            "nombre": "Préstamo",
+            "ingreso": false
+          },
+          {
+            "id": 3,
+            "nombre": "Sueldo",
+            "ingreso": true
+          },
+          {
+            "id": 4,
+            "nombre": "Ahorro",
+            "ingreso": false
+          },
+          {
+            "id": 5,
+            "nombre": "Alimentación",
+            "ingreso": false
+          },
+          {
+            "id": 6,
+            "nombre": "Gastos Personales",
+            "ingreso": false
+          },
+          {
+            "id": 7,
+            "nombre": "Vivienda",
+            "ingreso": false
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000,
+          "Préstamo": 16000,
+          "Ahorro": 9999
+        },
+        "categoriasDeTx": [
+          "Sueldo",
+          "Préstamo",
+          "Comida",
+          "Ahorro",
+          "",
+          "Comida",
+          "Extra",
+          "Alimentación",
+          "Alimentación",
+          "Gastos Personales"
+        ]
+      }
+    },
+    "categoría nueva con su tope": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000,
+            "clase": "banco"
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000,
+            "clase": "banco"
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000,
+            "limite": 60000,
+            "corte": 15,
+            "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "nombre": "Carro",
+            "total": 300000,
+            "pagado": 120000,
+            "dia": 10,
+            "sentido": "debo"
+          },
+          {
+            "id": 21,
+            "nombre": "Le presté a Juan",
+            "total": 40000,
+            "pagado": 15000,
+            "dia": 20,
+            "sentido": "meDeben"
+          },
+          {
+            "id": 22,
+            "nombre": "Viejo sin sentido",
+            "total": 30000,
+            "pagado": 10000,
+            "dia": 12,
+            "sentido": "debo"
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje a Samaná",
+            "meta": 60000,
+            "ahorrado": 15000,
+            "mensual": 5000
+          },
+          {
+            "id": 2,
+            "nombre": "Fondo de emergencia",
+            "meta": 20000,
+            "ahorrado": 20000,
+            "mensual": 3000
+          },
+          {
+            "id": 3,
+            "nombre": "Casa",
+            "meta": 900000,
+            "ahorrado": 50000,
+            "mensual": 0
+          }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "ingreso": false
+          },
+          {
+            "id": 2,
+            "nombre": "Préstamo",
+            "ingreso": false
+          },
+          {
+            "id": 3,
+            "nombre": "Sueldo",
+            "ingreso": true
+          },
+          {
+            "id": 4,
+            "nombre": "Ahorro",
+            "ingreso": false
+          },
+          {
+            "id": 5,
+            "nombre": "Alimentación",
+            "ingreso": false
+          },
+          {
+            "id": 6,
+            "nombre": "Gastos Personales",
+            "ingreso": false
+          },
+          {
+            "id": 7,
+            "nombre": "Vivienda",
+            "ingreso": false
+          },
+          {
+            "id": 1,
+            "nombre": "Mascotas",
+            "ingreso": false
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000,
+          "Préstamo": 16000,
+          "Ahorro": 9999,
+          "Mascotas": 3000
+        },
+        "categoriasDeTx": [
+          "Sueldo",
+          "Préstamo",
+          "Comida",
+          "Ahorro",
+          "",
+          "Comida",
+          "Extra",
+          "Alimentación",
+          "Alimentación",
+          "Gastos Personales"
+        ]
+      }
+    },
+    "renombrar una categoría se lleva sus movimientos": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000,
+            "clase": "banco"
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000,
+            "clase": "banco"
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000,
+            "limite": 60000,
+            "corte": 15,
+            "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "nombre": "Carro",
+            "total": 300000,
+            "pagado": 120000,
+            "dia": 10,
+            "sentido": "debo"
+          },
+          {
+            "id": 21,
+            "nombre": "Le presté a Juan",
+            "total": 40000,
+            "pagado": 15000,
+            "dia": 20,
+            "sentido": "meDeben"
+          },
+          {
+            "id": 22,
+            "nombre": "Viejo sin sentido",
+            "total": 30000,
+            "pagado": 10000,
+            "dia": 12,
+            "sentido": "debo"
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje a Samaná",
+            "meta": 60000,
+            "ahorrado": 15000,
+            "mensual": 5000
+          },
+          {
+            "id": 2,
+            "nombre": "Fondo de emergencia",
+            "meta": 20000,
+            "ahorrado": 20000,
+            "mensual": 3000
+          },
+          {
+            "id": 3,
+            "nombre": "Casa",
+            "meta": 900000,
+            "ahorrado": 50000,
+            "mensual": 0
+          }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Alimentos",
+            "ingreso": false
+          },
+          {
+            "id": 2,
+            "nombre": "Préstamo",
+            "ingreso": false
+          },
+          {
+            "id": 3,
+            "nombre": "Sueldo",
+            "ingreso": true
+          },
+          {
+            "id": 4,
+            "nombre": "Ahorro",
+            "ingreso": false
+          },
+          {
+            "id": 5,
+            "nombre": "Alimentación",
+            "ingreso": false
+          },
+          {
+            "id": 6,
+            "nombre": "Gastos Personales",
+            "ingreso": false
+          },
+          {
+            "id": 7,
+            "nombre": "Vivienda",
+            "ingreso": false
+          }
+        ],
+        "presupuesto": {
+          "Préstamo": 16000,
+          "Ahorro": 9999,
+          "Alimentos": 18000
+        },
+        "categoriasDeTx": [
+          "Sueldo",
+          "Préstamo",
+          "Alimentos",
+          "Ahorro",
+          "",
+          "Alimentos",
+          "Extra",
+          "Alimentación",
+          "Alimentación",
+          "Gastos Personales"
         ]
       }
     }

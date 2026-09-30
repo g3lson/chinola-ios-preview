@@ -916,18 +916,25 @@ struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String =
 /// catálogo, lo que se pintaba era un hueco. El color hacía lo mismo con un
 /// ámbar: todas las categorías sin color propio salían ámbar en el teléfono y
 /// grises en la web. Lo encontró el fichero de oro.
-struct CNCategoria: Decodable { var nombre: String = ""; var tipo: String = "Gasto"; var limite: Double = 0; var ingreso: Bool = false; var color: String = ""; var icono: String = ""
+struct CNCategoria: Decodable, Identifiable {
+    /// El identificador que le pone la web. No se leía, y eso deja al teléfono
+    /// sin manera de distinguir dos categorías que se llamen igual —el mismo
+    /// fallo que tenía el total de las cuentas—; además, sin él no se puede
+    /// editar una: hay que saber CUÁL.
+    var id: Int = 0
+    var nombre: String = ""; var tipo: String = "Gasto"; var limite: Double = 0; var ingreso: Bool = false; var color: String = ""; var icono: String = ""
     /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no
     /// regala el de por defecto.
     init() {}
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
+        id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? "Gasto"
         limite = (try? c.decodeIfPresent(Double.self, forKey: .limite)) ?? 0
         ingreso = (try? c.decodeIfPresent(Bool.self, forKey: .ingreso)) ?? false
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? ""
         icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "" }
-    enum K: String, CodingKey { case nombre, tipo, limite, ingreso, color, icono } }
+    enum K: String, CodingKey { case id, nombre, tipo, limite, ingreso, color, icono } }
 
 struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var limite: Double = 0; var corte: Int = 0; var pago: Int = 0; var color: String = "#d55948"
     /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no

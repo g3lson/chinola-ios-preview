@@ -437,7 +437,12 @@ enum CNOro {
                  "prestamos": x.prestamos.map { ["id": $0.id, "nombre": $0.nombre, "total": $0.total,
                                                  "pagado": $0.pagado, "dia": $0.dia, "sentido": $0.sentido] },
                  "metas": x.metas.map { ["id": $0.id, "nombre": $0.nombre, "meta": $0.meta,
-                                         "ahorrado": $0.ahorrado, "mensual": $0.mensual] }]
+                                         "ahorrado": $0.ahorrado, "mensual": $0.mensual] },
+                 "categorias": x.categorias.map { ["id": $0.id, "nombre": $0.nombre, "ingreso": $0.ingreso] },
+                 "presupuesto": x.presupuesto,
+                 // Con qué categoría se quedó cada movimiento: es lo que se
+                 // pierde al renombrar una sin arrastrarlos.
+                 "categoriasDeTx": x.tx.map { $0.categoria }]
             }
             var out: [String: Any] = [:]
             for (nombre, caso) in casos {
@@ -449,6 +454,7 @@ enum CNOro {
                 case "cuenta": sale = CNEscribir.guardarCuenta(l, f, antes: antes)
                 case "tarjeta": sale = CNEscribir.guardarTarjeta(l, f, antes: antes)
                 case "prestamo": sale = CNEscribir.guardarPrestamo(l, f, antes: antes)
+                case "categoria": sale = CNEscribir.guardarCategoria(l, f, antes: antes)
                 default: sale = CNEscribir.guardarMeta(l, f, antes: antes)
                 }
                 out[nombre] = ["sale": resumen(sale)]

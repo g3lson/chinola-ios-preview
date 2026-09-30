@@ -307,6 +307,57 @@ enum CNEscribir {
         return nueva
     }
 
+    /**
+     * Guardar una categoría.
+     *
+     * La que más cosas arrastra, y por eso es la que peor sale rehecha de
+     * memoria: **al cambiarle el nombre hay que cambiarlo también en todos sus
+     * movimientos y mover su tope de presupuesto**. Sin eso, los movimientos se
+     * quedan apuntando a una categoría que ya no existe —salen como «Otros» en
+     * el gráfico— y el tope se queda huérfano con el nombre viejo.
+     *
+     * El tope vive en `presupuesto`, no en la categoría, aunque
+     * `CNCategoria.limite` dé a entender lo contrario.
+     */
+    static func guardarCategoria(_ l: CNLibreta, _ f: [String: Any], antes: Int? = nil) -> CNLibreta {
+        let nombre = texto(f["nombre"]).trimmingCharacters(in: .whitespaces)
+        guard !nombre.isEmpty else { return l }
+        var nueva = l
+        let limite = max(0, numero(f["limite"]))
+
+        guard let id = antes, let vieja = l.categorias.first(where: { $0.id == id }) else {
+            var c = CNCategoria()
+            c.id = nuevoId()
+            c.nombre = nombre
+            c.color = texto(f["color"])
+            c.icono = texto(f["icono"])
+            c.ingreso = (f["ingreso"] as? Bool) ?? false
+            nueva.categorias.append(c)
+            nueva.presupuesto[nombre] = limite
+            return nueva
+        }
+
+        nueva.categorias = nueva.categorias.map { x in
+            guard x.id == id else { return x }
+            var c = x
+            c.nombre = nombre
+            c.color = texto(f["color"])
+            c.icono = texto(f["icono"])
+            c.ingreso = (f["ingreso"] as? Bool) ?? false
+            return c
+        }
+        if vieja.nombre != nombre {
+            // Los movimientos se van con ella, y el tope también.
+            nueva.tx = nueva.tx.map { m in
+                guard m.categoria == vieja.nombre else { return m }
+                var y = m; y.categoria = nombre; return y
+            }
+            nueva.presupuesto.removeValue(forKey: vieja.nombre)
+        }
+        nueva.presupuesto[nombre] = limite
+        return nueva
+    }
+
     /// El identificador de algo nuevo: los milisegundos, como en la web.
     ///
     /// En el banco sale FIJO, porque el fichero de oro compara la libreta
