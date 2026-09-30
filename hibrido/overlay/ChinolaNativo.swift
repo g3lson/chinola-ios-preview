@@ -885,6 +885,22 @@ struct CNMov: Decodable, Identifiable {
     var esTransfer: Bool { tipo == "Transferencia" } }
 
 struct CNLibreta: Decodable {
+    /**
+     * ¿Esta libreta no ha llegado todavía?
+     *
+     * La libreta y los modelos de cada pantalla cruzan el puente por separado y
+     * no tienen por qué llegar en ese orden. Con la libreta aún vacía, todo lo
+     * que se calcule aquí da CERO, y escribir esos ceros encima machaca lo que
+     * la web ya había dicho bien: la cabecera enseñaba «RD$0 · te queda este
+     * mes» con la tarjeta de dos dedos más abajo diciendo «RD$43,900 ·
+     * disponible este mes».
+     *
+     * Una libreta de verdad vacía —alguien que acaba de empezar— tampoco pierde
+     * nada: la web manda cero también, así que dejar lo suyo dice lo mismo.
+     */
+    var sinLlegar: Bool {
+        tx.isEmpty && cuentas.isEmpty && tarjetas.isEmpty && prestamos.isEmpty && metas.isEmpty
+    }
     var nombre: String = "Personal"
     var cuentas: [CNCuenta] = []
     var tarjetas: [CNTarjeta] = []
@@ -1397,7 +1413,7 @@ final class CNDatos: ObservableObject {
     /// si el dinero está oculto, que entonces la web manda cifras tapadas y
     /// destaparlas sería un fallo de verdad.
     func refrescarCuentas() {
-        guard var m = cuentas, !m.oculto else { return }
+        guard var m = cuentas, !m.oculto, !libreta.sinLlegar else { return }
         let l = libreta
         for i in m.cuentas.indices where i < l.cuentas.count {
             m.cuentas[i].valor = cnDineroFirmado(l.cuentas[i].saldo)
@@ -1444,7 +1460,7 @@ final class CNDatos: ObservableObject {
      * no cambia porque anotes un movimiento.
      */
     func refrescarPlan() {
-        guard var m = plan else { return }
+        guard var m = plan, !libreta.sinLlegar else { return }
         let pres = CNCalculo.presupuesto(libreta, periodoCalculo)
         m.presGastado = cnDinero(pres.gastadoTotal)
         m.presTotal = cnDinero(pres.limiteTotal)
@@ -1494,6 +1510,9 @@ final class CNDatos: ObservableObject {
      */
     func refrescarCifras() {
         guard resumen != nil else { return }
+        // Sin libreta no hay nada que añadir: escribir ceros encima machacaría
+        // lo que la web ya dijo bien. (Ver `CNLibreta.sinLlegar`.)
+        guard !libreta.sinLlegar else { return }
         let t = CNCalculo.totales(libreta, periodoCalculo)
         resumen?.cabecera.balanceFmt = cnDineroFirmado(t.bal)
         resumen?.cabecera.ingFmt = cnDinero(t.ing)
