@@ -7695,6 +7695,18 @@ final class CNFlotante: ObservableObject {
     }
 }
 
+/// Dónde ha quedado dibujado el botón. Sube por preferencia porque escribirlo
+/// desde dentro del `GeometryReader` es escribir en mitad del dibujado, y eso
+/// le cuesta a SwiftUI otra pasada de distribución por cada cambio: durante un
+/// arrastre deja de pintar los pasos intermedios.
+struct CNMarcoDelBoton: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let n = nextValue()
+        if !n.isEmpty { value = n }
+    }
+}
+
 struct CNBotonFlotante: View {
     @ObservedObject var mando = CNFlotante.shared
     @ObservedObject var datos: CNDatos
@@ -7713,19 +7725,22 @@ struct CNBotonFlotante: View {
                                    width: max(0, g.size.width - margen * 2 - lado),
                                    height: max(0, g.size.height - g.safeAreaInsets.top - margen * 2 - lado))
                 boton
-                    // EL BOTÓN DICE DÓNDE ESTÁ, Y SE MIDE AQUÍ, ANTES DE
-                    // `.position`.
+                    // EL BOTÓN DICE DÓNDE ESTÁ, POR PREFERENCIA.
                     //
-                    // `.position` devuelve una vista que ocupa TODO el hueco
-                    // disponible y coloca el contenido dentro. Medido después,
-                    // el botón apuntaba la pantalla entera como suya y la caja
-                    // se quedaba hasta el último toque: la app, muerta otra
-                    // vez. Medido aquí son sus 56 puntos, y `.global` ya trae
-                    // dónde acabaron.
+                    // Se mide AQUÍ, antes de `.position`: esa devuelve una vista
+                    // que ocupa todo el hueco y coloca el contenido dentro, así
+                    // que medida después el botón apuntaría la pantalla entera
+                    // como suya y la caja se quedaría hasta el último toque.
+                    //
+                    // Y va por preferencia y no escribiendo en el mando desde
+                    // dentro del `GeometryReader`. Escribir ahí es escribir en
+                    // mitad del dibujado: SwiftUI encadena otra pasada de
+                    // distribución con cada cambio y el arrastre deja de pintar
+                    // los pasos intermedios — el botón se quedaba clavado y solo
+                    // aparecía en su sitio nuevo al levantar el dedo. La
+                    // preferencia se recoge fuera, cuando la pasada ya terminó.
                     .background(GeometryReader { p in
-                        Color.clear
-                            .onAppear { mando.marco = p.frame(in: .global) }
-                            .onChange(of: p.frame(in: .global)) { nuevo in mando.marco = nuevo }
+                        Color.clear.preference(key: CNMarcoDelBoton.self, value: p.frame(in: .global))
                     })
                     .position(x: libre.minX + libre.width * mando.x + lado / 2 + arrastre.width,
                               y: libre.minY + libre.height * mando.y + lado / 2 + arrastre.height)
@@ -7786,24 +7801,33 @@ struct CNBotonFlotante: View {
             }
         }
         .ignoresSafeArea()
+        .onPreferenceChange(CNMarcoDelBoton.self) { nuevo in mando.marco = nuevo }
         .animation(.spring(response: 0.3, dampingFraction: 0.85), value: mando.puesto)
     }
 
     private var boton: some View {
         Button { UISelectionFeedbackGenerator().selectionChanged(); mando.alTocar() } label: {
             ZStack {
-                Circle().fill(CNC.acc)
-                // El dibujo de Chino si la web ya lo mandó; si no, su inicial.
+                // SIN PLATO DETRÁS DEL PERSONAJE.
+                //
+                // Aquí había un círculo amarillo relleno y el dibujo encima. El
+                // personaje ya es una forma redonda con su propio color y su
+                // propia luz: ponerle otro círculo detrás le hace un halo que
+                // no pinta nada y le quita el aire.
+                //
+                // El círculo se queda SOLO para el icono de respaldo, que es un
+                // trazo suelto y sin él no se vería sobre la pantalla.
                 if let img = cnImagenBase64(datos.mascota?.chinolo ?? "") {
-                    Image(uiImage: img).resizable().scaledToFit().padding(7)
+                    Image(uiImage: img).resizable().scaledToFit()
                 } else {
+                    Circle().fill(CNC.acc)
                     Image(systemName: "bubble.left.and.text.bubble.right.fill")
                         .font(.system(size: 21, weight: .semibold))
                         .foregroundColor(cnSobre(CNC.acc))
                 }
             }
             .frame(width: lado, height: lado)
-            .shadow(color: .black.opacity(llevando ? 0.28 : 0.18), radius: llevando ? 18 : 10, y: llevando ? 8 : 4)
+            .shadow(color: .black.opacity(llevando ? 0.22 : 0.13), radius: llevando ? 14 : 7, y: llevando ? 6 : 3)
             .scaleEffect(llevando ? 1.08 : 1)
         }
         .buttonStyle(.plain)

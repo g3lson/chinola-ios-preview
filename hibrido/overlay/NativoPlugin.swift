@@ -19,6 +19,7 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "abrirTendencia", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "menuActiva", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "menuTitulos", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "abrirCharla", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "iconoApp", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "flotante", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "datos", returnType: CAPPluginReturnPromise),
@@ -211,6 +212,16 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func menuTitulos(_ call: CAPPluginCall) {
         let on = call.getBool("on") ?? true
         DispatchQueue.main.async { CNMenuEstado.shared.titulos = on; CNMenuEstado.shared.alRepintar(); call.resolve() }
+    }
+
+    /// Abrir la charla de Chino, la nativa. La pide la web cuando alguien entra
+    /// por Perfil, para que no haya dos charlas distintas según por dónde
+    /// llegues.
+    @objc func abrirCharla(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: Notification.Name("cnAbrirCharla"), object: nil)
+            call.resolve()
+        }
     }
 
     /**

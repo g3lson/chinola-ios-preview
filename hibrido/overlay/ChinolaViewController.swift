@@ -2195,6 +2195,12 @@ class ChinolaViewController: CAPBridgeViewController {
     private func montarFlotante() {
         guard flotanteVista == nil else { return }
         CNFlotante.shared.alTocar = { [weak self] in self?.abrirCharla() }
+        // Y la misma charla cuando se entra por Perfil, que antes abría la de
+        // la web: dos caras para lo mismo y la de Perfil se sentía prestada.
+        NotificationCenter.default.addObserver(forName: Notification.Name("cnAbrirCharla"),
+                                               object: nil, queue: .main) { [weak self] _ in
+            self?.abrirCharla()
+        }
         CNFlotante.shared.alMover = { [weak self] x, y in
             // Dónde quedó se guarda en la web, que es lo que sobrevive a
             // cerrar la app.
