@@ -323,6 +323,29 @@ enum CNOro {
             salida["categorias"] = out
         }
 
+        // CUÁNTO CAMBIÓ EL PATRIMONIO CON CADA MOVIMIENTO. Es lo que dibuja
+        // la gráfica de Cuentas, y era lo único de esa pantalla que NO estaba
+        // comparado: por eso las dos implementaciones podían decir lo mismo y
+        // estar las dos equivocadas. Lo estaban.
+        if let casos = raiz["patrimonioCasos"] as? [String: Any] {
+            var out: [String: Any] = [:]
+            for (nombre, caso) in casos {
+                guard let c = caso as? [String: Any],
+                      let d = c["item"] as? [String: Any] else { continue }
+                var item = CNMov()
+                item.id = "x"
+                item.tipo = (d["tipo"] as? String) ?? ""
+                item.monto = ((d["monto"] as? NSNumber)?.doubleValue) ?? 0
+                item.medio = (d["medio"] as? String) ?? ""
+                item.destino = (d["destino"] as? String) ?? ""
+                item.meta = ((d["meta"] as? NSNumber)?.intValue) ?? 0
+                item.prestamo = ((d["prestamo"] as? NSNumber)?.intValue) ?? 0
+                item.tarjeta = ((d["tarjeta"] as? NSNumber)?.intValue) ?? 0
+                out[nombre] = ["cambio": CNCalculo.efectoEnPatrimonio(l, item)]
+            }
+            salida["patrimonio"] = out
+        }
+
         // ESCRIBIR UN MOVIMIENTO: crear, cambiar y borrar. Se compara la
         // libreta ENTERA que sale —los saldos incluidos—, porque que la lista de
         // movimientos cuadre no dice nada si el dinero se movió a otro sitio.

@@ -357,6 +357,49 @@ enum CNCalculo {
     /// —ahorro, inversión— también son tuyas, pero no se gastan mañana.
     private static let clasesGasto: Set<String> = ["banco", "efectivo", "billetera"]
 
+    /**
+     * CUÁNTO CAMBIÓ TU PATRIMONIO CON ESTE MOVIMIENTO.
+     *
+     * No es «ingreso menos gasto», y esa confusión es la que hacía bajar la
+     * gráfica justo cuando mejorabas: pagar una tarjeta o abonar a un préstamo
+     * SALE como gasto y no te empobrece —el dinero sale de la cuenta y la
+     * deuda baja lo mismo, así que te quedas igual—. Bajabas tu deuda y la
+     * línea bajaba. Y apartar para una meta contaba cero cuando el dinero sí
+     * sale de tu cuenta de verdad.
+     *
+     * No se adivina por la etiqueta: se APLICA el movimiento y se mide la
+     * diferencia. Así vale para todas, también para las que el tipo no
+     * distingue, y el día que cambie `aplica` esto cambia con ella.
+     */
+    static func efectoEnPatrimonio(_ l: CNLibreta, _ item: CNMov) -> Double {
+        var despues = l
+        // Pagar la tarjeta desde su hoja NO pasa por `aplica`: no toca la
+        // cuenta, la app lo hace así desde el primer día. Ahí solo la marca.
+        if item.tarjeta == 0 { _ = aplica(&despues, item, signo: 1) }
+        marca(&despues, item)
+        return despues.patrimonio - l.patrimonio
+    }
+
+    /// Lo que el movimiento hace APARTE de mover un saldo: subir lo pagado de
+    /// un préstamo, o bajar la deuda de una tarjeta pagada desde su hoja.
+    /// `aplica` no lo sabe, porque eso no está en el movimiento sino en su marca.
+    private static func marca(_ l: inout CNLibreta, _ item: CNMov) {
+        let m = abs(item.monto)
+        if item.prestamo != 0 {
+            l.prestamos = l.prestamos.map { p in
+                guard p.id == item.prestamo else { return p }
+                var x = p; x.pagado = min(p.total, p.pagado + m); return x
+            }
+            return
+        }
+        if item.tarjeta != 0 {
+            l.tarjetas = l.tarjetas.map { t in
+                guard t.id == item.tarjeta else { return t }
+                var x = t; x.saldo = max(0, t.saldo - m); return x
+            }
+        }
+    }
+
     static func retrato(_ l: CNLibreta, meses: Int = 12, hoy: Date = Date()) -> Retrato {
         var r = Retrato()
         r.paraGastar = l.cuentas.filter { clasesGasto.contains($0.clase) }.reduce(0) { $0 + $1.saldo }
@@ -383,12 +426,12 @@ enum CNCalculo {
             guard let d = cal.date(byAdding: .month, value: -atras, to: hoy) else { break }
             let ym = fmt.string(from: d)
             puntos.append((ym, valor))
-            if atras == 0 {
-                let t = totales(l, Periodo(mes: ym))
-                r.cambioMes = t.ing - t.gas
-            }
-            let t = totales(l, Periodo(mes: ym))
-            valor -= (t.ing - t.gas)
+            // Lo que cambió el patrimonio ese mes: la suma de lo que hizo cada
+            // movimiento, no ingresos menos gastos.
+            let cambio = l.tx.filter { $0.fecha.hasPrefix(ym) }
+                .reduce(0.0) { $0 + efectoEnPatrimonio(l, $1) }
+            if atras == 0 { r.cambioMes = cambio }
+            valor -= cambio
         }
         r.serie = puntos.reversed().map { (etiqueta: $0.0, valor: $0.1) }
         return r

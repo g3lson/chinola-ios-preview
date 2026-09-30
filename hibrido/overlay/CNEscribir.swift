@@ -311,6 +311,10 @@ enum CNEscribir {
         }
         var apunte = item
         apunte.monto = cuanto
+        // LA MARCA, como la llevan el abono y el aporte. Sin ella este pago es
+        // indistinguible de un gasto cualquiera, y la gráfica del patrimonio lo
+        // cuenta al revés: baja tu deuda y dibuja que te empobreciste.
+        apunte.tarjeta = t.id
         nueva.tx.append(apunte)
         return Hecho(libreta: nueva, item: apunte)
     }
@@ -589,7 +593,8 @@ extension CNLibreta {
             "tx": tx.map { x -> [String: Any] in
                 ["id": x.id, "concepto": x.concepto, "categoria": x.categoria, "tipo": x.tipo,
                  "monto": x.monto, "fecha": x.fecha, "medio": x.medio, "destino": x.destino,
-                 "recurrente": x.recurrente, "meta": x.meta, "prestamo": x.prestamo]
+                 "recurrente": x.recurrente, "meta": x.meta, "prestamo": x.prestamo,
+                 "tarjeta": x.tarjeta]
             }
         ]
     }

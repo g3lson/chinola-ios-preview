@@ -1842,6 +1842,106 @@
       "inicial": "?"
     }
   },
+  "patrimonioCasos": {
+    "un ingreso sube": {
+      "item": {
+        "tipo": "Ingreso",
+        "monto": 5000,
+        "medio": "cuenta:1"
+      }
+    },
+    "un gasto con la cuenta baja": {
+      "item": {
+        "tipo": "Gasto Variable",
+        "monto": 3000,
+        "medio": "cuenta:1"
+      }
+    },
+    "un gasto con la tarjeta baja igual": {
+      "item": {
+        "tipo": "Gasto Variable",
+        "monto": 3000,
+        "medio": "tarjeta:10"
+      }
+    },
+    "apartar para una meta baja": {
+      "item": {
+        "tipo": "Ahorro",
+        "monto": 2000,
+        "medio": "cuenta:1",
+        "meta": 1
+      }
+    },
+    "abonar a un préstamo no cambia nada": {
+      "item": {
+        "tipo": "Gasto Fijo",
+        "monto": 4000,
+        "medio": "cuenta:1",
+        "prestamo": 20
+      }
+    },
+    "abonar a un préstamo que ya no está sí baja": {
+      "item": {
+        "tipo": "Gasto Fijo",
+        "monto": 4000,
+        "medio": "cuenta:1",
+        "prestamo": 999
+      }
+    },
+    "pagar la tarjeta desde su hoja SUBE": {
+      "item": {
+        "tipo": "Gasto Fijo",
+        "monto": 4000,
+        "medio": "cuenta:1",
+        "tarjeta": 10
+      }
+    },
+    "pasar de una cuenta a otra no cambia nada": {
+      "item": {
+        "tipo": "Transferencia",
+        "monto": 8000,
+        "medio": "cuenta:1",
+        "destino": "cuenta:2"
+      }
+    },
+    "pagar la tarjeta por transferencia no cambia nada": {
+      "item": {
+        "tipo": "Transferencia",
+        "monto": 6000,
+        "medio": "cuenta:1",
+        "destino": "tarjeta:10"
+      }
+    }
+  },
+  "patrimonio": {
+    "un ingreso sube": {
+      "cambio": 5000
+    },
+    "un gasto con la cuenta baja": {
+      "cambio": -3000
+    },
+    "un gasto con la tarjeta baja igual": {
+      "cambio": -3000
+    },
+    "apartar para una meta baja": {
+      "cambio": -2000
+    },
+    "abonar a un préstamo no cambia nada": {
+      "cambio": 0
+    },
+    "abonar a un préstamo que ya no está sí baja": {
+      "cambio": -4000
+    },
+    "pagar la tarjeta desde su hoja SUBE": {
+      "cambio": 4000
+    },
+    "pasar de una cuenta a otra no cambia nada": {
+      "cambio": 0
+    },
+    "pagar la tarjeta por transferencia no cambia nada": {
+      "cambio": 0
+    }
+  },
   "escribirCasos": {
     "gasto con la cuenta": {
       "que": "nuevo",

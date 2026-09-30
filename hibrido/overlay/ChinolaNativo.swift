@@ -1057,6 +1057,13 @@ struct CNMov: Decodable, Identifiable {
     /// reescrito las perdería, y el dinero con ellas.
     var meta: Int = 0
     var prestamo: Int = 0
+    /// La tarjeta que este movimiento PAGÓ, cuando se pagó desde su hoja.
+    ///
+    /// Sin la marca, ese pago es indistinguible de un gasto cualquiera, y la
+    /// gráfica del patrimonio lo cuenta al revés: baja tu deuda y dibuja que
+    /// te empobreciste. Es la misma marca que llevan el aporte (`meta`) y el
+    /// abono (`prestamo`), y por el mismo motivo.
+    var tarjeta: Int = 0
     /// Uno vacío, para armarlo a mano. Con `init(from:)` escrito, Swift ya no
     /// regala el de por defecto, y `CNMov()` no compila sin esto.
     init() {}
@@ -1074,8 +1081,9 @@ struct CNMov: Decodable, Identifiable {
         destino = (try? c.decodeIfPresent(String.self, forKey: .destino)) ?? ""
         recurrente = (try? c.decodeIfPresent(Bool.self, forKey: .recurrente)) ?? false
         meta = (try? c.decodeIfPresent(Int.self, forKey: .meta)) ?? 0
-        prestamo = (try? c.decodeIfPresent(Int.self, forKey: .prestamo)) ?? 0 }
-    enum K: String, CodingKey { case id, concepto, categoria, tipo, monto, fecha, medio, destino, recurrente, meta, prestamo }
+        prestamo = (try? c.decodeIfPresent(Int.self, forKey: .prestamo)) ?? 0
+        tarjeta = (try? c.decodeIfPresent(Int.self, forKey: .tarjeta)) ?? 0 }
+    enum K: String, CodingKey { case id, concepto, categoria, tipo, monto, fecha, medio, destino, recurrente, meta, prestamo, tarjeta }
     var esIngreso: Bool { tipo == "Ingreso" }
     var esGasto: Bool { tipo.hasPrefix("Gasto") }
     var esTransfer: Bool { tipo == "Transferencia" } }
