@@ -31,7 +31,7 @@ import Foundation
 enum CNSecciones {
 
     /// Las que este lado sabe armar. Lo demás sigue viniendo de la web.
-    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero"]
+    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas"]
 
     /**
      * Lo que se le ha pedido al servidor, guardado mientras dure la app.
@@ -72,6 +72,9 @@ enum CNSecciones {
         case "cuenta": return cuenta()
         case "panel": return panel()
         case "dinero": return dinero()
+        case "libretas": return libretas()
+        // «libreta:3» es una libreta por dentro: sus miembros y sus permisos.
+        case let x where x.hasPrefix("libreta:"): return unaLibreta(String(x.dropFirst(8)))
         default: return nil
         }
     }
@@ -87,7 +90,9 @@ enum CNSecciones {
         case "cuenta": return ["/yo"]
         // Estas dos no le preguntan NADA a nadie: todo lo que enseñan está en
         // el teléfono. Se dibujan enteras antes de que la web despierte.
-        case "panel", "dinero": return []
+        // Los miembros vienen DENTRO de la libreta, no de la API: la web los
+        // cambia en local y la sincronización los sube. Ver `CNLibretas.Fila`.
+        case "panel", "dinero", "libretas": return []
         default: return []
         }
     }
@@ -333,6 +338,109 @@ enum CNSecciones {
         ]
 
         s.bloques = [mon, cent]
+        return s
+    }
+
+    /* -------------------------- libretas y permisos ----------------------- */
+
+    /// Lo último que mandó la web. Es la MISMA copia que se sincroniza.
+    @MainActor static var lasLibretas: CNLibretas? = nil
+
+    /**
+     * La lista de libretas, con quién está en cada una.
+     *
+     * Cada fila abre la suya. El botón de crear va por el camino nativo, que es
+     * el que sabe avisar cuando el plan no da para más.
+     */
+    @MainActor private static func libretas() -> CNSeccion? {
+        guard let ls = lasLibretas, !ls.filas.isEmpty else { return nil }
+        var s = CNSeccion()
+        s.id = "libretas"
+        s.titulo = cnT("Libretas y permisos")
+
+        var lista = CNSeccion.Bloque(); lista.tipo = "lista"
+        lista.items = ls.filas.map { f in
+            var it = CNSeccion.Item()
+            it.titulo = f.nombre
+            it.detalle = [f.tipo, f.rol].filter { !$0.isEmpty }.joined(separator: " · ")
+            it.fondo = f.color
+            it.color = "#ffffff"
+            it.chip = f.enUso ? f.rotuloEnUso : ""
+            it.abre = "libreta:" + f.lid
+            return it
+        }
+        var nueva = CNSeccion.Bloque(); nueva.tipo = "boton"
+        nueva.label = cnT("Nueva libreta")
+        nueva.estilo = "acento"
+        nueva.abre = "hoja:libreta-nueva"
+        s.bloques = [lista, nueva]
+        return s
+    }
+
+    /**
+     * Una libreta por dentro: quién está y qué puede hacer.
+     *
+     * LO QUE NO SE PUEDE PERDER AL REHACERLA:
+     *
+     * **Al dueño no se le cambia el papel ni se le quita**, y a uno mismo
+     * tampoco: ese sería el botón con el que alguien se saca de su propia
+     * libreta sin querer.
+     *
+     * **Los papeles que se ofrecen son los OTROS tres.** Ofrecer «Hacer Editor»
+     * a quien ya es editor es una fila que no hace nada.
+     *
+     * **Invitar solo sale si eres el dueño y hay sesión.** Sin cuenta no hay a
+     * quién invitar, y un botón que lleva a una pantalla que dice que no puedes
+     * es peor que no tenerlo.
+     *
+     * Y NADA DE ESTO ESCRIBE AQUÍ: cambiar un papel o quitar a alguien toca la
+     * libreta, que tiene un solo dueño —la copia que la web sincroniza—. Se le
+     * pide a ella por nombre.
+     */
+    @MainActor private static func unaLibreta(_ lid: String) -> CNSeccion? {
+        guard let f = lasLibretas?.filas.first(where: { $0.lid == lid }) else { return nil }
+        var s = CNSeccion()
+        s.id = "libreta:" + lid
+        s.titulo = f.nombre
+        s.volverA = "libretas"
+
+        var cabeza = CNSeccion.Bloque(); cabeza.tipo = "lista"
+        var suya = CNSeccion.Item()
+        suya.titulo = f.nombre
+        suya.detalle = [f.tipo, f.rol].filter { !$0.isEmpty }.joined(separator: " · ")
+        suya.fondo = f.color
+        suya.color = "#ffffff"
+        suya.chip = f.enUso ? cnT("En uso") : ""
+        cabeza.items = [suya]
+
+        var gente = CNSeccion.Bloque(); gente.tipo = "lista"
+        gente.titulo = cnT("Miembros") + (f.miembros.isEmpty ? "" : " · " + String(f.miembros.count))
+        let papeles = ["Editor", "Registrador", "Lector"]
+        gente.items = f.miembros.map { m in
+            var it = CNSeccion.Item()
+            it.titulo = m.nombre + (m.yo ? " · " + cnT("tú") : "")
+            it.detalle = m.email
+            it.chip = m.rol
+            it.color = "#ffffff"
+            if m.editable {
+                // Los OTROS papeles: ofrecer el que ya tiene es una fila que no
+                // hace nada.
+                it.acciones = papeles.filter { $0 != m.rolId }.map { r in
+                    CNSeccion.AccionItem(
+                        label: cnT("Hacer {r}").replacingOccurrences(of: "{r}", with: cnT(r)),
+                        abre: "rol:\(lid):\(m.email):\(r)")
+                } + [CNSeccion.AccionItem(label: cnT("Quitar de la libreta"), peligro: true,
+                                          abre: "quitar:\(lid):\(m.email)")]
+            }
+            return it
+        }
+        // Invitar solo si eres el dueño Y hay sesión: sin cuenta no hay a quién.
+        if f.esDueno && CNApi.haySesion {
+            gente.botones = [CNSeccion.Boton(label: "+ " + cnT("Invitar"), estilo: "suave",
+                                             abre: "hoja:invitar:" + lid)]
+        }
+
+        s.bloques = [cabeza, gente]
         return s
     }
 

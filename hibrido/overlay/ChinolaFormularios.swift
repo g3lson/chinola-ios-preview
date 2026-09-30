@@ -1448,6 +1448,24 @@ struct CNLibretas {
         var color = ""; var enUso = false; var rotuloEnUso = ""
         /// Lo que hay dentro: el balance del mes y cuántos movimientos lleva.
         var cifra = ""; var cifraTinta = ""; var pie = ""
+        /// Quién está dentro y con qué papel, para «Libretas y permisos».
+        ///
+        /// Viene por AQUÍ y no de la API, aunque el servidor también los tenga:
+        /// los miembros viven DENTRO de la libreta y la web los cambia en local,
+        /// y la sincronización los sube. Un segundo lector con su propio camino
+        /// acabaría enseñando una cosa mientras la copia que se sincroniza dice
+        /// otra, y quien manda es la que se sincroniza.
+        var lid = ""; var tipo = ""; var rol = ""
+        var esDueno = false; var compartida = false
+        var miembros: [Miembro] = []
+    }
+    struct Miembro: Identifiable {
+        var id: String { email.isEmpty ? nombre : email }
+        var nombre = ""; var email = ""; var rol = ""; var rolId = ""
+        /// Al dueño no se le cambia el papel ni se le quita, y a uno mismo
+        /// tampoco: ese es el botón con el que alguien se saca de su propia
+        /// libreta sin querer.
+        var editable = false; var yo = false
     }
     var titulo = "Libretas"
     var textoGestionar = ""
@@ -1469,7 +1487,16 @@ struct CNLibretas {
                  nombre: s(f, "nombre"), detalle: s(f, "detalle"), iconoPath: s(f, "iconoPath"),
                  color: s(f, "color"), enUso: (f["enUso"] as? Bool) ?? false,
                  rotuloEnUso: s(f, "rotuloEnUso"),
-                 cifra: s(f, "cifra"), cifraTinta: s(f, "cifraTinta"), pie: s(f, "pie"))
+                 cifra: s(f, "cifra"), cifraTinta: s(f, "cifraTinta"), pie: s(f, "pie"),
+                 lid: s(f, "id"), tipo: s(f, "tipo"), rol: s(f, "rol"),
+                 esDueno: (f["esDueno"] as? Bool) ?? false,
+                 compartida: (f["compartida"] as? Bool) ?? false,
+                 miembros: ((f["miembros"] as? [[String: Any]]) ?? []).map { m in
+                     Miembro(nombre: s(m, "nombre"), email: s(m, "email"),
+                             rol: s(m, "rol"), rolId: s(m, "rolId"),
+                             editable: (m["editable"] as? Bool) ?? false,
+                             yo: (m["yo"] as? Bool) ?? false)
+                 })
         }
         return m
     }

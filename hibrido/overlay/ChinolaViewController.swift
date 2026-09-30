@@ -696,6 +696,28 @@ class ChinolaViewController: CAPBridgeViewController {
             // que vuelva por el tema es lo que se pinta. Guardando también aquí
             // habría dos copias del mismo ajuste discrepando, que es justo lo
             // que ya pasó una vez.
+            // Cambiar el papel de alguien, o quitarlo. Toca la LIBRETA, que
+            // tiene un solo dueño —la copia que la web sincroniza—, así que se
+            // le pide a ella: aquí no se escribe.
+            if id.hasPrefix("rol:") || id.hasPrefix("quitar:") {
+                let quitar = id.hasPrefix("quitar:")
+                let resto = String(id.dropFirst(quitar ? 7 : 4))
+                let p = resto.split(separator: ":", maxSplits: 2).map(String.init)
+                guard p.count >= 2 else { return }
+                let rol = p.count > 2 ? p[2] : ""
+                s.eval("window.__chinolaMiembro && window.__chinolaMiembro("
+                       + s.comillas(quitar ? "quitar" : "rol") + ","
+                       + s.comillas(p[0]) + "," + s.comillas(p[1]) + "," + s.comillas(rol) + ")")
+                // Y se vuelve a pedir la lista: acaba de cambiar.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    s.refrescarLibretas()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        guard let cual = s.datos.seccion?.id else { return }
+                        if let hecha = CNSecciones.arma(cual) { s.ponSeccion(hecha, si: cual) }
+                    }
+                }
+                return
+            }
             if id.hasPrefix("pon:") {
                 let partes = String(id.dropFirst(4)).split(separator: "=", maxSplits: 1).map(String.init)
                 let clave = partes[0]
