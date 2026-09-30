@@ -38,18 +38,26 @@ enum CNCuentasTotales {
     /// Los préstamos que te deben a ti. El resto son los que debes tú.
     private static func mio(_ p: CNPrestamo) -> Bool { p.sentido == "meDeben" }
 
-    /// Lo que tienes, sumando todas las cuentas.
+    /**
+     * Lo que tienes, sumando todas las cuentas.
+     *
+     * CON SIGNO: una cuenta en descubierto puede dejar la suma en negativo, y
+     * `cnDinero` quita el signo. Sin él, el rótulo diría «Tienes RD$4,200» con
+     * cuatro mil doscientos EN CONTRA, que es exactamente lo contrario. La web
+     * usa `fmt`, que lo conserva.
+     */
     static func cuentas(_ l: CNLibreta, oculto: Bool = false) -> Total {
         let suma = l.cuentas.reduce(0.0) { $0 + $1.saldo }
         return Total(rotulo: cnT("Tienes"),
-                     valor: oculto ? TAPADO : cnDinero(suma), positivo: true)
+                     valor: oculto ? TAPADO : cnDineroFirmado(suma), positivo: suma >= 0)
     }
 
-    /// Lo que debes de tarjetas.
+    /// Lo que debes de tarjetas. Con signo por lo mismo: una tarjeta con saldo
+    /// a favor —pagaste de más— deja la suma en negativo.
     static func tarjetas(_ l: CNLibreta, oculto: Bool = false) -> Total {
         let suma = l.tarjetas.reduce(0.0) { $0 + $1.saldo }
         return Total(rotulo: cnT("Debes"),
-                     valor: oculto ? TAPADO : cnDinero(suma), positivo: false)
+                     valor: oculto ? TAPADO : cnDineroFirmado(suma), positivo: false)
     }
 
     /**
@@ -86,8 +94,10 @@ enum CNCuentasTotales {
         let activos = CNCalculo.saldoCuentas(l) + CNCalculo.porCobrarPrestamos(l)
         // Lo que debes: tarjetas y los préstamos que debes TÚ.
         let pasivos = CNCalculo.deudaTarjetas(l) + CNCalculo.deudaPrestamos(l)
-        return (oculto ? TAPADO : cnDinero(CNCalculo.patrimonio(l)),
-                oculto ? TAPADO : cnDinero(activos),
+        // El patrimonio, CON SIGNO: es el número que más fácil se va a negativo
+        // —debiendo más de lo que tienes— y sin signo diría justo lo contrario.
+        return (oculto ? TAPADO : cnDineroFirmado(CNCalculo.patrimonio(l)),
+                oculto ? TAPADO : cnDineroFirmado(activos),
                 oculto ? TAPADO : cnDinero(pasivos))
     }
 

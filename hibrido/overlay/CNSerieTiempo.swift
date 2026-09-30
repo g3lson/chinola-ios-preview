@@ -139,7 +139,10 @@ enum CNSerieTiempo {
 
         for (si, k) in activas.enumerated() {
             d.leyenda.append(Leyenda(serie: k, etiqueta: cnT(k.rawValue.capitalized),
-                                     ultimo: cnDinero(k.valor(filas[filas.count - 1].t))))
+                                     // Con signo: balance y patrimonio pueden ser negativos, y la
+            // leyenda dice el último valor de la línea. Sin él, una línea
+            // dibujada por debajo del cero venía rotulada en positivo.
+            ultimo: cnDineroFirmado(k.valor(filas[filas.count - 1].t))))
             switch forma {
             case .linea, .area, .puntos:
                 let puntos = filas.enumerated().map {

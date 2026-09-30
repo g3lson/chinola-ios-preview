@@ -72,7 +72,10 @@ enum CNTarjetasCifra {
         case "kpi-balance":
             // Dos tarjetas escondidas en una: cambia la nota Y el color.
             let bien = total.bal >= 0
-            return Cifra(valor: cnDinero(total.bal),
+            // CON SIGNO. `cnDinero` lo quita, y un mes en rojo salía con la
+            // cifra en positivo y debajo «déficit del mes»: el número decía una
+            // cosa y las dos palabras de abajo la contraria.
+            return Cifra(valor: cnDineroFirmado(total.bal),
                          nota: bien ? cnT("disponible este mes") : cnT("déficit del mes"),
                          color: bien ? t.tinta : t.negativo, icono: "balance")
 
@@ -85,7 +88,9 @@ enum CNTarjetasCifra {
             // El color cambia con el signo, pero la nota NO: explica de dónde
             // sale el número, no cómo va.
             let pat = CNCalculo.patrimonio(l)
-            return Cifra(valor: cnDinero(pat), nota: cnT("cuentas − deudas"),
+            // Con signo, por lo mismo: debiendo más de lo que tienes, sin él la
+            // tarjeta diría que tu patrimonio es lo que te falta.
+            return Cifra(valor: cnDineroFirmado(pat), nota: cnT("cuentas − deudas"),
                          color: pat >= 0 ? t.tinta : t.negativo, icono: "patrimonio")
 
         default:

@@ -611,8 +611,15 @@ class ChinolaViewController: CAPBridgeViewController {
             UIView.animate(withDuration: 0.2) { s.barra.barra.alpha = on ? 0.35 : 1 }
             s.barra.barra.isUserInteractionEnabled = !on
         }
-        // Perfil: la fila se dispara por su sitio en la lista y, si abre una
-        // sección, se enseña la web (esas pantallas siguen allí).
+        // Perfil: la fila se dispara por su sitio en la lista.
+        //
+        // Las filas que abren una SUBPANTALLA no pasan por aquí: llevan su `sec`
+        // y van derechas a la de SwiftUI. Por aquí pasan solo las que hacen otra
+        // cosa —cambiar el correo, el plan, borrar la cuenta—, y `webTemporal`
+        // mira qué dejó abierto: una hoja y una puerta se dibujan nativas, y si
+        // no dejó nada, no se enseña la web. El comentario que había aquí decía
+        // que abrir una sección enseñaba la web; dejó de ser verdad cuando se
+        // mudaron, y un comentario viejo manda buscar el fallo donde no está.
         datos.onAjuste = { [weak self] g, f, valor in
             guard let s = self else { return }
             if let v = valor {
@@ -680,6 +687,26 @@ class ChinolaViewController: CAPBridgeViewController {
             if s.datos.seccion?.id != id { s.datos.seccion = s.datos.seccionesVistas[id] }
             s.datos.seccionPedida = id
             s.traerSeccion(id)
+            // Y LO QUE ESTA SUBPANTALLA LE PIDE AL SERVIDOR.
+            //
+            // Eso vivía dentro de `irSeccion`, que es la navegación de la WEB y
+            // aquí no se llama nunca: «Seguridad», «Integraciones» y «Dos
+            // pasos» salían con lo que hubiera de antes, y recién abierta la app
+            // eso es NADA. Se veía «no tienes ninguna clave» teniendo tres.
+            //
+            // Va aquí y no en `traerSeccion` porque ese se llama también al
+            // refrescar y al precargar las doce de golpe: sería una llamada al
+            // servidor por cada interruptor que alguien toque.
+            s.eval("window.__chinolaSeccionEntrar && window.__chinolaSeccionEntrar(\(s.comillas(id)))")
+            // Cuando el servidor conteste, la web rearma la sección: se vuelve
+            // a pedir el modelo para recogerlo. Dos veces, porque la respuesta
+            // puede tardar más que la primera.
+            for espera in [0.5, 1.4] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + espera) { [weak s] in
+                    guard let s = s, s.datos.seccion?.id == id else { return }
+                    s.traerSeccion(id)
+                }
+            }
         }
         datos.onSeccionAccion = { [weak self] i, valor in
             guard let s = self, let id = CNDatos.shared.seccion?.id else { return }
