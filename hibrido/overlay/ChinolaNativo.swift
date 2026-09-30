@@ -2755,7 +2755,10 @@ struct CNTendencia: View {
                         HStack {
                             Text(cnT("Patrimonio")).font(cnLetra(14, .semibold)).foregroundColor(CNC.info)
                             Spacer()
-                            Text(cnDinero(libreta.patrimonio)).font(cnLetra(14, .heavy)).foregroundColor(CNC.pos)
+                            // Con signo y con su color: en verde a secas, un
+                            // patrimonio negativo se lee como si fuera bueno.
+                            Text(cnDineroFirmado(libreta.patrimonio)).font(cnLetra(14, .heavy))
+                                .foregroundColor(libreta.patrimonio >= 0 ? CNC.pos : CNC.neg)
                         }
                         CNArea(valores: puntos.map { $0.valor }).frame(height: 130)
                     }
@@ -7912,9 +7915,15 @@ struct CNTarjetaGrafica: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // EL PATRIMONIO VA CON SIGNO. `cnDinero` se lo come, y esto puede ser
+            // negativo —se debe más de lo que se tiene—: el mismo número salía
+            // «−RD$132,036» en el Resumen y «RD$132,036» aquí. Y al añadir una
+            // cuenta de 50.000, esta cifra BAJABA 50.000, porque lo que bajaba
+            // era el tamaño de la deuda. Una app de dinero no puede enseñar un
+            // número que mejora como si empeorara.
             Text(cnT("Patrimonio")).font(cnLetra(13)).foregroundColor(CNC.pmut)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(oculto ? "•••" : cnDinero(r.queda))
+                Text(oculto ? "•••" : cnDineroFirmado(r.queda))
                     .font(cnLetra(30, .heavy)).foregroundColor(CNC.ink)
                     .lineLimit(1).minimumScaleFactor(0.5)
                 if cambio != 0 && !oculto {
@@ -8029,7 +8038,7 @@ struct CNTarjetaChino: View {
                     Text(frase).font(cnLetra(14, .semibold))
                         .foregroundColor(cnSobre(CNC.acc))
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(oculto ? "•••" : cnDinero(r.queda))
+                    Text(oculto ? "•••" : cnDineroFirmado(r.queda))
                         .font(cnLetra(30, .heavy)).foregroundColor(cnSobre(CNC.acc))
                         .lineLimit(1).minimumScaleFactor(0.5)
                 }
@@ -8106,7 +8115,7 @@ struct CNTarjetaBloques: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(cnT("Patrimonio")).font(cnLetra(13)).foregroundColor(CNC.pmut)
                 Spacer(minLength: 8)
-                Text(oculto ? "•••" : cnDinero(r.queda))
+                Text(oculto ? "•••" : cnDineroFirmado(r.queda))
                     .font(cnLetra(20, .heavy)).foregroundColor(CNC.ink)
                     .lineLimit(1).minimumScaleFactor(0.6)
             }
