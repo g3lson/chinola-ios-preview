@@ -793,14 +793,25 @@ struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String 
     var disponible: Double { max(0, limite - saldo) } }
 
 struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var total: Double = 0; var pagado: Double = 0; var sentido: String = "meDeben"; var color: String = "#825eb9"
+    /// La cuota del mes y el día en que vence.
+    ///
+    /// Venían en los datos desde siempre y no se leían: el lado nativo solo
+    /// necesitaba el saldo. En cuanto quiso calcular el consejo de Chino —«tus
+    /// cuotas fijas son X, un Y % de tus ingresos»— no tenía con qué, y un
+    /// campo que no se decodifica no falla: sale cero y la frase dice otra
+    /// cosa, que es peor que no decir nada.
+    var cuota: Double = 0
+    var dia: Int = 1
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         total = (try? c.decodeIfPresent(Double.self, forKey: .total)) ?? 0
         pagado = (try? c.decodeIfPresent(Double.self, forKey: .pagado)) ?? 0
         sentido = (try? c.decodeIfPresent(String.self, forKey: .sentido)) ?? "meDeben"
+        cuota = (try? c.decodeIfPresent(Double.self, forKey: .cuota)) ?? 0
+        dia = (try? c.decodeIfPresent(Int.self, forKey: .dia)) ?? 1
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#825eb9" }
-    enum K: String, CodingKey { case id, nombre, total, pagado, sentido, color }
+    enum K: String, CodingKey { case id, nombre, total, pagado, sentido, color, cuota, dia }
     var pendiente: Double { max(0, total - pagado) } }
 
 struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var mensual: Double = 0; var color: String = "#825eb9"; var icono: String = "target"
