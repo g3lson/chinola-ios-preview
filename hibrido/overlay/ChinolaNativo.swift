@@ -225,6 +225,12 @@ struct CNFormato {
     /// el elegido, y con la escala sola habría que adivinarlo comparando
     /// números —y dos tamaños con la misma escala se marcarían los dos—.
     var letraId = "normal"
+    /// Los cuatro de la cabecera: cuál, de qué color, con esquinas redondeadas
+    /// y si toma el fondo de la pantalla. Van con los ajustes y no con el
+    /// modelo del Resumen porque ese solo llega estando en el Resumen, y esta
+    /// subpantalla se abre desde Perfil.
+    var cabecera = "auto"; var cabeceraColor = ""
+    var cabeceraTarjeta = false; var cabeceraIntegrada = false
     /// Qué se ve en la pestaña de Perfil: «chino» o «perfil».
     /// La inicial del usuario, para el icono redondo.
     var inicial = ""
@@ -257,6 +263,10 @@ struct CNFormato {
         if let t = o["fuente"] as? String, !t.isEmpty { f.fuente = t }
         if let t = o["fuenteTitulo"] as? String, !t.isEmpty { f.fuenteTitulo = t }
         if let t = o["letraId"] as? String, !t.isEmpty { f.letraId = t }
+        if let t = o["cabecera"] as? String, !t.isEmpty { f.cabecera = t }
+        if let t = o["cabeceraColor"] as? String { f.cabeceraColor = t }
+        f.cabeceraTarjeta = (o["cabeceraTarjeta"] as? Bool) ?? f.cabeceraTarjeta
+        f.cabeceraIntegrada = (o["cabeceraIntegrada"] as? Bool) ?? f.cabeceraIntegrada
         if let t = o["inicial"] as? String { f.inicial = t }
         if let v = o["panelVivo"] as? Bool { f.panelVivo = v }
         if let t = o["tarjetaCuentas"] as? String, !t.isEmpty { f.tarjetaCuentas = t }
@@ -688,6 +698,19 @@ enum CNC {
     static var ink: Color  { tema.ink }
     static var pmut: Color { tema.pmut }
     static var acc: Color  { tema.acc }
+    /**
+     * Los mismos colores, ESCRITOS COMO TEXTO.
+     *
+     * Las miniaturas de la cabecera y de los temas llevan sus colores en un
+     * modelo que los guarda como cadenas —porque así llegan de la web— y las
+     * subpantallas que arma el teléfono los tienen como `Color`. Esto es el
+     * puente entre las dos formas, en un sitio y no repetido en cada uno que lo
+     * necesite.
+     */
+    static var hexScr: String  { cnHexDe(scr) }
+    static var hexCard: String { cnHexDe(card) }
+    static var hexSoft: String { cnHexDe(soft) }
+    static var hexSide: String { cnHexDe(tema.side) }
     static var side: Color { tema.side }
     static var pos: Color  { tema.pos }
     static var neg: Color  { tema.neg }
@@ -2852,6 +2875,14 @@ struct CNIconoTab: View {
 // ── Catálogo de iconos (mismos paths que ICONOS del web) ────────────────────
 // Para que cuentas, categorías y metas usen EXACTAMENTE los mismos glifos que la
 // web, no aproximaciones de SF Symbols.
+/**
+ * Los colores del tema escritos como texto.
+ *
+ * Las miniaturas de la cabecera y de los temas llevan sus colores en un modelo
+ * que los guarda como cadenas —porque así llegan de la web— y las que arma el
+ * teléfono los tienen como `Color`. Esto es el puente entre las dos formas, en
+ * un sitio y no repetido en cada sitio que lo necesite.
+ */
 enum CNIconos {
     /// Los ochenta y cinco glifos, GENERADOS desde la web.
     ///
@@ -6670,7 +6701,11 @@ struct CNSeccion {
     }
     /// Un interruptor dentro de un bloque de varios.
     struct Llave { var label = ""; var sub = ""; var puesto = false; var accion = -1 }
-    struct Muestra { var nombre = ""; var css = ""; var puesta = false; var accion = -1 }
+    struct Muestra {
+        var nombre = ""; var css = ""; var puesta = false; var accion = -1
+        /// Qué hace, dicho por su nombre. Ver `Opcion.abre`.
+        var abre = ""
+    }
     struct AccionItem { var label = ""; var peligro = false; var accion = -1; var abre = "" }
     /// Un botón chico en la fila del rótulo de una lista («Abrir», «+ Invitar»).
     struct Boton { var label = ""; var estilo = "suave"; var accion = -1; var abre = "" }
@@ -7228,7 +7263,8 @@ struct CNSeccionVista: View {
                         Button {
                             UISelectionFeedbackGenerator().selectionChanged()
                             withAnimation(.easeOut(duration: 0.16)) { datos.marcarEnSeccion(bloque: bi, muestra: i) }
-                            datos.onSeccionAccion(c.accion, nil)
+                            if c.abre.isEmpty { datos.onSeccionAccion(c.accion, nil) }
+                            else { datos.onAbrirSeccion(c.abre) }
                         } label: {
                             CNFondoCabecera(f: cnFondoDeCss(c.css), respaldo: CNC.side)
                                 .frame(width: 44, height: 44)

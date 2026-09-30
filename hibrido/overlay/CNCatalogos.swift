@@ -289,4 +289,35 @@ enum CNCatalogos {
         (id: "nunito", nombre: "Nunito", pista: "Redondeada"),
         (id: "source", nombre: "Source Serif", pista: "Con serifa")
     ]
+
+    /// Las cabeceras que se pueden elegir, en su orden. «auto» primera
+    /// porque no es una forma fija: es la grande que se encoge al bajar.
+    static let cabeceras: [(id: String, nombre: String, pista: String)] = [
+        (id: "auto", nombre: "Automática", pista: "Grande en el resumen, fina al bajar"),
+        (id: "fina", nombre: "Fina", pista: "Una línea verde con el balance al lado"),
+        (id: "clara", nombre: "Clara", pista: "Del color del papel, sin franja"),
+        (id: "minima", nombre: "Mínima", pista: "Lo justo: libreta y mes"),
+        (id: "clasica", nombre: "Clásica", pista: "La franja verde de siempre"),
+        (id: "detallada", nombre: "Detallada", pista: "Con lo gastado del mes y el mes en un botón"),
+        (id: "viva", nombre: "Viva", pista: "Las cuatro cifras del mes, cada una con su color")
+    ]
+
+    /// Y sus colores. Todos oscuros o de tono medio a propósito: la
+    /// tinta de la cabecera es clara, así que sobre estos se lee.
+    static let coloresDeCabecera: [(id: String, nombre: String, css: String)] = [
+        (id: "chinola", nombre: "Chinola", css: "linear-gradient(150deg, #f7c948, #ec9a2e 55%, #3f9d54)"),
+        (id: "mango", nombre: "Mango", css: "linear-gradient(150deg, #f9c04b, #ef8a2c)"),
+        (id: "durazno", nombre: "Durazno", css: "linear-gradient(150deg, #f8b370, #f4845f)"),
+        (id: "lima", nombre: "Lima", css: "linear-gradient(150deg, #cfe95f, #85bb3e)"),
+        (id: "pino", nombre: "Pino", css: "linear-gradient(150deg, #33a565, #14683b)"),
+        (id: "bosque", nombre: "Bosque", css: "linear-gradient(150deg, #2c8f5a, #15412c)"),
+        (id: "oceano", nombre: "Oceano", css: "linear-gradient(150deg, #3f8ad0, #1f4f89)"),
+        (id: "medianoche", nombre: "Medianoche", css: "linear-gradient(150deg, #3d4f96, #1f2550)"),
+        (id: "ciruela", nombre: "Ciruela", css: "linear-gradient(150deg, #834fa6, #47256e)"),
+        (id: "uva", nombre: "Uva", css: "linear-gradient(150deg, #9a5cc7, #5c3096)"),
+        (id: "coral", nombre: "Coral", css: "linear-gradient(150deg, #ea6a52, #c0343c)"),
+        (id: "cacao", nombre: "Cacao", css: "linear-gradient(150deg, #7d4b30, #472a1b)"),
+        (id: "carbon", nombre: "Carbon", css: "linear-gradient(150deg, #2a2e2b, #141714)"),
+        (id: "noche", nombre: "Noche", css: "linear-gradient(150deg, #27313b, #12181e)")
+    ]
 }

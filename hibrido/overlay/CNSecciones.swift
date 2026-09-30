@@ -31,7 +31,7 @@ import Foundation
 enum CNSecciones {
 
     /// Las que este lado sabe armar. Lo demás sigue viniendo de la web.
-    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra"]
+    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra", "cabecera"]
 
     /**
      * Lo que se le ha pedido al servidor, guardado mientras dure la app.
@@ -55,6 +55,8 @@ enum CNSecciones {
         case "panelVivo": return CNC.fmt.panelVivo
         case "centavos": return CNC.fmt.centavos
         case "menuTitulos": return CNMenuEstado.shared.titulos
+        case "cabeceraTarjeta": return CNC.fmt.cabeceraTarjeta
+        case "cabeceraIntegrada": return CNC.fmt.cabeceraIntegrada
         default: return false
         }
     }
@@ -76,6 +78,7 @@ enum CNSecciones {
         case "libretas": return libretas()
         case "menu": return menu()
         case "letra": return letra()
+        case "cabecera": return cabecera()
         // «libreta:3» es una libreta por dentro: sus miembros y sus permisos.
         case let x where x.hasPrefix("libreta:"): return unaLibreta(String(x.dropFirst(8)))
         default: return nil
@@ -95,7 +98,7 @@ enum CNSecciones {
         // el teléfono. Se dibujan enteras antes de que la web despierte.
         // Los miembros vienen DENTRO de la libreta, no de la API: la web los
         // cambia en local y la sincronización los sube. Ver `CNLibretas.Fila`.
-        case "panel", "dinero", "libretas", "menu", "letra": return []
+        case "panel", "dinero", "libretas", "menu", "letra", "cabecera": return []
         default: return []
         }
     }
@@ -341,6 +344,79 @@ enum CNSecciones {
         ]
 
         s.bloques = [mon, cent]
+        return s
+    }
+
+    /* ------------------------------- cabecera ----------------------------- */
+
+    /**
+     * Qué se ve arriba del Resumen, y de qué color.
+     *
+     * LAS MINIATURAS ENSEÑAN LA FORMA, NO EL CONTENIDO: dos rayas y un bulto.
+     * Es lo que deja distinguir siete cabeceras de un vistazo; con el contenido
+     * de verdad serían siete pantallas pequeñas todas parecidas.
+     *
+     * El alto de la franja y si lleva bulto están escritos aquí a propósito:
+     * son de la MINIATURA, no de la cabecera. Sacarlos de la cabecera de verdad
+     * obligaría a montarla siete veces para dibujar siete dibujitos.
+     */
+    @MainActor private static func cabecera() -> CNSeccion? {
+        let f = CNC.fmt
+        var s = CNSeccion()
+        s.id = "cabecera"
+        s.titulo = cnT("Cabecera")
+
+        // El alto de cada franja en la miniatura, y cuál lleva bulto. Los
+        // mismos números que la web.
+        let altos: [String: Double] = ["auto": 30, "fina": 14, "clara": 14,
+                                       "minima": 12, "clasica": 26, "viva": 12]
+        // Las claras no llevan franja de color: la suya es del color del papel.
+        let sinFranja: Set<String> = ["clara", "minima", "viva"]
+
+        var cuales = CNSeccion.Bloque(); cuales.tipo = "telefonos"
+        cuales.titulo = cnT("Qué se ve arriba")
+        cuales.opciones = CNCatalogos.cabeceras.map { c in
+            var o = CNSeccion.Opcion()
+            o.label = cnT(c.nombre)
+            o.sub = cnT(c.pista)
+            o.puesta = c.id == f.cabecera
+            o.vista = "cabecera"
+            o.fondo = CNC.hexScr
+            o.franja = sinFranja.contains(c.id) ? CNC.hexSoft : CNC.hexSide
+            o.alto = CGFloat(altos[c.id] ?? 20)
+            o.bulto = c.id == "auto" || c.id == "clasica"
+            o.tarjeta = CNC.hexCard
+            o.oscuro = CNC.tema.oscuro
+            o.abre = "pon:cabecera=" + c.id
+            return o
+        }
+
+        // «Del tema» delante: es lo de fábrica, y va primero para que quien no
+        // quiera elegir color vea enseguida cuál tiene.
+        var colores = CNSeccion.Bloque(); colores.tipo = "muestras"
+        colores.titulo = cnT("Color de la cabecera")
+        colores.colores = [CNSeccion.Muestra(nombre: cnT("Del tema"), css: CNC.hexSide,
+                                             puesta: f.cabeceraColor.isEmpty,
+                                             abre: "pon:cabeceraColor=")]
+            + CNCatalogos.coloresDeCabecera.map { c in
+                CNSeccion.Muestra(nombre: cnT(c.nombre), css: c.css,
+                                  puesta: c.id == f.cabeceraColor,
+                                  abre: "pon:cabeceraColor=" + c.id)
+            }
+
+        var esquinas = CNSeccion.Bloque(); esquinas.tipo = "interruptor"
+        esquinas.label = cnT("Esquinas redondeadas")
+        esquinas.texto = cnT("Con las esquinas de abajo redondeadas, como una tarjeta")
+        esquinas.puesto = f.cabeceraTarjeta
+        esquinas.abre = "pon:cabeceraTarjeta"
+
+        var integrada = CNSeccion.Bloque(); integrada.tipo = "interruptor"
+        integrada.label = cnT("Integrada")
+        integrada.texto = cnT("Sin color propio: la cabecera toma el fondo de la pantalla.")
+        integrada.puesto = f.cabeceraIntegrada
+        integrada.abre = "pon:cabeceraIntegrada"
+
+        s.bloques = [cuales, colores, esquinas, integrada]
         return s
     }
 
