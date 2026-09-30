@@ -636,20 +636,22 @@ class ChinolaViewController: CAPBridgeViewController {
             // Once de las doce las escribe el teléfono. La que devuelve `nil`
             // —el perfil, el correo, los dos pasos, importar, exportar, pagar
             // la tarjeta— sigue siendo de la web, que es donde está su lógica.
+            var payload: [String: Any] = ["tipo": tipo, "form": form]
+            if let e = extra { payload["extra"] = e }
             if s.telefonoEscribe,
                let nueva = CNEscribir.hoja(CNDatos.shared.libreta, tipo, form, extra,
                                            mes: CNDatos.shared.mesActivo) {
-                s.adopta(nueva)
+                s.adopta(nueva) { s.aWeb("window.__chinolaGuardarHoja", payload) }
                 return
             }
-            var payload: [String: Any] = ["tipo": tipo, "form": form]
-            if let e = extra { payload["extra"] = e }
             s.aWeb("window.__chinolaGuardarHoja", payload)
         }
         datos.onCrearMov = { [weak self] dict in
             guard let s = self else { return }
             guard s.telefonoEscribe else { s.aWeb("window.__chinolaCrearMov", dict); return }
-            s.adopta(CNEscribir.movimientoNuevo(CNDatos.shared.libreta, dict))
+            s.adopta(CNEscribir.movimientoNuevo(CNDatos.shared.libreta, dict)) {
+                s.aWeb("window.__chinolaCrearMov", dict)
+            }
         }
         // Los tres puntos de la charla. Las tres cosas las hace la web, que ya
         // las tenía montadas; aquí solo se le dice cuál.
@@ -1064,7 +1066,9 @@ class ChinolaViewController: CAPBridgeViewController {
         datos.onEditarMov = { [weak self] dict in
             guard let s = self else { return }
             guard s.telefonoEscribe else { s.aWeb("window.__chinolaEditarMov", dict); return }
-            s.adopta(CNEscribir.movimientoCambiado(CNDatos.shared.libreta, dict))
+            s.adopta(CNEscribir.movimientoCambiado(CNDatos.shared.libreta, dict)) {
+                s.aWeb("window.__chinolaEditarMov", dict)
+            }
         }
         datos.onBorrarMov = { [weak self] id in
             guard let s = self else { return }
@@ -1076,7 +1080,11 @@ class ChinolaViewController: CAPBridgeViewController {
             // Borrar uno que no existe devuelve la misma libreta: no se manda
             // nada, que es distinto de mandar una libreta igual.
             let nueva = CNEscribir.movimientoBorrado(CNDatos.shared.libreta, id)
-            if nueva.tx.count != CNDatos.shared.libreta.tx.count { s.adopta(nueva) }
+            guard nueva.tx.count != CNDatos.shared.libreta.tx.count else { return }
+            s.adopta(nueva) {
+                s.eval("window.__chinolaBorrarMov && window.__chinolaBorrarMov('\(id)')")
+                s.refrescarPronto()
+            }
         }
         // Lo que aún vive en la web.
         datos.onNuevaCategoria = { [weak self] in self?.webTemporal(); self?.eval("window.__chinolaNuevaCategoria && window.__chinolaNuevaCategoria()") }
@@ -1162,7 +1170,7 @@ class ChinolaViewController: CAPBridgeViewController {
     /// Al otro lado se adoptan las listas UNA POR UNA, porque la libreta lleva
     /// cosas que aquí no se leen —el panel, los miembros, las invitaciones— y
     /// mandar un JSON hecho desde este modelo las borraría.
-    private func adopta(_ l: CNLibreta) {
+    private func adopta(_ l: CNLibreta, siNo: @escaping () -> Void) {
         // PRIMERO SE EMPAQUETA Y LUEGO SE PINTA, aunque parezca al revés.
         //
         // `JSONSerialization` se niega con un número que no es número —un saldo
@@ -1171,11 +1179,33 @@ class ChinolaViewController: CAPBridgeViewController {
         // desvanece en el siguiente refresco. Así, si no se puede empaquetar,
         // no ha pasado nada.
         guard let d = try? JSONSerialization.data(withJSONObject: l.aDiccionario()),
-              let json = String(data: d, encoding: .utf8) else { return }
-        // Y ahora sí: en pantalla al momento, sin esperar el viaje de vuelta.
-        CNDatos.shared.libreta = l
-        eval("window.__chinolaAdoptaLibreta && window.__chinolaAdoptaLibreta(\(comillas(json)))")
-        refrescarPronto()
+              let json = String(data: d, encoding: .utf8) else { siNo(); return }
+        // Y SOBRE QUÉ SE ESCRIBIÓ. Esto es lo que evita borrar sin enterarse.
+        //
+        // El teléfono calcula encima de la copia que se trajo la última vez. Si
+        // la web tiene algo que esa copia no —Chino anota por el servidor, otro
+        // equipo sincroniza— mandarle la libreta entera se lo lleva por
+        // delante. Y no se ve: al sincronizar, un movimiento que está arriba y
+        // no abajo cuenta como que LO BORRASTE TÚ, y la fusión lo quita también
+        // del servidor.
+        //
+        // Así que va la huella de la copia sobre la que se calculó, y la web
+        // solo adopta si sigue siendo la suya. Si no, escribe ella sobre lo
+        // suyo, que es exactamente lo que se hacía antes de todo esto.
+        let base = huellaLibreta
+        eval("(window.__chinolaAdoptaLibreta && window.__chinolaAdoptaLibreta(\(comillas(json)), \(comillas(base)))) || ''") { [weak self] r in
+            guard let s = self else { return }
+            guard let nueva = r as? String, !nueva.isEmpty else {
+                NSLog("CNADOPTA: la web tenía algo que el teléfono no · escribe ella")
+                siNo()
+                return
+            }
+            // Aceptada: en pantalla al momento y la huella al día, porque la
+            // próxima escritura se compara contra esta.
+            CNDatos.shared.libreta = l
+            s.huellaLibreta = nueva
+            s.refrescarPronto()
+        }
     }
 
     private func aWeb(_ fn: String, _ obj: [String: Any]) {
