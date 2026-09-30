@@ -823,6 +823,26 @@ class ChinolaViewController: CAPBridgeViewController {
                 }
                 return
             }
+            // CUALQUIER OTRA HOJA, POR SU NOMBRE: «hoja:clave», «hoja:perfil».
+            //
+            // Las subpantallas que arma el teléfono abren hojas —cambiar la
+            // contraseña, el correo, darse de baja— y aquí solo se entendían
+            // tres formas concretas. Las demás caían en el camino genérico y
+            // pedían una SUBPANTALLA llamada «hoja:clave», que no existe: la
+            // pantalla se quedaba en blanco y no había error en ninguna parte.
+            //
+            // Va después de las tres concretas a propósito: esas abren
+            // formularios nativos y tienen su propio camino.
+            if id.hasPrefix("hoja:") && !id.hasPrefix("hoja:invitar:")
+                && !id.hasPrefix("hoja:libreta") {
+                let cual = String(id.dropFirst(5))
+                guard !cual.isEmpty else { return }
+                s.eval("window.__chinolaAccion && window.__chinolaAccion('hoja',\(s.comillas(cual)))")
+                // Y se enseña lo que la web haya abierto: una hoja se dibuja
+                // nativa con `CNHojaWebViva`, y la puerta con la suya.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { s.webTemporal() }
+                return
+            }
             if id.hasPrefix("hoja:invitar:") {
                 let lid = String(id.dropFirst("hoja:invitar:".count))
                 s.bridge?.webView?.evaluateJavaScript("(window.__chinolaInvitarJSON && window.__chinolaInvitarJSON()) || ''") { res, _ in
@@ -859,7 +879,7 @@ class ChinolaViewController: CAPBridgeViewController {
             // ¿ESTA LA SABE ARMAR EL TELÉFONO? Entonces se le pide al servidor
             // directamente, que es como funciona una app normal: lo que vive
             // solo en el servidor no tiene por qué pasar por la web.
-            if CNSecciones.sabeHacer.contains(id) {
+            if CNSecciones.sabeArmar(id) {
                 Task { @MainActor in
                     // Lo que ya se supiera se enseña mientras llega lo nuevo: es
                     // la misma pantalla con los mismos valores, así que lo que

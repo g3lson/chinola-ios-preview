@@ -30,6 +30,19 @@ import Foundation
  */
 enum CNSecciones {
 
+    /**
+     * ¿Sabe este lado armar esta subpantalla?
+     *
+     * No basta con mirar la lista de nombres: «libreta:3» es una libreta por
+     * dentro y lleva su número pegado, así que nunca estaría en una lista fija.
+     * Se me quedó fuera al escribirla —la función existía y no la llamaba
+     * nadie—, que es exactamente el fallo que llevo todo el día encontrando en
+     * otros sitios: código correcto, probado y muerto.
+     */
+    static func sabeArmar(_ id: String) -> Bool {
+        sabeHacer.contains(id) || id.hasPrefix("libreta:")
+    }
+
     /// Las que este lado sabe armar. Lo demás sigue viniendo de la web.
     static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores", "icono-app"]
 
