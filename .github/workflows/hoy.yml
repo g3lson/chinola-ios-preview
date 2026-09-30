@@ -185,7 +185,9 @@ jobs:
           # nunca: el banco solo sabía cambiar de pestaña. Todo lo que se
           # rompiera dentro —una lista vacía, un bloque que no se dibuja, unos
           # datos que nadie pidió— se quedaba sin ver.
-          for P in cuenta seguridad libretas integraciones colores letra personaje icono-app; do
+          # LAS TRECE, no ocho. Las que falten no se miran nunca, que es
+          # exactamente cómo se coló que «El icono de la app» abriera la web.
+          for P in cuenta seguridad dosPasos libretas integraciones panel cabecera menu letra colores dinero personaje icono-app; do
             echo "=== perfil · $P ==="
             xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
             sleep 2
