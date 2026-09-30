@@ -1,7 +1,7 @@
 {
   "appId": "do.com.fente.chinola",
   "appName": "Chinola",
-  "webDir": "nativo",
+  "webDir": "www",
   "ios": {
     "contentInset": "never",
     "backgroundColor": "#f7f6ee",
