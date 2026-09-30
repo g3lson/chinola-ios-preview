@@ -88,6 +88,11 @@
         "nombre": "Gastos Personales",
         "color": "#2d6cdf",
         "ingreso": false
+      },
+      {
+        "id": 7,
+        "nombre": "Vivienda",
+        "ingreso": false
       }
     ],
     "presupuesto": {
@@ -619,6 +624,13 @@
           "categoria": "Gastos Personales",
           "limite": 0,
           "gastado": 3100,
+          "pct": 0,
+          "excedida": false
+        },
+        {
+          "categoria": "Vivienda",
+          "limite": 0,
+          "gastado": 0,
           "pct": 0,
           "excedida": false
         }
@@ -1795,6 +1807,11 @@
       "icono": "hucha",
       "color": "#825eb9",
       "inicial": "A"
+    },
+    "Vivienda": {
+      "icono": "casa",
+      "color": "oklch(0.32 0.03 155)",
+      "inicial": "V"
     },
     "Lo que sea": {
       "icono": "puntos",

@@ -887,14 +887,25 @@ struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String =
 /// —si la categoría es de entradas— y el presupuesto va aparte, en
 /// `CNLibreta.presupuesto`. Los dos campos se quedan porque hay código que los
 /// nombra, pero salen siempre "Gasto" y 0: no te fíes de ellos.
-struct CNCategoria: Decodable { var nombre: String = ""; var tipo: String = "Gasto"; var limite: Double = 0; var ingreso: Bool = false; var color: String = "#e0a92e"; var icono: String = "tag.fill"
+/// El icono y el color van VACÍOS por defecto, y eso es la regla, no un
+/// descuido: «vacío» significa «no lo eligió nadie», y entonces manda la tabla
+/// —`CNCategorias`— igual que en la web.
+///
+/// Antes el icono nacía como «tag.fill», un nombre de SF Symbol de cuando no
+/// existía el catálogo de glifos. Como no está vacío, `CNCategorias.icono` lo
+/// daba por elegido y devolvía «tag.fill» para TODAS las categorías a las que
+/// nadie les había puesto uno a mano; y como «tag.fill» tampoco está en el
+/// catálogo, lo que se pintaba era un hueco. El color hacía lo mismo con un
+/// ámbar: todas las categorías sin color propio salían ámbar en el teléfono y
+/// grises en la web. Lo encontró el fichero de oro.
+struct CNCategoria: Decodable { var nombre: String = ""; var tipo: String = "Gasto"; var limite: Double = 0; var ingreso: Bool = false; var color: String = ""; var icono: String = ""
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? "Gasto"
         limite = (try? c.decodeIfPresent(Double.self, forKey: .limite)) ?? 0
         ingreso = (try? c.decodeIfPresent(Bool.self, forKey: .ingreso)) ?? false
-        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#e0a92e"
-        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "tag.fill" }
+        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? ""
+        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "" }
     enum K: String, CodingKey { case nombre, tipo, limite, ingreso, color, icono } }
 
 struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var limite: Double = 0; var corte: Int = 0; var pago: Int = 0; var color: String = "#d55948"

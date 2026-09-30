@@ -350,7 +350,13 @@ struct CNChipsCategoria: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(datos.libreta.categorias, id: \.nombre) { c in
-                    ficha(c.nombre, cnColor(hexString: c.color), c.icono)
+                    // Por la regla, no por el campo a pelo: una categoría sin
+                    // icono propio lleva el de su nombre, y sin color propio el
+                    // gris apagado. Leyendo el campo salía lo que trajera el
+                    // modelo, que no es lo mismo.
+                    ficha(c.nombre,
+                          cnColor(hexString: CNCategorias.color(c.nombre, en: datos.libreta)),
+                          CNCategorias.icono(c.nombre, en: datos.libreta))
                 }
                 ficha("Otros", cnColor(0x9a9a8e), "tag")
             }
