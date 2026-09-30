@@ -426,6 +426,22 @@ enum CNOro {
                     suelta = CNEscribir.ajusteDePrestamo(l, id: prestamo.id, delta: 5000)
                 case "no se paga más de lo que se debe":
                     suelta = CNEscribir.ajusteDePrestamo(l, id: prestamo.id, delta: 999999)
+                // PAGAR LA TARJETA DESDE SU HOJA. No es la transferencia: aquí
+                // la deuda baja y la cuenta NO se toca, porque esto no pasa por
+                // `aplica`. El apunte se da hecho —con su fecha y su medio—
+                // porque el de la web sale del reloj y del mes que se mire.
+                case "pagar la tarjeta desde su hoja", "pagar más de lo que se debe",
+                     "pagar cero no hace nada", "sin tarjeta no se paga nada":
+                    var apunte = CNMov()
+                    apunte.id = "pt1"; apunte.concepto = "Pago Visa"
+                    apunte.categoria = "Deudas"; apunte.tipo = "Gasto Fijo"
+                    apunte.fecha = "2026-09-20"; apunte.medio = "cuenta:1"
+                    let cuanto: Double = nombre == "pagar más de lo que se debe" ? 999999
+                        : (nombre == "pagar cero no hace nada" ? 0 : 5000)
+                    apunte.monto = cuanto
+                    hecho = CNEscribir.pagoDeTarjeta(
+                        l, tarjeta: nombre == "sin tarjeta no se paga nada" ? nil : l.tarjetas.first,
+                        monto: cuanto, item: apunte)
                 default: continue
                 }
                 if let x = suelta {

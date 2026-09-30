@@ -3137,6 +3137,18 @@
     "al mismo sitio no se pasa nada": {
       "hay": false
     },
+    "pagar la tarjeta desde su hoja": {
+      "hay": true
+    },
+    "pagar más de lo que se debe": {
+      "hay": true
+    },
+    "pagar cero no hace nada": {
+      "hay": false
+    },
+    "sin tarjeta no se paga nada": {
+      "hay": false
+    },
     "subir lo ahorrado de una meta": {
       "hay": true
     },
@@ -3575,6 +3587,132 @@
       }
     },
     "al mismo sitio no se pasa nada": {
+      "sale": null
+    },
+    "pagar la tarjeta desde su hoja": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 7000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 15000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 120000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": {
+          "tipo": "Gasto Fijo",
+          "categoria": "Deudas",
+          "monto": 5000,
+          "medio": "cuenta:1",
+          "meta": 0,
+          "prestamo": 0
+        }
+      }
+    },
+    "pagar más de lo que se debe": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 0
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 15000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 120000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": {
+          "tipo": "Gasto Fijo",
+          "categoria": "Deudas",
+          "monto": 999999,
+          "medio": "cuenta:1",
+          "meta": 0,
+          "prestamo": 0
+        }
+      }
+    },
+    "pagar cero no hace nada": {
+      "sale": null
+    },
+    "sin tarjeta no se paga nada": {
       "sale": null
     },
     "subir lo ahorrado de una meta": {

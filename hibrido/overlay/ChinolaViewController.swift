@@ -637,7 +637,8 @@ class ChinolaViewController: CAPBridgeViewController {
             // —el perfil, el correo, los dos pasos, importar, exportar, pagar
             // la tarjeta— sigue siendo de la web, que es donde está su lógica.
             if s.telefonoEscribe,
-               let nueva = CNEscribir.hoja(CNDatos.shared.libreta, tipo, form, extra) {
+               let nueva = CNEscribir.hoja(CNDatos.shared.libreta, tipo, form, extra,
+                                           mes: CNDatos.shared.mesActivo) {
                 s.adopta(nueva)
                 return
             }
@@ -1150,7 +1151,8 @@ class ChinolaViewController: CAPBridgeViewController {
      * datos por aquí.
      */
     private var telefonoEscribe: Bool {
-        !sin("escribir") && !CNDatos.shared.libreta.sinLlegar
+        let l = CNDatos.shared.libreta
+        return !sin("escribir") && !l.sinLlegar && !l.dudoso
     }
 
     /// Lo que escribió el teléfono, de vuelta a la web.

@@ -452,7 +452,7 @@ struct CNMontoHoja: View {
                 cnGrupoHoja { CNMedioFila(datos: datos, medio: $medio) }
             }
         }
-        .onAppear { if medio == "efectivo", let c = datos.libreta.cuentas.first { medio = "cuenta:\(c.id)" } }
+        .onAppear { if medio == "efectivo" { medio = cnMedioPorDefecto(datos.libreta) } }
     }
 
     private func guardar() {

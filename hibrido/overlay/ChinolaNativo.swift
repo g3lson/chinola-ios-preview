@@ -432,6 +432,24 @@ enum CNTextos {
  * O sea: escribías 50,000 de saldo, la pantalla te enseñaba 50,000, y se
  * guardaba una cuenta con cero. Sin aviso, porque `?? 0` no es un error.
  */
+/**
+ * DE DÓNDE SALE EL DINERO CUANDO NO SE DICE.
+ *
+ * La predeterminada que marcaste, y la primera cuenta solo si no hay ninguna.
+ * Estaba escrito tres veces —el formulario del movimiento, la hoja de monto y
+ * `CNEscribir`— y las tres daban la primera cuenta: marcabas una como
+ * predeterminada y el teléfono seguía sacando el dinero de la otra.
+ *
+ * Se comprueba que la marcada EXISTA: si se borró esa cuenta y quedó la marca,
+ * apuntaría a una que ya no está.
+ */
+func cnMedioPorDefecto(_ l: CNLibreta) -> String {
+    let pred = l.medioPorDefecto
+    if pred.hasPrefix("cuenta:"), let id = Int(pred.dropFirst(7)),
+       l.cuentas.contains(where: { $0.id == id }) { return pred }
+    return l.cuentas.first.map { "cuenta:\($0.id)" } ?? "efectivo"
+}
+
 func cnMonto(_ texto: String) -> Double {
     Double(texto.replacingOccurrences(of: ",", with: "")) ?? 0
 }
@@ -1089,17 +1107,60 @@ struct CNLibreta: Decodable {
     /// El presupuesto: categoría → tope del mes. Vive AQUÍ, no en la
     /// categoría, aunque `CNCategoria.limite` dé a entender lo contrario.
     var presupuesto: [String: Double] = [:]
+    /// De dónde sale el dinero cuando no se dice: `cuenta:3`, o vacío.
+    ///
+    /// No es de la libreta: es la cuenta que marcaste como predeterminada, y
+    /// llega con ella porque es una por libreta. Vacío significa «no la mandó
+    /// nadie», y entonces se usa la primera cuenta —que es lo que hacía siempre
+    /// el teléfono, marcaras la que marcaras—.
+    var medioPorDefecto: String = ""
     init() {}
+    /**
+     * ¿HUBO ALGO QUE NO SE PUDO LEER?
+     *
+     * Cada lista se lee con `(try? …) ?? []`, así que un elemento malo no
+     * rompe la libreta: se lleva su lista entera y se queda vacía. Mientras la
+     * web era la que escribía, eso solo se VEÍA mal —una pantalla sin cuentas—
+     * y al refrescar volvía.
+     *
+     * Desde que escribe el teléfono es otra cosa: lo que el teléfono lee es lo
+     * que le devuelve a la web, así que una lista que se quedó vacía por no
+     * poder leerse se GUARDARÍA vacía. Se borrarían las cuentas de verdad.
+     *
+     * Por eso aquí se apunta. Con esto puesto, el teléfono no escribe: deja que
+     * lo haga la web, que tiene los datos buenos. Y no es lo mismo que
+     * `sinLlegar`: una libreta nueva está vacía y se puede escribir; esta está
+     * vacía por no haberse podido leer y no se puede.
+     */
+    var dudoso = false
+
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? "Personal"
-        cuentas = (try? c.decodeIfPresent([CNCuenta].self, forKey: .cuentas)) ?? []
-        tarjetas = (try? c.decodeIfPresent([CNTarjeta].self, forKey: .tarjetas)) ?? []
-        prestamos = (try? c.decodeIfPresent([CNPrestamo].self, forKey: .prestamos)) ?? []
-        categorias = (try? c.decodeIfPresent([CNCategoria].self, forKey: .categorias)) ?? []
-        metas = (try? c.decodeIfPresent([CNMeta].self, forKey: .metas)) ?? []
-        tx = (try? c.decodeIfPresent([CNMov].self, forKey: .tx)) ?? []
-        presupuesto = (try? c.decodeIfPresent([String: Double].self, forKey: .presupuesto)) ?? [:] }
-    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx, presupuesto }
+        // `presente` distingue «no lo mandó nadie» de «lo mandó y no se pudo
+        // leer». Sin esa diferencia, una libreta sin tarjetas quedaría marcada
+        // como dudosa y el teléfono no escribiría nunca.
+        var malas: [String] = []
+        func lista<T: Decodable>(_ t: [T].Type, _ k: K) -> [T] {
+            if let v = try? c.decodeIfPresent([T].self, forKey: k) { return v ?? [] }
+            if c.contains(k) { malas.append(k.stringValue) }
+            return []
+        }
+        cuentas = lista([CNCuenta].self, .cuentas)
+        tarjetas = lista([CNTarjeta].self, .tarjetas)
+        prestamos = lista([CNPrestamo].self, .prestamos)
+        categorias = lista([CNCategoria].self, .categorias)
+        metas = lista([CNMeta].self, .metas)
+        tx = lista([CNMov].self, .tx)
+        if let p = try? c.decodeIfPresent([String: Double].self, forKey: .presupuesto) {
+            presupuesto = p ?? [:]
+        } else {
+            if c.contains(.presupuesto) { malas.append("presupuesto") }
+            presupuesto = [:]
+        }
+        medioPorDefecto = (try? c.decodeIfPresent(String.self, forKey: .medioPorDefecto)) ?? ""
+        dudoso = !malas.isEmpty
+        if dudoso { NSLog("CNLIBRETA: no se pudo leer %@ — el teléfono no escribirá", malas.joined(separator: ", ")) } }
+    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx, presupuesto, medioPorDefecto }
 
     func categoria(_ nombre: String) -> CNCategoria? { categorias.first { $0.nombre == nombre } }
     func gastadoCategoria(_ nombre: String) -> Double {
@@ -3758,9 +3819,7 @@ struct CNNuevoMov: View {
                 let f = CNFormateadores.iso
                 if let d = f.date(from: m.fecha) { fecha = d }
             }
-            if medio.isEmpty {
-                medio = datos.libreta.cuentas.first.map { "cuenta:\($0.id)" } ?? "efectivo"
-            }
+            if medio.isEmpty { medio = cnMedioPorDefecto(datos.libreta) }
             // El teclado abierto de entrada: lo primero que se anota es cuánto.
             if editar == nil {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { montoPuesto = true }

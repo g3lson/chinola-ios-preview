@@ -99,6 +99,28 @@ enum CNEscribir {
         var item: CNMov?
     }
 
+    /**
+     * ¿NO ALCANZA?
+     *
+     * La web NO ESCRIBE cuando lo que se va a sacar no está en la cuenta: lo
+     * dice con un cartel —«En esa cuenta hay X. No alcanza para pagar Y»— y no
+     * guarda nada. Eso hay que respetarlo aquí, o el teléfono escribiría lo que
+     * la web rechaza y dejaría la cuenta en negativo con un movimiento que dice
+     * que el dinero salió de ahí.
+     *
+     * Solo se mira con una CUENTA: en la tarjeta y en efectivo la web tampoco
+     * mira, porque no hay un saldo del que tirar.
+     *
+     * (El cartel todavía no se ve en las hojas nativas, que se cierran antes de
+     * que la web conteste: hoy la operación no se hace y no se dice nada. Eso
+     * ya pasaba; lo que se evita aquí es que empiece a hacerse.)
+     */
+    static func noAlcanza(_ l: CNLibreta, medio: String, cuanto: Double) -> Bool {
+        guard medio.hasPrefix("cuenta:"), let id = Int(medio.dropFirst(7)),
+              let c = l.cuentas.first(where: { $0.id == id }) else { return false }
+        return cuanto > c.saldo
+    }
+
     /// Cómo se llama un medio de pago. Sirve para el concepto que se pone solo
     /// en una transferencia: «De Banco a Efectivo» se lee; «cuenta:1» no.
     ///
@@ -112,9 +134,11 @@ enum CNEscribir {
         return cnT("Efectivo")
     }
 
-    /// De dónde sale el dinero cuando no se dice: la primera cuenta.
+    /// De dónde sale el dinero cuando no se dice. La regla está en
+    /// `cnMedioPorDefecto`, que es la que usan también los dos formularios:
+    /// aquí decía otra cosa —siempre la primera cuenta— y por eso se juntaron.
     private static func primerMedio(_ l: CNLibreta) -> String {
-        l.cuentas.first.map { "cuenta:\($0.id)" } ?? "efectivo"
+        cnMedioPorDefecto(l)
     }
 
     /// Aportar a una meta: sale de la cuenta y sube lo ahorrado.
@@ -203,6 +227,70 @@ enum CNEscribir {
         _ = CNCalculo.aplica(&nueva, item, signo: 1)
         nueva.tx.append(item)
         return Hecho(libreta: nueva, item: item)
+    }
+
+    /**
+     * PAGAR LA TARJETA DESDE SU HOJA: baja la deuda y anota el gasto.
+     *
+     * OJO, Y ES A PROPÓSITO: esto NO pasa por `aplica`. La deuda se baja a mano
+     * y la cuenta NO se toca, así que el dinero de este pago no sale de ningún
+     * sitio. La app hace esto desde el primer día —la otra forma de pagar una
+     * tarjeta, la transferencia, sí mueve las dos— y se deja igual: si el
+     * teléfono lo «arreglara» por su cuenta, sus saldos y los de la web
+     * dejarían de cuadrar en cuanto alguien pagara desde el otro lado.
+     *
+     * El apunte lo trae quien llama, como en la web: su fecha sale del mes que
+     * se está mirando y eso no es cosa de aquí. `apunteAuto` lo monta.
+     */
+    static func pagoDeTarjeta(_ l: CNLibreta, tarjeta: CNTarjeta?,
+                              monto: Double, item: CNMov) -> Hecho? {
+        let cuanto = abs(monto)
+        guard cuanto > 0, let t = tarjeta else { return nil }
+        var nueva = l
+        nueva.tarjetas = nueva.tarjetas.map { z in
+            guard z.id == t.id else { return z }
+            var x = z; x.saldo = max(0, z.saldo - cuanto); return x
+        }
+        var apunte = item
+        apunte.monto = cuanto
+        nueva.tx.append(apunte)
+        return Hecho(libreta: nueva, item: apunte)
+    }
+
+    /**
+     * EL APUNTE QUE SE PONE SOLO, con el día recortado al mes que se mira.
+     *
+     * La web junta el mes elegido con el día de HOY, y estando en febrero un
+     * día 31 daba «2026-02-31»: una fecha que no existe. Cuenta igual en
+     * febrero —el mes sale del texto— pero al dibujarla el navegador la corre a
+     * marzo y el teléfono no la sabe leer, así que la misma fila se ve con dos
+     * días distintos o sin día. Aquí va ya recortada.
+     */
+    static func apunteAuto(_ l: CNLibreta, mes: String, concepto: String,
+                           categoria: String, tipo: String, monto: Double) -> CNMov {
+        var item = CNMov()
+        item.id = "pt" + String(Int(Date().timeIntervalSince1970 * 1000))
+        item.concepto = concepto
+        item.categoria = categoria
+        item.tipo = tipo
+        item.monto = abs(monto)
+        item.medio = primerMedio(l)
+        let trozos = mes.split(separator: "-").compactMap { Int($0) }
+        let hoy = Calendar.current.component(.day, from: Date())
+        if trozos.count == 2, let ultimo = diasDelMes(trozos[0], trozos[1]) {
+            item.fecha = mes + "-" + String(format: "%02d", min(hoy, ultimo))
+        } else {
+            item.fecha = CNFormateadores.iso.string(from: Date())
+        }
+        return item
+    }
+
+    /// Cuántos días tiene un mes. `nil` si el mes no es un mes.
+    private static func diasDelMes(_ anio: Int, _ mes: Int) -> Int? {
+        var c = DateComponents(); c.year = anio; c.month = mes; c.day = 1
+        guard mes >= 1, mes <= 12, let d = Calendar.current.date(from: c),
+              let r = Calendar.current.range(of: .day, in: .month, for: d) else { return nil }
+        return r.count
     }
 
     /// Sumar o restar a lo ahorrado de una meta, sin bajar de cero.
@@ -472,7 +560,7 @@ extension CNLibreta {
  */
 extension CNEscribir {
     static func hoja(_ l: CNLibreta, _ tipo: String, _ f: [String: Any],
-                     _ extra: [String: Any]?) -> CNLibreta? {
+                     _ extra: [String: Any]?, mes: String) -> CNLibreta? {
         /// El que se está editando, si se está editando alguno.
         let antes = (extra?["id"] as? Int) ?? ((extra?["id"] as? NSNumber)?.intValue)
         let monto = numero(f["monto"])
@@ -490,6 +578,7 @@ extension CNEscribir {
             let texto = ((f["concepto"] as? String) ?? "").trimmingCharacters(in: .whitespaces)
             // Sin concepto, el que pone la web: «De Banco a Efectivo». Con los
             // identificadores dentro se leía «De cuenta:1 a cuenta:2».
+            guard !noAlcanza(l, medio: medio, cuanto: monto) else { return nil }
             let solo = texto.isEmpty
                 ? cnT("De {a} a {b}")
                     .replacingOccurrences(of: "{a}", with: nombreDeMedio(l, medio))
@@ -507,13 +596,27 @@ extension CNEscribir {
             // El mismo texto que pone la web, con su hueco: el concepto del
             // movimiento se ve en la lista, y en dos idiomas distintos según
             // quién lo escribió se leería como dos cosas.
+            guard !noAlcanza(l, medio: medio, cuanto: monto) else { return nil }
             return abonoAPrestamo(l, prestamo: p, monto: monto, medio: medio,
                                   texto: cnT("Pago de {p}").replacingOccurrences(of: "{p}", with: p.nombre))?.libreta
 
         case "aporte":
             guard let id = antes, let m = l.metas.first(where: { $0.id == id }) else { return nil }
+            guard !noAlcanza(l, medio: medio, cuanto: monto) else { return nil }
             return aporteAMeta(l, meta: m, monto: monto, medio: medio,
                                texto: cnT("Aporte a {m}").replacingOccurrences(of: "{m}", with: m.nombre))?.libreta
+
+        case "pagoTarjeta":
+            // Sin monto se paga EL SALDO COMPLETO, que es lo que dice la hoja:
+            // «Vacío = el saldo completo». Con cero se quedaría sin pagar nada.
+            guard let id = antes, let t = l.tarjetas.first(where: { $0.id == id }) else { return nil }
+            let cuanto = monto > 0 ? monto : t.saldo
+            // «Pago Visa», SIN traducir, porque la web tampoco lo traduce. Aquí
+            // lo suyo sería traducirlo, pero entonces el mismo pago se leería
+            // distinto según quién lo escribiera, y en la lista salen juntos.
+            let item = apunteAuto(l, mes: mes, concepto: "Pago " + t.nombre,
+                                  categoria: "Deudas", tipo: "Gasto Fijo", monto: cuanto)
+            return pagoDeTarjeta(l, tarjeta: t, monto: cuanto, item: item)?.libreta
 
         default:
             return nil
