@@ -1,0 +1,431 @@
+{
+  "nota": "Generado ejecutando totales() y aplica() de src/movil/logica.js. Si cambia la web, se regenera y el Swift tiene que seguir cuadrando.",
+  "libreta": {
+    "cuentas": [
+      {
+        "id": 1,
+        "nombre": "Banco",
+        "saldo": 50000
+      },
+      {
+        "id": 2,
+        "nombre": "Efectivo",
+        "saldo": 3000
+      }
+    ],
+    "tarjetas": [
+      {
+        "id": 10,
+        "nombre": "Visa",
+        "saldo": 12000,
+        "limite": 60000,
+        "pago": 5
+      }
+    ],
+    "prestamos": [
+      {
+        "id": 20,
+        "nombre": "Carro",
+        "total": 300000,
+        "pagado": 120000,
+        "sentido": "debo"
+      },
+      {
+        "id": 21,
+        "nombre": "Le presté a Juan",
+        "total": 40000,
+        "pagado": 15000,
+        "sentido": "meDeben"
+      }
+    ],
+    "categorias": [
+      {
+        "id": 1,
+        "nombre": "Comida",
+        "color": "#e0a92e",
+        "ingreso": false
+      },
+      {
+        "id": 2,
+        "nombre": "Préstamo",
+        "color": "#d55948",
+        "ingreso": false
+      },
+      {
+        "id": 3,
+        "nombre": "Sueldo",
+        "color": "#137d41",
+        "ingreso": true
+      },
+      {
+        "id": 4,
+        "nombre": "Ahorro",
+        "color": "#825eb9",
+        "ingreso": false
+      }
+    ],
+    "presupuesto": {
+      "Comida": 18000,
+      "Préstamo": 16000,
+      "Ahorro": 9999
+    },
+    "metas": [],
+    "tx": [
+      {
+        "id": "1",
+        "tipo": "Ingreso",
+        "monto": 82000,
+        "fecha": "2026-09-25",
+        "categoria": "Sueldo",
+        "medio": "cuenta:1"
+      },
+      {
+        "id": "2",
+        "tipo": "Gasto Fijo",
+        "monto": 18500,
+        "fecha": "2026-09-23",
+        "categoria": "Préstamo",
+        "medio": "cuenta:1"
+      },
+      {
+        "id": "3",
+        "tipo": "Gasto Variable",
+        "monto": 2480,
+        "fecha": "2026-09-26",
+        "categoria": "Comida",
+        "medio": "tarjeta:10"
+      },
+      {
+        "id": "4",
+        "tipo": "Ahorro",
+        "monto": 10000,
+        "fecha": "2026-09-10",
+        "categoria": "Ahorro",
+        "medio": "cuenta:1"
+      },
+      {
+        "id": "5",
+        "tipo": "Transferencia",
+        "monto": 5000,
+        "fecha": "2026-09-12",
+        "categoria": "",
+        "medio": "cuenta:1",
+        "destino": "tarjeta:10"
+      },
+      {
+        "id": "6",
+        "tipo": "Gasto Variable",
+        "monto": 1200,
+        "fecha": "2026-08-14",
+        "categoria": "Comida",
+        "medio": "cuenta:2"
+      },
+      {
+        "id": "7",
+        "tipo": "Ingreso",
+        "monto": 4000,
+        "fecha": "2026-08-02",
+        "categoria": "Extra",
+        "medio": "cuenta:2"
+      }
+    ]
+  },
+  "totales": {
+    "2026-09": {
+      "ing": 82000,
+      "gas": 20980,
+      "fij": 18500,
+      "vari": 2480,
+      "aho": 10000,
+      "bal": 51020
+    },
+    "2026-08": {
+      "ing": 4000,
+      "gas": 1200,
+      "fij": 0,
+      "vari": 1200,
+      "aho": 0,
+      "bal": 2800
+    }
+  },
+  "aplica": {
+    "1": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 132000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": -32000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      }
+    },
+    "2": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 31500
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 68500
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      }
+    },
+    "3": {
+      "mas": {
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 14480,
+            "limite": 60000,
+            "pago": 5
+          }
+        ]
+      },
+      "menos": {
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 9520,
+            "limite": 60000,
+            "pago": 5
+          }
+        ]
+      }
+    },
+    "4": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 40000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 60000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      }
+    },
+    "5": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 45000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 7000,
+            "limite": 60000,
+            "pago": 5
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 55000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 17000,
+            "limite": 60000,
+            "pago": 5
+          }
+        ]
+      }
+    },
+    "6": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 1800
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 4200
+          }
+        ]
+      }
+    },
+    "7": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 7000
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": -1000
+          }
+        ]
+      }
+    }
+  },
+  "saldos": {
+    "enCuentas": 53000,
+    "deudaTC": 12000,
+    "deudaPr": 180000,
+    "porCobrarPr": 25000,
+    "pendienteTodos": 205000,
+    "patrimonio": -114000
+  },
+  "presupuesto": {
+    "2026-09": {
+      "filas": [
+        {
+          "categoria": "Comida",
+          "limite": 18000,
+          "gastado": 2480,
+          "pct": 14,
+          "excedida": false
+        },
+        {
+          "categoria": "Préstamo",
+          "limite": 16000,
+          "gastado": 18500,
+          "pct": 100,
+          "excedida": true
+        }
+      ],
+      "limiteTotal": 34000,
+      "gastadoTotal": 20980,
+      "pctTotal": 62,
+      "excedidas": 1
+    }
+  },
+  "porCategoria": {
+    "2026-09": [
+      {
+        "categoria": "Préstamo",
+        "gastado": 18500
+      },
+      {
+        "categoria": "Comida",
+        "gastado": 2480
+      }
+    ],
+    "2026-08": [
+      {
+        "categoria": "Comida",
+        "gastado": 1200
+      }
+    ]
+  },
+  "diasHastaElDia": {
+    "5": 9,
+    "26": 0,
+    "31": 2,
+    "desde": "2026-09-26"
+  }
+}

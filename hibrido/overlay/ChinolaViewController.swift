@@ -332,6 +332,10 @@ class ChinolaViewController: CAPBridgeViewController {
         // caían entre medias: salía «Cuentas» donde tenía que salir
         // «Movimientos» y parecía un fallo de la app. Una sola pantalla, quieta,
         // no deja lugar a dudas.
+        // EL FICHERO DE ORO, ejecutado contra este Swift. Solo en el banco.
+        if CNOro.pedido {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { CNOro.correr() }
+        }
         if let ir = ProcessInfo.processInfo.environment["CN_IR"], !ir.isEmpty {
             // Y CON DOS PUNTOS, UNA SUBPANTALLA: `CN_IR=perfil:colores`.
             //

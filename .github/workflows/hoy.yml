@@ -42,6 +42,10 @@ jobs:
           # la bienvenida, y las pantallas que hay que mirar —las nativas, las
           # que tapan el webview— salen vacías porque no hay nada que pintar.
           cp ../hibrido/siembra.js www/siembra.js
+          # Y EL FICHERO DE ORO, para poder ejecutar el Swift contra él. Va por
+          # `www/` porque Capacitor mete esa carpeta entera en el paquete y así
+          # no hay que tocar el proyecto de Xcode para añadir un recurso.
+          cp ../hibrido/calculo-oro.json www/calculo-oro.json
           python3 - <<'PYX'
           import re, pathlib
           p = pathlib.Path('www/index.html')
@@ -217,6 +221,22 @@ jobs:
           echo "=== lo que dijo la web (y lo nativo) ==="
           xcrun simctl spawn "$UDID" log show --last 4m --style compact \
             --predicate 'process == "App" AND (eventMessage CONTAINS "CNFLOTA2" OR eventMessage CONTAINS "CNSONDA" OR eventMessage CONTAINS "CNRELOJ" OR eventMessage CONTAINS "CN" OR eventMessage CONTAINS "Chinola" OR eventMessage CONTAINS "rror")' 2>/dev/null | head -60 || true
+          # EL FICHERO DE ORO, EJECUTADO CONTRA EL SWIFT.
+          #
+          # El oro lo genera la web y una prueba en Node la ejecuta contra él.
+          # Al Swift se le comprobaba leyendo su texto con expresiones
+          # regulares, que confirman que el código dice lo que dice y no que la
+          # cuenta salga bien. Aquí se ejecuta de verdad y se comparan los dos
+          # árboles, número a número.
+          echo "=== el oro contra el Swift ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          SIMCTL_CHILD_CN_ORO=1 xcrun simctl launch "$UDID" "$ID"
+          sleep 14
+          xcrun simctl spawn "$UDID" log show --last 2m --style compact \
+            --predicate 'eventMessage CONTAINS "CNORO"' 2>/dev/null > /tmp/oro.txt || true
+          python3 ../sondas/oro-cuadra.py www/calculo-oro.json /tmp/oro.txt
+
           # ¿LA APP LLEGÓ A ENTRAR?
           #
           # La sonda dice el paso en cada arranque, y decía `"paso":"auth"` una
