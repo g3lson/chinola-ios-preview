@@ -3967,12 +3967,30 @@ struct CNCuentas: View {
     /// De qué clase es una fila de cuenta. La web no manda la clase en la
     /// fila, así que se busca en la libreta: primero por posición —que es el
     /// orden con el que la web las arma— y, si no cuadra, por nombre.
-    private func claseDe(_ f: CNCuentasModelo.Fila) -> String {
+    /**
+     * LA CUENTA DE UNA FILA, POR EL ÍNDICE Y NO POR EL NOMBRE.
+     *
+     * Dos cuentas se pueden llamar igual —«Cuenta de banco» y «Cuenta de
+     * banco»— y buscándolas por el nombre las dos devuelven la primera. El
+     * total del grupo lo hacía así y sumaba el saldo de la primera dos veces:
+     * con 5.000 y 50.000 enseñaba 10.000 en vez de 55.000, o sea 45.000 de
+     * menos en «Tienes». Las cuentas salían bien una por una y el total no
+     * cuadraba, que es la peor manera de equivocarse.
+     *
+     * El índice es el de la lista que manda la web, y la propia web ya cuenta
+     * con eso para saber cuál es la predeterminada. El nombre queda solo de
+     * respaldo por si algún día llegara una fila sin sitio.
+     */
+    private func cuentaDe(_ f: CNCuentasModelo.Fila) -> CNCuenta? {
         let cs = datos.libreta.cuentas
         if f.indice >= 0, f.indice < cs.count, cs[f.indice].nombre == f.nombre {
-            return cs[f.indice].clase
+            return cs[f.indice]
         }
-        return cs.first { $0.nombre == f.nombre }?.clase ?? "banco"
+        return cs.first { $0.nombre == f.nombre }
+    }
+
+    private func claseDe(_ f: CNCuentasModelo.Fila) -> String {
+        cuentaDe(f)?.clase ?? "banco"
     }
 
     /// Lo que se puede gastar hoy.
@@ -3987,10 +4005,8 @@ struct CNCuentas: View {
     /// El total de un grupo, sumado de la libreta (la web solo manda el de
     /// todas juntas, y ahora hacen falta dos).
     private func totalDe(_ filas: [CNCuentasModelo.Fila], como m: CNCuentasModelo) -> CNCuentasModelo.Total {
-        let cs = datos.libreta.cuentas
-        let suma = filas.reduce(0.0) { acc, f in
-            acc + (cs.first { $0.nombre == f.nombre }?.saldo ?? 0)
-        }
+        // Por el índice, no por el nombre: ver `cuentaDe`.
+        let suma = filas.reduce(0.0) { acc, f in acc + (cuentaDe(f)?.saldo ?? 0) }
         // El rótulo y el color, los mismos que ya traía el total de la web.
         return CNCuentasModelo.Total(rotulo: m.totalCuentas.rotulo, valor: cnDinero(suma),
                                      tinta: m.totalCuentas.tinta)
