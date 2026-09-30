@@ -25,8 +25,28 @@ import Foundation
  */
 enum CNNube {
 
-    /// ¿Toca? Solo en el banco, como el fichero de oro.
+    /// ¿Toca correr el ciclo de prueba del banco?
     static var pedido: Bool { ProcessInfo.processInfo.environment["CN_SINCRO"] == "1" }
+
+    /**
+     * ¿SINCRONIZA EL TELÉFONO?
+     *
+     * El interruptor que decide quién habla con el servidor. Mientras esté en
+     * `false`, lo hace la web exactamente como siempre; en `true`, la web deja
+     * de hablar con el servidor y se lo pide aquí.
+     *
+     * No puede estar encendido en los dos sitios a la vez: dos escritores de la
+     * misma libreta la corrompen en silencio —uno sube su versión, el otro sube
+     * la suya encima y lo del primero desaparece sin que falle nada—. Por eso el
+     * interruptor es UNO y lo lee la web (`Nativo.nubeManda`), en vez de haber
+     * uno en cada lado que se puedan contradecir.
+     *
+     * Y aunque esté encendido, hacen falta las dos cosas de `CNAlmacen`: la
+     * copia con libretas y el vale. Sin alguna, el teléfono NO toma el mando y
+     * lo sigue haciendo la web. Fallar hacia el camino que ya funciona.
+     */
+    static var encendido = false
+    static var elTelefonoManda: Bool { encendido && CNAlmacen.listoParaSincronizar() }
 
     /// La versión que el servidor aceptó de cada libreta.
     static var versiones: [String: Int] = [:]
@@ -199,13 +219,21 @@ enum CNNube {
             salida["bajadas"] = bajadas.compactMap { $0["id"] as? String }.sorted()
             salida["versiones"] = versiones.mapValues { $0 }
 
-            // Lo de este aparato: la primera libreta con un movimiento más, y
-            // una de llave vieja que el servidor va a rechazar.
-            var mias = bajadas
-            if !mias.isEmpty {
-                var tx = (mias[0]["tx"] as? [[String: Any]]) ?? []
+            // LO DE ESTE APARATO SALE DE LA COPIA, que es de donde saldrá de
+            // verdad: la web la deja escrita en el teléfono cada dos segundos.
+            // Si no hay copia —la web aún no ha guardado— se sigue con lo
+            // bajado, y queda dicho en el log para no confundir las dos cosas.
+            let deLaCopia = CNAlmacen.listoParaSincronizar()
+            salida["deLaCopia"] = deLaCopia
+            salida["enLaCopia"] = CNAlmacen.libretas().compactMap { $0["id"] as? String }.sorted()
+            var mias = deLaCopia ? CNAlmacen.libretas() : bajadas
+            // Un movimiento anotado aquí, para ver si sobrevive a la
+            // conciliación, y una libreta de llave vieja que el servidor va a
+            // rechazar por no ser suya.
+            if let i = mias.firstIndex(where: { ($0["id"] as? String) == "lb-uno" }) ?? mias.indices.first {
+                var tx = (mias[i]["tx"] as? [[String: Any]]) ?? []
                 tx.append(["id": "m-local", "monto": 777, "concepto": "Anotado aquí"])
-                mias[0]["tx"] = tx
+                mias[i]["tx"] = tx
             }
             mias.append(["id": "lb1", "nombre": "La vieja", "tx": []])
 

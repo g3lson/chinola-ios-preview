@@ -27,6 +27,17 @@ def main():
         print('uso: sincro-cuadra.py log-del-simulador.txt')
         return 2
     log = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+
+    # ¿LLEGÓ LA WEB A PREGUNTAR quién sincroniza? Es lo único que prueba, desde
+    # fuera, que el puente está enchufado. Si no pregunta, sigue hablando ella
+    # con el servidor y todo lo nativo sería adorno.
+    mando = re.findall(r'CNMANDO: (\S+) · copia=(\S+) vale=(\S+)', log)
+    if not mando:
+        print('La web NO preguntó quién sincroniza: el puente no está enchufado.')
+        return 1
+    quien, copia, vale = mando[-1]
+    print('manda: ' + quien + ' (copia=' + copia + ', vale=' + vale + ')')
+
     m = re.findall(r'CNSINCRO (\{.*)', log)
     if not m:
         print('El teléfono no sincronizó nada. ¿Arrancó con CN_SINCRO=1?')

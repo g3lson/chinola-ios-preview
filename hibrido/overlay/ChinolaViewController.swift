@@ -332,6 +332,19 @@ class ChinolaViewController: CAPBridgeViewController {
         // caían entre medias: salía «Cuentas» donde tenía que salir
         // «Movimientos» y parecía un fallo de la app. Una sola pantalla, quieta,
         // no deja lugar a dudas.
+        // QUIÉN SINCRONIZA. A partir de aquí, el teléfono —si tiene con qué—.
+        //
+        // «Con qué» son dos cosas y las mira `CNAlmacen`: la copia que la web
+        // deja escrita en el teléfono y el vale de sesión. Recién instalada la
+        // app no hay ninguna de las dos, así que sincroniza la web como siempre;
+        // en cuanto entras y la web guarda su copia, el siguiente arranque ya lo
+        // lleva el teléfono. El traspaso se hace solo y sin borrar nada.
+        //
+        // La web lo pregunta una vez (`Nativo.nubeManda`) y deja de hablar con
+        // el servidor. El interruptor es UNO: dos escritores de la misma libreta
+        // la corrompen en silencio.
+        CNNube.encendido = true
+
         // EL FICHERO DE ORO, ejecutado contra este Swift. Solo en el banco.
         if CNOro.pedido {
             DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { CNOro.correr() }

@@ -309,7 +309,7 @@ jobs:
             xcrun simctl launch "$UDID" "$ID"
           sleep 16
           xcrun simctl spawn "$UDID" log show --last 2m --style compact \
-            --predicate 'eventMessage CONTAINS "CNSINCRO"' 2>/dev/null > /tmp/sincro.txt || true
+            --predicate 'eventMessage CONTAINS "CNSINCRO" OR eventMessage CONTAINS "CNMANDO"' 2>/dev/null > /tmp/sincro.txt || true
           python3 ../sondas/sincro-cuadra.py /tmp/sincro.txt
 
           # ¿LA APP LLEGÓ A ENTRAR?

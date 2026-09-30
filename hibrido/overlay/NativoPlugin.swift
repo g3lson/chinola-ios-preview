@@ -33,7 +33,11 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "formulario", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "selector", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "hojaPeriodo", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "fallo", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "fallo", returnType: CAPPluginReturnPromise),
+        // La sincronización, cuando la lleva el teléfono.
+        CAPPluginMethod(name: "nubeManda", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "nubeTraer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "nubeEmpujar", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -296,4 +300,57 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
             host.present(hosting, animated: true)
         }
     }
+    // MARK: - La sincronización, llevada por el teléfono
+    //
+    // La web deja de hablar con el servidor y pasa a pedírselo aquí. Todo lo
+    // que se hace DESPUÉS —adoptar lo conciliado, avisar de que te sacaron de
+    // una libreta, aplicar un renombrado— se queda en la web: así sigue habiendo
+    // UNA sola mano escribiendo la libreta, y lo que se muda es la red.
+
+    /// ¿Sincroniza el teléfono? Solo si tiene con qué: la copia y el vale.
+    @objc func nubeManda(_ call: CAPPluginCall) {
+        let si = CNNube.elTelefonoManda
+        // Queda dicho en el log: es la única manera de saber DESDE FUERA quién
+        // está hablando con el servidor. Si esto no sale, la web ni preguntó —o
+        // sea que el puente no está enchufado y sigue sincronizando ella—.
+        NSLog("CNMANDO: %@ · copia=%@ vale=%@", si ? "teléfono" : "web",
+              CNAlmacen.libretas().isEmpty ? "no" : "sí",
+              CNAlmacen.vale().isEmpty ? "no" : "sí")
+        call.resolve(["si": si])
+    }
+
+    @objc func nubeTraer(_ call: CAPPluginCall) {
+        Task {
+            do {
+                let libretas = try await CNNube.traer()
+                call.resolve(["libretas": libretas])
+            } catch {
+                call.reject(String(describing: error))
+            }
+        }
+    }
+
+    @objc func nubeEmpujar(_ call: CAPPluginCall) {
+        let libretas = call.getArray("libretas", [String: Any].self) ?? []
+        Task {
+            do {
+                let r = try await CNNube.empujar(libretas)
+                var fuera: [String: Any] = [
+                    "limite": r.limite,
+                    "sinPermiso": r.sinPermiso,
+                    "renombradas": r.renombradas.map { ["de": $0.de, "a": $0.a] },
+                    "perdidas": r.perdidas
+                ]
+                // `fusionadas` va como NULO cuando no hizo falta conciliar: la
+                // web lo distingue y solo adopta la lista cuando hay algo que
+                // adoptar. Mandar una lista vacía sería decirle que se quedó sin
+                // libretas.
+                if let f = r.fusionadas { fuera["fusionadas"] = f }
+                call.resolve(fuera)
+            } catch {
+                call.reject(String(describing: error))
+            }
+        }
+    }
+
 }
