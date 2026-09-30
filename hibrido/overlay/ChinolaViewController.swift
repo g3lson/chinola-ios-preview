@@ -633,11 +633,23 @@ class ChinolaViewController: CAPBridgeViewController {
         // Guardado: reusa la lógica de la web y vuelve a leer los datos.
         datos.onGuardarHoja = { [weak self] tipo, form, extra in
             guard let s = self else { return }
+            // Once de las doce las escribe el teléfono. La que devuelve `nil`
+            // —el perfil, el correo, los dos pasos, importar, exportar, pagar
+            // la tarjeta— sigue siendo de la web, que es donde está su lógica.
+            if s.telefonoEscribe,
+               let nueva = CNEscribir.hoja(CNDatos.shared.libreta, tipo, form, extra) {
+                s.adopta(nueva)
+                return
+            }
             var payload: [String: Any] = ["tipo": tipo, "form": form]
             if let e = extra { payload["extra"] = e }
             s.aWeb("window.__chinolaGuardarHoja", payload)
         }
-        datos.onCrearMov = { [weak self] dict in self?.aWeb("window.__chinolaCrearMov", dict) }
+        datos.onCrearMov = { [weak self] dict in
+            guard let s = self else { return }
+            guard s.telefonoEscribe else { s.aWeb("window.__chinolaCrearMov", dict); return }
+            s.adopta(CNEscribir.movimientoNuevo(CNDatos.shared.libreta, dict))
+        }
         // Los tres puntos de la charla. Las tres cosas las hace la web, que ya
         // las tenía montadas; aquí solo se le dice cuál.
         datos.onCharlaAccion = { [weak self] que in
@@ -1043,10 +1055,27 @@ class ChinolaViewController: CAPBridgeViewController {
         datos.onLimiteCategoria = { [weak self] nombre, limite in
             self?.aWeb("window.__chinolaLimiteCategoria", ["nombre": nombre, "limite": limite])
         }
-        datos.onEditarMov = { [weak self] dict in self?.aWeb("window.__chinolaEditarMov", dict) }
+        // Editar uno: por aquí el teléfono lo hace MEJOR que la web, no solo
+        // igual. `guardarTx` rehace el movimiento entero, así que un aporte o
+        // un abono editado pierde su marca —`meta`, `prestamo`— y borrarlo
+        // luego devuelve el dinero sin bajar lo ahorrado. `movimientoCambiado`
+        // deja quieto lo que no se dice.
+        datos.onEditarMov = { [weak self] dict in
+            guard let s = self else { return }
+            guard s.telefonoEscribe else { s.aWeb("window.__chinolaEditarMov", dict); return }
+            s.adopta(CNEscribir.movimientoCambiado(CNDatos.shared.libreta, dict))
+        }
         datos.onBorrarMov = { [weak self] id in
-            self?.eval("window.__chinolaBorrarMov && window.__chinolaBorrarMov('\(id)')")
-            self?.refrescarPronto()
+            guard let s = self else { return }
+            guard s.telefonoEscribe else {
+                s.eval("window.__chinolaBorrarMov && window.__chinolaBorrarMov('\(id)')")
+                s.refrescarPronto()
+                return
+            }
+            // Borrar uno que no existe devuelve la misma libreta: no se manda
+            // nada, que es distinto de mandar una libreta igual.
+            let nueva = CNEscribir.movimientoBorrado(CNDatos.shared.libreta, id)
+            if nueva.tx.count != CNDatos.shared.libreta.tx.count { s.adopta(nueva) }
         }
         // Lo que aún vive en la web.
         datos.onNuevaCategoria = { [weak self] in self?.webTemporal(); self?.eval("window.__chinolaNuevaCategoria && window.__chinolaNuevaCategoria()") }
@@ -1103,6 +1132,50 @@ class ChinolaViewController: CAPBridgeViewController {
     }
 
     /// Llama a una función de la web con un objeto y luego relee los datos.
+    /**
+     * ¿ESCRIBE EL TELÉFONO?
+     *
+     * Hasta ahora el nativo dibujaba el formulario y la web escribía: los
+     * campos iban por el puente y era `app.js` quien tocaba la libreta. Es la
+     * atadura que impide quitar el webview, porque mientras el que escribe sea
+     * la web, la web tiene que estar viva.
+     *
+     * Con esto escribe el teléfono. La web sigue GUARDANDO —el almacén y la
+     * nube son suyos— y sigue volviendo a dibujar las pantallas nativas: lo que
+     * cambia es quién CALCULA, que es lo que está comparado contra ella en
+     * `test/calculo-oro.json`.
+     *
+     * Y una condición: la libreta nativa tiene que haber LLEGADO. Escribir
+     * sobre una vacía la vaciaría de verdad, y esa es la única forma de perder
+     * datos por aquí.
+     */
+    private var telefonoEscribe: Bool {
+        !sin("escribir") && !CNDatos.shared.libreta.sinLlegar
+    }
+
+    /// Lo que escribió el teléfono, de vuelta a la web.
+    ///
+    /// Se devuelve la libreta ENTERA y no la operación: así un solo camino vale
+    /// para las once, y quien la recibe no tiene que saber qué tocó cada una.
+    /// Al otro lado se adoptan las listas UNA POR UNA, porque la libreta lleva
+    /// cosas que aquí no se leen —el panel, los miembros, las invitaciones— y
+    /// mandar un JSON hecho desde este modelo las borraría.
+    private func adopta(_ l: CNLibreta) {
+        // PRIMERO SE EMPAQUETA Y LUEGO SE PINTA, aunque parezca al revés.
+        //
+        // `JSONSerialization` se niega con un número que no es número —un saldo
+        // que saliera NaN— y devolvería aquí sin avisar. Pintando antes, la
+        // pantalla enseñaría un movimiento que la web no tiene y que se
+        // desvanece en el siguiente refresco. Así, si no se puede empaquetar,
+        // no ha pasado nada.
+        guard let d = try? JSONSerialization.data(withJSONObject: l.aDiccionario()),
+              let json = String(data: d, encoding: .utf8) else { return }
+        // Y ahora sí: en pantalla al momento, sin esperar el viaje de vuelta.
+        CNDatos.shared.libreta = l
+        eval("window.__chinolaAdoptaLibreta && window.__chinolaAdoptaLibreta(\(comillas(json)))")
+        refrescarPronto()
+    }
+
     private func aWeb(_ fn: String, _ obj: [String: Any]) {
         guard let d = try? JSONSerialization.data(withJSONObject: obj),
               let json = String(data: d, encoding: .utf8) else { return }

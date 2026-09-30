@@ -99,6 +99,19 @@ enum CNEscribir {
         var item: CNMov?
     }
 
+    /// Cómo se llama un medio de pago. Sirve para el concepto que se pone solo
+    /// en una transferencia: «De Banco a Efectivo» se lee; «cuenta:1» no.
+    ///
+    /// Un medio que ya no existe —se borró la cuenta y quedaron sus
+    /// movimientos— se lee «Efectivo», igual que en la web.
+    static func nombreDeMedio(_ l: CNLibreta, _ medio: String) -> String {
+        if medio.hasPrefix("cuenta:"), let id = Int(medio.dropFirst(7)),
+           let c = l.cuentas.first(where: { $0.id == id }) { return c.nombre }
+        if medio.hasPrefix("tarjeta:"), let id = Int(medio.dropFirst(8)),
+           let t = l.tarjetas.first(where: { $0.id == id }) { return t.nombre }
+        return cnT("Efectivo")
+    }
+
     /// De dónde sale el dinero cuando no se dice: la primera cuenta.
     private static func primerMedio(_ l: CNLibreta) -> String {
         l.cuentas.first.map { "cuenta:\($0.id)" } ?? "efectivo"
@@ -383,5 +396,127 @@ enum CNEscribir {
         if let n = v as? NSNumber { return n.doubleValue }
         if let s = v as? String { return cnMonto(s) }
         return 0
+    }
+}
+
+/**
+ * LA LIBRETA, DE VUELTA A JSON.
+ *
+ * Hace falta para devolverle a la web lo que el teléfono acaba de escribir.
+ *
+ * **Solo salen las listas que el teléfono conoce**, y eso es a propósito: la
+ * libreta lleva cosas que aquí no se leen —el panel, los miembros, las
+ * invitaciones— y mandar un JSON «entero» hecho desde este modelo las borraría.
+ * Por eso al otro lado se adoptan una por una y el resto de la libreta se queda
+ * como estaba.
+ *
+ * Si algún día se le añade un campo a un movimiento y no se añade aquí, se
+ * perdería al reescribirlo. Hay una prueba que compara esta lista con las
+ * claves del modelo para que no pase en silencio.
+ */
+extension CNLibreta {
+    func aDiccionario() -> [String: Any] {
+        [
+            "cuentas": cuentas.map { c -> [String: Any] in
+                ["id": c.id, "nombre": c.nombre, "banco": c.banco, "saldo": c.saldo,
+                 "color": c.color, "clase": c.clase, "icono": c.icono]
+            },
+            "tarjetas": tarjetas.map { t -> [String: Any] in
+                ["id": t.id, "nombre": t.nombre, "banco": t.banco, "saldo": t.saldo,
+                 "limite": t.limite, "corte": t.corte, "pago": t.pago, "color": t.color,
+                 "last4": t.last4]
+            },
+            "prestamos": prestamos.map { p -> [String: Any] in
+                ["id": p.id, "nombre": p.nombre, "total": p.total, "pagado": p.pagado,
+                 "sentido": p.sentido, "color": p.color, "cuota": p.cuota, "dia": p.dia,
+                 "entidad": p.entidad]
+            },
+            "categorias": categorias.map { c -> [String: Any] in
+                ["id": c.id, "nombre": c.nombre, "tipo": c.tipo, "limite": c.limite,
+                 "ingreso": c.ingreso, "color": c.color, "icono": c.icono]
+            },
+            "metas": metas.map { m -> [String: Any] in
+                ["id": m.id, "nombre": m.nombre, "meta": m.meta, "ahorrado": m.ahorrado,
+                 "mensual": m.mensual, "color": m.color, "icono": m.icono]
+            },
+            "presupuesto": presupuesto,
+            "tx": tx.map { x -> [String: Any] in
+                ["id": x.id, "concepto": x.concepto, "categoria": x.categoria, "tipo": x.tipo,
+                 "monto": x.monto, "fecha": x.fecha, "medio": x.medio, "destino": x.destino,
+                 "recurrente": x.recurrente, "meta": x.meta, "prestamo": x.prestamo]
+            }
+        ]
+    }
+}
+
+/**
+ * LA HOJA QUE GUARDA, EN NATIVO.
+ *
+ * Un solo sitio donde se decide quién escribe cada hoja, porque la pregunta se
+ * repetía doce veces y una respuesta distinta en una de las doce es justo el
+ * fallo que no se ve.
+ *
+ * **`nil` significa «no es mía»**, y entonces escribe la web como siempre. No
+ * es un fallo ni un caso raro: por aquí pasan también el perfil, el correo, los
+ * dos pasos, las integraciones, importar y exportar, que siguen siendo suyas
+ * porque tocan la cuenta y no la libreta. Y pasa `pagoTarjeta`, que todavía no
+ * está comparada con la web.
+ *
+ * Lo que sí es mío está TODO comparado contra `test/calculo-oro.json`: las once
+ * operaciones que mueven dinero se generan ejecutando la web y el banco corre
+ * estas mismas contra ellas.
+ *
+ * Al que llama se le devuelve la libreta ENTERA y no el parche. Es lo que
+ * permite que un camino valga para las once: quien la recibe no tiene que saber
+ * qué tocó cada una.
+ */
+extension CNEscribir {
+    static func hoja(_ l: CNLibreta, _ tipo: String, _ f: [String: Any],
+                     _ extra: [String: Any]?) -> CNLibreta? {
+        /// El que se está editando, si se está editando alguno.
+        let antes = (extra?["id"] as? Int) ?? ((extra?["id"] as? NSNumber)?.intValue)
+        let monto = numero(f["monto"])
+        let medio = (f["medio"] as? String) ?? ""
+
+        switch tipo {
+        case "cuenta":     return guardarCuenta(l, f, antes: antes)
+        case "tarjeta":    return guardarTarjeta(l, f, antes: antes)
+        case "prestamo":   return guardarPrestamo(l, f, antes: antes)
+        case "meta":       return guardarMeta(l, f, antes: antes)
+        case "categoria":  return guardarCategoria(l, f, antes: antes)
+
+        case "transferencia":
+            let hasta = (f["destino"] as? String) ?? ""
+            let texto = ((f["concepto"] as? String) ?? "").trimmingCharacters(in: .whitespaces)
+            // Sin concepto, el que pone la web: «De Banco a Efectivo». Con los
+            // identificadores dentro se leía «De cuenta:1 a cuenta:2».
+            let solo = texto.isEmpty
+                ? cnT("De {a} a {b}")
+                    .replacingOccurrences(of: "{a}", with: nombreDeMedio(l, medio))
+                    .replacingOccurrences(of: "{b}", with: nombreDeMedio(l, hasta))
+                : texto
+            return transferencia(l, desde: medio, hasta: hasta, monto: monto,
+                                 texto: solo)?.libreta
+
+        case "abono":
+            // El préstamo se busca POR ID en la libreta, no se toma de `extra`:
+            // lo que trae la hoja es de cuando se abrió, y lo pagado puede
+            // haber cambiado desde entonces. Abonar sobre un total viejo
+            // dejaría el préstamo pagado por encima de su total.
+            guard let id = antes, let p = l.prestamos.first(where: { $0.id == id }) else { return nil }
+            // El mismo texto que pone la web, con su hueco: el concepto del
+            // movimiento se ve en la lista, y en dos idiomas distintos según
+            // quién lo escribió se leería como dos cosas.
+            return abonoAPrestamo(l, prestamo: p, monto: monto, medio: medio,
+                                  texto: cnT("Pago de {p}").replacingOccurrences(of: "{p}", with: p.nombre))?.libreta
+
+        case "aporte":
+            guard let id = antes, let m = l.metas.first(where: { $0.id == id }) else { return nil }
+            return aporteAMeta(l, meta: m, monto: monto, medio: medio,
+                               texto: cnT("Aporte a {m}").replacingOccurrences(of: "{m}", with: m.nombre))?.libreta
+
+        default:
+            return nil
+        }
     }
 }

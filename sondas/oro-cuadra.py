@@ -171,10 +171,28 @@ def main():
         except (OSError, ValueError, KeyError) as e:
             fallos.append('gzip: no se puede descomprimir lo que manda el teléfono — ' + str(e))
 
+    # LA VUELTA, tampoco contra el oro: contra sí misma. El teléfono empaqueta
+    # la libreta, la vuelve a leer y la empaqueta otra vez. Un campo que se
+    # escriba y no se lea —o al revés— se pierde en ese viaje, y se pierde sin
+    # error: la primera vez que se toca esa tarjeta desaparecen sus cuatro
+    # dígitos. Si el viaje no pierde nada, los dos paquetes son idénticos.
+    if 'vuelta' in hay:
+        antes = hay['vuelta'].get('antes')
+        despues = hay['vuelta'].get('despues')
+        if antes is None or despues is None:
+            fallos.append('vuelta: el teléfono no pudo empaquetar su propia libreta')
+        else:
+            cuantos = len(fallos)
+            compara('vuelta (ida→vuelta)', antes, despues, fallos)
+            if len(fallos) == cuantos:
+                print('vuelta: la libreta va y viene sin perder nada')
+
     # Solo lo que el Swift dice haber calculado: el oro lleva apartados que aún
     # no tienen equivalente, y culparle por ellos sería ruido.
     for apartado in hay:
         if apartado == 'gzip':
+            continue
+        if apartado == 'vuelta':
             continue
         if apartado in oro:
             compara(apartado, oro[apartado], hay[apartado], fallos)

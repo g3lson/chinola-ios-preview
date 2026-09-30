@@ -350,6 +350,23 @@ enum CNOro {
             salida["escribir"] = out
         }
 
+        // LA LIBRETA, IDA Y VUELTA.
+        //
+        // Cuando el teléfono escribe, le devuelve a la web la libreta entera
+        // montada desde este modelo. Un campo que el modelo SERIALICE pero no
+        // DECODIFIQUE —o al revés— se pierde ahí, y no se pierde con un error:
+        // se pierde en silencio, la primera vez que se toca esa tarjeta o ese
+        // préstamo. Así se perdían los cuatro dígitos de la tarjeta y el banco
+        // del préstamo.
+        //
+        // No hace falta oro para esto: se compara el Swift CONTRA SÍ MISMO. Se
+        // empaqueta, se vuelve a leer y se empaqueta otra vez; si el viaje no
+        // pierde nada, los dos paquetes son idénticos.
+        if let d = try? JSONSerialization.data(withJSONObject: l.aDiccionario()),
+           let otra = try? JSONDecoder().decode(CNLibreta.self, from: d) {
+            salida["vuelta"] = ["antes": l.aDiccionario(), "despues": otra.aDiccionario()]
+        }
+
         // LAS HOJAS DE DINERO: aportar, abonar y los dos ajustes a mano. Cada
         // una toca DOS sitios —el saldo y el avance—, que es lo que se pierde
         // al rehacerlas. La fecha y el identificador salen del reloj y no se

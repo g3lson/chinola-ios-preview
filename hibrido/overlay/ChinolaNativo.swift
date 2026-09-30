@@ -937,6 +937,11 @@ struct CNCategoria: Decodable, Identifiable {
     enum K: String, CodingKey { case id, nombre, tipo, limite, ingreso, color, icono } }
 
 struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var limite: Double = 0; var corte: Int = 0; var pago: Int = 0; var color: String = "#d55948"
+    /// Los cuatro dígitos del final. No se piden ni se usan para nada:
+    /// salen dibujados en la tarjeta. Se leen SOLO para no perderlos al
+    /// reescribir la libreta —un campo que no se decodifica desaparece en
+    /// silencio la primera vez que el teléfono toca esa tarjeta—.
+    var last4: String = ""
     /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no
     /// regala el de por defecto.
     init() {}
@@ -948,8 +953,9 @@ struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String 
         corte = (try? c.decodeIfPresent(Int.self, forKey: .corte)) ?? 0
         pago = (try? c.decodeIfPresent(Int.self, forKey: .pago)) ?? 0
         banco = (try? c.decodeIfPresent(String.self, forKey: .banco)) ?? ""
-        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#d55948" }
-    enum K: String, CodingKey { case id, nombre, banco, saldo, limite, corte, pago, color }
+        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#d55948"
+        last4 = (try? c.decodeIfPresent(String.self, forKey: .last4)) ?? "" }
+    enum K: String, CodingKey { case id, nombre, banco, saldo, limite, corte, pago, color, last4 }
     var disponible: Double { max(0, limite - saldo) } }
 
 struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var total: Double = 0; var pagado: Double = 0; var sentido: String = "debo"; var color: String = "#825eb9"
@@ -962,6 +968,9 @@ struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String
     /// cosa, que es peor que no decir nada.
     var cuota: Double = 0
     var dia: Int = 1
+    /// El banco o la persona. Va de subtítulo en la fila del préstamo, y la
+    /// escribe el formulario nativo; aquí se lee para no perderla.
+    var entidad: String = ""
     /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no
     /// regala el de por defecto.
     init() {}
@@ -978,8 +987,9 @@ struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String
         sentido = (try? c.decodeIfPresent(String.self, forKey: .sentido)) ?? "debo"
         cuota = (try? c.decodeIfPresent(Double.self, forKey: .cuota)) ?? 0
         dia = (try? c.decodeIfPresent(Int.self, forKey: .dia)) ?? 1
-        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#825eb9" }
-    enum K: String, CodingKey { case id, nombre, total, pagado, sentido, color, cuota, dia }
+        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#825eb9"
+        entidad = (try? c.decodeIfPresent(String.self, forKey: .entidad)) ?? "" }
+    enum K: String, CodingKey { case id, nombre, total, pagado, sentido, color, cuota, dia, entidad }
     var pendiente: Double { max(0, total - pagado) } }
 
 struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var mensual: Double = 0; var color: String = ""; var icono: String = ""
