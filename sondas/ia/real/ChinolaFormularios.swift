@@ -2776,7 +2776,14 @@ import Speech
 import AVFoundation
 
 struct CNCharla {
-    struct Mensaje: Identifiable { var id: Int; var de = ""; var texto = ""; var error = false }
+    struct Mensaje: Identifiable {
+        var id: Int; var de = ""; var texto = ""; var error = false
+        /// Quién contestó, ya escrito por la web («Apple Intelligence · sin
+        /// salir del teléfono», «Tu IA · …»). Vacío en lo que escribe uno.
+        var quien = ""
+        /// Si es el primero de una tanda suya. Solo ese lleva la cara.
+        var primeroDeChino = false
+    }
     var titulo = "Chino"; var ph = ""; var iaOn = false; var pensando = false
     var chinolo = ""; var vacioTexto = ""
     var mensajes: [Mensaje] = []
@@ -2789,8 +2796,13 @@ struct CNCharla {
         if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
         m.ph = s(r, "ph"); m.iaOn = b(r, "iaOn"); m.pensando = b(r, "pensando")
         m.chinolo = s(r, "chinolo"); m.vacioTexto = s(r, "vacioTexto")
-        m.mensajes = ((r["mensajes"] as? [[String: Any]]) ?? []).map {
-            Mensaje(id: (($0["indice"] as? NSNumber)?.intValue) ?? 0, de: s($0, "de"), texto: s($0, "texto"), error: b($0, "error"))
+        var antes = ""
+        m.mensajes = ((r["mensajes"] as? [[String: Any]]) ?? []).map { j in
+            let de = s(j, "de")
+            defer { antes = de }
+            return Mensaje(id: ((j["indice"] as? NSNumber)?.intValue) ?? 0, de: de,
+                           texto: s(j, "texto"), error: b(j, "error"), quien: s(j, "quien"),
+                           primeroDeChino: de != "yo" && antes != de)
         }
         return m
     }
@@ -2879,16 +2891,51 @@ struct CNCharlaVista: View {
                             .padding(.top, 30)
                         }
                         ForEach(m.mensajes) { x in
-                            HStack {
-                                if x.de == "yo" { Spacer(minLength: 50) }
-                                Text(x.texto).font(cnLetra(15))
-                                    .foregroundColor(x.de == "yo" ? CNC.sobreAcc : (x.error ? CNC.neg : CNC.ink))
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .padding(.horizontal, 14).padding(.vertical, 10)
-                                    .background(x.de == "yo" ? CNC.acc : (x.error ? CNC.neg.opacity(0.10) : CNC.card),
-                                                in: CNBurbuja(mia: x.de == "yo"))
-                                if x.de != "yo" { Spacer(minLength: 50) }
+                            VStack(alignment: x.de == "yo" ? .trailing : .leading, spacing: 3) {
+                                HStack(alignment: .bottom, spacing: 8) {
+                                    if x.de == "yo" { Spacer(minLength: 50) }
+                                    // EL PERSONAJE AL LADO DE LO QUE DICE.
+                                    //
+                                    // Como en cualquier chat: quien habla se
+                                    // ve. Va pegado abajo y solo en el PRIMER
+                                    // mensaje de una tanda suya — repetirlo en
+                                    // cada burbuja de la misma respuesta llena
+                                    // la columna de caras y cansa.
+                                    if x.de != "yo" {
+                                        if x.primeroDeChino, let img = cnImagenBase64(m.chinolo) {
+                                            Image(uiImage: img).resizable().scaledToFit()
+                                                .frame(width: 28, height: 28)
+                                        } else {
+                                            // El hueco se respeta igual, o las
+                                            // burbujas de abajo se desalinean.
+                                            Color.clear.frame(width: 28, height: 28)
+                                        }
+                                    }
+                                    Text(x.texto).font(cnLetra(15))
+                                        .foregroundColor(x.de == "yo" ? CNC.sobreAcc : (x.error ? CNC.neg : CNC.ink))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .padding(.horizontal, 14).padding(.vertical, 10)
+                                        .background(x.de == "yo" ? CNC.acc : (x.error ? CNC.neg.opacity(0.10) : CNC.card),
+                                                    in: CNBurbuja(mia: x.de == "yo"))
+                                    if x.de != "yo" { Spacer(minLength: 50) }
+                                }
+                                // QUIÉN CONTESTÓ, DEBAJO DE SU RESPUESTA.
+                                //
+                                // Hay tres caminos —la de Apple aquí dentro, la
+                                // tuya con tu clave, la de Chinola— y se salta
+                                // solo de uno a otro cuando alguno falla. Sin
+                                // esto, configuras la tuya y no hay manera de
+                                // saber si se está usando o si todo sigue
+                                // saliendo por la de siempre.
+                                if !x.quien.isEmpty {
+                                    Text(x.quien).font(cnLetra(11)).foregroundColor(CNC.pmut)
+                                        // 36 = la cara (28) más su hueco (8),
+                                        // para que la firma caiga bajo la
+                                        // burbuja y no bajo el personaje.
+                                        .padding(.leading, x.de == "yo" ? 4 : 40).padding(.trailing, 4)
+                                }
                             }
+                            .frame(maxWidth: .infinity, alignment: x.de == "yo" ? .trailing : .leading)
                             .id(x.id)
                         }
                         if m.pensando {

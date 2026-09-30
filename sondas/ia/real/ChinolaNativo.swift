@@ -194,7 +194,6 @@ struct CNFormato {
     /// La tipografía elegida (su id en la web: sistema, jakarta, nunito…).
     var fuente = "sistema"
     /// Qué se ve en la pestaña de Perfil: «chino» o «perfil».
-    var iconoPerfil = "chino"
     /// La inicial del usuario, para el icono redondo.
     var inicial = ""
     /// Las tarjetas de cifras del panel, cada una del color de su cifra.
@@ -224,7 +223,6 @@ struct CNFormato {
         if let c = o["centavos"] as? Bool { f.centavos = c }
         if let l = o["loc"] as? String, !l.isEmpty { f.loc = l }
         if let t = o["fuente"] as? String, !t.isEmpty { f.fuente = t }
-        if let t = o["iconoPerfil"] as? String, !t.isEmpty { f.iconoPerfil = t }
         if let t = o["inicial"] as? String { f.inicial = t }
         if let v = o["panelVivo"] as? Bool { f.panelVivo = v }
         if let t = o["tarjetaCuentas"] as? String, !t.isEmpty { f.tarjetaCuentas = t }
@@ -239,6 +237,53 @@ struct CNFormato {
     }
 }
 
+/**
+ * LO QUE ACABAS DE TOCAR, HASTA QUE LA WEB CONFIRME.
+ *
+ * Aquí estaba lo que hace que Perfil se sienta prestado. El valor que se ve
+ * sale SIEMPRE de la web: tocas un interruptor, el aviso cruza el puente, la
+ * web cambia su estado, rearma la pantalla entera, la manda de vuelta y
+ * entonces —y solo entonces— el interruptor se mueve. Entre medias no pasa
+ * nada, y ese hueco es exactamente lo que se nota.
+ *
+ * Y la decisión de no guardar copia aquí tenía su motivo, que sigue siendo
+ * bueno: dos copias del mismo ajuste acaban discrepando y ganando la
+ * equivocada. Así que esto no es una segunda copia — es un apunte de lo que
+ * acabas de tocar, con hora, que vale UN RATO CORTO:
+ *
+ * - Mientras vale, manda él: el control se mueve en el mismo fotograma.
+ * - En cuanto la web manda un valor, manda la web y el apunte se tira. No hay
+ *   nada que pueda quedarse discrepando.
+ * - Y si la web no contesta —porque rechazó el cambio, o se cayó—, el apunte
+ *   caduca solo y el control vuelve a lo que de verdad hay. Mejor que se
+ *   deshaga a la vista que quedarse mintiendo.
+ *
+ * Un segundo y medio es de sobra: el viaje real son decenas de milisegundos.
+ */
+enum CNRecienTocado {
+    private static var apuntes: [String: (valor: Any, cuando: Date)] = [:]
+    /// Cuánto vale un apunte sin confirmar.
+    private static let dura: TimeInterval = 1.5
+
+    /// Apunta lo que se acaba de tocar.
+    static func pon(_ clave: String, _ valor: Any) {
+        apuntes[clave] = (valor, Date())
+    }
+
+    /// Lo apuntado, si todavía vale. `nil` = manda lo que diga la web.
+    static func de<T>(_ clave: String, _ tipo: T.Type) -> T? {
+        guard let a = apuntes[clave] else { return nil }
+        if Date().timeIntervalSince(a.cuando) > dura { apuntes.removeValue(forKey: clave); return nil }
+        return a.valor as? T
+    }
+
+    /// La web mandó lo suyo: a partir de aquí manda ella.
+    static func confirma(_ clave: String) { apuntes.removeValue(forKey: clave) }
+
+    /// Llegó una pantalla nueva entera: todo lo apuntado queda confirmado.
+    static func llegoLaPantalla() { apuntes.removeAll() }
+}
+
 /// Un ajuste de pantalla como Binding, para que los Picker sigan siendo Picker.
 ///
 /// Lee del formato que manda la web y escribe de vuelta por el puente. El valor
@@ -249,10 +294,15 @@ struct CNFormato {
 /// vez para nada. Con un interruptor que dispara una ACCIÓN eso es peor que un
 /// desperdicio: la deshace. Ver la prueba `interruptores-nativos`.
 func cnAjuste<T: Equatable>(_ clave: String, _ leer: @escaping () -> T, _ aJS: @escaping (T) -> Any) -> Binding<T> {
-    Binding(get: leer, set: { nuevo in
-        guard nuevo != leer() else { return }
-        CNC.alPoner?(clave, aJS(nuevo))
-    })
+    Binding(
+        // Lo que acabas de tocar manda mientras la web no diga lo suyo: sin
+        // esto el control no se mueve hasta que vuelve del puente.
+        get: { CNRecienTocado.de(clave, T.self) ?? leer() },
+        set: { nuevo in
+            guard nuevo != (CNRecienTocado.de(clave, T.self) ?? leer()) else { return }
+            CNRecienTocado.pon(clave, nuevo)
+            CNC.alPoner?(clave, aJS(nuevo))
+        })
 }
 
 /// Un tamaño de letra del diseño, ya escalado por el ajuste del usuario.
@@ -743,14 +793,25 @@ struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String 
     var disponible: Double { max(0, limite - saldo) } }
 
 struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var total: Double = 0; var pagado: Double = 0; var sentido: String = "meDeben"; var color: String = "#825eb9"
+    /// La cuota del mes y el día en que vence.
+    ///
+    /// Venían en los datos desde siempre y no se leían: el lado nativo solo
+    /// necesitaba el saldo. En cuanto quiso calcular el consejo de Chino —«tus
+    /// cuotas fijas son X, un Y % de tus ingresos»— no tenía con qué, y un
+    /// campo que no se decodifica no falla: sale cero y la frase dice otra
+    /// cosa, que es peor que no decir nada.
+    var cuota: Double = 0
+    var dia: Int = 1
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         total = (try? c.decodeIfPresent(Double.self, forKey: .total)) ?? 0
         pagado = (try? c.decodeIfPresent(Double.self, forKey: .pagado)) ?? 0
         sentido = (try? c.decodeIfPresent(String.self, forKey: .sentido)) ?? "meDeben"
+        cuota = (try? c.decodeIfPresent(Double.self, forKey: .cuota)) ?? 0
+        dia = (try? c.decodeIfPresent(Int.self, forKey: .dia)) ?? 1
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#825eb9" }
-    enum K: String, CodingKey { case id, nombre, total, pagado, sentido, color }
+    enum K: String, CodingKey { case id, nombre, total, pagado, sentido, color, cuota, dia }
     var pendiente: Double { max(0, total - pagado) } }
 
 struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var mensual: Double = 0; var color: String = "#825eb9"; var icono: String = "target"
@@ -945,6 +1006,23 @@ func cnDinero(_ n: Double) -> String {
     CNFormateadores.dinero.string(from: NSNumber(value: abs(n))) ?? ""
 }
 
+/**
+ * El nombre corto de un mes «2026-09», en el idioma de la app.
+ *
+ * Va por el idioma puesto y no por el del teléfono: quien tiene la app en
+ * francés con el móvil en español espera ver los meses en francés, como el
+ * resto de la pantalla. Y si la fecha no se entiende, se devuelven los dos
+ * dígitos: una etiqueta rara es mejor que una columna sin nombre.
+ */
+func cnMesCorto(_ mes: String) -> String {
+    let f = CNFormateadores.iso
+    guard let d = f.date(from: mes + "-01") else { return String(mes.suffix(2)) }
+    let n = DateFormatter()
+    n.locale = Locale(identifier: CNC.fmt.loc)
+    n.setLocalizedDateFormatFromTemplate("MMM")
+    return n.string(from: d)
+}
+
 // Fecha "d MMM" desde ISO.
 func cnFechaCorta(_ iso: String) -> String {
     guard let d = CNFormateadores.iso.date(from: iso) else { return iso }
@@ -1067,6 +1145,22 @@ final class CNDatos: ObservableObject {
     /// La última subpantalla pedida. Un JSON de otra (uno que llegó tarde) se
     /// tira: era lo que hacía que, al tocar una opción, saliera otra cosa.
     var seccionPedida = ""
+    /**
+     * LA ÚLTIMA VEZ QUE SE VIO CADA SUBPANTALLA.
+     *
+     * Al entrar en una se vaciaba la pantalla y se esperaba a que la web la
+     * armara. Tocabas, se quedaba en blanco, y al rato aparecía el contenido:
+     * eso es el salto raro. Con lo de la vez pasada puesto desde el primer
+     * fotograma, la transición tiene qué animar y el modelo nuevo llega encima
+     * sin que se note.
+     *
+     * Solo en memoria a propósito. Guardarlo en disco haría que, tras
+     * actualizar la app, la primera entrada enseñara una pantalla de la versión
+     * anterior — con opciones que a lo mejor ya no existen. Perder esto al
+     * cerrar la app cuesta un parpadeo una vez; lo otro cuesta enseñar algo
+     * falso.
+     */
+    var seccionesVistas: [String: CNSeccion] = [:]
     /// Lo que lleva recorrido el dedo desde la orilla en la subpantalla de
     /// Perfil. Lo mueve el reconocedor de UIKit; aquí solo se dibuja.
     @Published var arrastreSec: CGFloat = 0
@@ -1331,9 +1425,30 @@ final class CNDatos: ObservableObject {
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
     /// con los colores nuevos (los de CNC son calculados).
     @Published var selloTema = 0
+    /**
+     * Guardar una subpantalla SIN enseñarla.
+     *
+     * Es lo que deja traer las de personalización por adelantado: quedan
+     * listas para cuando alguien entre, pero no cambian lo que se está viendo
+     * ahora. Poner `seccion` aquí sacaría al usuario de donde estaba.
+     */
+    func guardaSeccionVista(json: String) {
+        guard let x = CNSeccion.desde(json: json) else { return }
+        seccionesVistas[x.id] = x
+        // Y si resulta que es justo la que se está mirando, se refresca: viene
+        // más nueva que la que hay puesta.
+        if seccion?.id == x.id { seccion = x }
+    }
+
     func cargarSeccion(json: String) {
         guard let x = CNSeccion.desde(json: json) else { return }
         if !seccionPedida.isEmpty && x.id != seccionPedida { return }
+        // La web acaba de decir lo suyo: a partir de aquí manda ella y lo que
+        // se apuntó al tocar ya no pinta nada. Es lo que impide que existan dos
+        // copias del mismo ajuste discrepando — que era el motivo de no
+        // guardar copia aquí en primer lugar.
+        CNRecienTocado.llegoLaPantalla()
+        seccionesVistas[x.id] = x
         seccion = x
     }
     func cargarAjustes(json: String) {
@@ -1871,32 +1986,18 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         return img.withRenderingMode(.alwaysOriginal)
     }
 
-    /// El icono de Perfil: el dibujo de Chino o, si así lo elige el usuario, el
-    /// de siempre pero redondo, con su inicial —como el del perfil de otras
-    /// apps—. Apagado cuando no es la pestaña puesta, vivo en cuanto lo es.
-    func ponerChinolo(_ b64: String) {
-        guard let items = barra.items, let i = ids.firstIndex(of: "perfil"), i < items.count else { return }
-        let nombre = cnT("Perfil")
-        if CNC.fmt.iconoPerfil == "perfil" {
-            items[i].imageInsets = conTitulos ? .zero : UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
-            items[i].image = CNBarraNativa.bajoNombre(
-                CNBarraNativa.redondo(CNC.fmt.inicial, puesto: false), nombre, puesta: false)
-            items[i].selectedImage = CNBarraNativa.bajoNombre(
-                CNBarraNativa.redondo(CNC.fmt.inicial, puesto: true), nombre, puesta: true)
-            return
-        }
-        guard !b64.isEmpty, let d = Data(base64Encoded: b64), let img = UIImage(data: d) else { return }
-        // Más grande que los demás a propósito: es un dibujo, no un trazo, y
-        // con el mismo alto se veía chiquito al lado de las líneas. Solo él:
-        // el resto de la barra se queda como está.
-        let lado: CGFloat = 36
-        items[i].imageInsets = UIEdgeInsets(top: conTitulos ? -2 : 4, left: 0, bottom: conTitulos ? 2 : -4, right: 0)
-        let color = UIGraphicsImageRenderer(size: CGSize(width: lado, height: lado)).image { _ in
-            img.draw(in: CGRect(x: 0, y: 0, width: lado, height: lado))
-        }
-        items[i].image = CNBarraNativa.bajoNombre(CNBarraNativa.enGris(color) ?? color, nombre, puesta: false)
-        items[i].selectedImage = CNBarraNativa.bajoNombre(color, nombre, puesta: true)
-    }
+    /// EL ICONO DE PERFIL: EL DE SIEMPRE, COMO LOS DEMÁS.
+    ///
+    /// Aquí se pisaba el icono de la pestaña con el dibujo de Chino. Con Chino
+    /// ya en su propio botón flotante —con su cara y su ánimo— tenerlo también
+    /// en la barra era tenerlo dos veces en pantalla, y además descuadraba la
+    /// fila: cuatro trazos finos y un dibujo a color en medio.
+    ///
+    /// La barra ya crea el icono de Perfil igual que los otros cuatro, con su
+    /// mismo trazo y su mismo color. Así que lo único que hay que hacer es no
+    /// tocarlo. Esto se queda como puerta —lo llaman dos sitios cuando llega un
+    /// dibujo nuevo— para que quede dicho que el dibujo ya no va ahí.
+    func ponerChinolo(_ b64: String) { }
 
     /// El mismo truco que `conNombre`, pero partiendo de un dibujo ya hecho (el
     /// de Chino o el círculo con la inicial): se le pone el nombre debajo. Sin
@@ -5637,7 +5738,10 @@ struct CNTarjetaWidget: View {
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .background(conVida ? tinteVida.opacity(0.13) : CNC.card)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: conVida ? 0 : 1))
+        // Sin contorno, como el resto de las tarjetas. Esta se me escapó en la
+        // barrida porque su fondo es condicional —`conVida ? tinte : card`— y
+        // busqué por las que llevaban `background(CNC.card)` al lado. Las
+        // separaciones de DENTRO de la tarjeta siguen donde estaban.
         .opacity(w.oculta ? 0.42 : 1)
         // Mantener pulsado: lo mismo, sin tener que entrar en «organizar».
         .contextMenu { acciones }
@@ -6525,11 +6629,17 @@ struct CNSeccionVista: View {
                 //
                 // Con esto, cuando el valor que llega ya coincide con el que
                 // hay, no se dispara nada.
-                Toggle("", isOn: Binding(get: { q.puesto },
-                                         set: { nuevo in
-                                             guard nuevo != q.puesto else { return }
-                                             datos.onSeccionAccion(q.accion, nil)
-                                         }))
+                // El apunte se guarda por ACCIÓN y no por clave: un
+                // interruptor de sección no dice qué ajuste toca, solo a qué
+                // fila pertenece. Basta para lo que hace falta — que se mueva
+                // ya— y se tira en cuanto llega la pantalla nueva.
+                Toggle("", isOn: Binding(
+                    get: { CNRecienTocado.de("sec:" + String(q.accion), Bool.self) ?? q.puesto },
+                    set: { nuevo in
+                        guard nuevo != (CNRecienTocado.de("sec:" + String(q.accion), Bool.self) ?? q.puesto) else { return }
+                        CNRecienTocado.pon("sec:" + String(q.accion), nuevo)
+                        datos.onSeccionAccion(q.accion, nil)
+                    }))
                     // Del mismo verde que el resto de lo nativo. En amarillo
                     // era el único control que no seguía el tinte de la app.
                     .labelsHidden().tint(CNC.pos)
@@ -7668,10 +7778,56 @@ final class CNFlotante: ObservableObject {
     /// girar el teléfono o cambiar de aparato.
     @Published var x: CGFloat = 1
     @Published var y: CGFloat = 0.72
+    /// DÓNDE ESTÁ DIBUJADO, en coordenadas de la ventana.
+    ///
+    /// Lo escribe el propio botón al colocarse. No es `@Published` a propósito:
+    /// solo lo lee la caja de los toques, y publicarlo volvería a dibujar en
+    /// mitad de un dibujo.
+    ///
+    /// Antes la caja lo adivinaba preguntándole a SwiftUI, y SwiftUI contesta
+    /// siempre lo mismo esté donde esté el dedo, así que el botón se quedaba
+    /// sin recibir un solo toque. Que lo diga quien lo sabe.
+    var marco: CGRect = .zero
     /// Qué hacer al tocarlo.
     var alTocar: () -> Void = {}
     /// Dónde ha quedado, para que la web lo guarde.
     var alMover: (CGFloat, CGFloat) -> Void = { _, _ in }
+    /// Cuándo lo movió la persona por última vez.
+    private var movidoEn = Date.distantPast
+
+    /// Apunta que lo acaba de mover el dedo. Lo llama el propio botón al soltar.
+    func loMovioElDedo() { movidoEn = Date() }
+
+    /**
+     * LO QUE MANDA LA WEB, SIN PISAR EL DEDO.
+     *
+     * Al soltar el botón pasa esto: avisa a la web, la web lo guarda y se lo
+     * devuelve al nativo. Esa vuelta reescribía `x` e `y` de golpe y sin
+     * animación, justo encima del muelle que lo estaba llevando al borde — y
+     * desde fuera se veía como un salto. El botón aparecía donde levantaste el
+     * dedo en vez de deslizarse.
+     *
+     * Así que durante un rato después de moverlo, el sitio lo manda el dedo y
+     * no la web. Puesto o no sí se obedece siempre: eso no lo decide el dedo.
+     */
+    func ponDesdeLaWeb(puesto p: Bool, x nx: CGFloat, y ny: CGFloat) {
+        puesto = p
+        if Date().timeIntervalSince(movidoEn) < 2.5 { return }
+        x = max(0, min(1, nx))
+        y = max(0, min(1, ny))
+    }
+}
+
+/// Dónde ha quedado dibujado el botón. Sube por preferencia porque escribirlo
+/// desde dentro del `GeometryReader` es escribir en mitad del dibujado, y eso
+/// le cuesta a SwiftUI otra pasada de distribución por cada cambio: durante un
+/// arrastre deja de pintar los pasos intermedios.
+struct CNMarcoDelBoton: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let n = nextValue()
+        if !n.isEmpty { value = n }
+    }
 }
 
 struct CNBotonFlotante: View {
@@ -7679,6 +7835,11 @@ struct CNBotonFlotante: View {
     @ObservedObject var datos: CNDatos
     @State private var arrastre: CGSize = .zero
     @State private var llevando = false
+    /// Si el dedo está encima ahora mismo, sin haberse movido todavía.
+    @State private var apretado = false
+    /// Los dos movimientos de fondo, a distinto compás.
+    @State private var alienta = false
+    @State private var ladea = false
 
     private let lado: CGFloat = 56
     private let margen: CGFloat = 14
@@ -7690,15 +7851,61 @@ struct CNBotonFlotante: View {
                                    width: max(0, g.size.width - margen * 2 - lado),
                                    height: max(0, g.size.height - g.safeAreaInsets.top - margen * 2 - lado))
                 boton
+                    // EL BOTÓN DICE DÓNDE ESTÁ, POR PREFERENCIA.
+                    //
+                    // Se mide AQUÍ, antes de `.position`: esa devuelve una vista
+                    // que ocupa todo el hueco y coloca el contenido dentro, así
+                    // que medida después el botón apuntaría la pantalla entera
+                    // como suya y la caja se quedaría hasta el último toque.
+                    //
+                    // Y va por preferencia y no escribiendo en el mando desde
+                    // dentro del `GeometryReader`. Escribir ahí es escribir en
+                    // mitad del dibujado: SwiftUI encadena otra pasada de
+                    // distribución con cada cambio y el arrastre deja de pintar
+                    // los pasos intermedios — el botón se quedaba clavado y solo
+                    // aparecía en su sitio nuevo al levantar el dedo. La
+                    // preferencia se recoge fuera, cuando la pasada ya terminó.
+                    .background(GeometryReader { p in
+                        Color.clear.preference(key: CNMarcoDelBoton.self, value: p.frame(in: .global))
+                    })
                     .position(x: libre.minX + libre.width * mando.x + lado / 2 + arrastre.width,
                               y: libre.minY + libre.height * mando.y + lado / 2 + arrastre.height)
                     .gesture(
-                        DragGesture(minimumDistance: 4)
+                        // DESDE EL PRIMER PUNTO, NO A LOS CUATRO.
+                        //
+                        // Con `minimumDistance: 4` el gesto no decía nada hasta
+                        // haber andado cuatro puntos, y entonces el primer aviso
+                        // los traía andados: un brinco seco al empezar. Se
+                        // guardaba ese tramo y se restaba, que arreglaba el
+                        // brinco pero no el retraso — los cuatro primeros puntos
+                        // el botón seguía clavado.
+                        //
+                        // A cero no hay retraso ni tramo que restar: el botón
+                        // sale con el dedo desde el primer milímetro. El toque
+                        // no se pierde porque se decide al soltar, por lo poco
+                        // que se movió, que es lo que un toque es de verdad.
+                        DragGesture(minimumDistance: 0)
                             .onChanged { v in
-                                if !llevando { llevando = true; UIImpactFeedbackGenerator(style: .light).impactOccurred() }
-                                arrastre = v.translation
+                                if !apretado { apretado = true }
+                                let anda = hypot(v.translation.width, v.translation.height)
+                                // Cuatro puntos para considerarlo un arrastre: por
+                                // debajo es el temblor normal de un dedo quieto, y
+                                // moverlo por eso se ve como un tic.
+                                if !llevando && anda > 4 {
+                                    llevando = true
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                }
+                                if llevando { arrastre = v.translation }
                             }
                             .onEnded { v in
+                                apretado = false
+                                let anda = hypot(v.translation.width, v.translation.height)
+                                // Soltar sin haberse movido ES el toque.
+                                guard llevando || anda > 4 else {
+                                    UISelectionFeedbackGenerator().selectionChanged()
+                                    mando.alTocar()
+                                    return
+                                }
                                 // Al soltar, al borde más cercano: en medio de
                                 // la pantalla tapa justo lo que estás mirando.
                                 let px = libre.minX + libre.width * mando.x + v.translation.width
@@ -7707,44 +7914,92 @@ struct CNBotonFlotante: View {
                                 let ny = max(0, min(1, libre.height > 0 ? (py - libre.minY) / libre.height : 0.5))
                                 // TODO DENTRO DE LA MISMA ANIMACIÓN.
                                 //
-                                // `arrastre` se ponía a cero FUERA: en ese
-                                // mismo fotograma el botón saltaba de golpe a
-                                // la posición nueva y la animación no se veía.
-                                // Desde fuera parecía que aparecía donde
-                                // levantaste el dedo, sin movimiento.
+                                // `arrastre` se ponía a cero FUERA: en ese mismo
+                                // fotograma el botón saltaba de golpe a la
+                                // posición nueva y la animación no se veía.
                                 llevando = false
                                 withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
                                     arrastre = .zero
                                     mando.x = nx; mando.y = ny
                                 }
+                                // Antes de avisar a la web: que lo movió el
+                                // dedo. Lo que vuelva de allá no puede pisar
+                                // esto mientras el muelle está corriendo.
+                                mando.loMovioElDedo()
                                 mando.alMover(nx, ny)
                             }
                     )
+            } else {
+                // Sin botón puesto no hay marco: si se quedara el de antes, la
+                // caja seguiría quedándose los toques de un botón que ya no
+                // está, y ese trozo de pantalla se moriría.
+                Color.clear.onAppear { mando.marco = .zero }
             }
         }
         .ignoresSafeArea()
+        .onPreferenceChange(CNMarcoDelBoton.self) { nuevo in mando.marco = nuevo }
         .animation(.spring(response: 0.3, dampingFraction: 0.85), value: mando.puesto)
     }
 
     private var boton: some View {
-        Button { UISelectionFeedbackGenerator().selectionChanged(); mando.alTocar() } label: {
+        // NI UN `Button`, NI UN GESTO A SECAS.
+        //
+        // Era un `Button` con el arrastre colgado encima, y ahí estaba lo de
+        // «solo se mueve cuando levanto el dedo». Un `Button` se QUEDA el dedo
+        // mientras decide si aquello fue un toque; hasta que no suelta, el
+        // arrastre no ve nada. Por eso la primera mitad del gesto no pintaba
+        // nada y el botón aparecía de golpe al final.
+        //
+        // Sin `Button`: el dibujo, un arrastre que lo lleva, y el toque como lo
+        // que de verdad es —soltar sin haberse movido—. Así el dedo manda desde
+        // el primer punto.
+        ZStack {
             ZStack {
-                Circle().fill(CNC.acc)
-                // El dibujo de Chino si la web ya lo mandó; si no, su inicial.
+                // SIN PLATO DETRÁS DEL PERSONAJE.
+                //
+                // Aquí había un círculo amarillo relleno y el dibujo encima. El
+                // personaje ya es una forma redonda con su propio color y su
+                // propia luz: ponerle otro círculo detrás le hace un halo que
+                // no pinta nada y le quita el aire.
+                //
+                // El círculo se queda SOLO para el icono de respaldo, que es un
+                // trazo suelto y sin él no se vería sobre la pantalla.
                 if let img = cnImagenBase64(datos.mascota?.chinolo ?? "") {
-                    Image(uiImage: img).resizable().scaledToFit().padding(7)
+                    Image(uiImage: img).resizable().scaledToFit()
                 } else {
+                    Circle().fill(CNC.acc)
                     Image(systemName: "bubble.left.and.text.bubble.right.fill")
                         .font(.system(size: 21, weight: .semibold))
                         .foregroundColor(cnSobre(CNC.acc))
                 }
             }
             .frame(width: lado, height: lado)
-            .shadow(color: .black.opacity(llevando ? 0.28 : 0.18), radius: llevando ? 18 : 10, y: llevando ? 8 : 4)
-            .scaleEffect(llevando ? 1.08 : 1)
+            // LA VIDA DEL BOTÓN.
+            //
+            // El dibujo que llega es una estampa: no parpadea ni mira. Si
+            // además se queda completamente quieto, un botón redondo flotando
+            // es un adhesivo pegado a la pantalla. Lo que lo hace estar ahí son
+            // dos movimientos muy pequeños y a distinto compás —respira en 3,7
+            // segundos y se ladea en 6,1—, que al no coincidir nunca no se
+            // dejan pillar el patrón. Grande se notaría; así solo se nota que
+            // está vivo.
+            .scaleEffect(alienta ? 1.028 : 0.985)
+            .rotationEffect(.degrees(ladea ? 2.2 : -2.2))
+            // Y al agarrarlo crece y la sombra se despega: es lo que dice que
+            // lo tienes cogido.
+            .scaleEffect(llevando ? 1.1 : (apretado ? 0.93 : 1))
+            .shadow(color: .black.opacity(llevando ? 0.22 : 0.13),
+                    radius: llevando ? 14 : 7, y: llevando ? 6 : 3)
+            .animation(.spring(response: 0.26, dampingFraction: 0.62), value: llevando)
+            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: apretado)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 3.7).repeatForever(autoreverses: true)) { alienta = true }
+                withAnimation(.easeInOut(duration: 6.1).repeatForever(autoreverses: true)) { ladea = true }
+            }
         }
-        .buttonStyle(.plain)
+        .contentShape(Circle())
         .accessibilityLabel(cnT("Hablar con Chino"))
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -7787,18 +8042,27 @@ final class CNPasaToquesHost: UIHostingController<AnyView> {
 
 /// LA CAJA QUE DEJA PASAR LOS TOQUES.
 ///
-/// Envuelve al hospedaje del botón y decide, punto por punto, si ahí hay algo
-/// dibujado. La clave está en `v !== hija`: cuando se le pregunta a la vista
-/// del SwiftUI y contesta con ELLA MISMA, es que en ese punto no hay nada
-/// encima —es su lienzo vacío— y el toque tiene que seguir hacia abajo, a la
-/// barra de pestañas o a lo que haya. Solo cuando contesta con algo de dentro
-/// —el botón— el toque se queda aquí.
+/// Esta capa está a pantalla completa por encima del webview, así que quedarse
+/// un toque de más mata la app entera y quedarse uno de menos mata el botón.
+/// Las dos cosas han pasado ya.
+///
+/// La primera versión le preguntaba a SwiftUI —«¿hay algo tuyo en este
+/// punto?»— dando por hecho que contestar con su propia vista significaba
+/// «aquí no hay nada». Falso: SwiftUI dibuja el botón en el lienzo de esa misma
+/// vista y contesta lo mismo esté el dedo donde esté. Resultado: «aquí no hay
+/// nada» siempre, y el botón sin recibir un solo toque.
+///
+/// Ahora no se adivina: el botón apunta su propio marco al colocarse y aquí
+/// solo se mira si el punto cae dentro. Sin marco —botón sin poner, o todavía
+/// sin dibujar— pasa todo, que es lo que menos daño hace.
 final class CNPasaToques: UIView {
     override func point(inside punto: CGPoint, with evento: UIEvent?) -> Bool {
-        for hija in subviews where !hija.isHidden && hija.alpha > 0.01 {
-            let dentro = convert(punto, to: hija)
-            if let v = hija.hitTest(dentro, with: evento), v !== hija { return true }
-        }
-        return false
+        let m = CNFlotante.shared.marco
+        guard CNFlotante.shared.puesto, !m.isEmpty else { return false }
+        // Un marco más grande que el botón es un marco mal medido, y creerlo
+        // cuesta la app entera. De los dos fallos posibles este se queda con el
+        // barato: se pierde el botón, no la pantalla.
+        guard m.width < 120, m.height < 120 else { return false }
+        return m.contains(convert(punto, to: nil))
     }
 }
