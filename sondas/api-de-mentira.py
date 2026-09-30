@@ -41,6 +41,22 @@ RESPUESTAS = {
              'creado': '2026-09-01T10:00:00Z', 'visto': '2026-09-28T18:00:00Z'}
         ]
     },
+    # Dos libretas para que el teléfono tenga qué bajar, conciliar y subir. La
+    # primera con un movimiento, para ver si lo que sube lleva lo de los DOS
+    # lados; la segunda solo para que la lista no sea de una.
+    '/api/libretas': {
+        'libretas': [
+            {'id': 'lb-uno', 'nombre': 'Personal', '__version': 3, '__rol': 'Dueño',
+             'miembros': [{'email': 'ana@banco.prueba', 'rol': 'Dueño'}],
+             'cuentas': [{'id': 1, 'nombre': 'Banco', 'saldo': 50000}],
+             'tarjetas': [], 'categorias': [], 'presupuesto': {}, 'metas': [],
+             'tx': [{'id': 'm-servidor', 'monto': 100, 'concepto': 'Del servidor'}]},
+            {'id': 'lb-dos', 'nombre': 'Negocio', '__version': 1, '__rol': 'Dueño',
+             'miembros': [{'email': 'ana@banco.prueba', 'rol': 'Dueño'}],
+             'cuentas': [], 'tarjetas': [], 'categorias': [], 'presupuesto': {},
+             'metas': [], 'tx': []}
+        ]
+    },
     '/api/actividad': {
         'actividad': [
             {'accion': 'Entró en la cuenta', 'creado': '2026-09-30T09:00:00Z', 'origen': 'iPhone'},
@@ -48,6 +64,11 @@ RESPUESTAS = {
         ]
     }
 }
+
+
+# Lo que el teléfono ha subido, para que la sonda pueda mirarlo. En un servidor
+# de verdad esto sería la base de datos.
+RECIBIDO = []
 
 
 class Mano(BaseHTTPRequestHandler):
@@ -68,6 +89,41 @@ class Mano(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self._contesta()
+
+    def do_PUT(self):
+        """Subir las libretas.
+
+        Contesta como el servidor de verdad en el caso que más importa: acepta
+        las que van al día, rechaza «lb1» por SIN PERMISO —es la llave corta que
+        chocaba, y el teléfono tiene que reconocerla como suya y renombrarla— y
+        se guarda lo que llegó para que la sonda pueda mirarlo.
+        """
+        if not (self.headers.get('authorization') or '').startswith('Bearer '):
+            self.send_response(401); self.end_headers()
+            self.wfile.write(b'{"error":"sin vale"}')
+            return
+        largo = int(self.headers.get('content-length') or 0)
+        try:
+            pedido = json.loads(self.rfile.read(largo) or b'{}')
+        except (ValueError, OSError):
+            pedido = {}
+        libretas = pedido.get('libretas') or []
+        RECIBIDO.append(pedido)
+        versiones, conflictos = {}, []
+        for l in libretas:
+            lid = l.get('id')
+            if lid == 'lb1':
+                # La llave corta: el servidor dice que la fila es de otro.
+                conflictos.append({'id': lid, 'motivo': 'sin-permiso'})
+            else:
+                versiones[lid] = (l.get('__version') or 0) + 1
+        cuerpo = json.dumps({'versiones': versiones, 'conflictos': conflictos,
+                             'yo': 'ana@banco.prueba'}).encode()
+        self.send_response(200)
+        self.send_header('content-type', 'application/json')
+        self.send_header('content-length', str(len(cuerpo)))
+        self.end_headers()
+        self.wfile.write(cuerpo)
 
     def do_POST(self):
         self._contesta()

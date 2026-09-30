@@ -107,10 +107,19 @@ def tipo(x):
 
 def main():
     if len(sys.argv) < 3:
-        print('uso: oro-cuadra.py calculo-oro.json log-del-simulador.txt')
+        print('uso: oro-cuadra.py oro.json [otro-oro.json ...] log-del-simulador.txt')
         return 2
-    oro = json.load(open(sys.argv[1]))
-    log = open(sys.argv[2], encoding='utf-8', errors='replace').read()
+    # VARIOS FICHEROS DE ORO, uno por generador: los cálculos salen de la lógica
+    # de la pantalla y la fusión de la capa de nube. Se juntan y se compara el
+    # árbol entero de una vez.
+    oro = {}
+    for ruta in sys.argv[1:-1]:
+        for k, v in json.load(open(ruta)).items():
+            if k in oro:
+                print('Dos ficheros de oro traen «' + k + '»: uno taparía al otro')
+                return 1
+            oro[k] = v
+    log = open(sys.argv[-1], encoding='utf-8', errors='replace').read()
 
     texto = pegaLosTrozos(log)
     if texto is None:

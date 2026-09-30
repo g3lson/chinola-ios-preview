@@ -16,7 +16,7 @@ on:
     # comprueba— no se despertó. Un camino que no despierta a quien lo
     # comprueba es un cambio que nadie mira.
     paths: ['hibrido/app-legible/**', 'hibrido/app-clasico/**', 'hibrido/overlay/**',
-            'hibrido/siembra.js', 'hibrido/calculo-oro.json',
+            'hibrido/siembra.js', 'hibrido/calculo-oro.json', 'hibrido/fusion-oro.json',
             'sondas/**', '.github/workflows/hoy.yml']
 
 jobs:
@@ -53,6 +53,8 @@ jobs:
           # `www/` porque Capacitor mete esa carpeta entera en el paquete y así
           # no hay que tocar el proyecto de Xcode para añadir un recurso.
           cp ../hibrido/calculo-oro.json www/calculo-oro.json
+          # Y el de la FUSIÓN, que lo genera otro guion: la capa de nube.
+          cp ../hibrido/fusion-oro.json www/fusion-oro.json
           python3 - <<'PYX'
           import re, pathlib
           p = pathlib.Path('www/index.html')
@@ -289,7 +291,26 @@ jobs:
           sleep 14
           xcrun simctl spawn "$UDID" log show --last 2m --style compact \
             --predicate 'eventMessage CONTAINS "CNORO"' 2>/dev/null > /tmp/oro.txt || true
-          python3 ../sondas/oro-cuadra.py www/calculo-oro.json /tmp/oro.txt
+          python3 ../sondas/oro-cuadra.py www/calculo-oro.json www/fusion-oro.json /tmp/oro.txt
+
+          # EL CICLO DE SINCRONIZACIÓN, ENTERO, contra el servidor de mentira.
+          #
+          # Es lo que de verdad ata la app al webview: hoy la libreta la baja, la
+          # concilia y la sube la web. `CNNube` hace lo mismo en Swift y esto
+          # comprueba que lo haga —que baje, que suba lo de los dos lados y que
+          # rescate la libreta de llave vieja— y no solo que compile.
+          #
+          # No se enciende en el teléfono: mientras la web sincronice, serían dos
+          # escritores de la misma libreta.
+          echo "=== la sincronización nativa ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          SIMCTL_CHILD_CN_SINCRO=1 SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 \
+            xcrun simctl launch "$UDID" "$ID"
+          sleep 16
+          xcrun simctl spawn "$UDID" log show --last 2m --style compact \
+            --predicate 'eventMessage CONTAINS "CNSINCRO"' 2>/dev/null > /tmp/sincro.txt || true
+          python3 ../sondas/sincro-cuadra.py /tmp/sincro.txt
 
           # ¿LA APP LLEGÓ A ENTRAR?
           #

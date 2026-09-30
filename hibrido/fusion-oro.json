@@ -1,0 +1,1089 @@
+{
+  "nota": "Generado ejecutando fusiona() de src/nube.js. Si cambia la regla, se regenera y el Swift tiene que seguir cuadrando.",
+  "fusionCasos": {
+    "añado yo": {
+      "porque": "Lo que acabo de anotar no puede desaparecer porque el otro subiera antes.",
+      "base": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          }
+        ]
+      },
+      "mia": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          },
+          {
+            "id": "m2",
+            "monto": 50
+          }
+        ]
+      },
+      "suya": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          }
+        ]
+      }
+    },
+    "añade el otro": {
+      "porque": "Y lo que anotó el otro tampoco: no subir nada mío no borra lo suyo.",
+      "base": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          }
+        ]
+      },
+      "mia": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          }
+        ]
+      },
+      "suya": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          },
+          {
+            "id": "m3",
+            "monto": 70
+          }
+        ]
+      }
+    },
+    "añadimos los dos": {
+      "porque": "Se quedan los dos, y los del servidor van primero, en su orden.",
+      "base": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          }
+        ]
+      },
+      "mia": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          },
+          {
+            "id": "m2",
+            "monto": 50
+          }
+        ]
+      },
+      "suya": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          },
+          {
+            "id": "m3",
+            "monto": 70
+          }
+        ]
+      }
+    },
+    "borro yo": {
+      "porque": "Borrar es una decisión: no puede deshacerla la copia del servidor.",
+      "base": {
+        "tx": [
+          {
+            "id": "m1"
+          },
+          {
+            "id": "m2"
+          }
+        ]
+      },
+      "mia": {
+        "tx": [
+          {
+            "id": "m1"
+          }
+        ]
+      },
+      "suya": {
+        "tx": [
+          {
+            "id": "m1"
+          },
+          {
+            "id": "m2"
+          }
+        ]
+      }
+    },
+    "borra el otro": {
+      "porque": "Lo mismo al revés: si él lo borró, no vuelve porque yo lo tuviera.",
+      "base": {
+        "tx": [
+          {
+            "id": "m1"
+          },
+          {
+            "id": "m2"
+          }
+        ]
+      },
+      "mia": {
+        "tx": [
+          {
+            "id": "m1"
+          },
+          {
+            "id": "m2"
+          }
+        ]
+      },
+      "suya": {
+        "tx": [
+          {
+            "id": "m1"
+          }
+        ]
+      }
+    },
+    "editamos los dos el mismo": {
+      "porque": "Gana el mío: es lo que el usuario acaba de hacer y tiene delante.",
+      "base": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          }
+        ]
+      },
+      "mia": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 111
+          }
+        ]
+      },
+      "suya": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 222
+          }
+        ]
+      }
+    },
+    "edito yo, borra el otro": {
+      "porque": "GANA EL BORRADO, y va escrito porque no se adivina: mi edición se pierde. Es la regla que hay, no un descuido, y el día que se cambie este caso lo dirá.",
+      "base": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          }
+        ]
+      },
+      "mia": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 999
+          }
+        ]
+      },
+      "suya": {
+        "tx": []
+      }
+    },
+    "borro yo, edita el otro": {
+      "porque": "La misma regla en el otro sentido: el borrado gana igual.",
+      "base": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          }
+        ]
+      },
+      "mia": {
+        "tx": []
+      },
+      "suya": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 999
+          }
+        ]
+      }
+    },
+    "sin base": {
+      "porque": "La primera vez no hay con qué comparar: la mía manda campo a campo.",
+      "base": null,
+      "mia": {
+        "nombre": "mía",
+        "tx": [
+          {
+            "id": "m2"
+          }
+        ]
+      },
+      "suya": {
+        "nombre": "suya",
+        "tx": [
+          {
+            "id": "m3"
+          }
+        ],
+        "color": "#137d41"
+      }
+    },
+    "la versión la pone el servidor": {
+      "porque": "Los campos con dos rayas —versión, rol— son suyos: no se fusionan.",
+      "base": {
+        "__version": 1,
+        "__rol": "Dueño",
+        "nombre": "A"
+      },
+      "mia": {
+        "__version": 1,
+        "__rol": "Dueño",
+        "nombre": "B"
+      },
+      "suya": {
+        "__version": 7,
+        "__rol": "Editor",
+        "nombre": "A"
+      }
+    },
+    "el presupuesto es un mapa": {
+      "porque": "Un tope que yo cambié se queda; el que no toqué lo pone el servidor.",
+      "base": {
+        "presupuesto": {
+          "Comida": 1000,
+          "Casa": 5000
+        }
+      },
+      "mia": {
+        "presupuesto": {
+          "Comida": 1500,
+          "Casa": 5000
+        }
+      },
+      "suya": {
+        "presupuesto": {
+          "Comida": 1000,
+          "Casa": 9000,
+          "Luz": 800
+        }
+      }
+    },
+    "quito un tope": {
+      "porque": "Quitar un tope también es una decisión.",
+      "base": {
+        "presupuesto": {
+          "Comida": 1000,
+          "Casa": 5000
+        }
+      },
+      "mia": {
+        "presupuesto": {
+          "Casa": 5000
+        }
+      },
+      "suya": {
+        "presupuesto": {
+          "Comida": 1000,
+          "Casa": 5000
+        }
+      }
+    },
+    "los miembros se reconocen por correo": {
+      "porque": "No tienen id: si no se emparejaran por correo, cada fusión duplicaría a la misma persona.",
+      "base": {
+        "miembros": [
+          {
+            "email": "ana@x.do",
+            "rol": "Editor"
+          }
+        ]
+      },
+      "mia": {
+        "miembros": [
+          {
+            "email": "ANA@x.do",
+            "rol": "Dueño"
+          }
+        ]
+      },
+      "suya": {
+        "miembros": [
+          {
+            "email": "ana@x.do",
+            "rol": "Editor"
+          },
+          {
+            "email": "luis@x.do",
+            "rol": "Lector"
+          }
+        ]
+      }
+    },
+    "cambio el nombre de la libreta": {
+      "porque": "Un campo suelto: si lo cambié yo, manda el mío.",
+      "base": {
+        "nombre": "Personal",
+        "color": "#137d41"
+      },
+      "mia": {
+        "nombre": "Mi libreta",
+        "color": "#137d41"
+      },
+      "suya": {
+        "nombre": "Personal",
+        "color": "#825eb9"
+      }
+    },
+    "una libreta entera": {
+      "porque": "Todo junto, que es como llega de verdad.",
+      "base": {
+        "id": "lb1",
+        "nombre": "Personal",
+        "__version": 3,
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000
+          }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "color": "#e0a92e"
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000
+        },
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje",
+            "meta": 60000,
+            "ahorrado": 15000
+          }
+        ],
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100,
+            "concepto": "Uno"
+          },
+          {
+            "id": "m2",
+            "monto": 200,
+            "concepto": "Dos"
+          }
+        ]
+      },
+      "mia": {
+        "id": "lb1",
+        "nombre": "Personal",
+        "__version": 3,
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 47520
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000
+          }
+        ],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "color": "#e0a92e"
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000
+        },
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje",
+            "meta": 60000,
+            "ahorrado": 20000
+          }
+        ],
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100,
+            "concepto": "Uno"
+          },
+          {
+            "id": "m2",
+            "monto": 200,
+            "concepto": "Dos"
+          },
+          {
+            "id": "m9",
+            "monto": 2480,
+            "concepto": "Supermercado"
+          }
+        ]
+      },
+      "suya": {
+        "id": "lb1",
+        "nombre": "Casa",
+        "__version": 5,
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "color": "#d55948"
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000,
+          "Casa": 9000
+        },
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje",
+            "meta": 60000,
+            "ahorrado": 15000
+          }
+        ],
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100,
+            "concepto": "Uno"
+          },
+          {
+            "id": "m8",
+            "monto": 700,
+            "concepto": "Del otro"
+          }
+        ]
+      }
+    }
+  },
+  "fusion": {
+    "añado yo": {
+      "sale": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          },
+          {
+            "id": "m2",
+            "monto": 50
+          }
+        ]
+      }
+    },
+    "añade el otro": {
+      "sale": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          },
+          {
+            "id": "m3",
+            "monto": 70
+          }
+        ]
+      }
+    },
+    "añadimos los dos": {
+      "sale": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100
+          },
+          {
+            "id": "m3",
+            "monto": 70
+          },
+          {
+            "id": "m2",
+            "monto": 50
+          }
+        ]
+      }
+    },
+    "borro yo": {
+      "sale": {
+        "tx": [
+          {
+            "id": "m1"
+          }
+        ]
+      }
+    },
+    "borra el otro": {
+      "sale": {
+        "tx": [
+          {
+            "id": "m1"
+          }
+        ]
+      }
+    },
+    "editamos los dos el mismo": {
+      "sale": {
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 111
+          }
+        ]
+      }
+    },
+    "edito yo, borra el otro": {
+      "sale": {
+        "tx": []
+      }
+    },
+    "borro yo, edita el otro": {
+      "sale": {
+        "tx": []
+      }
+    },
+    "sin base": {
+      "sale": {
+        "nombre": "mía",
+        "tx": [
+          {
+            "id": "m2"
+          }
+        ],
+        "color": "#137d41"
+      }
+    },
+    "la versión la pone el servidor": {
+      "sale": {
+        "__version": 7,
+        "__rol": "Editor",
+        "nombre": "B"
+      }
+    },
+    "el presupuesto es un mapa": {
+      "sale": {
+        "presupuesto": {
+          "Comida": 1500,
+          "Casa": 9000,
+          "Luz": 800
+        }
+      }
+    },
+    "quito un tope": {
+      "sale": {
+        "presupuesto": {
+          "Casa": 5000
+        }
+      }
+    },
+    "los miembros se reconocen por correo": {
+      "sale": {
+        "miembros": [
+          {
+            "email": "ANA@x.do",
+            "rol": "Dueño"
+          },
+          {
+            "email": "luis@x.do",
+            "rol": "Lector"
+          }
+        ]
+      }
+    },
+    "cambio el nombre de la libreta": {
+      "sale": {
+        "nombre": "Mi libreta",
+        "color": "#825eb9"
+      }
+    },
+    "una libreta entera": {
+      "sale": {
+        "id": "lb1",
+        "nombre": "Casa",
+        "__version": 5,
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 47520
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [],
+        "categorias": [
+          {
+            "id": 1,
+            "nombre": "Comida",
+            "color": "#d55948"
+          }
+        ],
+        "presupuesto": {
+          "Comida": 18000,
+          "Casa": 9000
+        },
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje",
+            "meta": 60000,
+            "ahorrado": 20000
+          }
+        ],
+        "tx": [
+          {
+            "id": "m1",
+            "monto": 100,
+            "concepto": "Uno"
+          },
+          {
+            "id": "m8",
+            "monto": 700,
+            "concepto": "Del otro"
+          },
+          {
+            "id": "m9",
+            "monto": 2480,
+            "concepto": "Supermercado"
+          }
+        ]
+      }
+    }
+  },
+  "subirCasos": {
+    "una mía normal": {
+      "porque": "Va con la versión que el aparato tenga apuntada del servidor.",
+      "libretas": [
+        {
+          "id": "lb-a",
+          "nombre": "Personal",
+          "__version": 2
+        }
+      ],
+      "versiones": {
+        "lb-a": 5
+      }
+    },
+    "sin versión apuntada": {
+      "porque": "Se usa la que trae la libreta, y si no, cero: nueva para el servidor.",
+      "libretas": [
+        {
+          "id": "lb-a",
+          "__version": 3
+        },
+        {
+          "id": "lb-b"
+        }
+      ],
+      "versiones": {}
+    },
+    "una en la que solo leo": {
+      "porque": "No se sube: el servidor la rechaza y el aparato lo leía como que te habían sacado de ella. Es el fallo que hacía desaparecer la libreta compartida a quien invitaban como Lector.",
+      "libretas": [
+        {
+          "id": "lb-a"
+        },
+        {
+          "id": "lb-c",
+          "__rol": "Lector"
+        }
+      ],
+      "versiones": {}
+    },
+    "una invitación sin aceptar": {
+      "porque": "Hasta aceptar no es tuya para subirla.",
+      "libretas": [
+        {
+          "id": "lb-a"
+        },
+        {
+          "id": "lb-d",
+          "__estado": "pendiente"
+        }
+      ],
+      "versiones": {}
+    }
+  },
+  "subir": {
+    "una mía normal": {
+      "sale": [
+        {
+          "id": "lb-a",
+          "__version": 5
+        }
+      ]
+    },
+    "sin versión apuntada": {
+      "sale": [
+        {
+          "id": "lb-a",
+          "__version": 3
+        },
+        {
+          "id": "lb-b",
+          "__version": 0
+        }
+      ]
+    },
+    "una en la que solo leo": {
+      "sale": [
+        {
+          "id": "lb-a",
+          "__version": 0
+        }
+      ]
+    },
+    "una invitación sin aceptar": {
+      "sale": [
+        {
+          "id": "lb-a",
+          "__version": 0
+        }
+      ]
+    }
+  },
+  "rechazoCasos": {
+    "atrasada": {
+      "porque": "Hay que bajar la del servidor, conciliar y volver a subir.",
+      "conflictos": [
+        {
+          "id": "lb-a",
+          "motivo": "desactualizada"
+        }
+      ],
+      "libretas": [
+        {
+          "id": "lb-a"
+        }
+      ],
+      "yo": "ana@x.do",
+      "segundaVuelta": false
+    },
+    "no cabe en el plan": {
+      "porque": "No es un fallo que se arregle reintentando: hay que decírselo al usuario.",
+      "conflictos": [
+        {
+          "id": "lb-a",
+          "motivo": "limite-plan"
+        }
+      ],
+      "libretas": [
+        {
+          "id": "lb-a"
+        }
+      ],
+      "yo": "ana@x.do",
+      "segundaVuelta": false
+    },
+    "llave vieja y soy la dueña": {
+      "porque": "RESCATABLE: la libreta es mía, nació llamándose «lb1» como las de todo el mundo y la fila es de quien se registró antes. Se renombra y se vuelve a subir. Sin esto, se ve como una libreta que no deja escribir.",
+      "conflictos": [
+        {
+          "id": "lb1",
+          "motivo": "sin-permiso"
+        }
+      ],
+      "libretas": [
+        {
+          "id": "lb1",
+          "miembros": [
+            {
+              "email": "ANA@x.do",
+              "rol": "Dueño"
+            }
+          ]
+        }
+      ],
+      "yo": "ana@x.do",
+      "segundaVuelta": false
+    },
+    "llave vieja sin miembros": {
+      "porque": "Una libreta local no tiene miembros: sin lista, la dueña soy yo.",
+      "conflictos": [
+        {
+          "id": "lb2",
+          "motivo": "sin-permiso"
+        }
+      ],
+      "libretas": [
+        {
+          "id": "lb2"
+        }
+      ],
+      "yo": "ana@x.do",
+      "segundaVuelta": false
+    },
+    "llave vieja pero no soy la dueña": {
+      "porque": "Entonces sí dejó de ser mía: renombrarla sería quedármela.",
+      "conflictos": [
+        {
+          "id": "lb3",
+          "motivo": "sin-permiso"
+        }
+      ],
+      "libretas": [
+        {
+          "id": "lb3",
+          "miembros": [
+            {
+              "email": "luis@x.do",
+              "rol": "Dueño"
+            },
+            {
+              "email": "ana@x.do",
+              "rol": "Editor"
+            }
+          ]
+        }
+      ],
+      "yo": "ana@x.do",
+      "segundaVuelta": false
+    },
+    "llave larga sin permiso": {
+      "porque": "Con llave larga no hay choque posible: me sacaron de verdad.",
+      "conflictos": [
+        {
+          "id": "lb-larga-1",
+          "motivo": "sin-permiso"
+        }
+      ],
+      "libretas": [
+        {
+          "id": "lb-larga-1",
+          "miembros": [
+            {
+              "email": "ana@x.do",
+              "rol": "Dueño"
+            }
+          ]
+        }
+      ],
+      "yo": "ana@x.do",
+      "segundaVuelta": false
+    },
+    "no eres dueño": {
+      "porque": "Otro motivo, el mismo trato: es «ajena» igual.",
+      "conflictos": [
+        {
+          "id": "lb4",
+          "motivo": "no-eres-dueno"
+        }
+      ],
+      "libretas": [
+        {
+          "id": "lb4",
+          "miembros": [
+            {
+              "email": "ana@x.do",
+              "rol": "Dueño"
+            }
+          ]
+        }
+      ],
+      "yo": "ana@x.do",
+      "segundaVuelta": false
+    },
+    "en la segunda vuelta no se rescata nada": {
+      "porque": "Ya se intentó una vez; volver a hacerlo sería un bucle.",
+      "conflictos": [
+        {
+          "id": "lb1",
+          "motivo": "sin-permiso"
+        }
+      ],
+      "libretas": [
+        {
+          "id": "lb1",
+          "miembros": [
+            {
+              "email": "ana@x.do",
+              "rol": "Dueño"
+            }
+          ]
+        }
+      ],
+      "yo": "ana@x.do",
+      "segundaVuelta": true
+    },
+    "sin conflictos": {
+      "porque": "Todo subió: las cuatro listas vacías.",
+      "conflictos": [],
+      "libretas": [
+        {
+          "id": "lb-a"
+        }
+      ],
+      "yo": "ana@x.do",
+      "segundaVuelta": false
+    }
+  },
+  "rechazo": {
+    "atrasada": {
+      "sale": {
+        "desactualizadas": [
+          "lb-a"
+        ],
+        "limite": [],
+        "ajenas": [],
+        "rescatables": [],
+        "sinPermiso": []
+      }
+    },
+    "no cabe en el plan": {
+      "sale": {
+        "desactualizadas": [],
+        "limite": [
+          "lb-a"
+        ],
+        "ajenas": [],
+        "rescatables": [],
+        "sinPermiso": []
+      }
+    },
+    "llave vieja y soy la dueña": {
+      "sale": {
+        "desactualizadas": [],
+        "limite": [],
+        "ajenas": [
+          "lb1"
+        ],
+        "rescatables": [
+          "lb1"
+        ],
+        "sinPermiso": []
+      }
+    },
+    "llave vieja sin miembros": {
+      "sale": {
+        "desactualizadas": [],
+        "limite": [],
+        "ajenas": [
+          "lb2"
+        ],
+        "rescatables": [
+          "lb2"
+        ],
+        "sinPermiso": []
+      }
+    },
+    "llave vieja pero no soy la dueña": {
+      "sale": {
+        "desactualizadas": [],
+        "limite": [],
+        "ajenas": [
+          "lb3"
+        ],
+        "rescatables": [],
+        "sinPermiso": [
+          "lb3"
+        ]
+      }
+    },
+    "llave larga sin permiso": {
+      "sale": {
+        "desactualizadas": [],
+        "limite": [],
+        "ajenas": [
+          "lb-larga-1"
+        ],
+        "rescatables": [],
+        "sinPermiso": [
+          "lb-larga-1"
+        ]
+      }
+    },
+    "no eres dueño": {
+      "sale": {
+        "desactualizadas": [],
+        "limite": [],
+        "ajenas": [
+          "lb4"
+        ],
+        "rescatables": [
+          "lb4"
+        ],
+        "sinPermiso": []
+      }
+    },
+    "en la segunda vuelta no se rescata nada": {
+      "sale": {
+        "desactualizadas": [],
+        "limite": [],
+        "ajenas": [
+          "lb1"
+        ],
+        "rescatables": [],
+        "sinPermiso": [
+          "lb1"
+        ]
+      }
+    },
+    "sin conflictos": {
+      "sale": {
+        "desactualizadas": [],
+        "limite": [],
+        "ajenas": [],
+        "rescatables": [],
+        "sinPermiso": []
+      }
+    }
+  }
+}

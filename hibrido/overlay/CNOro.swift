@@ -335,6 +335,66 @@ enum CNOro {
             salida["diasHastaElDia"] = out
         }
 
+        // LA FUSIÓN A TRES, caso por caso.
+        //
+        // Va en su propio fichero —`fusion-oro.json`— porque la genera otro
+        // guion: los cálculos salen de la lógica de la pantalla y esto de la capa
+        // de nube. El banco junta los dos y compara el árbol entero.
+        if let bruto = leer("fusion-oro"),
+           let raizF = (try? JSONSerialization.jsonObject(with: bruto)) as? [String: Any],
+           let casos = raizF["fusionCasos"] as? [String: Any] {
+            var out: [String: Any] = [:]
+            for (nombre, caso) in casos {
+                guard let c = caso as? [String: Any] else { continue }
+                let sale = CNFusion.fusiona(c["base"] as? [String: Any],
+                                            c["mia"] as? [String: Any],
+                                            c["suya"] as? [String: Any])
+                // El oro guarda el caso entero —base, mía, suya y el porqué— y
+                // aquí solo se devuelve lo que SALE: es lo único que se compara.
+                out[nombre] = ["sale": sale ?? NSNull()]
+            }
+            salida["fusion"] = out
+        }
+
+        // LAS DOS DECISIONES DEL EMPUJE: qué se sube y qué significa cada
+        // rechazo. Vienen del mismo fichero que la fusión.
+        if let bruto = leer("fusion-oro"),
+           let raizF = (try? JSONSerialization.jsonObject(with: bruto)) as? [String: Any] {
+            if let casos = raizF["subirCasos"] as? [String: Any] {
+                var out: [String: Any] = [:]
+                for (nombre, caso) in casos {
+                    guard let c = caso as? [String: Any],
+                          let libretas = c["libretas"] as? [[String: Any]] else { continue }
+                    var versiones: [String: Int] = [:]
+                    for (k, v) in (c["versiones"] as? [String: Any]) ?? [:] {
+                        versiones[k] = (v as? Int) ?? 0
+                    }
+                    // Solo la llave y la versión: el resto de la libreta va tal
+                    // cual y no dice nada de la decisión.
+                    out[nombre] = ["sale": CNSincro.queSeSube(libretas, versiones: versiones).map {
+                        ["id": $0["id"] ?? "", "__version": $0["__version"] ?? 0]
+                    }]
+                }
+                salida["subir"] = out
+            }
+            if let casos = raizF["rechazoCasos"] as? [String: Any] {
+                var out: [String: Any] = [:]
+                for (nombre, caso) in casos {
+                    guard let c = caso as? [String: Any] else { continue }
+                    let r = CNSincro.comoClasificar(
+                        (c["conflictos"] as? [[String: Any]]) ?? [],
+                        (c["libretas"] as? [[String: Any]]) ?? [],
+                        (c["yo"] as? String) ?? "",
+                        segundaVuelta: (c["segundaVuelta"] as? Bool) ?? false)
+                    out[nombre] = ["sale": ["desactualizadas": r.desactualizadas,
+                                            "limite": r.limite, "ajenas": r.ajenas,
+                                            "rescatables": r.rescatables,
+                                            "sinPermiso": r.sinPermiso]]
+                }
+                salida["rechazo"] = out
+            }
+        }
+
         if let j = try? JSONSerialization.data(withJSONObject: salida),
            let texto = String(data: j, encoding: .utf8) {
             escupe(texto)
@@ -357,21 +417,49 @@ enum CNOro {
      * Van numerados para poder pegarlos en orden y saber si falta alguno.
      */
     private static func escupe(_ texto: String) {
+        let limpio = soloAscii(texto)
         // Quinientos: os_log corta cerca de mil y el prefijo ocupa lo suyo.
         let tamano = 500
-        let partes = stride(from: 0, to: texto.count, by: tamano).map { i -> String in
-            let desde = texto.index(texto.startIndex, offsetBy: i)
-            let hasta = texto.index(desde, offsetBy: min(tamano, texto.count - i))
-            return String(texto[desde..<hasta])
+        let u = Array(limpio)
+        let partes = stride(from: 0, to: u.count, by: tamano).map { i in
+            String(u[i..<min(i + tamano, u.count)])
         }
         for (i, parte) in partes.enumerated() {
             NSLog("CNORO %d/%d %@", i + 1, partes.count, parte)
         }
     }
 
-    private static func leer() -> Data? {
+    /**
+     * EL JSON, SIN UN SOLO CARÁCTER RARO.
+     *
+     * `log show` no saca los bytes tal cual: los que no son ASCII los escribe
+     * como `\M-b\M^@\M-&`, y eso dentro de una cadena JSON es una barra
+     * inválida. El banco decía «no entiendo lo que dijo el Swift» y la culpa no
+     * era del Swift ni del JSON: era del log.
+     *
+     * Y nuestro JSON está lleno de ellos —«Préstamo», «Alimentación», el signo
+     * menos de «cuentas − deudas»—. Escritos como `\uXXXX` siguen siendo el
+     * mismo JSON y el log ya no tiene nada que escapar.
+     */
+    static func soloAscii(_ t: String) -> String {
+        var salida = ""
+        for u in t.unicodeScalars {
+            if u.value < 128 {
+                salida.unicodeScalars.append(u)
+            } else if u.value > 0xFFFF {
+                // Fuera del plano básico va en pareja, como manda JSON.
+                let v = u.value - 0x10000
+                salida += String(format: "\\u%04x\\u%04x", 0xD800 + (v >> 10), 0xDC00 + (v & 0x3FF))
+            } else {
+                salida += String(format: "\\u%04x", u.value)
+            }
+        }
+        return salida
+    }
+
+    private static func leer(_ nombre: String = "calculo-oro") -> Data? {
         for sub in ["public", "www", nil] {
-            if let u = Bundle.main.url(forResource: "calculo-oro", withExtension: "json", subdirectory: sub),
+            if let u = Bundle.main.url(forResource: nombre, withExtension: "json", subdirectory: sub),
                let d = try? Data(contentsOf: u) { return d }
         }
         return nil

@@ -336,6 +336,18 @@ class ChinolaViewController: CAPBridgeViewController {
         if CNOro.pedido {
             DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { CNOro.correr() }
         }
+        // Y EL CICLO DE SINCRONIZACIÓN ENTERO, contra el servidor del banco.
+        //
+        // Solo con `CN_SINCRO=1`, que en un teléfono no existe. Mientras la web
+        // siga sincronizando, encender esto aquí serían DOS escritores de la
+        // misma libreta, y eso la corrompe en silencio: uno sube su versión, el
+        // otro sube la suya encima y lo del primero desaparece sin que falle
+        // nada. El día que se encienda hay que apagar la web en el mismo cambio.
+        if CNNube.pedido {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) {
+                Task { await CNNube.correrEnElBanco() }
+            }
+        }
         if let ir = ProcessInfo.processInfo.environment["CN_IR"], !ir.isEmpty {
             // Y CON DOS PUNTOS, UNA SUBPANTALLA: `CN_IR=perfil:colores`.
             //
