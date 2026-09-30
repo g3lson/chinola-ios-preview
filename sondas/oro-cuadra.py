@@ -30,6 +30,37 @@ import sys
 TOLERANCIA = 0.0
 
 
+def pegaLosTrozos(log):
+    """El resultado viene PARTIDO, y hay que pegarlo antes de leerlo.
+
+    Iba en una sola línea y funcionó mientras el oro tenía cinco apartados. Con
+    los catorce, el JSON pasa de mil caracteres y `os_log` lo corta ahí: esto
+    leía media línea y decía «no entiendo lo que dijo el Swift».
+
+    Se devuelve None si no hay nada. Si hay trozos pero falta alguno, se dice
+    CUÁL falta: pegar los que hay daría un JSON roto, o —peor— uno que se lee
+    pero al que le faltan apartados, y entonces el banco compararía media verdad
+    y diría que cuadra.
+    """
+    trozos = re.findall(r'CNORO (\d+)/(\d+) (.*)', log)
+    if not trozos:
+        # Por si queda una app vieja con el formato de una sola línea.
+        viejo = re.findall(r'CNORO:\s*(\{.*)', log)
+        return viejo[-1].strip() if viejo else None
+    total = int(trozos[-1][1])
+    # El último arranque manda: el banco abre la app varias veces.
+    partes = {}
+    for i, n, t in trozos:
+        if int(n) == total:
+            partes[int(i)] = t
+    faltan = [str(i) for i in range(1, total + 1) if i not in partes]
+    if faltan:
+        print('El Swift dijo ' + str(len(partes)) + ' trozos de ' + str(total)
+              + ': falta(n) el ' + ', '.join(faltan))
+        return None
+    return ''.join(partes[i] for i in range(1, total + 1)).strip()
+
+
 def compara(camino, espera, hay, fallos):
     """Los dos árboles, rama a rama. `camino` es para poder decir DÓNDE falló."""
     if isinstance(espera, dict):
@@ -81,15 +112,15 @@ def main():
     oro = json.load(open(sys.argv[1]))
     log = open(sys.argv[2], encoding='utf-8', errors='replace').read()
 
-    m = re.findall(r'CNORO:\s*(\{.*)', log)
-    if not m:
+    texto = pegaLosTrozos(log)
+    if texto is None:
         print('El Swift no dijo nada. ¿Arrancó con CN_ORO=1? ¿Está el fichero en el paquete?')
         return 1
     try:
-        hay = json.loads(m[-1].strip())
+        hay = json.loads(texto)
     except json.JSONDecodeError as e:
         print('No entiendo lo que dijo el Swift: ' + str(e))
-        print(m[-1][:300])
+        print(texto[:300])
         return 1
     if 'error' in hay:
         print('El Swift no pudo: ' + str(hay['error']))

@@ -165,7 +165,9 @@ enum CNOro {
             var out: [String: Any] = [:]
             for mes in meses.keys {
                 out[mes] = CNTarjetasGrafico.barrasCrudas(l, CNCalculo.Periodo(mes: mes))
-                    .map { ["categoria": $0.categoria, "gastado": $0.gastado, "pct": $0.pct] }
+                    .map { c -> [String: Any] in
+                        ["categoria": c.categoria, "gastado": c.gastado, "pct": c.pct]
+                    }
             }
             salida["barrasDeCategorias"] = out
         }
@@ -178,9 +180,10 @@ enum CNOro {
                 let p = k.split(separator: "/").map(String.init)
                 guard p.count == 2, let cuantos = Int(p[1]) else { continue }
                 let t = CNTarjetasGrafico.tendenciaCruda(l, hasta: p[0], meses: cuantos)
-                out[k] = ["tope": t.tope, "columnas": t.columnas.map {
+                let columnas: [[String: Any]] = t.columnas.map {
                     ["mes": $0.mes, "ing": $0.ing, "gas": $0.gas, "a": $0.a, "b": $0.b]
-                }]
+                }
+                out[k] = ["tope": t.tope, "columnas": columnas]
             }
             salida["tendencia"] = out
         }
@@ -223,9 +226,13 @@ enum CNOro {
                     "minV": d.minV, "maxV": d.maxV,
                     "trazos": d.trazos.map { pts($0) },
                     "areas": d.areas.map { pts($0) },
-                    "barras": d.barras.map { ["serie": $0.serie.rawValue, "x": r4($0.x),
-                                              "y": r4($0.y), "w": r4($0.w), "h": r4($0.h)] },
-                    "leyenda": d.leyenda.map { ["serie": $0.serie.rawValue, "ultimo": $0.valor] }
+                    "barras": d.barras.map { b -> [String: Any] in
+                        ["serie": b.serie.rawValue, "x": r4(b.x), "y": r4(b.y),
+                         "w": r4(b.w), "h": r4(b.h)]
+                    },
+                    "leyenda": d.leyenda.map { g -> [String: Any] in
+                        ["serie": g.serie.rawValue, "ultimo": g.valor]
+                    }
                 ]
             }
             salida["serie"] = out
@@ -298,8 +305,8 @@ enum CNOro {
             var out: [String: Any] = [:]
             for mes in meses.keys {
                 let vis = CNMovimientos.visibles(l, periodo: CNCalculo.Periodo(mes: mes))
-                out[mes] = CNMovimientos.porDias(vis).map {
-                    ["fecha": $0.fecha, "total": CNMovimientos.totalDelDia($0.movimientos)]
+                out[mes] = CNMovimientos.porDias(vis).map { d -> [String: Any] in
+                    ["fecha": d.fecha, "total": CNMovimientos.totalDelDia(d.movimientos)]
                 }
             }
             salida["porDias"] = out
@@ -330,7 +337,35 @@ enum CNOro {
 
         if let j = try? JSONSerialization.data(withJSONObject: salida),
            let texto = String(data: j, encoding: .utf8) {
-            NSLog("CNORO: %@", texto)
+            escupe(texto)
+        }
+    }
+
+    /**
+     * EL RESULTADO, POR TROZOS, PORQUE EL LOG CORTA.
+     *
+     * Iba en una sola línea —`NSLog("CNORO: %@", texto)`— y funcionó mientras el
+     * fichero de oro tenía cinco apartados. Con los catorce, el JSON pasa de mil
+     * caracteres y `os_log` lo corta ahí: el banco leía media línea, no era JSON
+     * válido y decía «no entiendo lo que dijo el Swift».
+     *
+     * Y ese es el fallo peor de los dos posibles, aunque parezca el mejor: se
+     * queja. El que asusta es el contrario —que cortara justo en un sitio donde
+     * el JSON siguiera siendo válido— porque entonces el banco compararía media
+     * verdad y diría que cuadra.
+     *
+     * Van numerados para poder pegarlos en orden y saber si falta alguno.
+     */
+    private static func escupe(_ texto: String) {
+        // Quinientos: os_log corta cerca de mil y el prefijo ocupa lo suyo.
+        let tamano = 500
+        let partes = stride(from: 0, to: texto.count, by: tamano).map { i -> String in
+            let desde = texto.index(texto.startIndex, offsetBy: i)
+            let hasta = texto.index(desde, offsetBy: min(tamano, texto.count - i))
+            return String(texto[desde..<hasta])
+        }
+        for (i, parte) in partes.enumerated() {
+            NSLog("CNORO %d/%d %@", i + 1, partes.count, parte)
         }
     }
 

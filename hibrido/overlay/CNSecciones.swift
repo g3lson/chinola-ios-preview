@@ -172,7 +172,7 @@ enum CNSecciones {
         pon(cnT("Código por correo"), activo("correo") ? si : no, activo("correo"),
             "correo", activo("correo") ? "mfaCorreoOff" : "mfaCorreoOn")
         pon(cnT("App de autenticación"), activo("totp") ? si : no, activo("totp"),
-            "telefono", activo("totp") ? "mfaTotpOff" : "mfaTotp")
+            "autenticador", activo("totp") ? "mfaTotpOff" : "mfaTotp")
 
         // Telegram tiene un tercer estado: puede no estar disponible porque el
         // servidor no tenga bot. Decir «No» ahí es mentir: no es que no lo
@@ -182,7 +182,7 @@ enum CNSecciones {
         let tgPista = (dato("telegram", "pista") as? String) ?? ""
         pon("Telegram",
             tgActivo ? (tgPista.isEmpty ? si : tgPista) : (tgHay ? no : cnT("No disponible")),
-            tgActivo, "dosPasos",
+            tgActivo, "telegram",
             tgActivo ? "mfaTelegramOff" : (tgHay ? "mfaTelegram" : ""))
 
         // Los de respaldo dicen CUÁNTOS quedan, no solo que están: gastarlos es
@@ -192,7 +192,7 @@ enum CNSecciones {
             activo("respaldo")
                 ? cnT("{n} sin usar").replacingOccurrences(of: "{n}", with: String(quedan))
                 : no,
-            activo("respaldo"), "clave", "mfaRespaldo")
+            activo("respaldo"), "codigos", "mfaRespaldo")
 
         let puesta = ((r["usuario"] as? [String: Any])?["mfa"] as? Bool) ?? false
         var s = CNSeccion()

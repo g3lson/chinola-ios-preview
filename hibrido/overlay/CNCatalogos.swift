@@ -97,7 +97,15 @@ enum CNCatalogos {
         "premio": "M8 3h8v6a4 4 0 0 1-8 0zM12 13v5M9 21h6M5 5H3v2a4 4 0 0 0 4 4M19 5h2v2a4 4 0 0 1-4 4",
         "moneda": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7v10M9.5 9.5h5M9.5 14.5h5",
         "cripto": "M9 4v16M7 8h5a2 2 0 0 1 0 4H7h5a2 2 0 0 1 0 4H7M12 4v2M12 18v2",
-        "candado": "M6 11h12v10H6zM9 11V8a3 3 0 0 1 6 0v3M12 15v3"
+        "candado": "M6 11h12v10H6zM9 11V8a3 3 0 0 1 6 0v3M12 15v3",
+        "paypal": "M7 18V3h4.5a4.5 4.5 0 0 1 0 9H7M13 21V6h2.5a4.5 4.5 0 0 1 0 9H13",
+        "billetera": "M3 8h16a1 1 0 0 1 1 1v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 8V6a2 2 0 0 1 2-2h11v4M15 13.5h3",
+        "transferencia": "M4 9h13M14 6l3 3-3 3M20 15H7M10 12l-3 3 3 3",
+        "qr": "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14.5 14.5h2v2h-2zM18 18h2v2h-2zM14 20h2M18 14h2",
+        "contactless": "M5 9a5 5 0 0 1 0 6M9 6.5a9 9 0 0 1 0 11M13 4a13 13 0 0 1 0 16",
+        "cajero": "M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM7 6.5h10v5H7zM8.5 15h7M9.5 18h5",
+        "cheque": "M3 6h18v12H3zM6.5 14.5c1.2-2 2.4-2 3.2 0 .8 2 2 2 3.2 0M6.5 10h6M16 10h2M16 14.5h2",
+        "remesa": "M3 8h12v8H3zM9 12h.01M17 4h4v4M21 4l-5 5M6 20h10"
     ]
 
     /// Cómo se llama cada uno cuando hay que enseñarlo para elegirlo.
@@ -184,9 +192,17 @@ enum CNCatalogos {
         "gato": "Gato",
         "libro2": "Cursos",
         "premio": "Metas",
-        "moneda": "Efectivo",
+        "moneda": "Monedas",
         "cripto": "Cripto",
-        "candado": "Fondo bloqueado"
+        "candado": "Fondo bloqueado",
+        "paypal": "PayPal",
+        "billetera": "Billetera",
+        "transferencia": "Transferencia",
+        "qr": "Código QR",
+        "contactless": "Pago sin contacto",
+        "cajero": "Cajero",
+        "cheque": "Cheque",
+        "remesa": "Remesa"
     ]
 
     /// El icono que le toca a cada categoría de fábrica, por su nombre.
@@ -242,7 +258,16 @@ enum CNCatalogos {
         "escudo": "M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6zM9 12l2 2 4-4",
         "dosPasos": "M3 6h18v12H3zM3 8l9 6 9-6M12 20v2",
         "telefono": "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2M10 19h4",
-        "monitor": "M3 4h18v12H3zM8 20h8M12 16v4"
+        "monitor": "M3 4h18v12H3zM8 20h8M12 16v4",
+        "telegram": "M22 2 11 13M22 2l-7 20-4-9-9-4z",
+        "whatsapp": "M20.5 11.5a8.5 8.5 0 0 1-12.4 7.6L3.5 20.5l1.4-4.6a8.5 8.5 0 1 1 15.6-4.4zM9 10c0 2.8 2.2 5 5 5l.9-1.6-2-.8-.8.8A4 4 0 0 1 11 11.6l.8-.8-.8-2z",
+        "alexa": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9",
+        "siri": "M4 11v2M8 8v8M12 4.5v15M16 8v8M20 11v2",
+        "autenticador": "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2M8.5 9h2M13.5 9h2M8.5 13h2M13.5 13h2M10 17h4",
+        "codigos": "M4 5h16v14H4zM7.5 9.5h3M13.5 9.5h3M7.5 14h3M13.5 14h3",
+        "appIco": "M6 2h12a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4zM12 7.3l1.7 3.5 3.8.5-2.8 2.7.7 3.8-3.4-1.8-3.4 1.8.7-3.8-2.8-2.7 3.8-.5z",
+        "barraIco": "M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2M4 17h16M8 20h.01M12 20h.01M16 20h.01",
+        "etiquetaIco": "M20.6 13.3 13 21a1.4 1.4 0 0 1-2 0l-8-8V4a1 1 0 0 1 1-1h9l7.6 7.6a1.9 1.9 0 0 1 0 2.7zM7.5 7.5h.01"
     ]
 
     /// El color de cada fila de ajustes, por su tono.
