@@ -880,6 +880,11 @@ class ChinolaViewController: CAPBridgeViewController {
             // directamente, que es como funciona una app normal: lo que vive
             // solo en el servidor no tiene por qué pasar por la web.
             if CNSecciones.sabeArmar(id) {
+                // «Libretas y permisos» se arma con la lista de libretas, y esa
+                // solo se pedía al abrir el SELECTOR. Entrando por Perfil no la
+                // pedía nadie, así que la sección nativa se quedaba sin datos y
+                // caía a la de la web — escrita, probada y sin usarse jamás.
+                if id == "libretas" || id.hasPrefix("libreta:") { s.refrescarLibretas() }
                 Task { @MainActor in
                     // Lo que ya se supiera se enseña mientras llega lo nuevo: es
                     // la misma pantalla con los mismos valores, así que lo que
@@ -1362,6 +1367,13 @@ class ChinolaViewController: CAPBridgeViewController {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretasJSON && window.__chinolaLibretasJSON()) || ''") { [weak self] res, _ in
             if let json = res as? String, json.count > 2 {
                 CNDatos.shared.cargarLibretas(json: json)
+                // Y si se está mirando una subpantalla que se arma con esto,
+                // se rehace: acaba de llegar lo que le faltaba.
+                if let s = self, let cual = s.datos.seccion?.id,
+                   cual == "libretas" || cual.hasPrefix("libreta:"),
+                   let hecha = CNSecciones.arma(cual) {
+                    s.ponSeccion(hecha, si: cual)
+                }
                 return
             }
             // La web puede estar a medio pintar: se vuelve a pedir en vez de
