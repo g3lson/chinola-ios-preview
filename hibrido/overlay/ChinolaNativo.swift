@@ -194,7 +194,6 @@ struct CNFormato {
     /// La tipografía elegida (su id en la web: sistema, jakarta, nunito…).
     var fuente = "sistema"
     /// Qué se ve en la pestaña de Perfil: «chino» o «perfil».
-    var iconoPerfil = "chino"
     /// La inicial del usuario, para el icono redondo.
     var inicial = ""
     /// Las tarjetas de cifras del panel, cada una del color de su cifra.
@@ -224,7 +223,6 @@ struct CNFormato {
         if let c = o["centavos"] as? Bool { f.centavos = c }
         if let l = o["loc"] as? String, !l.isEmpty { f.loc = l }
         if let t = o["fuente"] as? String, !t.isEmpty { f.fuente = t }
-        if let t = o["iconoPerfil"] as? String, !t.isEmpty { f.iconoPerfil = t }
         if let t = o["inicial"] as? String { f.inicial = t }
         if let v = o["panelVivo"] as? Bool { f.panelVivo = v }
         if let t = o["tarjetaCuentas"] as? String, !t.isEmpty { f.tarjetaCuentas = t }
@@ -1871,32 +1869,18 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         return img.withRenderingMode(.alwaysOriginal)
     }
 
-    /// El icono de Perfil: el dibujo de Chino o, si así lo elige el usuario, el
-    /// de siempre pero redondo, con su inicial —como el del perfil de otras
-    /// apps—. Apagado cuando no es la pestaña puesta, vivo en cuanto lo es.
-    func ponerChinolo(_ b64: String) {
-        guard let items = barra.items, let i = ids.firstIndex(of: "perfil"), i < items.count else { return }
-        let nombre = cnT("Perfil")
-        if CNC.fmt.iconoPerfil == "perfil" {
-            items[i].imageInsets = conTitulos ? .zero : UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
-            items[i].image = CNBarraNativa.bajoNombre(
-                CNBarraNativa.redondo(CNC.fmt.inicial, puesto: false), nombre, puesta: false)
-            items[i].selectedImage = CNBarraNativa.bajoNombre(
-                CNBarraNativa.redondo(CNC.fmt.inicial, puesto: true), nombre, puesta: true)
-            return
-        }
-        guard !b64.isEmpty, let d = Data(base64Encoded: b64), let img = UIImage(data: d) else { return }
-        // Más grande que los demás a propósito: es un dibujo, no un trazo, y
-        // con el mismo alto se veía chiquito al lado de las líneas. Solo él:
-        // el resto de la barra se queda como está.
-        let lado: CGFloat = 36
-        items[i].imageInsets = UIEdgeInsets(top: conTitulos ? -2 : 4, left: 0, bottom: conTitulos ? 2 : -4, right: 0)
-        let color = UIGraphicsImageRenderer(size: CGSize(width: lado, height: lado)).image { _ in
-            img.draw(in: CGRect(x: 0, y: 0, width: lado, height: lado))
-        }
-        items[i].image = CNBarraNativa.bajoNombre(CNBarraNativa.enGris(color) ?? color, nombre, puesta: false)
-        items[i].selectedImage = CNBarraNativa.bajoNombre(color, nombre, puesta: true)
-    }
+    /// EL ICONO DE PERFIL: EL DE SIEMPRE, COMO LOS DEMÁS.
+    ///
+    /// Aquí se pisaba el icono de la pestaña con el dibujo de Chino. Con Chino
+    /// ya en su propio botón flotante —con su cara y su ánimo— tenerlo también
+    /// en la barra era tenerlo dos veces en pantalla, y además descuadraba la
+    /// fila: cuatro trazos finos y un dibujo a color en medio.
+    ///
+    /// La barra ya crea el icono de Perfil igual que los otros cuatro, con su
+    /// mismo trazo y su mismo color. Así que lo único que hay que hacer es no
+    /// tocarlo. Esto se queda como puerta —lo llaman dos sitios cuando llega un
+    /// dibujo nuevo— para que quede dicho que el dibujo ya no va ahí.
+    func ponerChinolo(_ b64: String) { }
 
     /// El mismo truco que `conNombre`, pero partiendo de un dibujo ya hecho (el
     /// de Chino o el círculo con la inicial): se le pone el nombre debajo. Sin

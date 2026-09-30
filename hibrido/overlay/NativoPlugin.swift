@@ -19,6 +19,7 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "abrirTendencia", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "menuActiva", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "menuTitulos", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "iconoApp", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "flotante", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "datos", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "tema", returnType: CAPPluginReturnPromise),
@@ -210,6 +211,41 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func menuTitulos(_ call: CAPPluginCall) {
         let on = call.getBool("on") ?? true
         DispatchQueue.main.async { CNMenuEstado.shared.titulos = on; CNMenuEstado.shared.alRepintar(); call.resolve() }
+    }
+
+    /**
+     * EL ICONO DE LA APP, EL QUE SE VE EN LA PANTALLA DE INICIO.
+     *
+     * iOS deja cambiarlo entre una lista fija declarada en el `Info.plist`: no
+     * se puede mandar una imagen nueva, solo elegir una de las que vienen en el
+     * paquete. Por eso los nueve se generan al compilar desde `iconos-app.js`,
+     * que es donde están dibujados.
+     *
+     * `nil` vuelve al de siempre. Y el aviso que sale al cambiarlo lo pone el
+     * propio sistema: no se puede quitar, y es mejor así — que el icono de una
+     * app cambie solo sin decir nada asustaría a cualquiera.
+     */
+    @objc func iconoApp(_ call: CAPPluginCall) {
+        let cual = call.getString("cual") ?? ""
+        DispatchQueue.main.async {
+            guard UIApplication.shared.supportsAlternateIcons else {
+                call.resolve(["ok": false, "motivo": "no-soportado"]); return
+            }
+            let nombre: String? = cual.isEmpty ? nil : "Chinola-" + cual
+            // Pedir el que ya está puesto hace que iOS enseñe el aviso otra vez
+            // sin que haya cambiado nada.
+            if nombre == UIApplication.shared.alternateIconName {
+                call.resolve(["ok": true, "sinCambios": true]); return
+            }
+            UIApplication.shared.setAlternateIconName(nombre) { error in
+                if let e = error {
+                    NSLog("CNICONO: no se pudo poner \(nombre ?? "el de siempre"): \(e.localizedDescription)")
+                    call.resolve(["ok": false, "motivo": e.localizedDescription])
+                } else {
+                    call.resolve(["ok": true])
+                }
+            }
+        }
     }
 
     /// El botón flotante de Chino: puesto o no, y dónde quedó (0…1).

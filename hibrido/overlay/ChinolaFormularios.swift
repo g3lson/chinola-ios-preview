@@ -2776,7 +2776,12 @@ import Speech
 import AVFoundation
 
 struct CNCharla {
-    struct Mensaje: Identifiable { var id: Int; var de = ""; var texto = ""; var error = false }
+    struct Mensaje: Identifiable {
+        var id: Int; var de = ""; var texto = ""; var error = false
+        /// Quién contestó, ya escrito por la web («Apple Intelligence · sin
+        /// salir del teléfono», «Tu IA · …»). Vacío en lo que escribe uno.
+        var quien = ""
+    }
     var titulo = "Chino"; var ph = ""; var iaOn = false; var pensando = false
     var chinolo = ""; var vacioTexto = ""
     var mensajes: [Mensaje] = []
@@ -2790,7 +2795,8 @@ struct CNCharla {
         m.ph = s(r, "ph"); m.iaOn = b(r, "iaOn"); m.pensando = b(r, "pensando")
         m.chinolo = s(r, "chinolo"); m.vacioTexto = s(r, "vacioTexto")
         m.mensajes = ((r["mensajes"] as? [[String: Any]]) ?? []).map {
-            Mensaje(id: (($0["indice"] as? NSNumber)?.intValue) ?? 0, de: s($0, "de"), texto: s($0, "texto"), error: b($0, "error"))
+            Mensaje(id: (($0["indice"] as? NSNumber)?.intValue) ?? 0, de: s($0, "de"),
+                    texto: s($0, "texto"), error: b($0, "error"), quien: s($0, "quien"))
         }
         return m
     }
@@ -2879,16 +2885,31 @@ struct CNCharlaVista: View {
                             .padding(.top, 30)
                         }
                         ForEach(m.mensajes) { x in
-                            HStack {
-                                if x.de == "yo" { Spacer(minLength: 50) }
-                                Text(x.texto).font(cnLetra(15))
-                                    .foregroundColor(x.de == "yo" ? CNC.sobreAcc : (x.error ? CNC.neg : CNC.ink))
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .padding(.horizontal, 14).padding(.vertical, 10)
-                                    .background(x.de == "yo" ? CNC.acc : (x.error ? CNC.neg.opacity(0.10) : CNC.card),
-                                                in: CNBurbuja(mia: x.de == "yo"))
-                                if x.de != "yo" { Spacer(minLength: 50) }
+                            VStack(alignment: x.de == "yo" ? .trailing : .leading, spacing: 3) {
+                                HStack {
+                                    if x.de == "yo" { Spacer(minLength: 50) }
+                                    Text(x.texto).font(cnLetra(15))
+                                        .foregroundColor(x.de == "yo" ? CNC.sobreAcc : (x.error ? CNC.neg : CNC.ink))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .padding(.horizontal, 14).padding(.vertical, 10)
+                                        .background(x.de == "yo" ? CNC.acc : (x.error ? CNC.neg.opacity(0.10) : CNC.card),
+                                                    in: CNBurbuja(mia: x.de == "yo"))
+                                    if x.de != "yo" { Spacer(minLength: 50) }
+                                }
+                                // QUIÉN CONTESTÓ, DEBAJO DE SU RESPUESTA.
+                                //
+                                // Hay tres caminos —la de Apple aquí dentro, la
+                                // tuya con tu clave, la de Chinola— y se salta
+                                // solo de uno a otro cuando alguno falla. Sin
+                                // esto, configuras la tuya y no hay manera de
+                                // saber si se está usando o si todo sigue
+                                // saliendo por la de siempre.
+                                if !x.quien.isEmpty {
+                                    Text(x.quien).font(cnLetra(11)).foregroundColor(CNC.pmut)
+                                        .padding(.horizontal, 4)
+                                }
                             }
+                            .frame(maxWidth: .infinity, alignment: x.de == "yo" ? .trailing : .leading)
                             .id(x.id)
                         }
                         if m.pensando {
