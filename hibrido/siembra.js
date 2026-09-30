@@ -42,6 +42,23 @@
     }
     if (url.includes('/mi-ia')) return Promise.resolve(json({ mia: null, presets: [] }));
     if (url.includes('/ia/permisos')) return Promise.resolve(json({ texto: 'Mirar y anotar', catalogo: [] }));
+
+    // TODO LO DEMÁS DEL SERVIDOR, VACÍO Y EN 200.
+    //
+    // Antes se dejaba pasar al servidor DE VERDAD, que con un vale inventado
+    // contesta 401. La app hace lo correcto con un 401 —cerrar la sesión— y se
+    // volvía a la pantalla de acceso: `paso: auth`. A partir de ahí la lógica
+    // corta antes de calcular nada y devuelve listas vacías, así que Cuentas
+    // salía sin una sola fila teniendo tres cuentas sembradas, y todas las
+    // demás pantallas enseñaban lo último que el nativo hubiera guardado.
+    //
+    // Es decir: el banco fotografiaba una app que nunca llegó a entrar, y no lo
+    // decía en ninguna parte. Un 200 vacío deja la sesión en pie, que es lo
+    // único que hace falta para que las pantallas se puedan mirar.
+    if (/\/(yo|libretas|claves|mfa|seguridad|integraciones|ia|voz|estuve|metricas|plan|cobro)/.test(url)
+        || url.indexOf('chinola.fente.com.do') >= 0) {
+      return Promise.resolve(json({}));
+    }
     return orig.call(this, u, o);
   };
 })();
