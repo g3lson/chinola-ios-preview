@@ -218,9 +218,10 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         let x = CGFloat(call.getDouble("x") ?? 1)
         let y = CGFloat(call.getDouble("y") ?? 0.72)
         DispatchQueue.main.async {
-            CNFlotante.shared.puesto = puesto
-            CNFlotante.shared.x = max(0, min(1, x))
-            CNFlotante.shared.y = max(0, min(1, y))
+            // Por `ponDesdeLaWeb`, que no pisa el sitio mientras el dedo
+            // acaba de moverlo: la web devuelve lo que el propio botón le
+            // acaba de mandar, y esa vuelta cortaba la animación en seco.
+            CNFlotante.shared.ponDesdeLaWeb(puesto: puesto, x: x, y: y)
             // El contenedor del botón se monta AQUÍ, no al arrancar: es una
             // vista que acaba dentro del webview, y meterla antes de que la
             // página corra es lo que dejaba la app en blanco.

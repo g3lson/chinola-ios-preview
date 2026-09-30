@@ -5637,7 +5637,10 @@ struct CNTarjetaWidget: View {
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .background(conVida ? tinteVida.opacity(0.13) : CNC.card)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: conVida ? 0 : 1))
+        // Sin contorno, como el resto de las tarjetas. Esta se me escapó en la
+        // barrida porque su fondo es condicional —`conVida ? tinte : card`— y
+        // busqué por las que llevaban `background(CNC.card)` al lado. Las
+        // separaciones de DENTRO de la tarjeta siguen donde estaban.
         .opacity(w.oculta ? 0.42 : 1)
         // Mantener pulsado: lo mismo, sin tener que entrar en «organizar».
         .contextMenu { acciones }
@@ -7682,6 +7685,30 @@ final class CNFlotante: ObservableObject {
     var alTocar: () -> Void = {}
     /// Dónde ha quedado, para que la web lo guarde.
     var alMover: (CGFloat, CGFloat) -> Void = { _, _ in }
+    /// Cuándo lo movió la persona por última vez.
+    private var movidoEn = Date.distantPast
+
+    /// Apunta que lo acaba de mover el dedo. Lo llama el propio botón al soltar.
+    func loMovioElDedo() { movidoEn = Date() }
+
+    /**
+     * LO QUE MANDA LA WEB, SIN PISAR EL DEDO.
+     *
+     * Al soltar el botón pasa esto: avisa a la web, la web lo guarda y se lo
+     * devuelve al nativo. Esa vuelta reescribía `x` e `y` de golpe y sin
+     * animación, justo encima del muelle que lo estaba llevando al borde — y
+     * desde fuera se veía como un salto. El botón aparecía donde levantaste el
+     * dedo en vez de deslizarse.
+     *
+     * Así que durante un rato después de moverlo, el sitio lo manda el dedo y
+     * no la web. Puesto o no sí se obedece siempre: eso no lo decide el dedo.
+     */
+    func ponDesdeLaWeb(puesto p: Bool, x nx: CGFloat, y ny: CGFloat) {
+        puesto = p
+        if Date().timeIntervalSince(movidoEn) < 2.5 { return }
+        x = max(0, min(1, nx))
+        y = max(0, min(1, ny))
+    }
 }
 
 struct CNBotonFlotante: View {
@@ -7689,6 +7716,8 @@ struct CNBotonFlotante: View {
     @ObservedObject var datos: CNDatos
     @State private var arrastre: CGSize = .zero
     @State private var llevando = false
+    /// Lo que el dedo ya había andado cuando el gesto por fin avisó.
+    @State private var salida: CGSize = .zero
 
     private let lado: CGFloat = 56
     private let margen: CGFloat = 14
@@ -7719,14 +7748,31 @@ struct CNBotonFlotante: View {
                     .gesture(
                         DragGesture(minimumDistance: 4)
                             .onChanged { v in
-                                if !llevando { llevando = true; UIImpactFeedbackGenerator(style: .light).impactOccurred() }
-                                arrastre = v.translation
+                                // EL PRIMER TRAMO NO CUENTA.
+                                //
+                                // El gesto no dice nada hasta que el dedo se ha
+                                // movido 4 puntos, y entonces el primer aviso ya
+                                // trae esos 4 andados: el botón daba un brinco
+                                // seco al empezar. Guardando ese primer tramo y
+                                // restándolo, el botón arranca quieto y desde
+                                // ahí sigue al dedo punto por punto.
+                                if !llevando {
+                                    llevando = true
+                                    salida = v.translation
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                }
+                                arrastre = CGSize(width: v.translation.width - salida.width,
+                                                  height: v.translation.height - salida.height)
                             }
                             .onEnded { v in
                                 // Al soltar, al borde más cercano: en medio de
                                 // la pantalla tapa justo lo que estás mirando.
-                                let px = libre.minX + libre.width * mando.x + v.translation.width
-                                let py = libre.minY + libre.height * mando.y + v.translation.height
+                                // Con el mismo descuento del primer tramo: si
+                                // no, el sitio final no es donde está el dedo.
+                                let andado = CGSize(width: v.translation.width - salida.width,
+                                                    height: v.translation.height - salida.height)
+                                let px = libre.minX + libre.width * mando.x + andado.width
+                                let py = libre.minY + libre.height * mando.y + andado.height
                                 let nx: CGFloat = px + lado / 2 < g.size.width / 2 ? 0 : 1
                                 let ny = max(0, min(1, libre.height > 0 ? (py - libre.minY) / libre.height : 0.5))
                                 // TODO DENTRO DE LA MISMA ANIMACIÓN.
@@ -7741,6 +7787,10 @@ struct CNBotonFlotante: View {
                                     arrastre = .zero
                                     mando.x = nx; mando.y = ny
                                 }
+                                // Antes de avisar a la web: que lo movió el
+                                // dedo. Lo que vuelva de allá no puede pisar
+                                // esto mientras el muelle está corriendo.
+                                mando.loMovioElDedo()
                                 mando.alMover(nx, ny)
                             }
                     )
