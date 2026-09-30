@@ -1397,6 +1397,21 @@ final class CNDatos: ObservableObject {
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
     /// con los colores nuevos (los de CNC son calculados).
     @Published var selloTema = 0
+    /**
+     * Guardar una subpantalla SIN enseñarla.
+     *
+     * Es lo que deja traer las de personalización por adelantado: quedan
+     * listas para cuando alguien entre, pero no cambian lo que se está viendo
+     * ahora. Poner `seccion` aquí sacaría al usuario de donde estaba.
+     */
+    func guardaSeccionVista(json: String) {
+        guard let x = CNSeccion.desde(json: json) else { return }
+        seccionesVistas[x.id] = x
+        // Y si resulta que es justo la que se está mirando, se refresca: viene
+        // más nueva que la que hay puesta.
+        if seccion?.id == x.id { seccion = x }
+    }
+
     func cargarSeccion(json: String) {
         guard let x = CNSeccion.desde(json: json) else { return }
         if !seccionPedida.isEmpty && x.id != seccionPedida { return }

@@ -706,7 +706,7 @@ class ChinolaViewController: CAPBridgeViewController {
                     return
                 }
                 s.traerSeccion(id)
-                s.traerAjustes(); s.traerTema()
+                s.traerAjustes(); s.traerTema(); s.traerSeccionesDePerfil()
                 // «Mi plan» cambia de paso sin abrir hoja: es la puerta.
                 s.mirarPuerta(intentos: 2)
                 // Y UN REPASO TARDÍO, solo para las que tardan. Las que hablan
@@ -896,7 +896,7 @@ class ChinolaViewController: CAPBridgeViewController {
             case "resumen": s.traerResumen(intentos: 6)
             case "cuentas": s.traerCuentas()
             case "plan": s.traerPlan(intentos: 6)
-            case "perfil": s.traerAjustes(); s.traerMascota()
+            case "perfil": s.traerAjustes(); s.traerMascota(); s.traerSeccionesDePerfil()
             default: s.traerDatos(intentos: 3)
             }
         }
@@ -1380,6 +1380,33 @@ class ChinolaViewController: CAPBridgeViewController {
         }
     }
 
+    /**
+     * LAS OCHO DE PERSONALIZACIÓN, ANTES DE QUE LAS PIDAN.
+     *
+     * Entrar en una subpantalla ya no deja la pantalla en blanco SI se vio
+     * antes; la primera vez seguía en blanco, que es justo cuando peor sienta.
+     * Con las ocho traídas de golpe, no hay primera vez: la primera entrada ya
+     * tiene su contenido.
+     *
+     * Se pide al arrancar y cada vez que cambia un ajuste, porque un ajuste
+     * cambia lo que enseñan las demás —el tema cambia los colores de todas, la
+     * letra cambia su muestra—. Son ocho pantallas de texto: rearmarlas cuesta
+     * mucho menos que una sola espera en blanco.
+     */
+    private func traerSeccionesDePerfil() {
+        bridge?.webView?.evaluateJavaScript(
+            "(window.__chinolaSeccionesPerfil && window.__chinolaSeccionesPerfil()) || ''") { res, _ in
+            guard let json = res as? String, json.count > 4,
+                  let d = json.data(using: .utf8),
+                  let lista = (try? JSONSerialization.jsonObject(with: d)) as? [[String: Any]] else { return }
+            for sec in lista {
+                guard let uno = try? JSONSerialization.data(withJSONObject: sec),
+                      let texto = String(data: uno, encoding: .utf8) else { continue }
+                CNDatos.shared.guardaSeccionVista(json: texto)
+            }
+        }
+    }
+
     /// Los ajustes del Perfil, armados por la web (los mismos que ve la PWA).
     private func traerAjustes() {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaAjustesJSON && window.__chinolaAjustesJSON()) || ''") { res, _ in
@@ -1443,6 +1470,7 @@ class ChinolaViewController: CAPBridgeViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             guard let s = self else { return }
             s.traerResumen(intentos: 6); s.traerCuentas(); s.traerPlan(intentos: 6); s.traerAjustes()
+            s.traerSeccionesDePerfil()
         }
     }
 
