@@ -872,7 +872,7 @@ func cnClaro(_ c: Color) -> Bool {
 }
 
 // ── Modelos (tolerantes: campos faltantes toman un valor por defecto) ───────
-struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var color: String = "#137d41"; var clase: String = "banco"; var icono: String = "banknote.fill"
+struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var color: String = "#137d41"; var clase: String = "banco"; var icono: String = ""
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
@@ -880,7 +880,7 @@ struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String =
         saldo = (try? c.decodeIfPresent(Double.self, forKey: .saldo)) ?? 0
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#137d41"
         clase = (try? c.decodeIfPresent(String.self, forKey: .clase)) ?? "banco"
-        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "banknote.fill" }
+        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "" }
     enum K: String, CodingKey { case id, nombre, banco, saldo, color, clase, icono } }
 
 /// Ojo con `tipo` y `limite`: la web NO los manda. Lo que manda es `ingreso`
@@ -943,7 +943,7 @@ struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String
     enum K: String, CodingKey { case id, nombre, total, pagado, sentido, color, cuota, dia }
     var pendiente: Double { max(0, total - pagado) } }
 
-struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var mensual: Double = 0; var color: String = "#825eb9"; var icono: String = "target"
+struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var mensual: Double = 0; var color: String = "#825eb9"; var icono: String = ""
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
@@ -951,7 +951,7 @@ struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = "
         ahorrado = (try? c.decodeIfPresent(Double.self, forKey: .ahorrado)) ?? 0
         mensual = (try? c.decodeIfPresent(Double.self, forKey: .mensual)) ?? 0
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#825eb9"
-        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "target" }
+        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "" }
     enum K: String, CodingKey { case id, nombre, meta, ahorrado, mensual, color, icono }
     var progreso: Double { meta > 0 ? min(1, ahorrado / meta) : 0 } }
 
@@ -3607,7 +3607,11 @@ struct CNNuevoMov: View {
                         .font(cnLetra(17)).foregroundColor(CNC.ink)
                     Picker(cnT("Categoría"), selection: $categoria) {
                         ForEach(datos.libreta.categorias, id: \.nombre) { c in
-                            Label { Text(cnT(c.nombre)) } icon: { cnGlifo(c.icono, tam: 15, grosor: 2.2) }
+                            // Por la regla: una categoría sin icono propio lleva
+                            // el de su nombre. Leyendo el campo salía vacío.
+                            Label { Text(cnT(c.nombre)) } icon: {
+                                cnGlifo(CNCategorias.icono(c.nombre, en: datos.libreta), tam: 15, grosor: 2.2)
+                            }
                                 .tag(c.nombre)
                         }
                         Text(cnT("Otros")).tag("")
