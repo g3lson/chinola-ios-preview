@@ -888,6 +888,9 @@ func cnClaro(_ c: Color) -> Bool {
 
 // ── Modelos (tolerantes: campos faltantes toman un valor por defecto) ───────
 struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var color: String = "#137d41"; var clase: String = "banco"; var icono: String = ""
+    /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no
+    /// regala el de por defecto.
+    init() {}
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
@@ -914,6 +917,9 @@ struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String =
 /// ámbar: todas las categorías sin color propio salían ámbar en el teléfono y
 /// grises en la web. Lo encontró el fichero de oro.
 struct CNCategoria: Decodable { var nombre: String = ""; var tipo: String = "Gasto"; var limite: Double = 0; var ingreso: Bool = false; var color: String = ""; var icono: String = ""
+    /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no
+    /// regala el de por defecto.
+    init() {}
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? "Gasto"
@@ -924,6 +930,9 @@ struct CNCategoria: Decodable { var nombre: String = ""; var tipo: String = "Gas
     enum K: String, CodingKey { case nombre, tipo, limite, ingreso, color, icono } }
 
 struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var limite: Double = 0; var corte: Int = 0; var pago: Int = 0; var color: String = "#d55948"
+    /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no
+    /// regala el de por defecto.
+    init() {}
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
@@ -946,6 +955,9 @@ struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String
     /// cosa, que es peor que no decir nada.
     var cuota: Double = 0
     var dia: Int = 1
+    /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no
+    /// regala el de por defecto.
+    init() {}
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
@@ -964,6 +976,9 @@ struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String
     var pendiente: Double { max(0, total - pagado) } }
 
 struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var mensual: Double = 0; var color: String = ""; var icono: String = ""
+    /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no
+    /// regala el de por defecto.
+    init() {}
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""

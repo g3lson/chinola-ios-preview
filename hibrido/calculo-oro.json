@@ -3658,6 +3658,709 @@
       }
     }
   },
+  "crearCasos": {
+    "cuenta nueva": {
+      "que": "cuenta",
+      "f": {
+        "nombre": " Banco nuevo ",
+        "saldo": 12345,
+        "clase": "ahorro",
+        "color": "#137d41"
+      },
+      "antes": null
+    },
+    "cuenta sin nombre no se crea": {
+      "que": "cuenta",
+      "f": {
+        "nombre": "   ",
+        "saldo": 999
+      },
+      "antes": null
+    },
+    "tarjeta con días fuera del mes": {
+      "que": "tarjeta",
+      "f": {
+        "nombre": "Visa 2",
+        "limite": 50000,
+        "saldo": 100,
+        "corte": 45,
+        "pago": 0
+      },
+      "antes": null
+    },
+    "préstamo con más pagado que total": {
+      "que": "prestamo",
+      "f": {
+        "nombre": "Uno",
+        "total": 1000,
+        "pagado": 99999,
+        "dia": 99
+      },
+      "antes": null
+    },
+    "préstamo a mi favor": {
+      "que": "prestamo",
+      "f": {
+        "nombre": "Me deben",
+        "total": 5000,
+        "pagado": 0,
+        "sentido": "meDeben"
+      },
+      "antes": null
+    },
+    "meta nueva empieza en cero": {
+      "que": "meta",
+      "f": {
+        "nombre": "Viaje",
+        "objetivo": 60000,
+        "mensual": 5000
+      },
+      "antes": null
+    },
+    "editar una meta no borra lo ahorrado": {
+      "que": "meta",
+      "f": {
+        "nombre": "Otro nombre",
+        "objetivo": 80000,
+        "mensual": 1000
+      },
+      "antes": 1
+    }
+  },
+  "crear": {
+    "cuenta nueva": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000,
+            "clase": "banco"
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000,
+            "clase": "banco"
+          },
+          {
+            "id": 1,
+            "nombre": "Banco nuevo",
+            "saldo": 12345,
+            "clase": "ahorro"
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000,
+            "limite": 60000,
+            "corte": 15,
+            "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "nombre": "Carro",
+            "total": 300000,
+            "pagado": 120000,
+            "dia": 10,
+            "sentido": "debo"
+          },
+          {
+            "id": 21,
+            "nombre": "Le presté a Juan",
+            "total": 40000,
+            "pagado": 15000,
+            "dia": 20,
+            "sentido": "meDeben"
+          },
+          {
+            "id": 22,
+            "nombre": "Viejo sin sentido",
+            "total": 30000,
+            "pagado": 10000,
+            "dia": 12,
+            "sentido": "debo"
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje a Samaná",
+            "meta": 60000,
+            "ahorrado": 15000,
+            "mensual": 5000
+          },
+          {
+            "id": 2,
+            "nombre": "Fondo de emergencia",
+            "meta": 20000,
+            "ahorrado": 20000,
+            "mensual": 3000
+          },
+          {
+            "id": 3,
+            "nombre": "Casa",
+            "meta": 900000,
+            "ahorrado": 50000,
+            "mensual": 0
+          }
+        ]
+      }
+    },
+    "cuenta sin nombre no se crea": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000,
+            "clase": "banco"
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000,
+            "clase": "banco"
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000,
+            "limite": 60000,
+            "corte": 15,
+            "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "nombre": "Carro",
+            "total": 300000,
+            "pagado": 120000,
+            "dia": 10,
+            "sentido": "debo"
+          },
+          {
+            "id": 21,
+            "nombre": "Le presté a Juan",
+            "total": 40000,
+            "pagado": 15000,
+            "dia": 20,
+            "sentido": "meDeben"
+          },
+          {
+            "id": 22,
+            "nombre": "Viejo sin sentido",
+            "total": 30000,
+            "pagado": 10000,
+            "dia": 12,
+            "sentido": "debo"
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje a Samaná",
+            "meta": 60000,
+            "ahorrado": 15000,
+            "mensual": 5000
+          },
+          {
+            "id": 2,
+            "nombre": "Fondo de emergencia",
+            "meta": 20000,
+            "ahorrado": 20000,
+            "mensual": 3000
+          },
+          {
+            "id": 3,
+            "nombre": "Casa",
+            "meta": 900000,
+            "ahorrado": 50000,
+            "mensual": 0
+          }
+        ]
+      }
+    },
+    "tarjeta con días fuera del mes": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000,
+            "clase": "banco"
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000,
+            "clase": "banco"
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000,
+            "limite": 60000,
+            "corte": 15,
+            "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
+          },
+          {
+            "id": 1,
+            "nombre": "Visa 2",
+            "saldo": 100,
+            "limite": 50000,
+            "corte": 31,
+            "pago": 1
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "nombre": "Carro",
+            "total": 300000,
+            "pagado": 120000,
+            "dia": 10,
+            "sentido": "debo"
+          },
+          {
+            "id": 21,
+            "nombre": "Le presté a Juan",
+            "total": 40000,
+            "pagado": 15000,
+            "dia": 20,
+            "sentido": "meDeben"
+          },
+          {
+            "id": 22,
+            "nombre": "Viejo sin sentido",
+            "total": 30000,
+            "pagado": 10000,
+            "dia": 12,
+            "sentido": "debo"
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje a Samaná",
+            "meta": 60000,
+            "ahorrado": 15000,
+            "mensual": 5000
+          },
+          {
+            "id": 2,
+            "nombre": "Fondo de emergencia",
+            "meta": 20000,
+            "ahorrado": 20000,
+            "mensual": 3000
+          },
+          {
+            "id": 3,
+            "nombre": "Casa",
+            "meta": 900000,
+            "ahorrado": 50000,
+            "mensual": 0
+          }
+        ]
+      }
+    },
+    "préstamo con más pagado que total": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000,
+            "clase": "banco"
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000,
+            "clase": "banco"
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000,
+            "limite": 60000,
+            "corte": 15,
+            "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "nombre": "Carro",
+            "total": 300000,
+            "pagado": 120000,
+            "dia": 10,
+            "sentido": "debo"
+          },
+          {
+            "id": 21,
+            "nombre": "Le presté a Juan",
+            "total": 40000,
+            "pagado": 15000,
+            "dia": 20,
+            "sentido": "meDeben"
+          },
+          {
+            "id": 22,
+            "nombre": "Viejo sin sentido",
+            "total": 30000,
+            "pagado": 10000,
+            "dia": 12,
+            "sentido": "debo"
+          },
+          {
+            "id": 1,
+            "nombre": "Uno",
+            "total": 1000,
+            "pagado": 1000,
+            "dia": 31,
+            "sentido": "debo"
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje a Samaná",
+            "meta": 60000,
+            "ahorrado": 15000,
+            "mensual": 5000
+          },
+          {
+            "id": 2,
+            "nombre": "Fondo de emergencia",
+            "meta": 20000,
+            "ahorrado": 20000,
+            "mensual": 3000
+          },
+          {
+            "id": 3,
+            "nombre": "Casa",
+            "meta": 900000,
+            "ahorrado": 50000,
+            "mensual": 0
+          }
+        ]
+      }
+    },
+    "préstamo a mi favor": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000,
+            "clase": "banco"
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000,
+            "clase": "banco"
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000,
+            "limite": 60000,
+            "corte": 15,
+            "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "nombre": "Carro",
+            "total": 300000,
+            "pagado": 120000,
+            "dia": 10,
+            "sentido": "debo"
+          },
+          {
+            "id": 21,
+            "nombre": "Le presté a Juan",
+            "total": 40000,
+            "pagado": 15000,
+            "dia": 20,
+            "sentido": "meDeben"
+          },
+          {
+            "id": 22,
+            "nombre": "Viejo sin sentido",
+            "total": 30000,
+            "pagado": 10000,
+            "dia": 12,
+            "sentido": "debo"
+          },
+          {
+            "id": 1,
+            "nombre": "Me deben",
+            "total": 5000,
+            "pagado": 0,
+            "dia": 1,
+            "sentido": "meDeben"
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje a Samaná",
+            "meta": 60000,
+            "ahorrado": 15000,
+            "mensual": 5000
+          },
+          {
+            "id": 2,
+            "nombre": "Fondo de emergencia",
+            "meta": 20000,
+            "ahorrado": 20000,
+            "mensual": 3000
+          },
+          {
+            "id": 3,
+            "nombre": "Casa",
+            "meta": 900000,
+            "ahorrado": 50000,
+            "mensual": 0
+          }
+        ]
+      }
+    },
+    "meta nueva empieza en cero": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000,
+            "clase": "banco"
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000,
+            "clase": "banco"
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000,
+            "limite": 60000,
+            "corte": 15,
+            "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "nombre": "Carro",
+            "total": 300000,
+            "pagado": 120000,
+            "dia": 10,
+            "sentido": "debo"
+          },
+          {
+            "id": 21,
+            "nombre": "Le presté a Juan",
+            "total": 40000,
+            "pagado": 15000,
+            "dia": 20,
+            "sentido": "meDeben"
+          },
+          {
+            "id": 22,
+            "nombre": "Viejo sin sentido",
+            "total": 30000,
+            "pagado": 10000,
+            "dia": 12,
+            "sentido": "debo"
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Viaje a Samaná",
+            "meta": 60000,
+            "ahorrado": 15000,
+            "mensual": 5000
+          },
+          {
+            "id": 2,
+            "nombre": "Fondo de emergencia",
+            "meta": 20000,
+            "ahorrado": 20000,
+            "mensual": 3000
+          },
+          {
+            "id": 3,
+            "nombre": "Casa",
+            "meta": 900000,
+            "ahorrado": 50000,
+            "mensual": 0
+          },
+          {
+            "id": 1,
+            "nombre": "Viaje",
+            "meta": 60000,
+            "ahorrado": 0,
+            "mensual": 5000
+          }
+        ]
+      }
+    },
+    "editar una meta no borra lo ahorrado": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 50000,
+            "clase": "banco"
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000,
+            "clase": "banco"
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "nombre": "Visa",
+            "saldo": 12000,
+            "limite": 60000,
+            "corte": 15,
+            "pago": 5
+          },
+          {
+            "id": 11,
+            "nombre": "Popular",
+            "saldo": 0,
+            "limite": 30000,
+            "corte": 20,
+            "pago": 25
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "nombre": "Carro",
+            "total": 300000,
+            "pagado": 120000,
+            "dia": 10,
+            "sentido": "debo"
+          },
+          {
+            "id": 21,
+            "nombre": "Le presté a Juan",
+            "total": 40000,
+            "pagado": 15000,
+            "dia": 20,
+            "sentido": "meDeben"
+          },
+          {
+            "id": 22,
+            "nombre": "Viejo sin sentido",
+            "total": 30000,
+            "pagado": 10000,
+            "dia": 12,
+            "sentido": "debo"
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "nombre": "Otro nombre",
+            "meta": 80000,
+            "ahorrado": 15000,
+            "mensual": 1000
+          },
+          {
+            "id": 2,
+            "nombre": "Fondo de emergencia",
+            "meta": 20000,
+            "ahorrado": 20000,
+            "mensual": 3000
+          },
+          {
+            "id": 3,
+            "nombre": "Casa",
+            "meta": 900000,
+            "ahorrado": 50000,
+            "mensual": 0
+          }
+        ]
+      }
+    }
+  },
   "porCategoria": {
     "2026-09": [
       {

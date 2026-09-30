@@ -181,6 +181,119 @@ enum CNEscribir {
         return nueva
     }
 
+    // MARK: - Crear y editar cosas
+    //
+    // Cuenta, tarjeta, préstamo y meta. Aquí no se mueve dinero —eso lo hacen
+    // los movimientos— pero sí se RECORTAN valores, y ahí están las decisiones:
+    // un día de corte tiene que caber en un mes, lo pagado no puede pasarse del
+    // total, y editar no puede borrar lo que no se tocó.
+    //
+    // `antes` es el que se está editando; sin él, se crea uno nuevo.
+
+    static func guardarCuenta(_ l: CNLibreta, _ f: [String: Any], antes: Int? = nil) -> CNLibreta {
+        let nombre = texto(f["nombre"]).trimmingCharacters(in: .whitespaces)
+        guard !nombre.isEmpty else { return l }
+        var nueva = l
+        var c = antes.flatMap { id in l.cuentas.first { $0.id == id } } ?? CNCuenta()
+        c.nombre = nombre
+        c.banco = texto(f["banco"]).trimmingCharacters(in: .whitespaces)
+        c.saldo = numero(f["saldo"])
+        c.clase = texto(f["clase"]).isEmpty ? "banco" : texto(f["clase"])
+        c.icono = texto(f["icono"])
+        c.color = texto(f["color"])
+        if let id = antes {
+            nueva.cuentas = nueva.cuentas.map { $0.id == id ? c : $0 }
+        } else {
+            c.id = nuevoId()
+            nueva.cuentas.append(c)
+        }
+        return nueva
+    }
+
+    static func guardarTarjeta(_ l: CNLibreta, _ f: [String: Any], antes: Int? = nil) -> CNLibreta {
+        let nombre = texto(f["nombre"]).trimmingCharacters(in: .whitespaces)
+        guard !nombre.isEmpty else { return l }
+        var nueva = l
+        var t = antes.flatMap { id in l.tarjetas.first { $0.id == id } } ?? CNTarjeta()
+        t.nombre = nombre
+        t.banco = texto(f["banco"]).trimmingCharacters(in: .whitespaces)
+        t.limite = max(0, numero(f["limite"]))
+        t.saldo = max(0, numero(f["saldo"]))
+        // Los días, dentro del mes: un corte el 45 no llega nunca.
+        t.corte = min(31, max(1, entero(f["corte"], 20)))
+        t.pago = min(31, max(1, entero(f["pago"], 5)))
+        t.color = texto(f["color"])
+        if let id = antes {
+            nueva.tarjetas = nueva.tarjetas.map { $0.id == id ? t : $0 }
+        } else {
+            t.id = nuevoId()
+            nueva.tarjetas.append(t)
+        }
+        return nueva
+    }
+
+    static func guardarPrestamo(_ l: CNLibreta, _ f: [String: Any], antes: Int? = nil) -> CNLibreta {
+        let nombre = texto(f["nombre"]).trimmingCharacters(in: .whitespaces)
+        guard !nombre.isEmpty else { return l }
+        var nueva = l
+        var p = antes.flatMap { id in l.prestamos.first { $0.id == id } } ?? CNPrestamo()
+        p.nombre = nombre
+        p.total = max(0, numero(f["total"]))
+        // Lo pagado nunca pasa del total: de ahí salen los «110% pagado».
+        p.pagado = min(p.total, max(0, numero(f["pagado"])))
+        p.cuota = max(0, numero(f["cuota"]))
+        p.dia = min(31, max(1, entero(f["dia"], 1)))
+        p.sentido = texto(f["sentido"]) == "meDeben" ? "meDeben" : "debo"
+        p.color = texto(f["color"])
+        if let id = antes {
+            nueva.prestamos = nueva.prestamos.map { $0.id == id ? p : $0 }
+        } else {
+            p.id = nuevoId()
+            nueva.prestamos.append(p)
+        }
+        return nueva
+    }
+
+    static func guardarMeta(_ l: CNLibreta, _ f: [String: Any], antes: Int? = nil) -> CNLibreta {
+        let nombre = texto(f["nombre"]).trimmingCharacters(in: .whitespaces)
+        guard !nombre.isEmpty else { return l }
+        var nueva = l
+        var m = antes.flatMap { id in l.metas.first { $0.id == id } } ?? CNMeta()
+        m.nombre = nombre
+        m.meta = max(0, numero(f["objetivo"]))
+        m.mensual = max(0, numero(f["mensual"]))
+        m.color = texto(f["color"])
+        m.icono = texto(f["icono"]).isEmpty ? "hucha" : texto(f["icono"])
+        if let id = antes {
+            // Editar NO toca lo ahorrado: es lo que ya metiste, y rehacerlo
+            // desde el formulario lo pondría en cero sin decir nada.
+            nueva.metas = nueva.metas.map { $0.id == id ? m : $0 }
+        } else {
+            m.id = nuevoId()
+            m.ahorrado = 0
+            nueva.metas.append(m)
+        }
+        return nueva
+    }
+
+    /// El identificador de algo nuevo: los milisegundos, como en la web.
+    ///
+    /// En el banco sale FIJO, porque el fichero de oro compara la libreta
+    /// entera y un identificador sacado del reloj no coincidiría nunca. Es el
+    /// mismo truco que el resto del oro: fijar lo que depende del momento para
+    /// poder comparar lo que no.
+    private static func nuevoId() -> Int {
+        CNOro.pedido ? 1 : Int(Date().timeIntervalSince1970 * 1000)
+    }
+
+    private static func texto(_ v: Any?) -> String { (v as? String) ?? "" }
+    private static func entero(_ v: Any?, _ porDefecto: Int) -> Int {
+        if let i = v as? Int { return i }
+        if let d = v as? Double { return Int(d) }
+        if let s = v as? String, let i = Int(s) { return i }
+        return porDefecto
+    }
+
     /// Un número que puede venir como número o como texto.
     private static func numero(_ v: Any?) -> Double {
         if let d = v as? Double { return d }

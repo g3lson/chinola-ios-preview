@@ -415,6 +415,38 @@ enum CNOro {
             salida["dinero"] = out
         }
 
+        // CREAR Y EDITAR: cuenta, tarjeta, préstamo y meta. Aquí no se mueve
+        // dinero, pero sí se recortan valores —un corte el 45 no llega nunca,
+        // lo pagado no pasa del total— y editar no puede borrar lo que no se
+        // tocó.
+        if let casos = raiz["crearCasos"] as? [String: Any] {
+            func resumen(_ x: CNLibreta) -> [String: Any] {
+                ["cuentas": x.cuentas.map { ["id": $0.id, "nombre": $0.nombre, "saldo": $0.saldo,
+                                             "clase": $0.clase.isEmpty ? "banco" : $0.clase] },
+                 "tarjetas": x.tarjetas.map { ["id": $0.id, "nombre": $0.nombre, "saldo": $0.saldo,
+                                               "limite": $0.limite, "corte": $0.corte, "pago": $0.pago] },
+                 "prestamos": x.prestamos.map { ["id": $0.id, "nombre": $0.nombre, "total": $0.total,
+                                                 "pagado": $0.pagado, "dia": $0.dia, "sentido": $0.sentido] },
+                 "metas": x.metas.map { ["id": $0.id, "nombre": $0.nombre, "meta": $0.meta,
+                                         "ahorrado": $0.ahorrado, "mensual": $0.mensual] }]
+            }
+            var out: [String: Any] = [:]
+            for (nombre, caso) in casos {
+                guard let c = caso as? [String: Any], let que = c["que"] as? String,
+                      let f = c["f"] as? [String: Any] else { continue }
+                let antes = c["antes"] as? Int
+                let sale: CNLibreta
+                switch que {
+                case "cuenta": sale = CNEscribir.guardarCuenta(l, f, antes: antes)
+                case "tarjeta": sale = CNEscribir.guardarTarjeta(l, f, antes: antes)
+                case "prestamo": sale = CNEscribir.guardarPrestamo(l, f, antes: antes)
+                default: sale = CNEscribir.guardarMeta(l, f, antes: antes)
+                }
+                out[nombre] = ["sale": resumen(sale)]
+            }
+            salida["crear"] = out
+        }
+
         // Los días hasta un día del mes, contando desde la fecha que diga el
         // oro: sin fijarla, esto contestaría distinto cada día.
         if let dias = raiz["diasHastaElDia"] as? [String: Any],
