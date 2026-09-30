@@ -123,14 +123,37 @@ jobs:
           xcrun simctl ui "$UDID" appearance light || true
           # Una pantalla por lanzamiento: la app lee CNPANTALLA y monta esa. Así
           # cada captura es la que se pidió, sin depender de tiempos.
+          # El identificador, SACADO DE LA CONFIGURACIÓN y no escrito aquí.
+          #
+          # Estaba escrito a mano: `do.com.fente.chinolasim`. El día que la
+          # configuración pasó a ser la de la app —`do.com.fente.chinola`— el
+          # lanzamiento dejó de encontrar nada, el `|| true` se tragó el error, y
+          # las cinco capturas salieron siendo el ESCRITORIO del iPhone. El banco
+          # decía «success» y no había mirado la app ni una vez.
+          ID=$(node -p "require('./capacitor.config.json').appId")
+          echo "identificador: $ID"
+          # El escritorio, ANTES de arrancar nada. Es contra esto contra lo que
+          # se comprueba luego que las capturas tengan la app dentro.
+          xcrun simctl io "$UDID" screenshot "cap-0-escritorio.png"
           n=0
           for P in cuentas cta-grafica tema-oscuro plan sec-todo; do
             n=$((n+1))
-            xcrun simctl terminate "$UDID" do.com.fente.chinolasim 2>/dev/null || true
-            SIMCTL_CHILD_CNPANTALLA="$P" xcrun simctl launch "$UDID" do.com.fente.chinolasim || true
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+            # SIN `|| true`: si no arranca, esto tiene que fallar. Un banco que
+            # se traga el fallo del arranque es un banco que siempre pasa.
+            SIMCTL_CHILD_CNPANTALLA="$P" xcrun simctl launch "$UDID" "$ID"
             sleep 6
-            xcrun simctl io "$UDID" screenshot "cap-$n-$P.png" || true
+            xcrun simctl io "$UDID" screenshot "cap-$n-$P.png"
           done
+          # Y que la app SIGA VIVA al final. Puede arrancar y caerse a los dos
+          # segundos: la captura sale del escritorio igual, y el arranque no dio
+          # error porque el proceso llegó a existir.
+          if ! xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -qi "$ID"; then
+            echo "::error::la app arrancó y se cayó: las capturas son del escritorio"
+            VIVA=no
+          else
+            VIVA=si
+          fi
           echo "=== volcado de la barra ==="
           xcrun simctl spawn "$UDID" log show --last 3m --predicate 'eventMessage CONTAINS "CNDUMP"' --style compact 2>/dev/null | head -60 || true
           echo "=== ¿sigue vivo el proceso? ==="
@@ -139,6 +162,11 @@ jobs:
           sleep 2
           find ~/Library/Logs/DiagnosticReports -name "App-*.ips" 2>/dev/null | sort | tail -1 | while read f; do echo "--- $f ---"; sed -n '1,80p' "$f"; done
           cp ~/Library/Logs/DiagnosticReports/App-*.ips crash.ips 2>/dev/null || true
+
+          # Y LA COMPROBACIÓN QUE FALTABA: que en las fotos salga la app.
+          echo "=== ¿sale la app en las capturas? ==="
+          python3 ../sondas/hay-app-en-la-foto.py
+          [ "$VIVA" = si ]
 
       - name: Subir capturas
         if: always()
