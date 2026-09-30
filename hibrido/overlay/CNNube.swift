@@ -215,6 +215,15 @@ enum CNNube {
             salida["renombradas"] = r.renombradas.map { ["de": $0.de, "a": $0.a] }
             salida["perdidas"] = r.perdidas
             salida["fusionadas"] = (r.fusionadas ?? []).compactMap { $0["id"] as? String }.sorted()
+            // Y QUÉ MOVIMIENTOS quedaron en la libreta que hubo que conciliar.
+            // Sin esto la sonda solo podía decir que el ciclo terminó, no que
+            // conservara lo de los dos aparatos —que es lo único que importa—.
+            var dentro: [String: [String]] = [:]
+            for l in r.fusionadas ?? [] {
+                guard let id = l["id"] as? String else { continue }
+                dentro[id] = ((l["tx"] as? [[String: Any]]) ?? []).compactMap { $0["id"] as? String }.sorted()
+            }
+            salida["movimientos"] = dentro
         } catch {
             salida["error"] = String(describing: error)
         }

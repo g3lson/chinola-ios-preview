@@ -115,6 +115,12 @@ def main():
     oro = {}
     for ruta in sys.argv[1:-1]:
         for k, v in json.load(open(ruta)).items():
+            # `nota` es la explicación de cada fichero, no un apartado que se
+            # compare: los dos la traen y no se pisan nada. El aviso es para los
+            # apartados de verdad, donde uno taparía al otro EN SILENCIO y el
+            # banco compararía media cosa diciendo que cuadra.
+            if k == 'nota':
+                continue
             if k in oro:
                 print('Dos ficheros de oro traen «' + k + '»: uno taparía al otro')
                 return 1

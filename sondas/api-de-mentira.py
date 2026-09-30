@@ -110,11 +110,20 @@ class Mano(BaseHTTPRequestHandler):
         libretas = pedido.get('libretas') or []
         RECIBIDO.append(pedido)
         versiones, conflictos = {}, []
+        completo = bool(pedido.get('completo'))
         for l in libretas:
             lid = l.get('id')
             if lid == 'lb1':
                 # La llave corta: el servidor dice que la fila es de otro.
                 conflictos.append({'id': lid, 'motivo': 'sin-permiso'})
+            elif lid == 'lb-uno' and completo:
+                # La primera subida de esta va ATRASADA: es el caso que de verdad
+                # importa —dos aparatos tocando la misma libreta— y el único que
+                # obliga al teléfono a bajar, conciliar y volver a subir. Sin él,
+                # el banco decía que el ciclo terminaba pero no que conservara lo
+                # de los dos lados. En la segunda vuelta (`completo` apagado) se
+                # acepta, que es lo que hace el servidor de verdad.
+                conflictos.append({'id': lid, 'motivo': 'desactualizada'})
             else:
                 versiones[lid] = (l.get('__version') or 0) + 1
         cuerpo = json.dumps({'versiones': versiones, 'conflictos': conflictos,

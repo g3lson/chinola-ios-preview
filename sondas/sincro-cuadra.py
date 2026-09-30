@@ -56,6 +56,17 @@ def main():
         fallos.append('dio por perdida la libreta vieja en vez de rescatarla')
     if r.get('perdidas'):
         fallos.append('se quedó sin guardar: ' + str(r['perdidas']))
+    # LO QUE DE VERDAD IMPORTA: la libreta que el servidor rechazó por atrasada
+    # tiene que volver con lo de los DOS aparatos. Si se queda solo con lo suyo,
+    # el ciclo «termina bien» y por el camino ha borrado lo que anotó el otro.
+    dentro = (r.get('movimientos') or {}).get('lb-uno')
+    if dentro is None:
+        fallos.append('no concilió la libreta que el servidor rechazó por atrasada')
+    else:
+        for cual, dequien in [('m-servidor', 'del servidor'), ('m-local', 'de este teléfono')]:
+            if cual not in dentro:
+                fallos.append('al conciliar perdió el movimiento ' + dequien
+                              + ': quedó ' + str(dentro))
 
     if fallos:
         print('EL TELÉFONO NO SINCRONIZA COMO DEBE:')
