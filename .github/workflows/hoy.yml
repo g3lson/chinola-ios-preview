@@ -69,6 +69,13 @@ jobs:
           # puesto, crema y liso, tapando la app entera. Un banco que no
           # reproduce la configuración no reproduce nada.
           cp ../hibrido/capacitor.config.json capacitor.config.json
+          # La app sirve desde `nativo/` y el banco monta en `www/`. Es lo ÚNICO
+          # que se le cambia a la configuración de la app: todo lo demás
+          # —`launchAutoHide`, los ajustes del WebView— tiene que ser el mismo o
+          # el banco no reproduce nada. Copiándola tal cual, Capacitor no
+          # encontraba los ficheros y no llegaba ni a compilar.
+          node -e "const f='capacitor.config.json';const c=require('./'+f);c.webDir='www';require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
+          grep -q '\"webDir\": \"www\"' capacitor.config.json || { echo '::error::el webDir del banco no quedó puesto'; exit 1; }
           npx cap add ios
           npx cap sync ios
 
