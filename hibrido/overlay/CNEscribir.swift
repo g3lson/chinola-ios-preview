@@ -161,6 +161,37 @@ enum CNEscribir {
         return Hecho(libreta: nueva, item: item)
     }
 
+    /**
+     * Pasar dinero de un sitio a otro.
+     *
+     * Es UN SOLO apunte, de tipo «Transferencia», que sale de `desde` y entra
+     * en `hasta`: ni ingreso ni gasto, así que no toca los totales del mes ni
+     * los gastos por categoría. Los dos saldos los mueve `aplica`, que entiende
+     * ese tipo —y en una tarjeta va al revés, porque pagarla baja la deuda—.
+     *
+     * No se pasa dinero al mismo sitio del que sale: sería un apunte que no
+     * mueve nada y que además ensucia la lista.
+     */
+    static func transferencia(_ l: CNLibreta, desde: String, hasta: String,
+                              monto: Double, texto: String) -> Hecho? {
+        let cuanto = max(0, monto)
+        guard cuanto > 0, !hasta.isEmpty, hasta != desde else { return nil }
+        var item = CNMov()
+        item.id = "tr" + String(Int(Date().timeIntervalSince1970 * 1000))
+        item.concepto = texto
+        item.categoria = "Otros"
+        item.tipo = "Transferencia"
+        item.monto = cuanto
+        item.fecha = CNFormateadores.iso.string(from: Date())
+        item.medio = desde
+        item.destino = hasta
+
+        var nueva = l
+        _ = CNCalculo.aplica(&nueva, item, signo: 1)
+        nueva.tx.append(item)
+        return Hecho(libreta: nueva, item: item)
+    }
+
     /// Sumar o restar a lo ahorrado de una meta, sin bajar de cero.
     static func ajusteDeMeta(_ l: CNLibreta, id: Int, delta: Double) -> CNLibreta {
         var nueva = l

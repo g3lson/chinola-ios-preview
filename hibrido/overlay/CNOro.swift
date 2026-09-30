@@ -392,6 +392,15 @@ enum CNOro {
                     hecho = CNEscribir.abonoAPrestamo(l, prestamo: prestamo, monto: 999999, medio: "cuenta:1", texto: "Pago")
                 case "abonar con la tarjeta":
                     hecho = CNEscribir.abonoAPrestamo(l, prestamo: prestamo, monto: 4000, medio: "tarjeta:10", texto: "Pago")
+                case "pasar de una cuenta a otra":
+                    hecho = CNEscribir.transferencia(l, desde: "cuenta:1", hasta: "cuenta:2",
+                                                     monto: 8000, texto: "De aquí a allá")
+                case "pagar la tarjeta desde la cuenta":
+                    hecho = CNEscribir.transferencia(l, desde: "cuenta:1", hasta: "tarjeta:10",
+                                                     monto: 6000, texto: "De aquí a allá")
+                case "al mismo sitio no se pasa nada":
+                    hecho = CNEscribir.transferencia(l, desde: "cuenta:1", hasta: "cuenta:1",
+                                                     monto: 5000, texto: "De aquí a allá")
                 case "subir lo ahorrado de una meta":
                     suelta = CNEscribir.ajusteDeMeta(l, id: meta.id, delta: 7000)
                 case "bajar lo ahorrado sin pasar de cero":

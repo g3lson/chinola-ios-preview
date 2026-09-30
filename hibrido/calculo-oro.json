@@ -3128,6 +3128,15 @@
     "abonar con la tarjeta": {
       "hay": true
     },
+    "pasar de una cuenta a otra": {
+      "hay": true
+    },
+    "pagar la tarjeta desde la cuenta": {
+      "hay": true
+    },
+    "al mismo sitio no se pasa nada": {
+      "hay": false
+    },
     "subir lo ahorrado de una meta": {
       "hay": true
     },
@@ -3444,6 +3453,129 @@
           "prestamo": 20
         }
       }
+    },
+    "pasar de una cuenta a otra": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 42000
+          },
+          {
+            "id": 2,
+            "saldo": 11000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 15000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 120000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": {
+          "tipo": "Transferencia",
+          "categoria": "Otros",
+          "monto": 8000,
+          "medio": "cuenta:1",
+          "meta": 0,
+          "prestamo": 0
+        }
+      }
+    },
+    "pagar la tarjeta desde la cuenta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 44000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 6000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 15000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 120000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": {
+          "tipo": "Transferencia",
+          "categoria": "Otros",
+          "monto": 6000,
+          "medio": "cuenta:1",
+          "meta": 0,
+          "prestamo": 0
+        }
+      }
+    },
+    "al mismo sitio no se pasa nada": {
+      "sale": null
     },
     "subir lo ahorrado de una meta": {
       "sale": {
