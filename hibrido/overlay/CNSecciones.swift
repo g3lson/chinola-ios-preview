@@ -31,7 +31,7 @@ import Foundation
 enum CNSecciones {
 
     /// Las que este lado sabe armar. Lo demás sigue viniendo de la web.
-    static let sabeHacer: Set<String> = ["dosPasos", "seguridad"]
+    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero"]
 
     /**
      * Lo que se le ha pedido al servidor, guardado mientras dure la app.
@@ -44,6 +44,21 @@ enum CNSecciones {
     @MainActor static func olvida(_ ruta: String) { delServidor[ruta] = nil }
 
     /**
+     * Cómo está ahora un ajuste de sí/no, para poder pedir el contrario.
+     *
+     * Solo los que alguna de estas subpantallas enseña. Lo que no esté aquí
+     * devuelve `false`, así que pedir el contrario lo enciende — que es lo que
+     * uno espera al tocar un interruptor que se ve apagado.
+     */
+    @MainActor static func puestoAhora(_ clave: String) -> Bool {
+        switch clave {
+        case "panelVivo": return CNC.fmt.panelVivo
+        case "centavos": return CNC.fmt.centavos
+        default: return false
+        }
+    }
+
+    /**
      * La subpantalla de un id, si este lado sabe armarla.
      *
      * Devuelve nil cuando no la sabe hacer O cuando le faltan los datos del
@@ -54,6 +69,9 @@ enum CNSecciones {
         switch id {
         case "dosPasos": return dosPasos()
         case "seguridad": return seguridad()
+        case "cuenta": return cuenta()
+        case "panel": return panel()
+        case "dinero": return dinero()
         default: return nil
         }
     }
@@ -66,6 +84,10 @@ enum CNSecciones {
         switch id {
         case "dosPasos": return ["/mfa/metodos"]
         case "seguridad": return ["/sesiones", "/actividad", "/mfa/metodos"]
+        case "cuenta": return ["/yo"]
+        // Estas dos no le preguntan NADA a nadie: todo lo que enseñan está en
+        // el teléfono. Se dibujan enteras antes de que la web despierte.
+        case "panel", "dinero": return []
         default: return []
         }
     }
@@ -240,6 +262,143 @@ enum CNSecciones {
             }
             s.bloques.append(b)
         }
+        return s
+    }
+
+    /* --------------------------- panel del resumen ------------------------ */
+
+    /**
+     * Un interruptor, una explicación y un botón.
+     *
+     * Es la más simple de las trece y por eso es la que enseña el patrón: no le
+     * pregunta nada a nadie. El ajuste está en el teléfono, el texto está
+     * traducido, y el botón lleva a organizar el panel, que ya es nativo.
+     */
+    @MainActor private static func panel() -> CNSeccion? {
+        var s = CNSeccion()
+        s.id = "panel"
+        s.titulo = cnT("Panel del resumen")
+
+        var vivo = CNSeccion.Bloque(); vivo.tipo = "interruptor"
+        vivo.label = cnT("Tarjetas con color")
+        vivo.texto = cnT("Las cifras del mes en tarjetas de su color, con más vida")
+        vivo.puesto = CNC.fmt.panelVivo
+        vivo.abre = "pon:panelVivo"
+
+        var como = CNSeccion.Bloque(); como.tipo = "texto"
+        como.texto = cnT("Mantén pulsada una tarjeta para moverla, pellizca para cambiar su tamaño, y en su menú la ocultas o la quitas.")
+
+        var ir = CNSeccion.Bloque(); ir.tipo = "boton"
+        ir.label = cnT("Ir a organizar el panel")
+        ir.estilo = "acento"
+        ir.abre = "organizar"
+
+        s.bloques = [vivo, como, ir]
+        return s
+    }
+
+    /* ----------------------------- dinero --------------------------------- */
+
+    /**
+     * La moneda y si se ven los centavos.
+     *
+     * Las monedas salen del catálogo generado: son quince y estaban escritas en
+     * la web, así que copiarlas aquí sería la sexta lista paralela del día.
+     *
+     * Dos columnas como en la web: con una sola hay que rodar quince veces para
+     * ver la última, y con tres el nombre largo —«Peso dominicano (RD$)»— no
+     * cabe y se corta justo donde dice cuál es.
+     */
+    @MainActor private static func dinero() -> CNSeccion? {
+        var s = CNSeccion()
+        s.id = "dinero"
+        s.titulo = cnT("Dinero")
+
+        var mon = CNSeccion.Bloque(); mon.tipo = "opciones"
+        mon.titulo = cnT("Moneda")
+        mon.columnas = 2
+        mon.opciones = CNCatalogos.monedas.map { m in
+            CNSeccion.Opcion(label: cnT(m.nombre), puesta: m.id == CNC.fmt.moneda,
+                             abre: "pon:moneda=" + m.id)
+        }
+
+        var cent = CNSeccion.Bloque(); cent.tipo = "opciones"
+        cent.titulo = cnT("Los centavos")
+        cent.columnas = 2
+        cent.opciones = [
+            CNSeccion.Opcion(label: cnT("Sin centavos"), puesta: !CNC.fmt.centavos,
+                             abre: "pon:centavos=0"),
+            CNSeccion.Opcion(label: cnT("Con centavos"), puesta: CNC.fmt.centavos,
+                             abre: "pon:centavos=1")
+        ]
+
+        s.bloques = [mon, cent]
+        return s
+    }
+
+    /* -------------------------------- mi cuenta --------------------------- */
+
+    /**
+     * Quién eres, cómo entras, y en qué plan estás.
+     *
+     * Las tres primeras filas abren hojas —editar el perfil, cambiar el correo,
+     * cambiar la contraseña— y llevan su valor al lado: el nombre y el correo
+     * que tienes ahora. Esa es la única razón por la que esta pantalla le
+     * pregunta al servidor: para poder enseñarlos.
+     *
+     * DOS COSAS QUE PARECEN DETALLE:
+     *
+     * **Lo que da el plan va de PIE del grupo, no de fila.** Es una frase, y
+     * una frase entera de rótulo se corta a la mitad y no lleva a ningún sitio
+     * distinto del que ya lleva la fila de arriba.
+     *
+     * **«Eliminar mi cuenta» va en su propio grupo, abajo y en rojo.** Apple
+     * exige que la cuenta se pueda borrar desde dentro de la app y no solo por
+     * la web (App Store Review Guidelines 5.1.1 v), así que tiene que estar; y
+     * estando, tiene que costar llegar a ella sin querer.
+     */
+    @MainActor private static func cuenta() -> CNSeccion? {
+        let u = (delServidor["/yo"]?["usuario"] as? [String: Any]) ?? [:]
+        let nombre = (u["nombre"] as? String) ?? ""
+        let correo = (u["email"] as? String) ?? ""
+        let plan = (u["plan"] as? String) ?? "gratis"
+
+        func fila(_ label: String, _ valor: String, _ icono: String,
+                  _ tono: String, _ abre: String, tinta: String = "") -> CNSeccion.Fila {
+            let color = CNCatalogos.tonos[tono] ?? ""
+            return CNSeccion.Fila(
+                label: label, valor: valor,
+                icono: CNCatalogos.iconosDeAjuste[icono] ?? "",
+                bg: color.isEmpty ? "" : "color-mix(in oklab, " + color + " 14%, transparent)",
+                fg: color, tinta: tinta, entra: true, abre: abre)
+        }
+
+        var s = CNSeccion()
+        s.id = "cuenta"
+        s.titulo = cnT("Mi cuenta")
+
+        var quien = CNSeccion.Bloque(); quien.tipo = "grupo"
+        quien.filas = [
+            fila(cnT("Editar mi perfil"), nombre, "perfil", "verde", "hoja:perfil"),
+            fila(cnT("Cambiar mi correo"), correo, "correo", "azul", "hoja:correo"),
+            fila(cnT("Cambiar mi contraseña"), "", "clave", "naranja", "hoja:clave")
+        ]
+
+        var elPlan = CNSeccion.Bloque(); elPlan.tipo = "grupo"
+        elPlan.titulo = cnT("Plan")
+        elPlan.pie = cnT(CNCatalogos.queDaElPlan[plan] ?? CNCatalogos.queDaElPlan["gratis"] ?? "")
+        elPlan.filas = [
+            fila(cnT("Mi plan"), cnT(CNCatalogos.nombreDelPlan[plan] ?? "Gratis"),
+                 "plan", "", "plan")
+        ]
+
+        var baja = CNSeccion.Bloque(); baja.tipo = "grupo"
+        baja.filas = [
+            fila(cnT("Eliminar mi cuenta"), "", "baja", "rojo", "hoja:baja",
+                 tinta: "var(--negativo)")
+        ]
+
+        s.bloques = [quien, elPlan, baja]
         return s
     }
 }

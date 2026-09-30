@@ -224,4 +224,50 @@ enum CNCatalogos {
         "telefono": "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2M10 19h4",
         "monitor": "M3 4h18v12H3zM8 20h8M12 16v4"
     ]
+
+    /// El color de cada fila de ajustes, por su tono.
+    static let tonos: [String: String] = [
+        "verde": "oklch(0.44 0.11 155)",
+        "azul": "oklch(0.48 0.12 255)",
+        "indigo": "oklch(0.44 0.12 250)",
+        "morado": "oklch(0.48 0.14 300)",
+        "rosa": "oklch(0.50 0.14 320)",
+        "naranja": "oklch(0.55 0.13 70)",
+        "oro": "oklch(0.52 0.13 95)",
+        "oliva": "oklch(0.44 0.12 130)",
+        "rojo": "var(--negativo)"
+    ]
+
+    /// Cómo se llama cada plan.
+    static let nombreDelPlan: [String: String] = [
+        "gratis": "Gratis",
+        "pro": "Pro",
+        "negocio": "Negocio"
+    ]
+
+    /// Y qué da cada uno. El servidor es quien manda (`api/src/planes.js`);
+    /// esto solo lo cuenta, para que la app no calle lo que no deja hacer.
+    static let queDaElPlan: [String: String] = [
+        "gratis": "Una libreta, sin compartir ni integraciones",
+        "pro": "Libretas sin límite, compartidas y con integraciones",
+        "negocio": "Todo lo de Pro, pensado para un equipo"
+    ]
+
+    /// Las monedas, EN ORDEN. El orden no es alfabético: el peso
+    /// dominicano primero porque es el de casi todo el mundo que usa
+    /// esto, y ordenarlas por nombre lo mandaría al medio de la lista.
+    static let monedas: [(id: String, nombre: String)] = [
+        (id: "DOP", nombre: "Peso dominicano (RD$)"),
+        (id: "USD", nombre: "Dólar (US$)"),
+        (id: "EUR", nombre: "Euro (€)"),
+        (id: "MXN", nombre: "Peso mexicano"),
+        (id: "COP", nombre: "Peso colombiano"),
+        (id: "ARS", nombre: "Peso argentino"),
+        (id: "CLP", nombre: "Peso chileno"),
+        (id: "PEN", nombre: "Sol peruano"),
+        (id: "GTQ", nombre: "Quetzal"),
+        (id: "HNL", nombre: "Lempira"),
+        (id: "CRC", nombre: "Colón"),
+        (id: "BRL", nombre: "Real")
+    ]
 }

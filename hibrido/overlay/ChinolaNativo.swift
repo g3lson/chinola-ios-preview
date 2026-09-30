@@ -6653,6 +6653,10 @@ struct CNSeccion {
         var puntos: [String] = []
         /// Para el modo automático: la mitad de noche.
         var nocheFondo = ""; var nocheFranja = ""; var nocheTarjeta = ""
+        /// Qué hace al tocarla, DICHO POR SU NOMBRE. Es lo que deja que una
+        /// subpantalla la arme el teléfono: `accion` es el número de una lista
+        /// que solo tiene sentido si esa lista la hizo la web.
+        var abre = ""
     }
     /// Un interruptor dentro de un bloque de varios.
     struct Llave { var label = ""; var sub = ""; var puesto = false; var accion = -1 }
@@ -6865,7 +6869,7 @@ struct CNSeccionVista: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(13)
                     .background(CNC.soft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                Button { datos.onSeccionAccion(q.accion, nil) } label: {
+                Button { tocaBloque(q) } label: {
                     Label(q.label, systemImage: "doc.on.doc").font(cnLetra(14, .semibold))
                         .foregroundColor(CNC.ink)
                 }.buttonStyle(CNPulsable())
@@ -6902,7 +6906,7 @@ struct CNSeccionVista: View {
                     set: { nuevo in
                         guard nuevo != (CNRecienTocado.de("sec:" + String(q.accion), Bool.self) ?? q.puesto) else { return }
                         CNRecienTocado.pon("sec:" + String(q.accion), nuevo)
-                        datos.onSeccionAccion(q.accion, nil)
+                        tocaBloque(q)
                     }))
                     // Del mismo verde que el resto de lo nativo. En amarillo
                     // era el único control que no seguía el tinte de la app.
@@ -6918,6 +6922,24 @@ struct CNSeccionVista: View {
         case "lista": listaVista(q)
         default: grupoVista(q)
         }
+    }
+
+    /**
+     * Qué pasa al tocar una opción.
+     *
+     * Por NOMBRE si lo trae, y si no por el número de la lista de la web. Las
+     * dos maneras conviven a propósito: las subpantallas que arma el teléfono no
+     * tienen esa lista —el número no significaría nada— y las que sigue armando
+     * la web no tienen nombres.
+     */
+    /// Lo mismo para un bloque entero —un botón, un interruptor—: por nombre si
+    /// lo trae, y si no por el número de la lista de la web.
+    private func tocaBloque(_ q: CNSeccion.Bloque) {
+        if q.abre.isEmpty { datos.onSeccionAccion(q.accion, nil) } else { datos.onAbrirSeccion(q.abre) }
+    }
+
+    private func tocaOpcion(_ o: CNSeccion.Opcion) {
+        if o.abre.isEmpty { datos.onSeccionAccion(o.accion, nil) } else { datos.onAbrirSeccion(o.abre) }
     }
 
     private func rotulo(_ t: String) -> some View {
@@ -7059,7 +7081,7 @@ struct CNSeccionVista: View {
                         Button {
                             UISelectionFeedbackGenerator().selectionChanged()
                             withAnimation(.easeOut(duration: 0.18)) { datos.marcarEnSeccion(bloque: bi, opcion: i) }
-                            datos.onSeccionAccion(o.accion, nil)
+                            tocaOpcion(o)
                         } label: {
                             VStack(spacing: 8) {
                                 CNTelefonoMini(o: o)
@@ -7113,7 +7135,7 @@ struct CNSeccionVista: View {
                     Button {
                         UISelectionFeedbackGenerator().selectionChanged()
                         datos.marcarEnSeccion(bloque: bi, opcion: i)
-                        datos.onSeccionAccion(o.accion, nil)
+                        tocaOpcion(o)
                     } label: {
                         if o.puesta {
                             Label(o.sub.isEmpty ? o.label : o.label + " · " + o.sub, systemImage: "checkmark")
@@ -7145,7 +7167,7 @@ struct CNSeccionVista: View {
                 Button {
                     UISelectionFeedbackGenerator().selectionChanged()
                     withAnimation(.easeOut(duration: 0.16)) { datos.marcarEnSeccion(bloque: bi, opcion: i) }
-                    datos.onSeccionAccion(o.accion, nil)
+                    tocaOpcion(o)
                 } label: {
                     VStack(spacing: 7) {
                         if o.vista == "cabecera" {

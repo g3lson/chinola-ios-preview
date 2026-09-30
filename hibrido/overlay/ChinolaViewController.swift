@@ -688,6 +688,34 @@ class ChinolaViewController: CAPBridgeViewController {
             // El bloqueo con Face ID es del aparato: no hay nada que preguntar
             // ni a la web ni al servidor. Se le avisa a la web para que su
             // propia pantalla diga lo mismo.
+            // PONER UN AJUSTE POR SU NOMBRE: `pon:panelVivo`, `pon:moneda=EUR`.
+            //
+            // Sin el `=` es un interruptor y se da la vuelta; con él, un valor.
+            // El que manda sigue siendo la web —es la que los guarda y los
+            // sincroniza—, así que esto NO escribe nada aquí: se lo dice, y lo
+            // que vuelva por el tema es lo que se pinta. Guardando también aquí
+            // habría dos copias del mismo ajuste discrepando, que es justo lo
+            // que ya pasó una vez.
+            if id.hasPrefix("pon:") {
+                let partes = String(id.dropFirst(4)).split(separator: "=", maxSplits: 1).map(String.init)
+                let clave = partes[0]
+                // Sin `=` es un interruptor —se pide el contrario del que se
+                // está enseñando— y con `=`, un valor. El que se enseña viene
+                // del bloque, así que no hay que ir a buscarlo a ningún sitio.
+                let valor: String = partes.count > 1
+                    ? s.comillas(partes[1])
+                    : (CNSecciones.puestoAhora(clave) ? "false" : "true")
+                s.eval("window.__chinolaPon && window.__chinolaPon(\(s.comillas(clave)),\(valor))")
+                // Y se rearma LA QUE SE ESTÁ MIRANDO en cuanto la web conteste
+                // con el tema nuevo. Adivinar cuál es por el nombre del ajuste
+                // funciona hasta el día que dos secciones toquen el mismo.
+                if let cual = s.datos.seccion?.id {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        if let hecha = CNSecciones.arma(cual) { s.ponSeccion(hecha, si: cual) }
+                    }
+                }
+                return
+            }
             if id == "bloqueoBio" {
                 let on = !UserDefaults.standard.bool(forKey: "cnBloqueo")
                 UserDefaults.standard.set(on, forKey: "cnBloqueo")
@@ -718,6 +746,13 @@ class ChinolaViewController: CAPBridgeViewController {
             }
             if id == "organizar" { s.irAOrganizar(); return }
             if id == "charla" { s.abrirCharla(); return }
+            // Cambiar de plan: es la puerta, que ya se dibuja nativa. Se le pide
+            // a la web que se ponga en ese paso y se abre.
+            if id == "plan" {
+                s.eval("window.__chinolaPlan && window.__chinolaPlan()")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { s.webTemporal() }
+                return
+            }
             // Nueva libreta desde «Libretas y permisos»: el mismo camino que el
             // «+» del selector (aviso de plan incluido).
             if id == "hoja:libreta-nueva" { s.datos.onLibreta("nueva", 0); return }
