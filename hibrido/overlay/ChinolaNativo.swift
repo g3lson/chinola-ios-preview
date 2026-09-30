@@ -996,6 +996,21 @@ struct CNMov: Decodable, Identifiable {
         a.fecha != b.fecha ? a.fecha > b.fecha : a.alta > b.alta
     }
     var tipo: String = ""; var monto: Double = 0; var fecha: String = ""; var medio: String = ""; var destino: String = ""; var recurrente: Bool = false
+    /// LAS MARCAS QUE ATAN UN MOVIMIENTO A SU META O A SU PRÉSTAMO.
+    ///
+    /// Las escribe la web al aportar a una meta o abonar a un préstamo, y sin
+    /// ellas borrar ese movimiento deja el dinero apuntado en la meta y devuelto
+    /// en la cuenta: contado dos veces y devuelto una.
+    ///
+    /// El teléfono no las leía. Mientras solo pintaba, daba igual; en cuanto
+    /// escribe la libreta —que es lo que se está mudando ahora— un movimiento
+    /// reescrito las perdería, y el dinero con ellas.
+    var meta: Int = 0
+    var prestamo: Int = 0
+    /// Uno vacío, para armarlo a mano. Con `init(from:)` escrito, Swift ya no
+    /// regala el de por defecto, y `CNMov()` no compila sin esto.
+    init() {}
+
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         // id puede venir como número o texto.
         if let s = try? c.decodeIfPresent(String.self, forKey: .id) { id = s }
@@ -1007,8 +1022,10 @@ struct CNMov: Decodable, Identifiable {
         fecha = (try? c.decodeIfPresent(String.self, forKey: .fecha)) ?? ""
         medio = (try? c.decodeIfPresent(String.self, forKey: .medio)) ?? ""
         destino = (try? c.decodeIfPresent(String.self, forKey: .destino)) ?? ""
-        recurrente = (try? c.decodeIfPresent(Bool.self, forKey: .recurrente)) ?? false }
-    enum K: String, CodingKey { case id, concepto, categoria, tipo, monto, fecha, medio, destino, recurrente }
+        recurrente = (try? c.decodeIfPresent(Bool.self, forKey: .recurrente)) ?? false
+        meta = (try? c.decodeIfPresent(Int.self, forKey: .meta)) ?? 0
+        prestamo = (try? c.decodeIfPresent(Int.self, forKey: .prestamo)) ?? 0 }
+    enum K: String, CodingKey { case id, concepto, categoria, tipo, monto, fecha, medio, destino, recurrente, meta, prestamo }
     var esIngreso: Bool { tipo == "Ingreso" }
     var esGasto: Bool { tipo.hasPrefix("Gasto") }
     var esTransfer: Bool { tipo == "Transferencia" } }
