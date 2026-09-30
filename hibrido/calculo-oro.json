@@ -1842,6 +1842,1273 @@
       "inicial": "?"
     }
   },
+  "escribirCasos": {
+    "gasto con la cuenta": {
+      "que": "nuevo",
+      "dato": {
+        "id": "m-nuevo",
+        "tipo": "Gasto Variable",
+        "monto": 1500,
+        "categoria": "Comida",
+        "concepto": "Prueba",
+        "fecha": "2026-09-20",
+        "medio": "cuenta:1"
+      }
+    },
+    "gasto con la TARJETA": {
+      "que": "nuevo",
+      "dato": {
+        "id": "m-tarj",
+        "tipo": "Gasto Variable",
+        "monto": 3000,
+        "categoria": "Comida",
+        "concepto": "Con la Visa",
+        "fecha": "2026-09-20",
+        "medio": "tarjeta:10"
+      }
+    },
+    "ingreso": {
+      "que": "nuevo",
+      "dato": {
+        "id": "m-ing",
+        "tipo": "Ingreso",
+        "monto": 5000,
+        "categoria": "Sueldo",
+        "concepto": "Extra",
+        "fecha": "2026-09-20",
+        "medio": "cuenta:1"
+      }
+    },
+    "ingreso con tarjeta": {
+      "que": "nuevo",
+      "dato": {
+        "id": "m-it",
+        "tipo": "Ingreso",
+        "monto": 700,
+        "categoria": "Sueldo",
+        "concepto": "Raro",
+        "fecha": "2026-09-20",
+        "medio": "tarjeta:10"
+      }
+    },
+    "sin monto no se anota": {
+      "que": "nuevo",
+      "dato": {
+        "id": "m-cero",
+        "tipo": "Gasto Variable",
+        "monto": 0,
+        "medio": "cuenta:1"
+      }
+    },
+    "cambiar de cuenta a tarjeta": {
+      "que": "cambiado",
+      "dato": {
+        "id": "2",
+        "medio": "tarjeta:10"
+      }
+    },
+    "cambiar de tarjeta a cuenta": {
+      "que": "cambiado",
+      "dato": {
+        "id": "3",
+        "medio": "cuenta:1"
+      }
+    },
+    "cambiar el monto": {
+      "que": "cambiado",
+      "dato": {
+        "id": "2",
+        "monto": 9999
+      }
+    },
+    "cambiar de gasto a ingreso": {
+      "que": "cambiado",
+      "dato": {
+        "id": "2",
+        "tipo": "Ingreso"
+      }
+    },
+    "borrar un gasto de cuenta": {
+      "que": "borrado",
+      "dato": "2"
+    },
+    "borrar un gasto de tarjeta": {
+      "que": "borrado",
+      "dato": "3"
+    },
+    "borrar uno que no existe": {
+      "que": "borrado",
+      "dato": "no-existe"
+    }
+  },
+  "escribir": {
+    "gasto con la cuenta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 48500
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Gasto Fijo",
+            "monto": 18500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m-nuevo",
+            "tipo": "Gasto Variable",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          }
+        ]
+      }
+    },
+    "gasto con la TARJETA": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 15000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Gasto Fijo",
+            "monto": 18500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m-tarj",
+            "tipo": "Gasto Variable",
+            "monto": 3000,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-20"
+          }
+        ]
+      }
+    },
+    "ingreso": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 55000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Gasto Fijo",
+            "monto": 18500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m-ing",
+            "tipo": "Ingreso",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          }
+        ]
+      }
+    },
+    "ingreso con tarjeta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Gasto Fijo",
+            "monto": 18500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m-it",
+            "tipo": "Ingreso",
+            "monto": 700,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-20"
+          }
+        ]
+      }
+    },
+    "sin monto no se anota": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Gasto Fijo",
+            "monto": 18500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          }
+        ]
+      }
+    },
+    "cambiar de cuenta a tarjeta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 68500
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 30500
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Gasto Fijo",
+            "monto": 18500,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          }
+        ]
+      }
+    },
+    "cambiar de tarjeta a cuenta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 47520
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 9520
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Gasto Fijo",
+            "monto": 18500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          }
+        ]
+      }
+    },
+    "cambiar el monto": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 58501
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Gasto Fijo",
+            "monto": 9999,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          }
+        ]
+      }
+    },
+    "cambiar de gasto a ingreso": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 87000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Ingreso",
+            "monto": 18500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          }
+        ]
+      }
+    },
+    "borrar un gasto de cuenta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 68500
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          }
+        ]
+      }
+    },
+    "borrar un gasto de tarjeta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 9520
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Gasto Fijo",
+            "monto": 18500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          }
+        ]
+      }
+    },
+    "borrar uno que no existe": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "tx": [
+          {
+            "id": "1",
+            "tipo": "Ingreso",
+            "monto": 82000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-25"
+          },
+          {
+            "id": "2",
+            "tipo": "Gasto Fijo",
+            "monto": 18500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-23"
+          },
+          {
+            "id": "3",
+            "tipo": "Gasto Variable",
+            "monto": 2480,
+            "medio": "tarjeta:10",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "4",
+            "tipo": "Ahorro",
+            "monto": 10000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-10"
+          },
+          {
+            "id": "5",
+            "tipo": "Transferencia",
+            "monto": 5000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-12"
+          },
+          {
+            "id": "6",
+            "tipo": "Gasto Variable",
+            "monto": 1200,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-14"
+          },
+          {
+            "id": "7",
+            "tipo": "Ingreso",
+            "monto": 4000,
+            "medio": "cuenta:2",
+            "fecha": "2026-08-02"
+          },
+          {
+            "id": "m1758840000000",
+            "tipo": "Gasto Variable",
+            "monto": 900,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758860000000",
+            "tipo": "Gasto Variable",
+            "monto": 640,
+            "medio": "cuenta:2",
+            "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758820000000",
+            "tipo": "Gasto Fijo",
+            "monto": 3100,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-26"
+          }
+        ]
+      }
+    }
+  },
   "porCategoria": {
     "2026-09": [
       {

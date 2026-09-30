@@ -323,6 +323,33 @@ enum CNOro {
             salida["categorias"] = out
         }
 
+        // ESCRIBIR UN MOVIMIENTO: crear, cambiar y borrar. Se compara la
+        // libreta ENTERA que sale —los saldos incluidos—, porque que la lista de
+        // movimientos cuadre no dice nada si el dinero se movió a otro sitio.
+        if let casos = raiz["escribirCasos"] as? [String: Any] {
+            func resumen(_ x: CNLibreta) -> [String: Any] {
+                ["cuentas": x.cuentas.map { ["id": $0.id, "saldo": $0.saldo] },
+                 "tarjetas": x.tarjetas.map { ["id": $0.id, "saldo": $0.saldo] },
+                 "tx": x.tx.map { ["id": $0.id, "tipo": $0.tipo, "monto": $0.monto,
+                                   "medio": $0.medio, "fecha": $0.fecha] }]
+            }
+            var out: [String: Any] = [:]
+            for (nombre, caso) in casos {
+                guard let c = caso as? [String: Any], let que = c["que"] as? String else { continue }
+                let sale: CNLibreta
+                switch que {
+                case "nuevo":
+                    sale = CNEscribir.movimientoNuevo(l, (c["dato"] as? [String: Any]) ?? [:])
+                case "cambiado":
+                    sale = CNEscribir.movimientoCambiado(l, (c["dato"] as? [String: Any]) ?? [:])
+                default:
+                    sale = CNEscribir.movimientoBorrado(l, (c["dato"] as? String) ?? "")
+                }
+                out[nombre] = ["sale": resumen(sale)]
+            }
+            salida["escribir"] = out
+        }
+
         // Los días hasta un día del mes, contando desde la fecha que diga el
         // oro: sin fijarla, esto contestaría distinto cada día.
         if let dias = raiz["diasHastaElDia"] as? [String: Any],
