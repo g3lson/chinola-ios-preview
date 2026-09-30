@@ -442,8 +442,11 @@ struct CNMontoHoja: View {
     var onClose: () -> Void
     @State private var monto = ""
     @State private var medio = "efectivo"
+    /// Por qué no se pudo. Vacío mientras no haya nada que decir.
+    @State private var porQueNo = ""
 
     private var titulo: String { cnT(tipo == "abono" ? "Registrar abono" : (tipo == "aporte" ? "Aportar a la meta" : "Pagar la tarjeta")) }
+    private var cual: Int? { (extra["id"] as? Int) ?? (extra["id"] as? NSNumber)?.intValue }
 
     var body: some View {
         CNHoja(titulo: titulo, onClose: onClose, onGuardar: guardar) {
@@ -451,13 +454,40 @@ struct CNMontoHoja: View {
             if tipo != "pagoTarjeta" {
                 cnGrupoHoja { CNMedioFila(datos: datos, medio: $medio) }
             }
+            // EL PORQUÉ, CUANDO NO SE PUEDE.
+            //
+            // Sin esto la hoja se cerraba igual y no pasaba nada: ni cartel ni
+            // movimiento. Así estuvo roto «abonar a un préstamo» sin que se
+            // viera — la app decía que sí con el gesto y que no con los hechos.
+            if !porQueNo.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 15)).foregroundColor(CNC.neg)
+                    Text(porQueNo).font(cnLetra(13.5)).foregroundColor(CNC.neg)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 2)
+            }
         }
         .onAppear { if medio == "efectivo" { medio = cnMedioPorDefecto(datos.libreta) } }
+        // Al cambiar el monto o la cuenta se borra el cartel: sigue en pantalla
+        // hablando de lo de antes y parece que no se puede arreglar.
+        .onChange(of: monto) { _ in porQueNo = "" }
+        .onChange(of: medio) { _ in porQueNo = "" }
     }
 
     private func guardar() {
         let n = cnMonto(monto)
-        guard n > 0 else { onClose(); return }
+        // El pago de tarjeta sin monto paga el saldo entero, que es lo que dice
+        // el propio rótulo del campo: ahí un monto vacío no es un error.
+        let cuanto = (tipo == "pagoTarjeta" && n <= 0)
+            ? (datos.libreta.tarjetas.first { $0.id == cual }?.saldo ?? 0) : n
+        if let mal = CNEscribir.porQueNo(datos.libreta, tipo, monto: cuanto,
+                                         medio: tipo == "pagoTarjeta" ? "" : medio, id: cual) {
+            porQueNo = mal
+            return
+        }
         var form: [String: Any] = ["monto": n]
         if tipo != "pagoTarjeta" { form["medio"] = medio }
         datos.onGuardarHoja(tipo, form, extra)

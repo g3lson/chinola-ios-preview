@@ -100,6 +100,64 @@ enum CNEscribir {
     }
 
     /**
+     * POR QUÉ NO SE PUEDE, DICHO CON PALABRAS.
+     *
+     * Aquí estaba el fallo que dejó «abonar a un préstamo» roto sin que nadie
+     * lo viera: cuando la operación no se podía hacer, la hoja se cerraba
+     * igual y no pasaba nada. Ni error, ni cartel, ni movimiento. La app te
+     * decía que sí con el gesto y que no con los hechos.
+     *
+     * La web sí tiene estos carteles —son suyos, con sus mismas palabras—,
+     * pero no llegaban: la hoja nativa se cierra antes de que la web conteste.
+     * Así que la pregunta se hace aquí, ANTES de cerrar.
+     *
+     * `nil` = se puede. Cualquier otra cosa es lo que hay que enseñar.
+     */
+    static func porQueNo(_ l: CNLibreta, _ tipo: String, monto: Double,
+                         medio: String, id: Int?) -> String? {
+        let esAporte = tipo == "aporte"
+        // CADA TEXTO EN SU PROPIA LLAMADA, con el literal dentro y no metido en
+        // un ternario. `npm run sync` saca las traducciones leyendo esas
+        // llamadas una por una, y lo que no ve no lo traduce: no falla, sale en
+        // español, y solo se nota cambiando el idioma —que es justo lo que
+        // nadie hace al probar—. El propio comentario tampoco puede enseñar una
+        // llamada de ejemplo, porque el sincronizador lee los comentarios igual.
+        if monto <= 0 {
+            return esAporte ? cnT("Pon cuánto vas a aportar.") : cnT("Pon cuánto vas a pagar.")
+        }
+        if tipo == "abono" {
+            guard let id = id, let p = l.prestamos.first(where: { $0.id == id }) else {
+                return cnT("No encuentro ese préstamo.")
+            }
+            // Un préstamo ya pagado no admite más: se recortaría a cero y la
+            // hoja se cerraría sin anotar, que es de donde viene todo esto.
+            guard p.total - p.pagado > 0 else { return cnT("Ese préstamo ya está pagado.") }
+        }
+        if tipo == "aporte", id == nil || !l.metas.contains(where: { $0.id == id }) {
+            return cnT("No encuentro esa meta.")
+        }
+        if tipo == "pagoTarjeta", id == nil || !l.tarjetas.contains(where: { $0.id == id }) {
+            return cnT("No encuentro esa tarjeta.")
+        }
+        // Y el dinero, con las mismas palabras que usa la web.
+        if noAlcanza(l, medio: medio, cuanto: monto), let c = cuentaDelMedio(l, medio) {
+            let plantilla = esAporte
+                ? cnT("En esa cuenta hay {h}. No alcanza para apartar {c}.")
+                : cnT("En esa cuenta hay {h}. No alcanza para pagar {c}.")
+            return plantilla
+                .replacingOccurrences(of: "{h}", with: cnDinero(c.saldo))
+                .replacingOccurrences(of: "{c}", with: cnDinero(monto))
+        }
+        return nil
+    }
+
+    /// La cuenta de la que sale el dinero, si el medio es una cuenta.
+    private static func cuentaDelMedio(_ l: CNLibreta, _ medio: String) -> CNCuenta? {
+        guard medio.hasPrefix("cuenta:"), let id = Int(medio.dropFirst(7)) else { return nil }
+        return l.cuentas.first { $0.id == id }
+    }
+
+    /**
      * ¿NO ALCANZA?
      *
      * La web NO ESCRIBE cuando lo que se va a sacar no está en la cuenta: lo
