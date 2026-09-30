@@ -3,6 +3,10 @@ import Foundation
 /**
  * LO QUE DICE CADA FILA DEL PLAN.
  *
+ * Se llama `CNPlanCuentas` y no `CNPlan` porque ese nombre ya era de la VISTA
+ * de la pantalla. Dos tipos con el mismo nombre no compilan, y el que estaba
+ * primero es el que se queda.
+ *
  * El cálculo del presupuesto ya estaba en `CNCalculo.presupuesto`: qué
  * categorías entran, cuánto se gastó de cada tope y cuáles se pasaron. Lo que
  * faltaba era lo que se LEE, y ahí hay una regla que importa más de lo que
@@ -24,7 +28,7 @@ import Foundation
  * El color sigue lo mismo: rojo al pasarse, ámbar a partir del 85 % —que es
  * cuando todavía se puede hacer algo— y verde por debajo.
  */
-enum CNPlan {
+enum CNPlanCuentas {
 
     /// Lo que hace falta del tema para pintar una fila del plan.
     struct Tinte {
