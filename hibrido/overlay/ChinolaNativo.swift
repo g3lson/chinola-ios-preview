@@ -217,6 +217,14 @@ struct CNFormato {
     var loc = "es-DO"
     /// La tipografía elegida (su id en la web: sistema, jakarta, nunito…).
     var fuente = "sistema"
+    /// Y la de los títulos, que se elige aparte.
+    var fuenteTitulo = "sistema"
+    /// CUÁL tamaño de letra está puesto («chica», «normal», «grande», «mayor»).
+    ///
+    /// Aparte de `letra`, que es cuánto mide: la subpantalla tiene que marcar
+    /// el elegido, y con la escala sola habría que adivinarlo comparando
+    /// números —y dos tamaños con la misma escala se marcarían los dos—.
+    var letraId = "normal"
     /// Qué se ve en la pestaña de Perfil: «chino» o «perfil».
     /// La inicial del usuario, para el icono redondo.
     var inicial = ""
@@ -247,6 +255,8 @@ struct CNFormato {
         if let c = o["centavos"] as? Bool { f.centavos = c }
         if let l = o["loc"] as? String, !l.isEmpty { f.loc = l }
         if let t = o["fuente"] as? String, !t.isEmpty { f.fuente = t }
+        if let t = o["fuenteTitulo"] as? String, !t.isEmpty { f.fuenteTitulo = t }
+        if let t = o["letraId"] as? String, !t.isEmpty { f.letraId = t }
         if let t = o["inicial"] as? String { f.inicial = t }
         if let v = o["panelVivo"] as? Bool { f.panelVivo = v }
         if let t = o["tarjetaCuentas"] as? String, !t.isEmpty { f.tarjetaCuentas = t }

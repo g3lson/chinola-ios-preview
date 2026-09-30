@@ -31,7 +31,7 @@ import Foundation
 enum CNSecciones {
 
     /// Las que este lado sabe armar. Lo demás sigue viniendo de la web.
-    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas"]
+    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra"]
 
     /**
      * Lo que se le ha pedido al servidor, guardado mientras dure la app.
@@ -54,6 +54,7 @@ enum CNSecciones {
         switch clave {
         case "panelVivo": return CNC.fmt.panelVivo
         case "centavos": return CNC.fmt.centavos
+        case "menuTitulos": return CNMenuEstado.shared.titulos
         default: return false
         }
     }
@@ -73,6 +74,8 @@ enum CNSecciones {
         case "panel": return panel()
         case "dinero": return dinero()
         case "libretas": return libretas()
+        case "menu": return menu()
+        case "letra": return letra()
         // «libreta:3» es una libreta por dentro: sus miembros y sus permisos.
         case let x where x.hasPrefix("libreta:"): return unaLibreta(String(x.dropFirst(8)))
         default: return nil
@@ -92,7 +95,7 @@ enum CNSecciones {
         // el teléfono. Se dibujan enteras antes de que la web despierte.
         // Los miembros vienen DENTRO de la libreta, no de la API: la web los
         // cambia en local y la sincronización los sube. Ver `CNLibretas.Fila`.
-        case "panel", "dinero", "libretas": return []
+        case "panel", "dinero", "libretas", "menu", "letra": return []
         default: return []
         }
     }
@@ -338,6 +341,76 @@ enum CNSecciones {
         ]
 
         s.bloques = [mon, cent]
+        return s
+    }
+
+    /* ------------------------------ menú de abajo ------------------------- */
+
+    /// Un interruptor: si los iconos de abajo llevan su nombre debajo.
+    @MainActor private static func menu() -> CNSeccion? {
+        var s = CNSeccion()
+        s.id = "menu"
+        s.titulo = cnT("Menú de abajo")
+        var b = CNSeccion.Bloque(); b.tipo = "interruptor"
+        b.label = cnT("Nombres en el menú")
+        b.texto = cnT("El rótulo debajo de cada icono")
+        b.puesto = CNMenuEstado.shared.titulos
+        b.abre = "pon:menuTitulos"
+        s.bloques = [b]
+        return s
+    }
+
+    /* ---------------------------------- letra ----------------------------- */
+
+    /**
+     * El tamaño del texto y las dos tipografías.
+     *
+     * TRES COSAS QUE PARECEN ADORNO Y NO LO SON:
+     *
+     * **Cada tamaño se enseña escrito con el suyo.** Una rejilla de cuatro
+     * nombres —«Pequeña», «Normal»— no dice nada: lo que se elige es cómo se ve,
+     * y verlo es la única manera de elegirlo.
+     *
+     * **Debajo va una muestra de verdad**: un título, un texto y una cifra con
+     * el tamaño puesto. Es lo que deja decidir sin salir a mirar y volver.
+     *
+     * **Las tipografías llevan su pista** —«La del aparato», «Neutra»—, porque
+     * once nombres propios seguidos no se distinguen entre sí.
+     */
+    @MainActor private static func letra() -> CNSeccion? {
+        var s = CNSeccion()
+        s.id = "letra"
+        s.titulo = cnT("Letra")
+
+        let ahora = CNC.fmt.letraId
+        var tam = CNSeccion.Bloque(); tam.tipo = "opciones"
+        tam.titulo = cnT("Tamaño de la letra")
+        tam.columnas = 4
+        tam.opciones = CNCatalogos.letras.map { l in
+            CNSeccion.Opcion(label: cnT(l.nombre), puesta: l.id == ahora,
+                             muestra: "Aa", abre: "pon:letra=" + l.id)
+        }
+
+        var previa = CNSeccion.Bloque(); previa.tipo = "previa"
+        previa.titulo = cnT("Así se verá")
+        previa.escala = CNCatalogos.letras.first { $0.id == ahora }?.escala ?? 1
+        previa.muestraTitulo = cnT("Balance del mes")
+        previa.muestraTexto = cnT("Lo que entró, lo que salió y lo que te queda, de un vistazo.")
+        previa.muestraCifra = cnDinero(24500)
+
+        func tipos(_ titulo: String, _ clave: String, _ puesta: String) -> CNSeccion.Bloque {
+            var b = CNSeccion.Bloque(); b.tipo = "selector"
+            b.titulo = titulo
+            b.valor = cnT(CNCatalogos.tipografias.first { $0.id == puesta }?.nombre ?? "")
+            b.opciones = CNCatalogos.tipografias.map { f in
+                CNSeccion.Opcion(label: cnT(f.nombre), sub: cnT(f.pista),
+                                 puesta: f.id == puesta, abre: "pon:" + clave + "=" + f.id)
+            }
+            return b
+        }
+        s.bloques = [tam, previa,
+                     tipos(cnT("Letra del texto"), "fuente", CNC.fmt.fuente),
+                     tipos(cnT("Letra de los títulos"), "fuenteTitulo", CNC.fmt.fuenteTitulo)]
         return s
     }
 

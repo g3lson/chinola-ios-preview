@@ -270,4 +270,23 @@ enum CNCatalogos {
         (id: "CRC", nombre: "Colón"),
         (id: "BRL", nombre: "Real")
     ]
+
+    /// Los tamaños de letra, de menor a mayor. La escala es la de la
+    /// web dividida por 1,07: allí «normal» es 1,07 porque el diseño
+    /// venía de una maqueta, y aquí 1 es 1.
+    static let letras: [(id: String, nombre: String, escala: Double)] = [
+        (id: "chica", nombre: "Pequeña", escala: 0.8785),
+        (id: "normal", nombre: "Normal", escala: 1.0000),
+        (id: "grande", nombre: "Grande", escala: 1.1028),
+        (id: "mayor", nombre: "Muy grande", escala: 1.1963)
+    ]
+
+    /// Las tipografías, con la pista que las distingue de un vistazo.
+    static let tipografias: [(id: String, nombre: String, pista: String)] = [
+        (id: "sistema", nombre: "Del sistema", pista: "La del aparato"),
+        (id: "jakarta", nombre: "Plus Jakarta", pista: "La de siempre"),
+        (id: "inter", nombre: "Inter", pista: "Neutra"),
+        (id: "nunito", nombre: "Nunito", pista: "Redondeada"),
+        (id: "source", nombre: "Source Serif", pista: "Con serifa")
+    ]
 }
