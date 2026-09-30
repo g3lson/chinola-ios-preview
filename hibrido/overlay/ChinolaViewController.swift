@@ -702,6 +702,18 @@ class ChinolaViewController: CAPBridgeViewController {
             // El modo de color. Va aparte de `pon:` porque no es UN ajuste:
             // «Automático» toca cuatro a la vez y cada uno tiene su respaldo.
             // Lo decide la MISMA función que usa la web.
+            // El icono de la app: se guarda cuál Y se le pide a iOS que lo
+            // cambie. Lo segundo es lo único que de verdad lo mueve, y si el
+            // teléfono no puede hay que decirlo — antes fallaba en silencio y
+            // parecía que el selector no hacía nada.
+            if id.hasPrefix("icono:") {
+                s.eval("window.__chinolaIconoApp && window.__chinolaIconoApp("
+                       + s.comillas(String(id.dropFirst(6))) + ")")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    if let hecha = CNSecciones.arma("icono-app") { s.ponSeccion(hecha, si: "icono-app") }
+                }
+                return
+            }
             if id.hasPrefix("modo:") {
                 s.eval("window.__chinolaModoColor && window.__chinolaModoColor("
                        + s.comillas(String(id.dropFirst(5))) + ")")

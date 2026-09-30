@@ -84,6 +84,23 @@ func cnHexDe(_ c: Color) -> String {
     #endif
 }
 
+/**
+ * El dibujo de una opción: del paquete o escrito en la propia cadena.
+ *
+ * La web manda sus muestras como texto en base64 —las rasteriza ella— y las
+ * subpantallas que arma el teléfono mandan el NOMBRE de un fichero que ya está
+ * dentro de la app. El caso que importa es el del icono de la app: los nueve
+ * están en el paquete porque son los que iOS instala, así que se enseña EL
+ * MISMO, no una copia. Una copia podría parecerse y no serlo, y eso es
+ * exactamente lo que nadie comprobaría: eliges uno y sale otro.
+ */
+func cnImagenDeOpcion(_ q: String) -> UIImage? {
+    // Un base64 de verdad es largo y no tiene nada que hacer como nombre de
+    // fichero; se prueba primero el paquete, que es lo barato.
+    if !q.contains("/"), q.count < 80, let img = UIImage(named: q) { return img }
+    return cnImagenBase64(q)
+}
+
 func cnColor(hexString s: String) -> Color {
     cnColoresLeidos.valor(s) { cnColorLeer(s) }
 }
@@ -236,6 +253,8 @@ struct CNFormato {
     var temaId = "chinola"; var temaAuto = false
     var temaClaro = ""; var temaOscuro = ""
     var paletaId = "clasica"
+    /// Cuál de los nueve iconos de la app está puesto. Vacío = el de fábrica.
+    var iconoApp = ""
     /// Qué se ve en la pestaña de Perfil: «chino» o «perfil».
     /// La inicial del usuario, para el icono redondo.
     var inicial = ""
@@ -277,6 +296,7 @@ struct CNFormato {
         if let t = o["temaClaro"] as? String { f.temaClaro = t }
         if let t = o["temaOscuro"] as? String { f.temaOscuro = t }
         if let t = o["paletaId"] as? String, !t.isEmpty { f.paletaId = t }
+        if let t = o["iconoApp"] as? String { f.iconoApp = t }
         if let t = o["inicial"] as? String { f.inicial = t }
         if let v = o["panelVivo"] as? Bool { f.panelVivo = v }
         if let t = o["tarjetaCuentas"] as? String, !t.isEmpty { f.tarjetaCuentas = t }
@@ -7227,8 +7247,9 @@ struct CNSeccionVista: View {
                     VStack(spacing: 7) {
                         if o.vista == "cabecera" {
                             miniCabecera(o)
-                        } else if !o.imagen.isEmpty, let img = cnImagenBase64(o.imagen) {
+                        } else if !o.imagen.isEmpty, let img = cnImagenDeOpcion(o.imagen) {
                             Image(uiImage: img).resizable().scaledToFit().frame(height: 66)
+                                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                         } else if !o.icono.isEmpty {
                             CNSVGShape(d: o.icono)
                                 .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))

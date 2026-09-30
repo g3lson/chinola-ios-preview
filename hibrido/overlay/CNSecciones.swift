@@ -31,7 +31,7 @@ import Foundation
 enum CNSecciones {
 
     /// Las que este lado sabe armar. Lo demás sigue viniendo de la web.
-    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores"]
+    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores", "icono-app"]
 
     /**
      * Lo que se le ha pedido al servidor, guardado mientras dure la app.
@@ -80,6 +80,7 @@ enum CNSecciones {
         case "letra": return letra()
         case "cabecera": return cabecera()
         case "colores": return colores()
+        case "icono-app": return iconoDeLaApp()
         // «libreta:3» es una libreta por dentro: sus miembros y sus permisos.
         case let x where x.hasPrefix("libreta:"): return unaLibreta(String(x.dropFirst(8)))
         default: return nil
@@ -99,7 +100,7 @@ enum CNSecciones {
         // el teléfono. Se dibujan enteras antes de que la web despierte.
         // Los miembros vienen DENTRO de la libreta, no de la API: la web los
         // cambia en local y la sincronización los sube. Ver `CNLibretas.Fila`.
-        case "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores": return []
+        case "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores", "icono-app": return []
         default: return []
         }
     }
@@ -345,6 +346,55 @@ enum CNSecciones {
         ]
 
         s.bloques = [mon, cent]
+        return s
+    }
+
+    /* --------------------------- el icono de la app ----------------------- */
+
+    /**
+     * Cuál de los nueve se ve en la pantalla de inicio.
+     *
+     * CADA UNO ENSEÑA EL SUYO DE VERDAD, no una copia. Los nueve van dentro del
+     * paquete —son los que iOS instala— así que se enseñan directamente. Una
+     * copia rasterizada aparte podría parecerse y no ser el mismo, y eso es
+     * exactamente lo que nadie comprobaría: se elige uno y sale otro.
+     *
+     * El primero es el de fábrica y lleva su propio dibujo, no una caja vacía:
+     * es uno de los nueve, no la ausencia de icono.
+     */
+    @MainActor private static func iconoDeLaApp() -> CNSeccion? {
+        let cual = CNC.fmt.iconoApp
+        var s = CNSeccion()
+        s.id = "icono-app"
+        s.titulo = cnT("El icono de la app")
+
+        var rejilla = CNSeccion.Bloque(); rejilla.tipo = "opciones"
+        rejilla.titulo = cnT("Cuál quieres en la pantalla de inicio")
+        rejilla.columnas = 3
+
+        func uno(_ id: String, _ nombre: String, _ nota: String, _ dibujo: String) -> CNSeccion.Opcion {
+            var o = CNSeccion.Opcion()
+            o.label = nombre
+            o.sub = nota
+            o.puesta = cual == id
+            // El nombre del fichero dentro del paquete, que es el mismo que usa
+            // `setAlternateIconName`. Así lo que se enseña y lo que se instala
+            // no pueden separarse.
+            o.imagen = "Chinola-" + dibujo
+            o.abre = "icono:" + id
+            return o
+        }
+
+        let principal = CNCatalogos.iconoPrincipal
+        let suyo = CNCatalogos.iconosDeLaApp.first { $0.id == principal }
+        rejilla.opciones = [uno("", cnT("El de la app"),
+                                cnT(suyo?.nombre ?? "") + " · " + cnT("el de fábrica"), principal)]
+            + CNCatalogos.iconosDeLaApp.map { uno($0.id, cnT($0.nombre), cnT($0.nota), $0.id) }
+
+        var aviso = CNSeccion.Bloque(); aviso.tipo = "texto"
+        aviso.texto = cnT("Al cambiarlo, iOS avisa una vez de que el icono cambió. Es normal y lo pregunta él, no la app.")
+
+        s.bloques = [rejilla, aviso]
         return s
     }
 

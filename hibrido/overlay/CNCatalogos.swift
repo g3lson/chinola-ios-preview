@@ -405,6 +405,25 @@ enum CNCatalogos {
         "brasa": "oklch(0.74 0.16 38)"
     ]
 
+    /// Cuál es el icono de fábrica de la app.
+    static let iconoPrincipal = "1e"
+
+    /// Los nueve, con su nombre y por qué es distinto. El dibujo NO va
+    /// aquí: el teléfono enseña el de verdad —`Chinola-1e`, dentro del
+    /// paquete—, que es el que se va a instalar. Una copia rasterizada
+    /// podría parecerse y no ser el mismo.
+    static let iconosDeLaApp: [(id: String, nombre: String, nota: String)] = [
+        (id: "1a", nombre: "Chino", nota: "El personaje es la marca. Cálido, se recuerda."),
+        (id: "1c", nombre: "Monograma C", nota: "La C de Chinola con su semilla. Más de fintech."),
+        (id: "1d", nombre: "Tu logo actual", nota: "El punto de la marca, sin cambios. El más sobrio."),
+        (id: "1e", nombre: "Moneda", nota: "Moneda con hoja: dice «dinero» sin palabras."),
+        (id: "3a", nombre: "Chino, protagonista", nota: "Llena el icono. Ojos con brillo, cejas seguras, risa."),
+        (id: "3b", nombre: "Chino guiña", nota: "Asoma desde abajo y te guiña. Pícaro, muy dominicano."),
+        (id: "3c", nombre: "La C que mira", nota: "La semilla se vuelve un ojo. Serio y con guiño a la vez."),
+        (id: "3d", nombre: "C de oro", nota: "Amarillo sobre verde noche con relieve. El más imponente."),
+        (id: "3h", nombre: "Pila de monedas", nota: "Tres monedas en relieve: ahorro que crece. Muy premium.")
+    ]
+
     /// Qué oscuro le toca a cada claro. Sirve para las dos direcciones:
     /// al pasar a noche y al volver.
     static let oscuroDe: [String: String] = [
