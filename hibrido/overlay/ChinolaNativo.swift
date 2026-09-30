@@ -1996,6 +1996,19 @@ struct CNMovs: View {
         .textCase(nil)
     }
 
+    /**
+     * El trazo del icono de un movimiento: el que mandó la web, o el que le
+     * toca a su categoría por la libreta.
+     *
+     * Aparte y no dentro del `if` por dos razones. La primera es que ahí dentro
+     * la expresión encadenaba dos opcionales y una llamada, y el comprobador de
+     * tipos de SwiftUI se atragantaba con ella. La segunda es que así se lee.
+     */
+    private func pathDeCategoria(_ m: CNMov, _ ic: CNResumenModelo.IconoCat?) -> String? {
+        if let p = ic?.path, !p.isEmpty { return p }
+        return CNIconos.paths[CNCategorias.icono(m.categoria, en: datos.libreta)]
+    }
+
     private func fila(_ m: CNMov) -> some View {
         let entra = m.esIngreso
         let color: Color = entra ? CNC.pos : (m.esTransfer ? CNC.ink : CNC.neg)
@@ -2019,8 +2032,7 @@ struct CNMovs: View {
                         cnGlifo("banknote.fill", tam: 17)
                     } else if m.esTransfer {
                         cnGlifo("arrow.left.arrow.right", tam: 17)
-                    } else if let p = ic?.path ?? CNIconos.paths[CNCategorias.icono(m.categoria, en: datos.libreta)],
-                              !p.isEmpty {
+                    } else if let p = pathDeCategoria(m, ic), !p.isEmpty {
                         // El de la web si lo mandó; si no, el que le toca a la
                         // categoría por la libreta. La etiqueta genérica queda
                         // solo para una categoría que no esté ni en el catálogo.
@@ -2838,7 +2850,13 @@ enum CNIconos {
     /// Ochenta y cinco dibujos copiados a mano es una lista que se desvía
     /// sola; ahora salen de `CNCatalogos.swift`, que escribe `npm run sync`
     /// desde el mismo sitio del que los lee la web.
-    static var paths: [String: String] { CNCatalogos.iconos }
+    ///
+    /// `let` y no `var`: una propiedad CALCULADA rehace el diccionario entero
+    /// en cada acceso, y esto se lee una vez por fila y por fotograma dentro de
+    /// una lista. Un `static let` se calcula una sola vez, la primera que hace
+    /// falta, y además le deja el tipo claro al comprobador — que con la
+    /// versión calculada se atragantaba en una expresión de SwiftUI.
+    static let paths: [String: String] = CNCatalogos.iconos
     // El icono que le toca a cada categoría NO vive aquí. Vivía: había un mapa
     // gemelo del de `CNCategorias.porNombre`, palabra por palabra, y no lo usaba
     // nadie. Dos mapas iguales son un mapa y una trampa: el día que alguien
