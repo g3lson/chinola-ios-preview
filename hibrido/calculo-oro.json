@@ -411,6 +411,10 @@
         "gastado": 18500
       },
       {
+        "categoria": "Ahorro",
+        "gastado": 10000
+      },
+      {
         "categoria": "Comida",
         "gastado": 2480
       }
