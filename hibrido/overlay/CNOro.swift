@@ -350,6 +350,71 @@ enum CNOro {
             salida["escribir"] = out
         }
 
+        // LAS HOJAS DE DINERO: aportar, abonar y los dos ajustes a mano. Cada
+        // una toca DOS sitios —el saldo y el avance—, que es lo que se pierde
+        // al rehacerlas. La fecha y el identificador salen del reloj y no se
+        // comparan: lo que importa es a dónde fue el dinero.
+        // Con `if let` y no con `guard … else { return }`: un `return` aquí
+        // saldría de TODA la función y se llevaría por delante lo que queda,
+        // incluida la línea que lo escupe todo. Sin metas ni préstamos
+        // simplemente no hay nada que comparar en este apartado.
+        if let casos = raiz["dineroCasos"] as? [String: Any],
+           let meta = l.metas.first, let prestamo = l.prestamos.first {
+            func resumen(_ x: CNLibreta, _ item: CNMov?) -> [String: Any] {
+                var fuera: [String: Any] = [
+                    "cuentas": x.cuentas.map { ["id": $0.id, "saldo": $0.saldo] },
+                    "tarjetas": x.tarjetas.map { ["id": $0.id, "saldo": $0.saldo] },
+                    "metas": x.metas.map { ["id": $0.id, "ahorrado": $0.ahorrado] },
+                    "prestamos": x.prestamos.map { ["id": $0.id, "pagado": $0.pagado] }
+                ]
+                if let i = item {
+                    fuera["item"] = ["tipo": i.tipo, "categoria": i.categoria, "monto": i.monto,
+                                     "medio": i.medio, "meta": i.meta, "prestamo": i.prestamo]
+                } else {
+                    fuera["item"] = NSNull()
+                }
+                return fuera
+            }
+            var out: [String: Any] = [:]
+            for nombre in casos.keys {
+                var hecho: CNEscribir.Hecho?
+                var suelta: CNLibreta?
+                switch nombre {
+                case "aportar a una meta":
+                    hecho = CNEscribir.aporteAMeta(l, meta: meta, monto: 5000, medio: "cuenta:1", texto: "Aporte")
+                case "aportar sin decir de dónde":
+                    hecho = CNEscribir.aporteAMeta(l, meta: meta, monto: 1000, medio: "", texto: "Aporte")
+                case "aportar cero no hace nada":
+                    hecho = CNEscribir.aporteAMeta(l, meta: meta, monto: 0, medio: "cuenta:1", texto: "Aporte")
+                case "abonar a un préstamo":
+                    hecho = CNEscribir.abonoAPrestamo(l, prestamo: prestamo, monto: 10000, medio: "cuenta:1", texto: "Pago")
+                case "abonar más de lo que falta":
+                    hecho = CNEscribir.abonoAPrestamo(l, prestamo: prestamo, monto: 999999, medio: "cuenta:1", texto: "Pago")
+                case "abonar con la tarjeta":
+                    hecho = CNEscribir.abonoAPrestamo(l, prestamo: prestamo, monto: 4000, medio: "tarjeta:10", texto: "Pago")
+                case "subir lo ahorrado de una meta":
+                    suelta = CNEscribir.ajusteDeMeta(l, id: meta.id, delta: 7000)
+                case "bajar lo ahorrado sin pasar de cero":
+                    suelta = CNEscribir.ajusteDeMeta(l, id: meta.id, delta: -999999)
+                case "subir lo pagado de un préstamo":
+                    suelta = CNEscribir.ajusteDePrestamo(l, id: prestamo.id, delta: 5000)
+                case "no se paga más de lo que se debe":
+                    suelta = CNEscribir.ajusteDePrestamo(l, id: prestamo.id, delta: 999999)
+                default: continue
+                }
+                if let x = suelta {
+                    out[nombre] = ["sale": resumen(x, nil)]
+                } else if let h = hecho {
+                    out[nombre] = ["sale": resumen(h.libreta, h.item)]
+                } else {
+                    // No había nada que hacer: el oro guarda un nulo.
+                    let nada: Any = NSNull()
+                    out[nombre] = ["sale": nada]
+                }
+            }
+            salida["dinero"] = out
+        }
+
         // Los días hasta un día del mes, contando desde la fecha que diga el
         // oro: sin fijarla, esto contestaría distinto cada día.
         if let dias = raiz["diasHastaElDia"] as? [String: Any],

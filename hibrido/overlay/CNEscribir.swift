@@ -85,6 +85,102 @@ enum CNEscribir {
         return nueva
     }
 
+    // MARK: - Las hojas de dinero
+    //
+    // Las cuatro que tocan DOS sitios a la vez —el saldo y el avance— y por eso
+    // se pierden al rehacerlas de memoria: el aporte que baja la cuenta pero no
+    // sube la meta, o al revés. Son las mismas de `src/dinero.js`, y el fichero
+    // de oro ejecuta las dos versiones con los mismos casos.
+
+    /// Lo que sale de una hoja de dinero: la libreta ya tocada y el movimiento
+    /// que se anotó, o `nil` si no había nada que hacer.
+    struct Hecho {
+        var libreta: CNLibreta
+        var item: CNMov?
+    }
+
+    /// De dónde sale el dinero cuando no se dice: la primera cuenta.
+    private static func primerMedio(_ l: CNLibreta) -> String {
+        l.cuentas.first.map { "cuenta:\($0.id)" } ?? "efectivo"
+    }
+
+    /// Aportar a una meta: sale de la cuenta y sube lo ahorrado.
+    ///
+    /// El movimiento va marcado con `meta`. Sin esa marca, borrarlo deja el
+    /// dinero apuntado en la meta y devuelto en la cuenta: contado dos veces.
+    static func aporteAMeta(_ l: CNLibreta, meta: CNMeta, monto: Double,
+                            medio: String, texto: String) -> Hecho? {
+        let cuanto = max(0, monto)
+        guard cuanto > 0 else { return nil }
+        var item = CNMov()
+        item.id = "ap" + String(Int(Date().timeIntervalSince1970 * 1000))
+        item.concepto = texto
+        item.categoria = "Ahorro"
+        item.tipo = "Ahorro"
+        item.monto = cuanto
+        item.fecha = CNFormateadores.iso.string(from: Date())
+        item.medio = medio.isEmpty ? primerMedio(l) : medio
+        item.meta = meta.id
+
+        var nueva = l
+        _ = CNCalculo.aplica(&nueva, item, signo: 1)
+        nueva.metas = nueva.metas.map { m in
+            guard m.id == meta.id else { return m }
+            var x = m; x.ahorrado += cuanto; return x
+        }
+        nueva.tx.append(item)
+        return Hecho(libreta: nueva, item: item)
+    }
+
+    /// Abonar a un préstamo: sale de la cuenta y sube lo pagado.
+    ///
+    /// **No se paga más de lo que falta.** Abonar de más dejaría un préstamo
+    /// pagado por encima de su total, y de ahí salen porcentajes de más de cien.
+    static func abonoAPrestamo(_ l: CNLibreta, prestamo: CNPrestamo, monto: Double,
+                               medio: String, texto: String) -> Hecho? {
+        let falta = max(0, prestamo.total - prestamo.pagado)
+        let cuanto = min(falta, max(0, monto))
+        guard cuanto > 0 else { return nil }
+        var item = CNMov()
+        item.id = "ab" + String(Int(Date().timeIntervalSince1970 * 1000))
+        item.concepto = texto
+        item.categoria = "Deudas"
+        item.tipo = "Gasto Fijo"
+        item.monto = cuanto
+        item.fecha = CNFormateadores.iso.string(from: Date())
+        item.medio = medio.isEmpty ? primerMedio(l) : medio
+        item.prestamo = prestamo.id
+
+        var nueva = l
+        _ = CNCalculo.aplica(&nueva, item, signo: 1)
+        nueva.prestamos = nueva.prestamos.map { p in
+            guard p.id == prestamo.id else { return p }
+            var x = p; x.pagado = min(p.total, p.pagado + cuanto); return x
+        }
+        nueva.tx.append(item)
+        return Hecho(libreta: nueva, item: item)
+    }
+
+    /// Sumar o restar a lo ahorrado de una meta, sin bajar de cero.
+    static func ajusteDeMeta(_ l: CNLibreta, id: Int, delta: Double) -> CNLibreta {
+        var nueva = l
+        nueva.metas = nueva.metas.map { m in
+            guard m.id == id else { return m }
+            var x = m; x.ahorrado = max(0, m.ahorrado + delta); return x
+        }
+        return nueva
+    }
+
+    /// Lo mismo con lo pagado de un préstamo, sin pasarse del total.
+    static func ajusteDePrestamo(_ l: CNLibreta, id: Int, delta: Double) -> CNLibreta {
+        var nueva = l
+        nueva.prestamos = nueva.prestamos.map { p in
+            guard p.id == id else { return p }
+            var x = p; x.pagado = max(0, min(p.total, p.pagado + delta)); return x
+        }
+        return nueva
+    }
+
     /// Un número que puede venir como número o como texto.
     private static func numero(_ v: Any?) -> Double {
         if let d = v as? Double { return d }

@@ -3109,6 +3109,555 @@
       }
     }
   },
+  "dineroCasos": {
+    "aportar a una meta": {
+      "hay": true
+    },
+    "aportar sin decir de dónde": {
+      "hay": true
+    },
+    "aportar cero no hace nada": {
+      "hay": false
+    },
+    "abonar a un préstamo": {
+      "hay": true
+    },
+    "abonar más de lo que falta": {
+      "hay": true
+    },
+    "abonar con la tarjeta": {
+      "hay": true
+    },
+    "subir lo ahorrado de una meta": {
+      "hay": true
+    },
+    "bajar lo ahorrado sin pasar de cero": {
+      "hay": true
+    },
+    "subir lo pagado de un préstamo": {
+      "hay": true
+    },
+    "no se paga más de lo que se debe": {
+      "hay": true
+    }
+  },
+  "dinero": {
+    "aportar a una meta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 45000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 20000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 120000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": {
+          "tipo": "Ahorro",
+          "categoria": "Ahorro",
+          "monto": 5000,
+          "medio": "cuenta:1",
+          "meta": 1,
+          "prestamo": 0
+        }
+      }
+    },
+    "aportar sin decir de dónde": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 49000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 16000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 120000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": {
+          "tipo": "Ahorro",
+          "categoria": "Ahorro",
+          "monto": 1000,
+          "medio": "cuenta:1",
+          "meta": 1,
+          "prestamo": 0
+        }
+      }
+    },
+    "aportar cero no hace nada": {
+      "sale": null
+    },
+    "abonar a un préstamo": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 40000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 15000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 130000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": {
+          "tipo": "Gasto Fijo",
+          "categoria": "Deudas",
+          "monto": 10000,
+          "medio": "cuenta:1",
+          "meta": 0,
+          "prestamo": 20
+        }
+      }
+    },
+    "abonar más de lo que falta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": -130000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 15000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 300000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": {
+          "tipo": "Gasto Fijo",
+          "categoria": "Deudas",
+          "monto": 180000,
+          "medio": "cuenta:1",
+          "meta": 0,
+          "prestamo": 20
+        }
+      }
+    },
+    "abonar con la tarjeta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 16000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 15000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 124000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": {
+          "tipo": "Gasto Fijo",
+          "categoria": "Deudas",
+          "monto": 4000,
+          "medio": "tarjeta:10",
+          "meta": 0,
+          "prestamo": 20
+        }
+      }
+    },
+    "subir lo ahorrado de una meta": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 22000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 120000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": null
+      }
+    },
+    "bajar lo ahorrado sin pasar de cero": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 0
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 120000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": null
+      }
+    },
+    "subir lo pagado de un préstamo": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 15000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 125000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": null
+      }
+    },
+    "no se paga más de lo que se debe": {
+      "sale": {
+        "cuentas": [
+          {
+            "id": 1,
+            "saldo": 50000
+          },
+          {
+            "id": 2,
+            "saldo": 3000
+          }
+        ],
+        "tarjetas": [
+          {
+            "id": 10,
+            "saldo": 12000
+          },
+          {
+            "id": 11,
+            "saldo": 0
+          }
+        ],
+        "metas": [
+          {
+            "id": 1,
+            "ahorrado": 15000
+          },
+          {
+            "id": 2,
+            "ahorrado": 20000
+          },
+          {
+            "id": 3,
+            "ahorrado": 50000
+          }
+        ],
+        "prestamos": [
+          {
+            "id": 20,
+            "pagado": 300000
+          },
+          {
+            "id": 21,
+            "pagado": 15000
+          },
+          {
+            "id": 22,
+            "pagado": 10000
+          }
+        ],
+        "item": null
+      }
+    }
+  },
   "porCategoria": {
     "2026-09": [
       {
