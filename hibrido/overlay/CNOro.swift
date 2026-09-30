@@ -378,6 +378,16 @@ enum CNOro {
                 }
                 salida["subir"] = out
             }
+            // GZIP: el teléfono comprime un texto conocido y el banco lo
+            // descomprime. Si la cabecera, el deflate o el CRC están mal, no se
+            // puede descomprimir — y ese fallo solo aparecería con las libretas
+            // grandes, o sea con quien más tiempo lleva usando la app.
+            if let g = raizF["gzip"] as? [String: Any], let texto = g["texto"] as? String,
+               let d = texto.data(using: .utf8), let apretado = CNGzip.comprime(d) {
+                salida["gzip"] = ["base64": apretado.base64EncodedString(),
+                                  "crudo": d.count, "apretado": apretado.count]
+            }
+
             if let casos = raizF["rechazoCasos"] as? [String: Any] {
                 var out: [String: Any] = [:]
                 for (nombre, caso) in casos {

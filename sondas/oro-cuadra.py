@@ -21,6 +21,7 @@ Se le pasa el fichero de oro y el log del simulador; busca la línea `CNORO:` qu
 escupe el Swift y compara los dos árboles, número a número.
 """
 import base64
+import gzip
 import json
 import re
 import sys
@@ -152,9 +153,29 @@ def main():
         return 1
 
     fallos = []
+    # GZIP aparte: no se compara número a número, se DESCOMPRIME. Es la única
+    # manera de saber si los bytes que el teléfono manda son un gzip de verdad y
+    # no un DEFLATE pelado —que es lo que da Apple— con la etiqueta de gzip
+    # puesta. El servidor rechazaría eso, y solo con las libretas grandes.
+    if 'gzip' in hay and 'gzip' in oro:
+        try:
+            crudo = gzip.decompress(base64.b64decode(hay['gzip']['base64'])).decode('utf-8')
+            if crudo != oro['gzip']['texto']:
+                fallos.append('gzip: se descomprime pero sale otro texto')
+            elif hay['gzip']['apretado'] >= hay['gzip']['crudo']:
+                fallos.append('gzip: comprimido ocupa más que sin comprimir ('
+                              + str(hay['gzip']['apretado']) + ' vs ' + str(hay['gzip']['crudo']) + ')')
+            else:
+                print('gzip: ' + str(hay['gzip']['crudo']) + ' → '
+                      + str(hay['gzip']['apretado']) + ' bytes, y se descomprime')
+        except (OSError, ValueError, KeyError) as e:
+            fallos.append('gzip: no se puede descomprimir lo que manda el teléfono — ' + str(e))
+
     # Solo lo que el Swift dice haber calculado: el oro lleva apartados que aún
     # no tienen equivalente, y culparle por ellos sería ruido.
     for apartado in hay:
+        if apartado == 'gzip':
+            continue
         if apartado in oro:
             compara(apartado, oro[apartado], hay[apartado], fallos)
 

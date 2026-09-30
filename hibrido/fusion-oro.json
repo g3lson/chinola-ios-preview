@@ -849,6 +849,9 @@
       ]
     }
   },
+  "gzip": {
+    "texto": "Chinola · una libreta con acentos, un signo − y bastante texto repetido para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. para que comprimir sirva de algo. "
+  },
   "rechazoCasos": {
     "atrasada": {
       "porque": "Hay que bajar la del servidor, conciliar y volver a subir.",

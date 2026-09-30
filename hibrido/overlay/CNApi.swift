@@ -81,6 +81,18 @@ enum CNApi {
      * @param metodo GET si no se dice otra cosa
      * @param cuerpo lo que se manda, ya como diccionario
      */
+    /**
+     * A PARTIR DE AQUÍ SE COMPRIME. El mismo número que la web
+     * (`DESDE_COMPRIMIR` en `src/nube.js`): por debajo, comprimir cuesta más de
+     * lo que ahorra.
+     *
+     * No es un detalle: la sincronización manda la libreta ENTERA en cada
+     * guardado, y con años de movimientos son megas por cada gasto anotado.
+     * Comprimida son unas décimas de eso. Sin esto, anotar un café con datos
+     * móviles sube medio mega.
+     */
+    static let DESDE_COMPRIMIR = 64 * 1024
+
     static func pide(_ ruta: String, metodo: String = "GET",
                      cuerpo: [String: Any]? = nil, espera: TimeInterval = 15) async throws -> [String: Any] {
         guard haySesion else { throw Fallo.sinSesion }
@@ -90,7 +102,14 @@ enum CNApi {
         req.timeoutInterval = espera
         req.setValue("application/json", forHTTPHeaderField: "content-type")
         req.setValue("Bearer " + vale, forHTTPHeaderField: "authorization")
-        if let c = cuerpo { req.httpBody = try? JSONSerialization.data(withJSONObject: c) }
+        if let c = cuerpo, let crudo = try? JSONSerialization.data(withJSONObject: c) {
+            if crudo.count > DESDE_COMPRIMIR, let apretado = CNGzip.comprime(crudo) {
+                req.httpBody = apretado
+                req.setValue("gzip", forHTTPHeaderField: "content-encoding")
+            } else {
+                req.httpBody = crudo
+            }
+        }
 
         let datos: Data, resp: URLResponse
         do { (datos, resp) = try await URLSession.shared.data(for: req) }
