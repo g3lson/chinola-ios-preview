@@ -421,6 +421,21 @@ enum CNTextos {
 /// El texto en el idioma puesto: lo que mandó la web, y si no, la tabla
 /// generada del mismo diccionario. En español los dos sobran: el propio Swift
 /// está escrito en español.
+/**
+ * UN MONTO ESCRITO A MANO, LEÍDO SIEMPRE IGUAL.
+ *
+ * La misma cuenta estaba escrita de dos maneras en la misma pantalla: el campo
+ * del monto quitaba las comas antes de leer el número —para que los botones − y
+ * + funcionaran con «50,000»— y el guardado hacía `Double(texto)` a secas, que
+ * con una coma dentro devuelve nada y se queda en CERO.
+ *
+ * O sea: escribías 50,000 de saldo, la pantalla te enseñaba 50,000, y se
+ * guardaba una cuenta con cero. Sin aviso, porque `?? 0` no es un error.
+ */
+func cnMonto(_ texto: String) -> Double {
+    Double(texto.replacingOccurrences(of: ",", with: "")) ?? 0
+}
+
 func cnT(_ es: String) -> String {
     CNTextos.mapa[es] ?? CNTextosGenerados.de(CNTextos.idioma)[es] ?? es
 }
@@ -921,7 +936,7 @@ struct CNTarjeta: Decodable, Identifiable { var id: Int = 0; var nombre: String 
     enum K: String, CodingKey { case id, nombre, banco, saldo, limite, corte, pago, color }
     var disponible: Double { max(0, limite - saldo) } }
 
-struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var total: Double = 0; var pagado: Double = 0; var sentido: String = "meDeben"; var color: String = "#825eb9"
+struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var total: Double = 0; var pagado: Double = 0; var sentido: String = "debo"; var color: String = "#825eb9"
     /// La cuota del mes y el día en que vence.
     ///
     /// Venían en los datos desde siempre y no se leían: el lado nativo solo
@@ -936,21 +951,30 @@ struct CNPrestamo: Decodable, Identifiable { var id: Int = 0; var nombre: String
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         total = (try? c.decodeIfPresent(Double.self, forKey: .total)) ?? 0
         pagado = (try? c.decodeIfPresent(Double.self, forKey: .pagado)) ?? 0
-        sentido = (try? c.decodeIfPresent(String.self, forKey: .sentido)) ?? "meDeben"
+        // «DEBO» CUANDO NO VIENE, y no «me deben»: la web pregunta
+        // `sentido !== 'meDeben'` para saber lo que debes, así que un préstamo
+        // sin el campo cuenta ahí. Con «meDeben» por defecto contaba justo al
+        // revés, y el mismo préstamo salía como deuda en la web y como dinero a
+        // tu favor en el teléfono: el patrimonio se iba el doble de su importe.
+        sentido = (try? c.decodeIfPresent(String.self, forKey: .sentido)) ?? "debo"
         cuota = (try? c.decodeIfPresent(Double.self, forKey: .cuota)) ?? 0
         dia = (try? c.decodeIfPresent(Int.self, forKey: .dia)) ?? 1
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#825eb9" }
     enum K: String, CodingKey { case id, nombre, total, pagado, sentido, color, cuota, dia }
     var pendiente: Double { max(0, total - pagado) } }
 
-struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var mensual: Double = 0; var color: String = "#825eb9"; var icono: String = ""
+struct CNMeta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var meta: Double = 0; var ahorrado: Double = 0; var mensual: Double = 0; var color: String = ""; var icono: String = ""
     init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
         id = (try? c.decodeIfPresent(Int.self, forKey: .id)) ?? 0
         nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
         meta = (try? c.decodeIfPresent(Double.self, forKey: .meta)) ?? 0
         ahorrado = (try? c.decodeIfPresent(Double.self, forKey: .ahorrado)) ?? 0
         mensual = (try? c.decodeIfPresent(Double.self, forKey: .mensual)) ?? 0
-        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#825eb9"
+        // Vacío, como el icono: «no lo eligió nadie». Con el lila puesto por
+        // defecto, la rama que usa el color del TEMA no se ejecutaba nunca, y
+        // una meta sin color propio salía morada en el teléfono mientras en la
+        // web seguía la paleta que tuvieras puesta.
+        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? ""
         icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "" }
     enum K: String, CodingKey { case id, nombre, meta, ahorrado, mensual, color, icono }
     var progreso: Double { meta > 0 ? min(1, ahorrado / meta) : 0 } }
@@ -3576,7 +3600,12 @@ struct CNNuevoMov: View {
     @State private var tipo = 2
     @State private var monto = ""
     @State private var concepto = ""
-    @State private var cuentaId = 0
+    /// EL MEDIO ENTERO —«cuenta:3», «tarjeta:10», «efectivo»— y no el número de
+    /// una cuenta. Guardando solo el número, una tarjeta no cabía: no se podía
+    /// anotar un gasto con la tarjeta desde aquí, y al EDITAR uno que sí lo era
+    /// se reescribía como pagado con la primera cuenta. Eso mueve dinero solo:
+    /// la deuda de la tarjeta baja y la cuenta se queda con el cargo.
+    @State private var medio = ""
     @State private var categoria = ""
     @State private var fecha = Date()
     @State private var repetir = false
@@ -3616,8 +3645,17 @@ struct CNNuevoMov: View {
                         }
                         Text(cnT("Otros")).tag("")
                     }
-                    Picker(cnT("Pagado con"), selection: $cuentaId) {
-                        ForEach(datos.libreta.cuentas) { c in Text(c.nombre).tag(c.id) }
+                    Picker(cnT("Pagado con"), selection: $medio) {
+                        ForEach(datos.libreta.cuentas) { c in
+                            Text(c.nombre).tag("cuenta:\(c.id)")
+                        }
+                        // Las tarjetas también: gastar con la tarjeta es como
+                        // sube la deuda, y sin esta parte la pantalla de
+                        // Tarjetas no podía llenarse desde el teléfono.
+                        ForEach(datos.libreta.tarjetas) { t in
+                            Text(t.nombre).tag("tarjeta:\(t.id)")
+                        }
+                        Text(cnT("Efectivo")).tag("efectivo")
                     }
                     DatePicker(cnT("Fecha"), selection: $fecha, displayedComponents: .date)
                 }
@@ -3648,7 +3686,7 @@ struct CNNuevoMov: View {
                     Button { guardar() } label: {
                         Text(cnT("Guardar")).font(cnLetra(17, .semibold))
                     }
-                    .disabled((Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0) <= 0)
+                    .disabled(cnMonto(monto) <= 0)
                 }
             }
         }
@@ -3661,11 +3699,16 @@ struct CNNuevoMov: View {
                 concepto = m.concepto
                 categoria = m.categoria
                 repetir = m.recurrente
-                if m.medio.hasPrefix("cuenta:"), let id = Int(m.medio.dropFirst(7)) { cuentaId = id }
+                // Tal cual venga: si se pagó con la tarjeta, se queda con la
+                // tarjeta. Leyendo solo «cuenta:» se perdía y al guardar se
+                // reescribía como pagado con la primera cuenta.
+                medio = m.medio
                 let f = CNFormateadores.iso
                 if let d = f.date(from: m.fecha) { fecha = d }
             }
-            if cuentaId == 0 { cuentaId = datos.libreta.cuentas.first?.id ?? 0 }
+            if medio.isEmpty {
+                medio = datos.libreta.cuentas.first.map { "cuenta:\($0.id)" } ?? "efectivo"
+            }
             // El teclado abierto de entrada: lo primero que se anota es cuánto.
             if editar == nil {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { montoPuesto = true }
@@ -3692,14 +3735,14 @@ struct CNNuevoMov: View {
     }
 
     private func guardar() {
-        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        let n = cnMonto(monto)
         guard n > 0 else { onClose(); return }
         let f = CNFormateadores.iso
         var dict: [String: Any] = [
             "concepto": concepto.isEmpty ? (categoria.isEmpty ? "Movimiento" : categoria) : concepto,
             "categoria": categoria.isEmpty ? "Otros" : categoria,
             "tipo": mapa[tipo], "monto": n, "fecha": f.string(from: fecha),
-            "medio": "cuenta:\(cuentaId)", "recurrente": repetir
+            "medio": medio, "recurrente": repetir
         ]
         if let m = editar { dict["id"] = m.id; datos.onEditarMov(dict) } else { datos.onCrearMov(dict) }
         onClose()
@@ -4864,7 +4907,7 @@ struct CNLimiteHoja: View {
     @State private var texto = ""
     var body: some View {
         CNHoja(titulo: cnT("Presupuesto de {n}", nombre), onClose: onClose,
-               onGuardar: { onGuardar(Double(texto.replacingOccurrences(of: ",", with: "")) ?? 0) }) {
+               onGuardar: { onGuardar(cnMonto(texto)) }) {
             CNMontoCampo(monto: $texto, paso: 500)
             Text(cnT("Cuánto quieres gastar al mes en esta categoría. Déjalo en 0 para dejarla sin presupuesto."))
                 .font(cnLetra(12.5)).foregroundColor(CNC.pmut)

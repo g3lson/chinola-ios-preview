@@ -196,7 +196,7 @@ struct CNMontoCampo: View {
     var paso: Double = 100
     /// Si el grupo ya lleva su título encima, poner «MONTO» otra vez sobra.
     var rotulo: String? = "MONTO"
-    private var valor: Double { Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0 }
+    private var valor: Double { cnMonto(monto) }
     private func fijar(_ n: Double) {
         let v = max(0, n)
         monto = v == v.rounded() ? String(Int(v)) : String(format: "%.2f", v)
@@ -456,7 +456,7 @@ struct CNMontoHoja: View {
     }
 
     private func guardar() {
-        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        let n = cnMonto(monto)
         guard n > 0 else { onClose(); return }
         var form: [String: Any] = ["monto": n]
         if tipo != "pagoTarjeta" { form["medio"] = medio }
@@ -499,7 +499,7 @@ struct CNFormCuenta: View {
     private func guardar() {
         let nm = nombre.trimmingCharacters(in: .whitespaces); guard !nm.isEmpty else { return }
         let ic = clases.first { $0.0 == clase }?.2 ?? "banco"
-        datos.onGuardarHoja("cuenta", ["nombre": nm, "banco": banco, "saldo": Double(saldo) ?? 0, "clase": clase, "icono": ic, "color": color], nil)
+        datos.onGuardarHoja("cuenta", ["nombre": nm, "banco": banco, "saldo": cnMonto(saldo), "clase": clase, "icono": ic, "color": color], nil)
         onClose()
     }
 }
@@ -540,7 +540,7 @@ struct CNFormTarjeta: View {
 
     private func guardar() {
         let nm = nombre.trimmingCharacters(in: .whitespaces); guard !nm.isEmpty else { return }
-        datos.onGuardarHoja("tarjeta", ["nombre": nm, "banco": banco, "limite": Double(limite) ?? 0, "saldo": Double(saldo) ?? 0, "corte": Int(corte) ?? 20, "pago": Int(pago) ?? 5, "color": color], nil)
+        datos.onGuardarHoja("tarjeta", ["nombre": nm, "banco": banco, "limite": cnMonto(limite), "saldo": cnMonto(saldo), "corte": Int(corte) ?? 20, "pago": Int(pago) ?? 5, "color": color], nil)
         onClose()
     }
 }
@@ -581,7 +581,7 @@ struct CNFormPrestamo: View {
 
     private func guardar() {
         let nm = nombre.trimmingCharacters(in: .whitespaces); guard !nm.isEmpty else { return }
-        datos.onGuardarHoja("prestamo", ["nombre": nm, "entidad": entidad, "total": Double(total) ?? 0, "pagado": Double(pagado) ?? 0, "sentido": sentido, "color": color], nil)
+        datos.onGuardarHoja("prestamo", ["nombre": nm, "entidad": entidad, "total": cnMonto(total), "pagado": cnMonto(pagado), "sentido": sentido, "color": color], nil)
         onClose()
     }
 }
@@ -624,7 +624,7 @@ struct CNFormMeta: View {
 
     private func guardar() {
         let nm = nombre.trimmingCharacters(in: .whitespaces); guard !nm.isEmpty else { return }
-        datos.onGuardarHoja("meta", ["nombre": nm, "objetivo": Double(objetivo) ?? 0, "mensual": Double(mensual) ?? 0, "icono": icono, "color": color], nil)
+        datos.onGuardarHoja("meta", ["nombre": nm, "objetivo": cnMonto(objetivo), "mensual": cnMonto(mensual), "icono": icono, "color": color], nil)
         onClose()
     }
 }
@@ -675,7 +675,7 @@ struct CNFormTransferencia: View {
         HStack(spacing: 12) { cnCuadroHoja(ic, tinte); Text(t).font(cnLetra(16)).foregroundColor(CNC.ink); Spacer(minLength: 8); Text(val).font(cnLetra(15)).foregroundColor(CNC.pmut); Image(systemName: "chevron.up.chevron.down").font(cnLetra(11, .semibold)).foregroundColor(CNC.pmut.opacity(0.6)) }.padding(.horizontal, 14).padding(.vertical, 11)
     }
     private func guardar() {
-        let n = Double(monto.replacingOccurrences(of: ",", with: "")) ?? 0
+        let n = cnMonto(monto)
         guard n > 0, !destino.isEmpty, destino != medio else { onClose(); return }
         datos.onGuardarHoja("transferencia", ["monto": n, "medio": medio, "destino": destino, "concepto": concepto], nil)
         onClose()

@@ -49,6 +49,14 @@
         "sentido": "meDeben",
         "cuota": 2000,
         "dia": 20
+      },
+      {
+        "id": 22,
+        "nombre": "Viejo sin sentido",
+        "total": 30000,
+        "pagado": 10000,
+        "cuota": 1500,
+        "dia": 12
       }
     ],
     "categorias": [
@@ -591,10 +599,10 @@
   "saldos": {
     "enCuentas": 53000,
     "deudaTC": 12000,
-    "deudaPr": 180000,
+    "deudaPr": 200000,
     "porCobrarPr": 25000,
-    "pendienteTodos": 205000,
-    "patrimonio": -114000
+    "pendienteTodos": 225000,
+    "patrimonio": -134000
   },
   "presupuesto": {
     "2026-09": {
@@ -643,10 +651,10 @@
   },
   "cuentas": {
     "conDeuda": {
-      "debo": 180000,
+      "debo": 200000,
       "meDeben": 25000,
       "soloMeDeben": false,
-      "cuanto": 180000
+      "cuanto": 200000
     },
     "soloMeDeben": {
       "debo": 0,
@@ -687,13 +695,13 @@
       "tono": "tinta"
     },
     "2026-09|kpi-deuda": {
-      "monto": 217000,
+      "monto": 237000,
       "nota": "tarjetas + préstamos",
       "pct": 0,
       "tono": "ambar"
     },
     "2026-09|kpi-patrimonio": {
-      "monto": -114000,
+      "monto": -134000,
       "nota": "cuentas − deudas",
       "pct": 0,
       "tono": "negativo"
@@ -717,13 +725,13 @@
       "tono": "tinta"
     },
     "2026-08|kpi-deuda": {
-      "monto": 217000,
+      "monto": 237000,
       "nota": "tarjetas + préstamos",
       "pct": 0,
       "tono": "ambar"
     },
     "2026-08|kpi-patrimonio": {
-      "monto": -114000,
+      "monto": -134000,
       "nota": "cuentas − deudas",
       "pct": 0,
       "tono": "negativo"
@@ -1675,14 +1683,24 @@
         "dias": 14,
         "plazo": "en 14 d",
         "tono": "positivo"
+      },
+      {
+        "tipo": "prestamo",
+        "nombre": "Viejo sin sentido",
+        "monto": 1500,
+        "corte": 0,
+        "dia": 12,
+        "dias": 16,
+        "plazo": "en 16 d",
+        "tono": "positivo"
       }
     ]
   },
   "consejo": {
     "2026-09": {
       "clave": "cuotas",
-      "monto": 10500,
-      "pct": 13
+      "monto": 12000,
+      "pct": 15
     },
     "corto": {
       "clave": "corto",
