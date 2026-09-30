@@ -7807,8 +7807,11 @@ struct CNBotonFlotante: View {
     @ObservedObject var datos: CNDatos
     @State private var arrastre: CGSize = .zero
     @State private var llevando = false
-    /// Lo que el dedo ya había andado cuando el gesto por fin avisó.
-    @State private var salida: CGSize = .zero
+    /// Si el dedo está encima ahora mismo, sin haberse movido todavía.
+    @State private var apretado = false
+    /// Los dos movimientos de fondo, a distinto compás.
+    @State private var alienta = false
+    @State private var ladea = false
 
     private let lado: CGFloat = 56
     private let margen: CGFloat = 14
@@ -7840,42 +7843,52 @@ struct CNBotonFlotante: View {
                     .position(x: libre.minX + libre.width * mando.x + lado / 2 + arrastre.width,
                               y: libre.minY + libre.height * mando.y + lado / 2 + arrastre.height)
                     .gesture(
-                        DragGesture(minimumDistance: 4)
+                        // DESDE EL PRIMER PUNTO, NO A LOS CUATRO.
+                        //
+                        // Con `minimumDistance: 4` el gesto no decía nada hasta
+                        // haber andado cuatro puntos, y entonces el primer aviso
+                        // los traía andados: un brinco seco al empezar. Se
+                        // guardaba ese tramo y se restaba, que arreglaba el
+                        // brinco pero no el retraso — los cuatro primeros puntos
+                        // el botón seguía clavado.
+                        //
+                        // A cero no hay retraso ni tramo que restar: el botón
+                        // sale con el dedo desde el primer milímetro. El toque
+                        // no se pierde porque se decide al soltar, por lo poco
+                        // que se movió, que es lo que un toque es de verdad.
+                        DragGesture(minimumDistance: 0)
                             .onChanged { v in
-                                // EL PRIMER TRAMO NO CUENTA.
-                                //
-                                // El gesto no dice nada hasta que el dedo se ha
-                                // movido 4 puntos, y entonces el primer aviso ya
-                                // trae esos 4 andados: el botón daba un brinco
-                                // seco al empezar. Guardando ese primer tramo y
-                                // restándolo, el botón arranca quieto y desde
-                                // ahí sigue al dedo punto por punto.
-                                if !llevando {
+                                if !apretado { apretado = true }
+                                let anda = hypot(v.translation.width, v.translation.height)
+                                // Cuatro puntos para considerarlo un arrastre: por
+                                // debajo es el temblor normal de un dedo quieto, y
+                                // moverlo por eso se ve como un tic.
+                                if !llevando && anda > 4 {
                                     llevando = true
-                                    salida = v.translation
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 }
-                                arrastre = CGSize(width: v.translation.width - salida.width,
-                                                  height: v.translation.height - salida.height)
+                                if llevando { arrastre = v.translation }
                             }
                             .onEnded { v in
+                                apretado = false
+                                let anda = hypot(v.translation.width, v.translation.height)
+                                // Soltar sin haberse movido ES el toque.
+                                guard llevando || anda > 4 else {
+                                    UISelectionFeedbackGenerator().selectionChanged()
+                                    mando.alTocar()
+                                    return
+                                }
                                 // Al soltar, al borde más cercano: en medio de
                                 // la pantalla tapa justo lo que estás mirando.
-                                // Con el mismo descuento del primer tramo: si
-                                // no, el sitio final no es donde está el dedo.
-                                let andado = CGSize(width: v.translation.width - salida.width,
-                                                    height: v.translation.height - salida.height)
-                                let px = libre.minX + libre.width * mando.x + andado.width
-                                let py = libre.minY + libre.height * mando.y + andado.height
+                                let px = libre.minX + libre.width * mando.x + v.translation.width
+                                let py = libre.minY + libre.height * mando.y + v.translation.height
                                 let nx: CGFloat = px + lado / 2 < g.size.width / 2 ? 0 : 1
                                 let ny = max(0, min(1, libre.height > 0 ? (py - libre.minY) / libre.height : 0.5))
                                 // TODO DENTRO DE LA MISMA ANIMACIÓN.
                                 //
-                                // `arrastre` se ponía a cero FUERA: en ese
-                                // mismo fotograma el botón saltaba de golpe a
-                                // la posición nueva y la animación no se veía.
-                                // Desde fuera parecía que aparecía donde
-                                // levantaste el dedo, sin movimiento.
+                                // `arrastre` se ponía a cero FUERA: en ese mismo
+                                // fotograma el botón saltaba de golpe a la
+                                // posición nueva y la animación no se veía.
                                 llevando = false
                                 withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
                                     arrastre = .zero
@@ -7901,7 +7914,18 @@ struct CNBotonFlotante: View {
     }
 
     private var boton: some View {
-        Button { UISelectionFeedbackGenerator().selectionChanged(); mando.alTocar() } label: {
+        // NI UN `Button`, NI UN GESTO A SECAS.
+        //
+        // Era un `Button` con el arrastre colgado encima, y ahí estaba lo de
+        // «solo se mueve cuando levanto el dedo». Un `Button` se QUEDA el dedo
+        // mientras decide si aquello fue un toque; hasta que no suelta, el
+        // arrastre no ve nada. Por eso la primera mitad del gesto no pintaba
+        // nada y el botón aparecía de golpe al final.
+        //
+        // Sin `Button`: el dibujo, un arrastre que lo lleva, y el toque como lo
+        // que de verdad es —soltar sin haberse movido—. Así el dedo manda desde
+        // el primer punto.
+        ZStack {
             ZStack {
                 // SIN PLATO DETRÁS DEL PERSONAJE.
                 //
@@ -7922,11 +7946,32 @@ struct CNBotonFlotante: View {
                 }
             }
             .frame(width: lado, height: lado)
-            .shadow(color: .black.opacity(llevando ? 0.22 : 0.13), radius: llevando ? 14 : 7, y: llevando ? 6 : 3)
-            .scaleEffect(llevando ? 1.08 : 1)
+            // LA VIDA DEL BOTÓN.
+            //
+            // El dibujo que llega es una estampa: no parpadea ni mira. Si
+            // además se queda completamente quieto, un botón redondo flotando
+            // es un adhesivo pegado a la pantalla. Lo que lo hace estar ahí son
+            // dos movimientos muy pequeños y a distinto compás —respira en 3,7
+            // segundos y se ladea en 6,1—, que al no coincidir nunca no se
+            // dejan pillar el patrón. Grande se notaría; así solo se nota que
+            // está vivo.
+            .scaleEffect(alienta ? 1.028 : 0.985)
+            .rotationEffect(.degrees(ladea ? 2.2 : -2.2))
+            // Y al agarrarlo crece y la sombra se despega: es lo que dice que
+            // lo tienes cogido.
+            .scaleEffect(llevando ? 1.1 : (apretado ? 0.93 : 1))
+            .shadow(color: .black.opacity(llevando ? 0.22 : 0.13),
+                    radius: llevando ? 14 : 7, y: llevando ? 6 : 3)
+            .animation(.spring(response: 0.26, dampingFraction: 0.62), value: llevando)
+            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: apretado)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 3.7).repeatForever(autoreverses: true)) { alienta = true }
+                withAnimation(.easeInOut(duration: 6.1).repeatForever(autoreverses: true)) { ladea = true }
+            }
         }
-        .buttonStyle(.plain)
+        .contentShape(Circle())
         .accessibilityLabel(cnT("Hablar con Chino"))
+        .accessibilityAddTraits(.isButton)
     }
 }
 
