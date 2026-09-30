@@ -204,6 +204,26 @@ jobs:
           echo "=== lo que dijo la web (y lo nativo) ==="
           xcrun simctl spawn "$UDID" log show --last 4m --style compact \
             --predicate 'process == "App" AND (eventMessage CONTAINS "CNFLOTA2" OR eventMessage CONTAINS "CNSONDA" OR eventMessage CONTAINS "CNRELOJ" OR eventMessage CONTAINS "CN" OR eventMessage CONTAINS "Chinola" OR eventMessage CONTAINS "rror")' 2>/dev/null | head -60 || true
+          # ¿LA APP LLEGÓ A ENTRAR?
+          #
+          # La sonda dice el paso en cada arranque, y decía `"paso":"auth"` una
+          # y otra vez sin que nadie lo mirara: la app se quedaba en la pantalla
+          # de acceso y el banco fotografiaba pantallas vacías dando «success».
+          # Un dato que el banco imprime y no comprueba es un dato que no
+          # existe.
+          xcrun simctl spawn "$UDID" log show --last 4m --style compact \
+            --predicate 'eventMessage CONTAINS "CNSONDA"' 2>/dev/null > /tmp/sonda.txt || true
+          if grep -q "CNSONDA" /tmp/sonda.txt; then
+            if grep -q '"paso":"app"' /tmp/sonda.txt; then
+              echo "la app entró ✓"
+            else
+              echo "::error::la app NO entró: $(grep -o '\"paso\":\"[a-z]*\"' /tmp/sonda.txt | sort -u | tr '\n' ' ')"
+              exit 1
+            fi
+          else
+            echo "(sin sonda: no se puede decir si entró)"
+          fi
+
           echo "=== ¿se hizo el reparenteo? ==="
           xcrun simctl spawn "$UDID" log show --last 3m --predicate 'eventMessage CONTAINS "CNRAIZ"' --style compact 2>/dev/null | head -5 || true
           echo "=== ¿sigue vivo el proceso? ==="
