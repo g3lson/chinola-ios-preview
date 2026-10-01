@@ -1528,8 +1528,13 @@ final class CNDatos: ObservableObject {
     /// Cualquier detalle (cuenta, tarjeta, préstamo, meta, categoría).
     @Published var detalle: CNDetalle? = nil
     var onDetalleAccion: (String, Int) -> Void = { _, _ in }
+    /// Abrir una hoja de Perfil por su nombre: «chino-ayuda», «chino-aviso».
+    var onPerfilHoja: (String) -> Void = { _ in }
     /// Abrir una hoja de monto del teléfono: abono, aporte o pago de tarjeta.
     var onHojaDeMonto: (String, Int, Double) -> Void = { _, _, _ in }
+    /// Abrir el movimiento nuevo del teléfono con algo ya puesto: la categoría
+    /// desde la que vienes, o la cuenta.
+    var onNuevoMovCon: (String, String) -> Void = { _, _ in }
 
     /// Un botón del detalle, por su única puerta.
     ///
@@ -1537,6 +1542,9 @@ final class CNDatos: ObservableObject {
     /// `onDetalleAccion`, y añadir una forma nueva de abrir obligaba a
     /// acordarse de los tres. Aquí se decide una vez.
     func tocaBotonDetalle(_ b: CNDetalle.Boton) {
+        if b.abre == "movCat" || b.abre == "movMedio" {
+            onNuevoMovCon(b.abre, b.conQue); return
+        }
         if !b.abre.isEmpty { onHojaDeMonto(b.abre, b.cual, b.monto); return }
         onDetalleAccion("boton", b.id)
     }
@@ -1565,6 +1573,27 @@ final class CNDatos: ObservableObject {
     /// mes sin que la web conteste, verás el mes de antes. Pero la diferencia
     /// entre eso y una pantalla en blanco es toda.
     private static let guardados = "cn.modelos."
+    /// Lo último que se cargó de cada cosa, para no volver a cargarlo igual.
+    private var ultimo: [String: String] = [:]
+
+    /**
+     * ¿ESTO ES NUEVO, O ES LO MISMO OTRA VEZ?
+     *
+     * La web manda su modelo en cada refresco, y el refresco salta al abrir una
+     * pantalla, al volver, al cambiar de pestaña. Casi siempre es EXACTAMENTE
+     * el mismo texto que ya está puesto, y aun así se volvía a aplicar: el tema
+     * se reasignaba, el sello subía y SwiftUI repintaba la pantalla entera.
+     *
+     * Eso es lo que se ve como un saltito al abrir una subpantalla de Perfil:
+     * la letra se recoloca un pelo porque todo se vuelve a medir, sin que haya
+     * cambiado nada. Comparando el texto se acabó: lo mismo no se repinta.
+     */
+    private func cambio(_ que: String, _ json: String) -> Bool {
+        guard ultimo[que] != json else { return false }
+        ultimo[que] = json
+        return true
+    }
+
     private func guarda(_ que: String, _ json: String) {
         guard json.count > 2 else { return }          // un modelo vacío no se guarda
         UserDefaults.standard.set(json, forKey: Self.guardados + que)
@@ -1602,13 +1631,21 @@ final class CNDatos: ObservableObject {
     /// Un modelo a medias (leído mientras la web repinta) NO pisa al bueno:
     /// así la pantalla no se queda en blanco al cambiar de pestaña.
     func cargarPlan(json: String) {
+        // El `defer` va PRIMERO: aunque el modelo sea el mismo, el refresco
+        // tiene que correr igual —depende también de la libreta, que cambia
+        // por su cuenta—. Lo que se evita es volver a aplicar lo idéntico.
         defer { refrescarPlan() }
+        guard cambio("plan", json) else { return }
         guard let m = CNPlanModelo.desde(json: json) else { return }
         if m.listo { guarda("plan", json) }
         if m.listo || plan == nil { plan = m }
     }
     func cargarCuentas(json: String) {
+        // El `defer` va PRIMERO: aunque el modelo sea el mismo, el refresco
+        // tiene que correr igual —depende también de la libreta, que cambia
+        // por su cuenta—. Lo que se evita es volver a aplicar lo idéntico.
         defer { refrescarCuentas() }
+        guard cambio("cuentas", json) else { return }
         guard let m = CNCuentasModelo.desde(json: json) else { return }
         if m.listo { guarda("cuentas", json) }
         if m.listo || cuentas == nil { cuentas = m }
@@ -1994,7 +2031,10 @@ final class CNDatos: ObservableObject {
             CNResumenModelo.Barra(x: $0.x, y: $0.y, w: $0.w, h: $0.h, color: colorDe($0.serie))
         }
     }
-    func cargarPerfil(json: String) { if let p = CNPerfilInfo.desde(json: json) { perfil = p; guarda("perfil", json) } }
+    func cargarPerfil(json: String) {
+        guard cambio("perfil", json) else { return }
+        if let p = CNPerfilInfo.desde(json: json) { perfil = p; guarda("perfil", json) }
+    }
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
     /// con los colores nuevos (los de CNC son calculados).
     @Published var selloTema = 0
@@ -2025,6 +2065,7 @@ final class CNDatos: ObservableObject {
         seccion = x
     }
     func cargarAjustes(json: String) {
+        guard cambio("ajustes", json) else { return }
         if let a = CNAjustes.desde(json: json) { ajustes = a; guarda("ajustes", json) }
     }
     func cargarResumen(json: String) {
@@ -2047,6 +2088,9 @@ final class CNDatos: ObservableObject {
     }
     func cargarTema(json: String) {
         guarda("tema", json)
+        // El mismo tema otra vez no se vuelve a poner: subir el sello repinta
+        // TODA la app, y de ahí el saltito al abrir una pantalla.
+        guard cambio("tema", json) else { return }
         guard let p = CNPaletaTema.desde(json: json) else { return }
         CNC.tema = p
         selloTema += 1
@@ -3298,6 +3342,8 @@ struct CNDetalle {
     struct Boton: Identifiable {
         var id: Int; var label = ""; var estilo = "contorno"
         var abre = ""; var cual = 0; var monto: Double = 0
+        /// Para «movCat» y «movMedio»: la categoría o el medio que ya se sabe.
+        var conQue = ""
     }
     struct Dato: Identifiable { var id: Int; var label = ""; var valor = ""; var color = "" }
     struct Columna: Identifiable { var id: Int; var label = ""; var pct: Double = 0; var fuerte = false; var color = ""; var colorMes = "" }
@@ -3342,7 +3388,8 @@ struct CNDetalle {
         }
         m.botones = l(r, "botones").enumerated().map {
             Boton(id: $0.offset, label: s($0.element, "label"), estilo: s($0.element, "estilo"),
-                  abre: s($0.element, "abre"), cual: Int(n($0.element, "cual")), monto: n($0.element, "monto"))
+                  abre: s($0.element, "abre"), cual: Int(n($0.element, "cual")), monto: n($0.element, "monto"),
+                  conQue: s($0.element, "conQue"))
         }
         m.datos = l(r, "datos").enumerated().map { Dato(id: $0.offset, label: s($0.element, "label"), valor: s($0.element, "valor"), color: s($0.element, "color")) }
         if let bb = r["barras"] as? [String: Any] {
@@ -3791,6 +3838,14 @@ struct CNNuevoMov: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
     var editar: CNMov? = nil
+    /// Con qué viene puesto cuando se abre desde una pantalla que ya lo sabe.
+    ///
+    /// «Nuevo gasto aquí» dentro de una categoría y «Nuevo movimiento» dentro
+    /// de una cuenta abrían la hoja DE LA WEB para poder dejar eso puesto. Era
+    /// de las últimas puertas que quedaban: la app se veía igual —es el mismo
+    /// diseño— pero la dibujaba el webview.
+    var categoriaInicial: String = ""
+    var medioInicial: String = ""
     @State private var tipo = 2
     @State private var monto = ""
     @State private var concepto = ""
@@ -3864,7 +3919,7 @@ struct CNNuevoMov: View {
             .font(cnLetra(17))
             .foregroundColor(CNC.ink)
             .tint(CNC.pos)
-            .navigationTitle(cnT(editar == nil ? "Nuevo movimiento" : "Editar movimiento"))
+            .navigationTitle(editar == nil ? cnT("Nuevo movimiento") : cnT("Editar movimiento"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -3900,6 +3955,9 @@ struct CNNuevoMov: View {
                 let f = CNFormateadores.iso
                 if let d = f.date(from: m.fecha) { fecha = d }
             }
+            // Lo que ya sabía la pantalla de la que vienes, antes que el resto.
+            if medio.isEmpty, !medioInicial.isEmpty { medio = medioInicial }
+            if categoria.isEmpty, !categoriaInicial.isEmpty { categoria = categoriaInicial }
             if medio.isEmpty { medio = cnMedioPorDefecto(datos.libreta) }
             // El teclado abierto de entrada: lo primero que se anota es cuánto.
             if editar == nil {
@@ -6872,14 +6930,37 @@ struct CNPerfil: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    // La marca, que además es la puerta de Chino: se mantiene
-                    // pulsada y sale. Estaba junto al título de antes.
-                    ZStack {
-                        Circle().fill(CNC.side).frame(width: 26, height: 26)
-                        Circle().fill(CNC.acc).frame(width: 10, height: 10)
+                    /*
+                     ACERCA DE, EN VEZ DE UN LOGO QUE NO PARECÍA UN BOTÓN.
+
+                     Aquí estaba la marca —dos círculos— y su única función era
+                     abrirse MANTENIÉNDOLA PULSADA. Nadie mantiene pulsado un
+                     logo: era una puerta que no existía para quien no la
+                     conociera ya, en el sitio donde cualquier app pone la
+                     versión y «avisar de un problema».
+
+                     Ahora es eso, y la puerta de Chino sigue estando —ahora
+                     dicha con palabras, que es como se encuentra—.
+                     */
+                    Menu {
+                        Section(CNDatos.diagnostico()) {
+                            Button {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                datos.onPerfilHoja("chino-ayuda")
+                            } label: { Label(cnT("Qué sabe hacer Chino"), systemImage: "sparkles") }
+                            Button {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                datos.onPerfilHoja("chino-aviso")
+                            } label: { Label(cnT("Avisar de un problema"), systemImage: "exclamationmark.bubble") }
+                            Button {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                datos.onMascota()
+                            } label: { Label(cnT("Hablar con Chino"), systemImage: "bubble.left.and.text.bubble.right") }
+                        }
+                    } label: {
+                        Image(systemName: "info.circle").font(cnLetra(17, .semibold))
                     }
-                    .onLongPressGesture(minimumDuration: 0.4) { datos.onMascota() }
-                    .accessibilityLabel("Chinola")
+                    .accessibilityLabel(cnT("Acerca de"))
                 }
             }
         }
@@ -8522,6 +8603,10 @@ final class CNFlotante: ObservableObject {
     /// girar el teléfono o cambiar de aparato.
     @Published var x: CGFloat = 1
     @Published var y: CGFloat = 0.72
+    /// Cómo se ve: «cara» (Chino) o «aro» (la marca). En la CHARLA sale
+    /// siempre la cara, elijas lo que elijas: ahí es quien te está hablando, y
+    /// un aro no habla.
+    @Published var como = "cara"
     /// DÓNDE ESTÁ DIBUJADO, en coordenadas de la ventana.
     ///
     /// Lo escribe el propio botón al colocarse. No es `@Published` a propósito:
@@ -8584,6 +8669,9 @@ struct CNBotonFlotante: View {
     /// Los dos movimientos de fondo, a distinto compás.
     @State private var alienta = false
     @State private var ladea = false
+    /// Dormido = translúcido y arrimado al borde. Vuelve entero al tocarlo.
+    @State private var dormido = false
+    @State private var siesta: Timer?
 
     private let lado: CGFloat = 56
     private let margen: CGFloat = 14
@@ -8630,7 +8718,7 @@ struct CNBotonFlotante: View {
                         // que se movió, que es lo que un toque es de verdad.
                         DragGesture(minimumDistance: 0)
                             .onChanged { v in
-                                if !apretado { apretado = true }
+                                if !apretado { apretado = true; despierta() }
                                 let anda = hypot(v.translation.width, v.translation.height)
                                 // Cuatro puntos para considerarlo un arrastre: por
                                 // debajo es el temblor normal de un dedo quieto, y
@@ -8647,6 +8735,7 @@ struct CNBotonFlotante: View {
                                 // Soltar sin haberse movido ES el toque.
                                 guard llevando || anda > 4 else {
                                     UISelectionFeedbackGenerator().selectionChanged()
+                                    despierta()
                                     mando.alTocar()
                                     return
                                 }
@@ -8671,6 +8760,7 @@ struct CNBotonFlotante: View {
                                 // esto mientras el muelle está corriendo.
                                 mando.loMovioElDedo()
                                 mando.alMover(nx, ny)
+                                despierta()
                             }
                     )
             } else {
@@ -8683,6 +8773,15 @@ struct CNBotonFlotante: View {
         .ignoresSafeArea()
         .onPreferenceChange(CNMarcoDelBoton.self) { nuevo in mando.marco = nuevo }
         .animation(.spring(response: 0.3, dampingFraction: 0.85), value: mando.puesto)
+    }
+
+    /// Se duerme solo: translúcido y arrimado al borde mientras no lo tocas.
+    private func despierta() {
+        if dormido { withAnimation(.easeOut(duration: 0.22)) { dormido = false } }
+        siesta?.invalidate()
+        siesta = Timer.scheduledTimer(withTimeInterval: 4.5, repeats: false) { _ in
+            DispatchQueue.main.async { dormido = true }
+        }
     }
 
     private var boton: some View {
@@ -8708,7 +8807,12 @@ struct CNBotonFlotante: View {
                 //
                 // El círculo se queda SOLO para el icono de respaldo, que es un
                 // trazo suelto y sin él no se vería sobre la pantalla.
-                if let img = cnImagenBase64(datos.mascota?.chinolo ?? "") {
+                if mando.como == "aro" {
+                    // EL ARO DE LA MARCA. Es el que estaba arriba en Perfil, y
+                    // no se perdió: se mudó aquí, que es donde se usa.
+                    Circle().fill(CNC.side)
+                    Circle().fill(CNC.acc).frame(width: lado * 0.38, height: lado * 0.38)
+                } else if let img = cnImagenBase64(datos.mascota?.chinolo ?? "") {
                     Image(uiImage: img).resizable().scaledToFit()
                 } else {
                     Circle().fill(CNC.acc)
@@ -8729,6 +8833,16 @@ struct CNBotonFlotante: View {
             // está vivo.
             .scaleEffect(alienta ? 1.028 : 0.985)
             .rotationEffect(.degrees(ladea ? 2.2 : -2.2))
+            // Y SE APARTA SOLO CUANDO LO DEJAS EN PAZ.
+            //
+            // Es lo que hace que el botón de iPhone no estorbe nunca: pasados
+            // unos segundos sin tocarlo se vuelve translúcido y se arrima al
+            // borde, y vuelve entero en cuanto lo rozas. Sin esto, un botón
+            // opaco en medio de tus cifras es algo que tapa; con esto es algo
+            // que espera.
+            .opacity(dormido ? 0.42 : 1)
+            .offset(x: dormido ? (mando.x > 0.5 ? lado * 0.22 : -lado * 0.22) : 0)
+            .animation(.easeInOut(duration: 0.45), value: dormido)
             // Y al agarrarlo crece y la sombra se despega: es lo que dice que
             // lo tienes cogido.
             .scaleEffect(llevando ? 1.1 : (apretado ? 0.93 : 1))
@@ -8739,6 +8853,7 @@ struct CNBotonFlotante: View {
             .onAppear {
                 withAnimation(.easeInOut(duration: 3.7).repeatForever(autoreverses: true)) { alienta = true }
                 withAnimation(.easeInOut(duration: 6.1).repeatForever(autoreverses: true)) { ladea = true }
+                despierta()
             }
         }
         .contentShape(Circle())

@@ -572,6 +572,16 @@ class ChinolaViewController: CAPBridgeViewController {
             s.presentar(AnyView(CNMontoHoja(datos: s.datos, tipo: que, extra: extra,
                                             onClose: { s.cerrar() }, montoInicial: monto)))
         }
+        // «Nuevo gasto aquí» y «Nuevo movimiento» desde un detalle: la hoja del
+        // teléfono con lo que esa pantalla ya sabe. Abrían la de la web solo
+        // para poder dejarlo puesto.
+        datos.onNuevoMovCon = { [weak self] que, valor in
+            guard let s = self else { return }
+            s.presentar(AnyView(CNNuevoMov(
+                datos: s.datos, onClose: { s.cerrar() },
+                categoriaInicial: que == "movCat" ? valor : "",
+                medioInicial: que == "movMedio" ? valor : "")))
+        }
         datos.onDetalleAccion = { [weak self] tipo, i in
             guard let s = self else { return }
             // El chip se marca AQUÍ, sin esperar a la web: tocar un periodo y
@@ -1111,6 +1121,13 @@ class ChinolaViewController: CAPBridgeViewController {
         // Lo que aún vive en la web.
         datos.onNuevaCategoria = { [weak self] in self?.webTemporal(); self?.eval("window.__chinolaNuevaCategoria && window.__chinolaNuevaCategoria()") }
         datos.onPerfil = { [weak self] id in self?.webTemporal(); self?.eval("window.__chinolaPerfil && window.__chinolaPerfil('\(id)')") }
+        // Las hojas de «Acerca de». Van por el mismo camino que las demás
+        // hojas de la web, que es quien las sabe dibujar.
+        datos.onPerfilHoja = { [weak self] cual in
+            guard let s = self else { return }
+            s.webTemporal()
+            s.eval("window.__chinolaAccion && window.__chinolaAccion('hoja',\(s.comillas(cual)))")
+        }
         // El selector de libretas ya no enseña la web por detrás: se pide la
         // lista y se dibuja en una hoja nativa encima de la pantalla que había.
         datos.onSelector = { [weak self] in

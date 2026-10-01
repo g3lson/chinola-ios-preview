@@ -2918,41 +2918,108 @@ struct CNCharla {
 final class CNDictado: ObservableObject {
     @Published var texto = ""
     @Published var grabando = false
+    /// Por qué no se pudo dictar. Vacío cuando no hay nada que decir.
+    @Published var pega = ""
     private let motor = AVAudioEngine()
     private var tarea: SFSpeechRecognitionTask?
     private var peticion: SFSpeechAudioBufferRecognitionRequest?
+    /**
+     * CADA GRABACIÓN LLEVA SU NÚMERO.
+     *
+     * El reconocedor sigue contestando un rato DESPUÉS de parar, y esa
+     * respuesta tardía volvía a escribir en el cuadro el mensaje que acababas
+     * de mandar: lo dictabas, se enviaba, y el texto reaparecía solo. De ahí
+     * también el mandarlo dos veces —el texto volvía, y lo mandabas otra vez
+     * creyendo que no había salido—.
+     *
+     * Lo que llegue de una grabación que ya no es la de ahora, se tira.
+     */
+    private var vuelta = 0
+    /// Entre el toque y el permiso pasa un momento. Sin esto, dos toques
+    /// seguidos arrancaban DOS grabaciones sobre el mismo micrófono.
+    private var arrancando = false
 
     func alternar() { if grabando { parar() } else { empezar() } }
 
     func empezar() {
+        guard !grabando, !arrancando else { return }
+        arrancando = true
+        pega = ""
         SFSpeechRecognizer.requestAuthorization { estado in
             DispatchQueue.main.async {
-                guard estado == .authorized else { return }
+                guard estado == .authorized else {
+                    self.arrancando = false
+                    self.pega = cnT("Hace falta tu permiso para dictar.")
+                    return
+                }
                 AVAudioSession.sharedInstance().requestRecordPermission { ok in
-                    DispatchQueue.main.async { if ok { self.arranca() } }
+                    DispatchQueue.main.async {
+                        guard ok else {
+                            self.arrancando = false
+                            self.pega = cnT("Hace falta tu permiso para usar el micrófono.")
+                            return
+                        }
+                        self.arranca()
+                    }
                 }
             }
         }
     }
     private func arranca() {
-        guard let rec = SFSpeechRecognizer(locale: Locale(identifier: CNC.fmt.loc)) ?? SFSpeechRecognizer(), rec.isAvailable else { return }
+        arrancando = false
+        guard let rec = SFSpeechRecognizer(locale: Locale(identifier: CNC.fmt.loc)) ?? SFSpeechRecognizer(),
+              rec.isAvailable else {
+            pega = cnT("El dictado no está disponible ahora mismo.")
+            return
+        }
         let sesion = AVAudioSession.sharedInstance()
-        try? sesion.setCategory(.record, mode: .measurement, options: .duckOthers)
-        try? sesion.setActive(true, options: .notifyOthersOnDeactivation)
+        // ESTOS DOS ERRORES SE TRAGABAN, Y AHÍ EMPEZABA EL CIERRE.
+        //
+        // Con el micrófono cogido por otra app —una llamada, una nota de voz,
+        // el navegador—, poner la sesión en modo grabación FALLA. Con `try?`
+        // no se enteraba nadie y se seguía adelante.
+        do {
+            try sesion.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try sesion.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            pega = cnT("El micrófono lo está usando otra app. Ciérrala y vuelve a intentarlo.")
+            return
+        }
+        let entrada = motor.inputNode
+        let formato = entrada.outputFormat(forBus: 0)
+        // Y AQUÍ SE CERRABA LA APP, no «fallaba»: se cerraba.
+        //
+        // Sin micrófono disponible, el formato de entrada vuelve a cero —cero
+        // hercios, cero canales— e `installTap` con eso no devuelve un error:
+        // lanza una excepción de las que no se pueden coger en Swift y mata el
+        // proceso. Por eso se cerraba de golpe en vez de no hacer nada.
+        guard formato.sampleRate > 0, formato.channelCount > 0 else {
+            pega = cnT("El micrófono lo está usando otra app. Ciérrala y vuelve a intentarlo.")
+            try? sesion.setActive(false, options: .notifyOthersOnDeactivation)
+            return
+        }
         let p = SFSpeechAudioBufferRecognitionRequest()
         p.shouldReportPartialResults = true
         peticion = p
-        let entrada = motor.inputNode
-        let formato = entrada.outputFormat(forBus: 0)
         entrada.removeTap(onBus: 0)
         entrada.installTap(onBus: 0, bufferSize: 1024, format: formato) { buffer, _ in p.append(buffer) }
         motor.prepare()
-        do { try motor.start() } catch { return }
+        do { try motor.start() } catch {
+            // Recoger lo puesto: un grifo abierto sobre un motor parado deja
+            // el micrófono cogido para la próxima vez.
+            entrada.removeTap(onBus: 0)
+            peticion = nil
+            try? sesion.setActive(false, options: .notifyOthersOnDeactivation)
+            pega = cnT("No se pudo encender el micrófono.")
+            return
+        }
+        vuelta += 1
+        let mia = vuelta
         grabando = true
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         tarea = rec.recognitionTask(with: p) { [weak self] res, err in
             DispatchQueue.main.async {
-                guard let s = self else { return }
+                guard let s = self, s.vuelta == mia else { return }
                 if let r = res { s.texto = r.bestTranscription.formattedString }
                 if err != nil || (res?.isFinal ?? false) { s.parar() }
             }
@@ -2960,6 +3027,9 @@ final class CNDictado: ObservableObject {
     }
     func parar() {
         guard grabando else { return }
+        // El número sube ANTES de soltar nada: lo que conteste el reconocedor a
+        // partir de aquí ya no es de esta grabación y no entra.
+        vuelta += 1
         motor.stop(); motor.inputNode.removeTap(onBus: 0)
         peticion?.endAudio(); tarea?.cancel(); tarea = nil; peticion = nil
         grabando = false
@@ -2973,6 +3043,11 @@ struct CNCharlaVista: View {
     @State private var texto = ""
     @StateObject private var dictado = CNDictado()
     @State private var flota = false
+    /// ¿Hay algo que mandar? Decide si sale el botón de enviar, y la animación
+    /// con la que sale. En un solo sitio para que no se separen.
+    private var puedeMandar: Bool {
+        !texto.trimmingCharacters(in: .whitespaces).isEmpty && !(datos.charla?.pensando ?? false)
+    }
 
     var body: some View {
         let m = datos.charla ?? CNCharla()
@@ -3065,32 +3140,82 @@ struct CNCharlaVista: View {
                 .onChange(of: m.mensajes.count) { _ in withAnimation { lector.scrollTo("fin", anchor: .bottom) } }
                 .onChange(of: m.pensando) { _ in withAnimation { lector.scrollTo("fin", anchor: .bottom) } }
             }
-            // La caja: micrófono, texto y enviar.
-            HStack(alignment: .bottom, spacing: 8) {
+            /*
+             LA CAJA DE ESCRIBIR, COMO LA DE MENSAJES.
+
+             Eran TRES BULTOS EN FILA: un círculo gris de 46 con el micrófono,
+             un campo con su borde y otro círculo de 46 con la flecha. Tres
+             cosas del mismo tamaño peleándose, y el campo —que es lo único que
+             se usa— con el mismo peso visual que los botones. Eso es lo que se
+             ve «de formulario»: en el teléfono, escribir es UN sitio, no tres.
+
+             Ahora es una sola cápsula y dentro va todo: el micrófono a la
+             izquierda en gris y sin plato —un glifo, no un botón—, el texto, y
+             la flecha SOLO CUANDO HAY ALGO QUE MANDAR. Un botón de enviar
+             apagado ocupando sitio es un botón que no hace nada; apareciendo
+             al escribir, además, dice que ya se puede.
+
+             Y la raya de arriba: separa lo escrito de lo que se escribe, que
+             es lo que hace que el texto parezca pasar por debajo.
+             */
+            Rectangle().fill(CNC.line).frame(height: 0.5)
+            // POR QUÉ NO SE PUDO DICTAR.
+            //
+            // Antes esto no existía: con el micrófono cogido por otra app, la
+            // app se CERRABA. Arreglado el cierre, lo que quedaba era un botón
+            // que no hacía nada, que es la otra forma de no contar lo que pasa.
+            if !dictado.pega.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(cnLetra(14)).foregroundColor(CNC.neg)
+                    Text(dictado.pega).font(cnLetra(13)).foregroundColor(CNC.neg)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 18).padding(.top, 8)
+            }
+            HStack(alignment: .bottom, spacing: 6) {
                 Button {
                     dictado.alternar()
                 } label: {
-                    Image(systemName: dictado.grabando ? "stop.fill" : "mic.fill").font(cnLetra(18, .semibold))
-                        .foregroundColor(dictado.grabando ? .white : CNC.ink)
-                        .frame(width: 46, height: 46)
-                        .background(dictado.grabando ? CNC.neg : CNC.soft, in: Circle())
-                }.buttonStyle(CNPulsable())
-                TextField(m.ph, text: $texto)
-                    .font(cnLetra(16)).foregroundColor(CNC.ink)
-                    .padding(.horizontal, 15).padding(.vertical, 12)
-                    .background(CNC.card, in: RoundedRectangle(cornerRadius: 23, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 23, style: .continuous).stroke(CNC.line, lineWidth: 1))
-                    .onSubmit { mandar() }
-                Button { mandar() } label: {
-                    Image(systemName: "arrow.up").font(cnLetra(18, .bold)).foregroundColor(CNC.sobreAcc)
-                        .frame(width: 46, height: 46).background(CNC.acc, in: Circle())
+                    Image(systemName: dictado.grabando ? "stop.circle.fill" : "mic.fill")
+                        .font(cnLetra(18, .semibold))
+                        .foregroundColor(dictado.grabando ? CNC.neg : CNC.pmut)
+                        .frame(width: 34, height: 34)
                 }
                 .buttonStyle(CNPulsable())
-                .disabled(texto.trimmingCharacters(in: .whitespaces).isEmpty || m.pensando)
-                .opacity(texto.trimmingCharacters(in: .whitespaces).isEmpty || m.pensando ? 0.5 : 1)
+                .accessibilityLabel(dictado.grabando ? cnT("Parar") : cnT("Dictar"))
+                // CRECE CON LO QUE ESCRIBES, hasta cinco renglones. Con una
+                // sola línea, un mensaje largo se lee por una rendija. El
+                // `axis` es de iOS 16: debajo se queda como estaba, que es
+                // peor pero funciona.
+                Group {
+                    if #available(iOS 16.0, *) {
+                        TextField(m.ph, text: $texto, axis: .vertical).lineLimit(1...5)
+                    } else {
+                        TextField(m.ph, text: $texto)
+                    }
+                }
+                .font(cnLetra(16)).foregroundColor(CNC.ink)
+                .padding(.vertical, 8)
+                .onSubmit { mandar() }
+                if puedeMandar {
+                    Button { mandar() } label: {
+                        Image(systemName: "arrow.up").font(cnLetra(15, .bold))
+                            .foregroundColor(CNC.sobreAcc)
+                            .frame(width: 30, height: 30).background(CNC.acc, in: Circle())
+                    }
+                    .buttonStyle(CNPulsable())
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                    .accessibilityLabel(cnT("Enviar"))
+                }
             }
-            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 10)
+            .padding(.leading, 6).padding(.trailing, 5).padding(.vertical, 5)
+            .background(CNC.card, in: Capsule())
+            .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
+            .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 10)
             .background(CNC.scr)
+            .animation(.spring(response: 0.26, dampingFraction: 0.8), value: puedeMandar)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(CNC.scr.ignoresSafeArea())
@@ -3125,6 +3250,7 @@ struct CNCharlaVista: View {
         .tint(CNC.pos)
         .environment(\.locale, Locale(identifier: CNC.fmt.loc))
         .onReceive(dictado.$texto) { t in if !t.isEmpty { texto = t } }
+        .onChange(of: texto) { _ in if !dictado.pega.isEmpty { dictado.pega = "" } }
         .onChange(of: dictado.grabando) { on in
             // Al soltar el micrófono se manda solo lo dictado.
             if !on, !texto.trimmingCharacters(in: .whitespaces).isEmpty, !dictado.texto.isEmpty { mandar() }

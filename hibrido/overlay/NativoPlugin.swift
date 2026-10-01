@@ -272,6 +272,10 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
             // Por `ponDesdeLaWeb`, que no pisa el sitio mientras el dedo
             // acaba de moverlo: la web devuelve lo que el propio botón le
             // acaba de mandar, y esa vuelta cortaba la animación en seco.
+            // La cara de Chino o el aro de la marca. No pasa por
+            // `ponDesdeLaWeb` porque no es una posición: no hay dedo con el
+            // que pelearse.
+            CNFlotante.shared.como = call.getString("como") ?? "cara"
             CNFlotante.shared.ponDesdeLaWeb(puesto: puesto, x: x, y: y)
             // El contenedor del botón se monta AQUÍ, no al arrancar: es una
             // vista que acaba dentro del webview, y meterla antes de que la
