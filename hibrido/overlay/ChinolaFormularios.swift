@@ -3276,7 +3276,6 @@ struct CNCharlaVista: View {
              Y la raya de arriba: separa lo escrito de lo que se escribe, que
              es lo que hace que el texto parezca pasar por debajo.
              */
-            Rectangle().fill(CNC.line).frame(height: 0.5)
             // POR QUÉ NO SE PUDO DICTAR.
             //
             // Antes esto no existía: con el micrófono cogido por otra app, la
@@ -3293,87 +3292,6 @@ struct CNCharlaVista: View {
                 .padding(.horizontal, 18).padding(.top, 8)
             }
             HStack(alignment: .bottom, spacing: 6) {
-                /*
-                 MANTENER PULSADO PARA HABLAR, como en WhatsApp.
-
-                 Era un interruptor: tocar para empezar, tocar para parar. Eso
-                 obliga a acordarse de volver, y mientras tanto el micrófono
-                 sigue abierto si te distraes. Manteniendo, la grabación dura
-                 exactamente lo que dura el dedo, que es lo que uno espera.
-
-                 Y las dos salidas que la gente ya conoce sin que nadie se las
-                 explique: DESLIZAR A LA IZQUIERDA para tirarlo —porque te
-                 arrepientes a mitad de frase, y soltar sin más lo mandaría— y
-                 DESLIZAR ARRIBA para fijarlo y seguir con las manos libres.
-
-                 FIJADO, vuelve a ser un botón: ahí sí se toca para parar.
-
-                 Ni `Button` ni `onLongPressGesture`: los dos se quedan el dedo
-                 mientras deciden qué fue aquello, y hasta que no sueltan, el
-                 arrastre no ve nada. Es el mismo fallo que tenía el botón
-                 flotante. Con el arrastre desde cero, el dedo manda desde el
-                 primer punto.
-                 */
-                Image(systemName: fijado || dictado.grabando ? "stop.circle.fill" : "mic.fill")
-                    .font(cnLetra(18, .semibold))
-                    .foregroundColor(cancelando ? CNC.neg
-                        : (dictado.grabando ? CNC.pos : CNC.pmut))
-                    .frame(width: 34, height: 34)
-                    .scaleEffect(dictado.grabando && !fijado ? 1.25 : 1)
-                    .offset(x: conElDedo ? max(-70, llevaElDedo.width) : 0)
-                    .contentShape(Rectangle())
-                    .animation(.spring(response: 0.22, dampingFraction: 0.7), value: dictado.grabando)
-                    .animation(.spring(response: 0.2, dampingFraction: 0.8), value: cancelando)
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { v in
-                                // Fijado ya no se arrastra: es un botón.
-                                guard !fijado else { return }
-                                if !conElDedo {
-                                    conElDedo = true
-                                    cancelando = false
-                                    dictado.empezar()
-                                }
-                                llevaElDedo = v.translation
-                                // Arriba: fijar. Se mira primero porque subir
-                                // en diagonal es lo normal y no debe cancelar.
-                                if v.translation.height < -60 {
-                                    fijado = true
-                                    conElDedo = false
-                                    llevaElDedo = .zero
-                                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-                                    return
-                                }
-                                let tira = v.translation.width < -70
-                                if tira != cancelando {
-                                    cancelando = tira
-                                    UISelectionFeedbackGenerator().selectionChanged()
-                                }
-                            }
-                            .onEnded { _ in
-                                if fijado {
-                                    // Fijado, soltar es tocar: para y manda.
-                                    fijado = false
-                                    dictado.suelta()
-                                    return
-                                }
-                                conElDedo = false
-                                llevaElDedo = .zero
-                                if cancelando {
-                                    cancelando = false
-                                    texto = ""          // antes de parar, o se manda
-                                    dictado.cancelar()
-                                } else {
-                                    dictado.suelta()
-                                }
-                            }
-                    )
-                    .accessibilityLabel(dictado.grabando ? cnT("Parar") : cnT("Dictar"))
-                    .accessibilityHint(cnT("Mantén pulsado para hablar"))
-                // CRECE CON LO QUE ESCRIBES, hasta cinco renglones. Con una
-                // sola línea, un mensaje largo se lee por una rendija. El
-                // `axis` es de iOS 16: debajo se queda como estaba, que es
-                // peor pero funciona.
                 if dictado.grabando {
                     // Mientras hablas, la onda ocupa el sitio del texto: lo que
                     // importa en ese momento es que te está oyendo, no leer a
@@ -3381,9 +3299,9 @@ struct CNCharlaVista: View {
                     //
                     // Y debajo, LO QUE PUEDES HACER AHORA MISMO. Un gesto que
                     // no se cuenta no existe: nadie desliza un botón a ver qué
-                    // pasa. Se dice mientras lo tienes cogido, que es cuando
-                    // sirve, y cambia al pasarte de la raya para que se vea que
-                    // ya estás en «cancelar» antes de soltar.
+                    // pasa. Se dice mientras lo tienes cogido, y cambia al
+                    // pasarte de la raya para que se vea que ya estás en
+                    // «cancelar» antes de soltar.
                     HStack(spacing: 10) {
                         CNOndaVoz(nivel: dictado.nivel)
                         VStack(alignment: .leading, spacing: 1) {
@@ -3404,7 +3322,7 @@ struct CNCharlaVista: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(.vertical, 6)
+                    .padding(.leading, 10).padding(.vertical, 6)
                     .transition(.opacity)
                 } else {
                     Group {
@@ -3415,21 +3333,106 @@ struct CNCharlaVista: View {
                         }
                     }
                     .font(cnLetra(16)).foregroundColor(CNC.ink)
-                    .padding(.vertical, 8)
+                    .padding(.leading, 12).padding(.vertical, 8)
                     .onSubmit { mandar() }
                 }
+                /*
+                 UN SOLO BOTÓN, Y A LA DERECHA.
+
+                 El micrófono estaba a la IZQUIERDA, que es donde ninguna app de
+                 mensajes lo pone —ahí va el «+» de adjuntar— y donde peor cae
+                 el pulgar: cruzando la pantalla entera para mantenerlo pulsado
+                 mientras hablas.
+
+                 Y no son dos botones, es UNO QUE CAMBIA. Vacío es el
+                 micrófono; en cuanto escribes algo se vuelve la flecha de
+                 enviar. Es lo que hacen Mensajes y WhatsApp, y evita tener dos
+                 cosas a la vez donde solo una sirve.
+
+                 MANTENER PULSADO PARA HABLAR. Era un interruptor: tocar para
+                 empezar, tocar para parar. Eso obliga a acordarse de volver, y
+                 si te distraes el micrófono se queda abierto. Manteniendo, la
+                 grabación dura exactamente lo que dura el dedo.
+
+                 Con las dos salidas que la gente ya conoce: DESLIZAR A LA
+                 IZQUIERDA para tirarlo —porque te arrepientes a mitad de frase,
+                 y soltar sin más lo mandaría— y DESLIZAR ARRIBA para fijarlo y
+                 seguir con las manos libres. Fijado vuelve a ser un botón.
+
+                 Ni `Button` ni `onLongPressGesture`: los dos se quedan el dedo
+                 mientras deciden qué fue aquello, y hasta que no sueltan el
+                 arrastre no ve nada. Es el mismo fallo que tuvo el botón
+                 flotante. Con el arrastre desde cero, el dedo manda desde el
+                 primer punto.
+                 */
                 if puedeMandar {
                     Button { mandar() } label: {
                         Image(systemName: "arrow.up").font(cnLetra(15, .bold))
                             .foregroundColor(CNC.sobreAcc)
-                            .frame(width: 30, height: 30).background(CNC.acc, in: Circle())
+                            .frame(width: 32, height: 32).background(CNC.acc, in: Circle())
                     }
                     .buttonStyle(CNPulsable())
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                    .transition(.scale(scale: 0.5).combined(with: .opacity))
                     .accessibilityLabel(cnT("Enviar"))
+                } else {
+                    Image(systemName: fijado ? "stop.circle.fill" : "mic.fill")
+                        .font(cnLetra(17, .semibold))
+                        .foregroundColor(cancelando ? CNC.neg
+                            : (dictado.grabando ? CNC.pos : CNC.pmut))
+                        .frame(width: 32, height: 32)
+                        .scaleEffect(dictado.grabando && !fijado ? 1.3 : 1)
+                        .offset(x: conElDedo ? max(-70, llevaElDedo.width) : 0)
+                        .contentShape(Rectangle())
+                        .animation(.spring(response: 0.22, dampingFraction: 0.7), value: dictado.grabando)
+                        .animation(.spring(response: 0.2, dampingFraction: 0.8), value: cancelando)
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { v in
+                                    guard !fijado else { return }
+                                    if !conElDedo {
+                                        conElDedo = true
+                                        cancelando = false
+                                        dictado.empezar()
+                                    }
+                                    llevaElDedo = v.translation
+                                    // Arriba se mira PRIMERO: subir en diagonal
+                                    // es lo normal, y al revés fijar acabaría
+                                    // cancelando la mitad de las veces.
+                                    if v.translation.height < -60 {
+                                        fijado = true
+                                        conElDedo = false
+                                        llevaElDedo = .zero
+                                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                                        return
+                                    }
+                                    let tira = v.translation.width < -70
+                                    if tira != cancelando {
+                                        cancelando = tira
+                                        UISelectionFeedbackGenerator().selectionChanged()
+                                    }
+                                }
+                                .onEnded { _ in
+                                    if fijado {
+                                        fijado = false
+                                        dictado.suelta()
+                                        return
+                                    }
+                                    conElDedo = false
+                                    llevaElDedo = .zero
+                                    if cancelando {
+                                        cancelando = false
+                                        texto = ""          // antes de parar, o se manda
+                                        dictado.cancelar()
+                                    } else {
+                                        dictado.suelta()
+                                    }
+                                }
+                        )
+                        .accessibilityLabel(dictado.grabando ? cnT("Parar") : cnT("Dictar"))
+                        .accessibilityHint(cnT("Mantén pulsado para hablar"))
                 }
             }
-            .padding(.leading, 6).padding(.trailing, 5).padding(.vertical, 5)
+            .padding(.leading, 0).padding(.trailing, 5).padding(.vertical, 5)
             .background(CNC.card, in: Capsule())
             .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
             .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 10)

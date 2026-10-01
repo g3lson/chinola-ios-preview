@@ -1324,6 +1324,14 @@ class ChinolaViewController: CAPBridgeViewController {
             self?.traerCuentas()
             self?.traerPlan()
             self?.traerMascota()
+            // Y LA PANTALLA QUE ESTÁS MIRANDO.
+            //
+            // Se refrescaban las cinco de siempre y NO el detalle abierto, así
+            // que abonabas a un préstamo, el abono se guardaba bien… y la
+            // pantalla seguía enseñando lo de antes hasta que salías y volvías
+            // a entrar. Lo que se queda sin refrescar es justo lo que tienes
+            // delante.
+            self?.refrescarDetalle()
             // ¿Se cerró la sesión? La web lo sabe; lo nativo tiene que
             // enterarse o se queda con pantallas vacías y sin salida. Pasó:
             // cerrar sesión dejaba la app por dentro, sin puerta.
@@ -1750,6 +1758,10 @@ class ChinolaViewController: CAPBridgeViewController {
         traerDatos(intentos: 3); traerCuentas(); traerPlan()
     }
     private func refrescarDetalle() {
+        // Solo si hay uno EN PANTALLA. `detalleQue` recuerda el último que se
+        // abrió aunque ya esté cerrado, y refrescar ese cargaría un modelo que
+        // nadie está mirando.
+        guard detalleVC != nil else { return }
         let (tipo, id) = detalleQue
         guard !tipo.isEmpty else { return }
         bridge?.webView?.evaluateJavaScript("(window.__chinolaDetalleJSON && window.__chinolaDetalleJSON(\(comillas(tipo)),\(comillas(id)))) || ''") { res, _ in
