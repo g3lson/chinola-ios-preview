@@ -3245,6 +3245,12 @@ private func cnCuerpo<C: View>(@ViewBuilder _ c: () -> C) -> some View {
 /// pantallas se leen igual.
 struct CNDetalle {
     struct Chip: Identifiable { var id: Int { indice }; var indice = 0; var label = ""; var puesta = false }
+    /// Editar y eliminar, para el ⋯ de arriba.
+    ///
+    /// El menú repetía los dos botones que ya se ven debajo, así que no servía
+    /// para nada, y editar una tarjeta o un préstamo no estaba en ningún sitio
+    /// de la app.
+    struct Accion: Identifiable { var id: Int; var label = ""; var peligro = false }
     struct Hero {
         var iconoPath = ""; var iconoColor = ""; var iconoBg = ""
         var rotulo = ""; var valor = ""; var color = ""
