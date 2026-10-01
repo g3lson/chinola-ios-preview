@@ -1444,6 +1444,18 @@ final class CNDatos: ObservableObject {
     }
     /// Avisa al controlador de que se está organizando (el menú de abajo se va).
     var onOrganizando: (Bool) -> Void = { _ in }
+    /**
+     * TAPAR EL MENÚ DE ABAJO, POR DOS MOTIVOS A LA VEZ.
+     *
+     * Lo piden dos sitios —organizar el panel y entrar en un ajuste— y pueden
+     * solaparse. Con un booleano a secas, el que termina primero lo devuelve
+     * aunque el otro siga queriéndolo fuera. Se cuenta cuántos lo piden.
+     */
+    private var tapando = 0
+    func tapaLaBarra(_ on: Bool) {
+        tapando = max(0, tapando + (on ? 1 : -1))
+        onOrganizando(tapando > 0)
+    }
     var onCalendario: () -> Void = {}           // abrir el calendario / periodo
     var onMesTira: (Int) -> Void = { _ in }     // saltar a un mes de la tira
     var onPlegar: () -> Void = {}               // plegar la cabecera clásica
@@ -1457,7 +1469,17 @@ final class CNDatos: ObservableObject {
     @Published var seccion: CNSeccion? = nil {
         // Cerrada = «-»: cualquier JSON que llegue tarde (un refresco de la
         // anterior) se descarta hasta que se pida otra.
-        didSet { if seccion == nil { seccionPedida = "-" } }
+        didSet {
+            if seccion == nil { seccionPedida = "-" }
+            // Y EL MENÚ DE ABAJO SE VA mientras hay un ajuste abierto.
+            //
+            // Estas subpantallas entran desde la derecha tapando la pantalla
+            // entera: no son una pestaña, son otro sitio. Con el menú puesto
+            // debajo parecía que seguías dentro de Perfil y que aquello era un
+            // trozo más de la misma pantalla, cuando lo único que se puede
+            // hacer ahí es volver.
+            if (oldValue == nil) != (seccion == nil) { tapaLaBarra(seccion != nil) }
+        }
     }
     /// La última subpantalla pedida. Un JSON de otra (uno que llegó tarde) se
     /// tira: era lo que hacía que, al tocar una opción, saliera otra cosa.
@@ -6014,7 +6036,10 @@ struct CNResumen: View {
         }
         .background(CNC.scr.ignoresSafeArea())
         .onChange(of: organiza) { on in
-            datos.onOrganizando(on)
+            // Por la cuenta compartida: organizar y los ajustes piden lo mismo
+            // y pueden solaparse. Llamando directo, el primero que termina le
+            // devuelve el menú al otro.
+            datos.tapaLaBarra(on)
             // Al entrar, la web se guarda una copia del panel para poder
             // volver a ella con la ×.
             if on { datos.onPanel("editar", "", "empezar") }

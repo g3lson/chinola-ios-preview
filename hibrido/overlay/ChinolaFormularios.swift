@@ -2915,11 +2915,53 @@ struct CNCharla {
 }
 
 /// El dictado: el reconocedor del sistema, en el idioma de la app.
+/**
+ * LA ONDA DE TU VOZ.
+ *
+ * Siete barras que suben con lo que se te oye, en el sitio donde iría el
+ * texto. Es lo que convierte «hay un botón rojo» en «me está oyendo»: sin
+ * ella, dictar es confiar y esperar, y cuando algo falla —el micrófono tapado,
+ * la app colgada— no hay forma de saberlo hasta que no sale nada.
+ *
+ * Las de en medio suben más que las de los lados, que es como se dibuja una
+ * voz y no un ecualizador. Y cada una lleva su retardo, para que la onda
+ * RECORRA en vez de latir toda a la vez.
+ */
+struct CNOndaVoz: View {
+    var nivel: Double
+    private let pesos: [Double] = [0.45, 0.7, 0.9, 1, 0.9, 0.7, 0.45]
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(pesos.indices, id: \.self) { i in
+                Capsule()
+                    .fill(CNC.pos)
+                    .frame(width: 3, height: 5 + CGFloat(max(0.06, nivel) * pesos[i]) * 22)
+                    .animation(.easeOut(duration: 0.12).delay(Double(i) * 0.012), value: nivel)
+            }
+        }
+        .frame(height: 30)
+        .accessibilityHidden(true)
+    }
+}
+
 final class CNDictado: ObservableObject {
     @Published var texto = ""
     @Published var grabando = false
     /// Por qué no se pudo dictar. Vacío cuando no hay nada que decir.
     @Published var pega = ""
+    /**
+     * CUÁNTO SE TE OYE, de 0 a 1.
+     *
+     * Es lo que más cambia la sensación y lo más barato: los búferes de audio
+     * ya pasan por aquí para transcribirse, así que medirlos no cuesta nada.
+     * Sin esto, dictar es mirar un botón rojo y confiar; con esto se ve que te
+     * está oyendo, y se nota al instante si el micrófono está tapado o si la
+     * app se quedó colgada.
+     */
+    @Published var nivel: Double = 0
+    /// Cuándo se te oyó por última vez, para parar solo al callarte.
+    private var ultimoSonido = Date()
+    private var vigilante: Timer?
     private let motor = AVAudioEngine()
     private var tarea: SFSpeechRecognitionTask?
     private var peticion: SFSpeechAudioBufferRecognitionRequest?
@@ -3000,9 +3042,32 @@ final class CNDictado: ObservableObject {
         }
         let p = SFSpeechAudioBufferRecognitionRequest()
         p.shouldReportPartialResults = true
+        // PUNTOS Y COMAS. Sin esto sale un chorro de palabras sin respirar, y
+        // es la diferencia entre «parece dictado» y «parece escrito». Es de
+        // iOS 16; debajo se queda como estaba.
+        if #available(iOS 16.0, *) { p.addsPunctuation = true }
         peticion = p
         entrada.removeTap(onBus: 0)
-        entrada.installTap(onBus: 0, bufferSize: 1024, format: formato) { buffer, _ in p.append(buffer) }
+        entrada.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
+            p.append(buffer)
+            // El nivel, del mismo búfer que ya va a transcribirse: la media de
+            // los cuadrados, que es como se mide el volumen de verdad.
+            guard let datos = buffer.floatChannelData?[0] else { return }
+            let n = Int(buffer.frameLength)
+            guard n > 0 else { return }
+            var suma: Float = 0
+            for k in 0..<n { suma += datos[k] * datos[k] }
+            let rms = Double((suma / Float(n)).squareRoot())
+            // De la escala del sonido a la de la vista: en decibelios, porque
+            // el oído va así y de otro modo la onda casi no se movería.
+            let db = 20 * log10(max(rms, 0.000_001))
+            let v = max(0, min(1, (db + 50) / 50))
+            DispatchQueue.main.async {
+                guard let s = self, s.grabando else { return }
+                s.nivel = v
+                if v > 0.12 { s.ultimoSonido = Date() }
+            }
+        }
         motor.prepare()
         do { try motor.start() } catch {
             // Recoger lo puesto: un grifo abierto sobre un motor parado deja
@@ -3016,7 +3081,20 @@ final class CNDictado: ObservableObject {
         vuelta += 1
         let mia = vuelta
         grabando = true
+        ultimoSonido = Date()
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        // SE PARA SOLA AL CALLARTE.
+        //
+        // Antes había que acordarse de volver a tocar el botón, y mientras
+        // tanto seguía grabando el silencio —y la app seguía sin soltar el
+        // micrófono—. Dos segundos sin oírte es haber terminado de hablar.
+        vigilante?.invalidate()
+        vigilante = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] t in
+            DispatchQueue.main.async {
+                guard let s = self, s.grabando, s.vuelta == mia else { t.invalidate(); return }
+                if Date().timeIntervalSince(s.ultimoSonido) > 2.0 { s.parar() }
+            }
+        }
         tarea = rec.recognitionTask(with: p) { [weak self] res, err in
             DispatchQueue.main.async {
                 guard let s = self, s.vuelta == mia else { return }
@@ -3030,6 +3108,8 @@ final class CNDictado: ObservableObject {
         // El número sube ANTES de soltar nada: lo que conteste el reconocedor a
         // partir de aquí ya no es de esta grabación y no entra.
         vuelta += 1
+        vigilante?.invalidate(); vigilante = nil
+        nivel = 0
         motor.stop(); motor.inputNode.removeTap(onBus: 0)
         peticion?.endAudio(); tarea?.cancel(); tarea = nil; peticion = nil
         grabando = false
@@ -3189,16 +3269,30 @@ struct CNCharlaVista: View {
                 // sola línea, un mensaje largo se lee por una rendija. El
                 // `axis` es de iOS 16: debajo se queda como estaba, que es
                 // peor pero funciona.
-                Group {
-                    if #available(iOS 16.0, *) {
-                        TextField(m.ph, text: $texto, axis: .vertical).lineLimit(1...5)
-                    } else {
-                        TextField(m.ph, text: $texto)
+                if dictado.grabando {
+                    // Mientras hablas, la onda ocupa el sitio del texto: lo que
+                    // importa en ese momento es que te está oyendo, no leer a
+                    // medias lo que todavía estás diciendo.
+                    HStack(spacing: 10) {
+                        CNOndaVoz(nivel: dictado.nivel)
+                        Text(texto.isEmpty ? cnT("Te escucho…") : texto)
+                            .font(cnLetra(15)).foregroundColor(texto.isEmpty ? CNC.pmut : CNC.ink)
+                            .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .padding(.vertical, 8)
+                    .transition(.opacity)
+                } else {
+                    Group {
+                        if #available(iOS 16.0, *) {
+                            TextField(m.ph, text: $texto, axis: .vertical).lineLimit(1...5)
+                        } else {
+                            TextField(m.ph, text: $texto)
+                        }
+                    }
+                    .font(cnLetra(16)).foregroundColor(CNC.ink)
+                    .padding(.vertical, 8)
+                    .onSubmit { mandar() }
                 }
-                .font(cnLetra(16)).foregroundColor(CNC.ink)
-                .padding(.vertical, 8)
-                .onSubmit { mandar() }
                 if puedeMandar {
                     Button { mandar() } label: {
                         Image(systemName: "arrow.up").font(cnLetra(15, .bold))
