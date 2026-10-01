@@ -1506,7 +1506,7 @@ final class CNDatos: ObservableObject {
     /// Los tres sitios que dibujan botones llamaban cada uno por su cuenta a
     /// `onDetalleAccion`, y añadir una forma nueva de abrir obligaba a
     /// acordarse de los tres. Aquí se decide una vez.
-    func tocaBotonDetalle(_ b: CNDetalleModelo.Boton) {
+    func tocaBotonDetalle(_ b: CNDetalle.Boton) {
         if !b.abre.isEmpty { onHojaDeMonto(b.abre, b.cual, b.monto); return }
         onDetalleAccion("boton", b.id)
     }
@@ -3277,6 +3277,7 @@ struct CNDetalle {
     var hero = Hero()
     var cifras: [Cifra] = []
     var botones: [Boton] = []
+    var acciones: [Accion] = []
     var datos: [Dato] = []
     var barras: Barras? = nil
     var rotuloLista = ""; var vacioTexto = ""
@@ -3299,6 +3300,10 @@ struct CNDetalle {
                       colorBarra: s(h, "colorBarra"), pieIzq: s(h, "pieIzq"), pieDer: s(h, "pieDer"),
                       nota: s(h, "nota"))
         m.cifras = l(r, "cifras").enumerated().map { Cifra(id: $0.offset, label: s($0.element, "label"), valor: s($0.element, "valor"), color: s($0.element, "color")) }
+        m.acciones = l(r, "acciones").enumerated().map {
+            Accion(id: Int(n($0.element, "indice")), label: s($0.element, "label"),
+                   peligro: ($0.element["peligro"] as? Bool) ?? false)
+        }
         m.botones = l(r, "botones").enumerated().map {
             Boton(id: $0.offset, label: s($0.element, "label"), estilo: s($0.element, "estilo"),
                   abre: s($0.element, "abre"), cual: Int(n($0.element, "cual")), monto: n($0.element, "monto"))
@@ -3367,10 +3372,18 @@ struct CNDetalleVista: View {
                 // servía —el sistema le dibujaba igual su cápsula y salía un
                 // círculo blanco vacío.
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    if !d.botones.isEmpty {
+                    // EDITAR Y ELIMINAR. Aquí se repetían los dos botones que
+                    // ya están a la vista debajo —el menú no servía para nada—
+                    // y editar una tarjeta o un préstamo no estaba en ninguna
+                    // parte de la app.
+                    if !d.acciones.isEmpty {
                         Menu {
-                            ForEach(d.botones) { b in
-                                Button { datos.tocaBotonDetalle(b) } label: { Text(b.label) }
+                            ForEach(d.acciones) { a in
+                                Button(role: a.peligro ? .destructive : nil) {
+                                    datos.onDetalleAccion("menu", a.id)
+                                } label: {
+                                    Label(a.label, systemImage: a.peligro ? "trash" : "pencil")
+                                }
                             }
                         } label: { Image(systemName: "ellipsis") }
                     }
