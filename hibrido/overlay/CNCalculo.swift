@@ -425,6 +425,13 @@ enum CNCalculo {
         for atras in 0..<max(1, meses) {
             guard let d = cal.date(byAdding: .month, value: -atras, to: hoy) else { break }
             let ym = fmt.string(from: d)
+            // LA FOTO MANDA SOBRE LA RECONSTRUCCIÓN, y además vuelve a anclar
+            // la cuenta hacia atrás: los meses sin foto se deducen desde la
+            // foto más cercana y no desde hoy. Así, crear una cuenta con saldo
+            // —que no es un movimiento y no se puede deducir— deja de torcer
+            // todo lo anterior. El mes en curso vale lo de AHORA: su foto es de
+            // hace un rato.
+            if atras > 0, let f = l.historia[ym] { valor = f }
             puntos.append((ym, valor))
             // Lo que cambió el patrimonio ese mes: la suma de lo que hizo cada
             // movimiento, no ingresos menos gastos.

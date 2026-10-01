@@ -590,6 +590,10 @@ extension CNLibreta {
                  "mensual": m.mensual, "color": m.color, "icono": m.icono]
             },
             "presupuesto": presupuesto,
+            // Las fotos del patrimonio. No las escribe el teléfono, pero si no
+            // las devolviera las borraría: lo que no va en este diccionario
+            // desaparece de la libreta.
+            "historia": historia,
             "tx": tx.map { x -> [String: Any] in
                 ["id": x.id, "concepto": x.concepto, "categoria": x.categoria, "tipo": x.tipo,
                  "monto": x.monto, "fecha": x.fecha, "medio": x.medio, "destino": x.destino,

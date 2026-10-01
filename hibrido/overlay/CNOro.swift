@@ -323,6 +323,25 @@ enum CNOro {
             salida["categorias"] = out
         }
 
+        // LA GRÁFICA DEL PATRIMONIO, CON Y SIN FOTOS. La serie se reconstruye
+        // hacia atrás, y eso solo vale si todo lo que mueve el patrimonio es un
+        // movimiento —crear una cuenta con saldo no lo es—. Por eso ahora manda
+        // la foto guardada de cada mes, y donde hay foto se vuelve a anclar el
+        // tramo anterior.
+        if let casos = raiz["serieCasos"] as? [String: Any] {
+            var out: [String: Any] = [:]
+            for (nombre, caso) in casos {
+                guard let c = caso as? [String: Any] else { continue }
+                var conFotos = l
+                conFotos.historia = (c["historia"] as? [String: Double]) ?? [:]
+                let meses = Int(((c["meses"] as? NSNumber)?.intValue) ?? 6)
+                let cuando = CNFormateadores.iso.date(from: (c["hoy"] as? String) ?? "") ?? Date()
+                let r = CNCalculo.retrato(conFotos, meses: meses, hoy: cuando)
+                out[nombre] = ["puntos": r.serie.map { ["mes": $0.etiqueta, "valor": $0.valor] }]
+            }
+            salida["serie2"] = out
+        }
+
         // CUÁNTO CAMBIÓ EL PATRIMONIO CON CADA MOVIMIENTO. Es lo que dibuja
         // la gráfica de Cuentas, y era lo único de esa pantalla que NO estaba
         // comparado: por eso las dos implementaciones podían decir lo mismo y

@@ -1115,6 +1115,20 @@ struct CNLibreta: Decodable {
     /// El presupuesto: categoría → tope del mes. Vive AQUÍ, no en la
     /// categoría, aunque `CNCategoria.limite` dé a entender lo contrario.
     var presupuesto: [String: Double] = [:]
+    /**
+     * LO QUE VALÍA TU PATRIMONIO AL CERRAR CADA MES.
+     *
+     * La libreta guarda los saldos de HOY, así que la gráfica de Cuentas tenía
+     * que inventarse el pasado caminando hacia atrás por los movimientos. Eso
+     * vale si todo lo que mueve tu patrimonio es un movimiento, y no lo es:
+     * crear una cuenta con saldo, o una tarjeta con deuda, no lo son.
+     *
+     * Un número por mes, en vez de deducirlo. Aquí se LEE y se devuelve tal
+     * cual: el teléfono no la escribe —lo hace la web, en el único sitio por el
+     * que pasa todo guardado— pero si no la leyera, se la llevaría por delante
+     * la primera vez que escribiera la libreta.
+     */
+    var historia: [String: Double] = [:]
     /// De dónde sale el dinero cuando no se dice: `cuenta:3`, o vacío.
     ///
     /// No es de la libreta: es la cuenta que marcaste como predeterminada, y
@@ -1165,10 +1179,15 @@ struct CNLibreta: Decodable {
             if c.contains(.presupuesto) { malas.append("presupuesto") }
             presupuesto = [:]
         }
+        if let h = try? c.decodeIfPresent([String: Double].self, forKey: .historia) {
+            historia = h ?? [:]
+        } else {
+            if c.contains(.historia) { malas.append("historia") }
+        }
         medioPorDefecto = (try? c.decodeIfPresent(String.self, forKey: .medioPorDefecto)) ?? ""
         dudoso = !malas.isEmpty
         if dudoso { NSLog("CNLIBRETA: no se pudo leer %@ — el teléfono no escribirá", malas.joined(separator: ", ")) } }
-    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx, presupuesto, medioPorDefecto }
+    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx, presupuesto, historia, medioPorDefecto }
 
     func categoria(_ nombre: String) -> CNCategoria? { categorias.first { $0.nombre == nombre } }
     func gastadoCategoria(_ nombre: String) -> Double {

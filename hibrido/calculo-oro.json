@@ -1942,6 +1942,149 @@
       "cambio": 0
     }
   },
+  "serieCasos": {
+    "sin fotos se deduce como siempre": {
+      "historia": {},
+      "meses": 6,
+      "hoy": "2026-09-20"
+    },
+    "una foto vieja manda sobre la deducción": {
+      "historia": {
+        "2026-06": -50000
+      },
+      "meses": 6,
+      "hoy": "2026-09-20"
+    },
+    "dos fotos anclan cada tramo": {
+      "historia": {
+        "2026-06": -50000,
+        "2026-08": -20000
+      },
+      "meses": 6,
+      "hoy": "2026-09-20"
+    },
+    "la foto del mes en curso no se usa": {
+      "historia": {
+        "2026-09": 999999
+      },
+      "meses": 6,
+      "hoy": "2026-09-20"
+    }
+  },
+  "serie2": {
+    "sin fotos se deduce como siempre": {
+      "puntos": [
+        {
+          "mes": "2026-04",
+          "valor": -183180
+        },
+        {
+          "mes": "2026-05",
+          "valor": -183180
+        },
+        {
+          "mes": "2026-06",
+          "valor": -183180
+        },
+        {
+          "mes": "2026-07",
+          "valor": -183180
+        },
+        {
+          "mes": "2026-08",
+          "valor": -180380
+        },
+        {
+          "mes": "2026-09",
+          "valor": -134000
+        }
+      ]
+    },
+    "una foto vieja manda sobre la deducción": {
+      "puntos": [
+        {
+          "mes": "2026-04",
+          "valor": -50000
+        },
+        {
+          "mes": "2026-05",
+          "valor": -50000
+        },
+        {
+          "mes": "2026-06",
+          "valor": -50000
+        },
+        {
+          "mes": "2026-07",
+          "valor": -183180
+        },
+        {
+          "mes": "2026-08",
+          "valor": -180380
+        },
+        {
+          "mes": "2026-09",
+          "valor": -134000
+        }
+      ]
+    },
+    "dos fotos anclan cada tramo": {
+      "puntos": [
+        {
+          "mes": "2026-04",
+          "valor": -50000
+        },
+        {
+          "mes": "2026-05",
+          "valor": -50000
+        },
+        {
+          "mes": "2026-06",
+          "valor": -50000
+        },
+        {
+          "mes": "2026-07",
+          "valor": -22800
+        },
+        {
+          "mes": "2026-08",
+          "valor": -20000
+        },
+        {
+          "mes": "2026-09",
+          "valor": -134000
+        }
+      ]
+    },
+    "la foto del mes en curso no se usa": {
+      "puntos": [
+        {
+          "mes": "2026-04",
+          "valor": -183180
+        },
+        {
+          "mes": "2026-05",
+          "valor": -183180
+        },
+        {
+          "mes": "2026-06",
+          "valor": -183180
+        },
+        {
+          "mes": "2026-07",
+          "valor": -183180
+        },
+        {
+          "mes": "2026-08",
+          "valor": -180380
+        },
+        {
+          "mes": "2026-09",
+          "valor": -134000
+        }
+      ]
+    }
+  },
   "escribirCasos": {
     "gasto con la cuenta": {
       "que": "nuevo",
