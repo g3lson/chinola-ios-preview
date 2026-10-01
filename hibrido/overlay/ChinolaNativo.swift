@@ -1498,6 +1498,18 @@ final class CNDatos: ObservableObject {
     /// Cualquier detalle (cuenta, tarjeta, préstamo, meta, categoría).
     @Published var detalle: CNDetalle? = nil
     var onDetalleAccion: (String, Int) -> Void = { _, _ in }
+    /// Abrir una hoja de monto del teléfono: abono, aporte o pago de tarjeta.
+    var onHojaDeMonto: (String, Int, Double) -> Void = { _, _, _ in }
+
+    /// Un botón del detalle, por su única puerta.
+    ///
+    /// Los tres sitios que dibujan botones llamaban cada uno por su cuenta a
+    /// `onDetalleAccion`, y añadir una forma nueva de abrir obligaba a
+    /// acordarse de los tres. Aquí se decide una vez.
+    func tocaBotonDetalle(_ b: CNDetalleModelo.Boton) {
+        if !b.abre.isEmpty { onHojaDeMonto(b.abre, b.cual, b.monto); return }
+        onDetalleAccion("boton", b.id)
+    }
     /// Marca un chip del detalle sin esperar a la web: el periodo se enciende
     /// al tocarlo y las cifras llegan un instante después.
     func marcarChip(_ i: Int) {
@@ -3241,7 +3253,16 @@ struct CNDetalle {
         var colorBarra = ""; var pieIzq = ""; var pieDer = ""; var nota = ""
     }
     struct Cifra: Identifiable { var id: Int; var label = ""; var valor = ""; var color = "" }
-    struct Boton: Identifiable { var id: Int; var label = ""; var estilo = "contorno" }
+    /// Un botón del detalle.
+    ///
+    /// `abre` dice que esa hoja la dibuja el TELÉFONO: la suya pregunta solo
+    /// el monto y de dónde sale, en vez de volver a preguntar el nombre, el
+    /// sentido y a quién le debes, que ya están en el préstamo. Vacío = el
+    /// toque vuelve a la web, como siempre.
+    struct Boton: Identifiable {
+        var id: Int; var label = ""; var estilo = "contorno"
+        var abre = ""; var cual = 0; var monto: Double = 0
+    }
     struct Dato: Identifiable { var id: Int; var label = ""; var valor = ""; var color = "" }
     struct Columna: Identifiable { var id: Int; var label = ""; var pct: Double = 0; var fuerte = false; var color = ""; var colorMes = "" }
     struct Barras { var titulo = ""; var tope = ""; var columnas: [Columna] = [] }
@@ -3278,7 +3299,10 @@ struct CNDetalle {
                       colorBarra: s(h, "colorBarra"), pieIzq: s(h, "pieIzq"), pieDer: s(h, "pieDer"),
                       nota: s(h, "nota"))
         m.cifras = l(r, "cifras").enumerated().map { Cifra(id: $0.offset, label: s($0.element, "label"), valor: s($0.element, "valor"), color: s($0.element, "color")) }
-        m.botones = l(r, "botones").enumerated().map { Boton(id: $0.offset, label: s($0.element, "label"), estilo: s($0.element, "estilo")) }
+        m.botones = l(r, "botones").enumerated().map {
+            Boton(id: $0.offset, label: s($0.element, "label"), estilo: s($0.element, "estilo"),
+                  abre: s($0.element, "abre"), cual: Int(n($0.element, "cual")), monto: n($0.element, "monto"))
+        }
         m.datos = l(r, "datos").enumerated().map { Dato(id: $0.offset, label: s($0.element, "label"), valor: s($0.element, "valor"), color: s($0.element, "color")) }
         if let bb = r["barras"] as? [String: Any] {
             m.barras = Barras(titulo: s(bb, "titulo"), tope: s(bb, "tope"),
@@ -3346,7 +3370,7 @@ struct CNDetalleVista: View {
                     if !d.botones.isEmpty {
                         Menu {
                             ForEach(d.botones) { b in
-                                Button { datos.onDetalleAccion("boton", b.id) } label: { Text(b.label) }
+                                Button { datos.tocaBotonDetalle(b) } label: { Text(b.label) }
                             }
                         } label: { Image(systemName: "ellipsis") }
                     }
@@ -3441,13 +3465,13 @@ struct CNDetalleVista: View {
             .lineLimit(1).minimumScaleFactor(0.75)
             .frame(maxWidth: .infinity).padding(.vertical, 6)
         if b.estilo == "acento" {
-            Button { datos.onDetalleAccion("boton", b.id) } label: { etiqueta }
+            Button { datos.tocaBotonDetalle(b) } label: { etiqueta }
                 .buttonStyle(.borderedProminent)
                 .tint(CNC.pos)
                 .controlSize(.large)
                 .clipShape(Capsule())
         } else {
-            Button { datos.onDetalleAccion("boton", b.id) } label: { etiqueta }
+            Button { datos.tocaBotonDetalle(b) } label: { etiqueta }
                 .buttonStyle(.bordered)
                 .tint(CNC.pos)
                 .controlSize(.large)

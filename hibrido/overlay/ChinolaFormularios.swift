@@ -440,6 +440,9 @@ struct CNMontoHoja: View {
     let tipo: String                 // "abono" | "aporte" | "pagoTarjeta"
     let extra: [String: Any]         // { id, nombre, saldo?… }
     var onClose: () -> Void
+    /// Lo que viene puesto: la cuota del préstamo o el aporte mensual de la
+    /// meta. Así «Registrar cuota» es confirmar, no teclear. 0 = en blanco.
+    var montoInicial: Double = 0
     @State private var monto = ""
     @State private var medio = "efectivo"
     /// Por qué no se pudo. Vacío mientras no haya nada que decir.
@@ -470,7 +473,16 @@ struct CNMontoHoja: View {
                 .padding(.horizontal, 2)
             }
         }
-        .onAppear { if medio == "efectivo" { medio = cnMedioPorDefecto(datos.libreta) } }
+        .onAppear {
+            if medio == "efectivo" { medio = cnMedioPorDefecto(datos.libreta) }
+            // Como lo escribe el propio campo al tocar sus botones: entero si
+            // es entero. Con el símbolo o con comas, `cnMonto` lo lee igual,
+            // pero se ve raro en un campo donde la moneda va aparte.
+            if monto.isEmpty, montoInicial > 0 {
+                monto = montoInicial == montoInicial.rounded()
+                    ? String(Int(montoInicial)) : String(format: "%.2f", montoInicial)
+            }
+        }
         // Al cambiar el monto o la cuenta se borra el cartel: sigue en pantalla
         // hablando de lo de antes y parece que no se puede arreglar.
         .onChange(of: monto) { _ in porQueNo = "" }

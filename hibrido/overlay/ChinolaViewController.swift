@@ -554,6 +554,24 @@ class ChinolaViewController: CAPBridgeViewController {
         datos.onAbrirTarjeta = { [weak self] id in self?.mostrarDetalle("tarjeta", "\(id)") }
         datos.onAbrirPrestamo = { [weak self] id in self?.mostrarDetalle("prestamo", "\(id)") }
         datos.onAbrirMeta = { [weak self] id in self?.mostrarDetalle("meta", "\(id)") }
+        // Abonar, aportar y pagar la tarjeta DESDE EL DETALLE, con la hoja del
+        // teléfono. Iban por la hoja genérica de la web, que vuelve a
+        // preguntar el nombre del préstamo, el sentido y a quién le debes
+        // —todo lo que ya está en el préstamo que estás mirando—.
+        datos.onHojaDeMonto = { [weak self] que, cual, monto in
+            guard let s = self else { return }
+            let lb = CNDatos.shared.libreta
+            let nombre: String
+            switch que {
+            case "abono": nombre = lb.prestamos.first { $0.id == cual }?.nombre ?? ""
+            case "aporte": nombre = lb.metas.first { $0.id == cual }?.nombre ?? ""
+            default: nombre = lb.tarjetas.first { $0.id == cual }?.nombre ?? ""
+            }
+            var extra: [String: Any] = ["id": cual, "nombre": nombre]
+            if que == "pagoTarjeta" { extra["saldo"] = lb.tarjetas.first { $0.id == cual }?.saldo ?? 0 }
+            s.presentar(AnyView(CNMontoHoja(datos: s.datos, tipo: que, extra: extra,
+                                            onClose: { s.cerrar() }, montoInicial: monto)))
+        }
         datos.onDetalleAccion = { [weak self] tipo, i in
             guard let s = self else { return }
             // El chip se marca AQUÍ, sin esperar a la web: tocar un periodo y
