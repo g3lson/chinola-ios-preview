@@ -891,6 +891,17 @@ let CN_CATEGORIAS_BASE = [cnT("Ingresos"), cnT("Vivienda"), cnT("Alimentación")
                           cnT("Educación"), cnT("Salud"), cnT("Donaciones"), cnT("Entretenimiento"), cnT("Deudas"),
                           cnT("Personal"), cnT("Ahorro"), cnT("Otros")]
 
+/// A qué altura empieza la cabecera de una pantalla.
+///
+/// El margen seguro de un iPhone con isla es más alto que la isla: hay unos
+/// diez puntos por debajo que el sistema reserva y nadie usa. Esto los sube.
+/// Estaba escrito en la cabecera del resumen y la barra de organizar llevaba
+/// otra cuenta distinta, veinticuatro puntos más abajo: al entrar en organizar
+/// el título daba un salto.
+func cnArribaDeLaCabecera() -> CGFloat {
+    2 - max(0, cnMargenArriba() - 56)
+}
+
 func cnMargenArriba() -> CGFloat {
     let escenas = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
     let ventana = escenas.flatMap { $0.windows }.first { $0.isKeyWindow } ?? escenas.first?.windows.first
@@ -1431,7 +1442,7 @@ final class CNDatos: ObservableObject {
         guard let v = anclas[id], abs(v.minX - r.minX) < 0.5, abs(v.minY - r.minY) < 0.5,
               abs(v.width - r.width) < 0.5, abs(v.height - r.height) < 0.5 else { anclas[id] = r; return }
     }
-    /// Avisa al controlador de que se está organizando (atenúa el menú).
+    /// Avisa al controlador de que se está organizando (el menú de abajo se va).
     var onOrganizando: (Bool) -> Void = { _ in }
     var onCalendario: () -> Void = {}           // abrir el calendario / periodo
     var onMesTira: (Int) -> Void = { _ in }     // saltar a un mes de la tira
@@ -5336,7 +5347,7 @@ struct CNCabeceraApp: View {
     /// unos pocos de aire para no pegarse a ella.
     private var padArriba: CGFloat {
         if c.tarjeta { return 10 }
-        return 2 - max(0, cnMargenArriba() - 56)
+        return cnArribaDeLaCabecera()
     }
     private var tinta: Color { c.tinta.isEmpty ? .white : cnColor(hexString: c.tinta) }
     private var gris: Color { c.gris.isEmpty ? tinta.opacity(0.8) : cnColor(hexString: c.gris) }
@@ -5906,7 +5917,7 @@ struct CNResumen: View {
             if organiza {
                 // Organizando, la cabecera se aparta: lo que importa son las
                 // tarjetas, y así entran más en pantalla.
-                barraOrganiza
+                barraOrganiza(m)
                     .transition(.move(edge: .top).combined(with: .opacity))
             } else {
                 CNCabeceraApp(c: m.cabecera, progreso: auto ? progreso : 1,
@@ -5958,8 +5969,14 @@ struct CNResumen: View {
         }
     }
 
-    /// La barra de arriba mientras se organiza: qué se está haciendo y «Listo».
-    private var barraOrganiza: some View {
+    /// La barra de arriba mientras se organiza: qué se está haciendo, dónde se
+    /// agregan tarjetas y «Listo».
+    ///
+    /// LOS BOTONES ESTÁN AQUÍ Y NO ABAJO. «Agregar tarjeta» y «Listo» estaban
+    /// al final de la lista, así que para terminar había que rodar hasta el
+    /// fondo —y arriba ya había otro «Listo», con lo que había dos—. Lo que se
+    /// hace con la pantalla va en la barra de la pantalla.
+    private func barraOrganiza(_ m: CNResumenModelo) -> some View {
         HStack(spacing: 10) {
             // La ×: deshacer todo lo tocado desde que se entró.
             Button {
@@ -5976,6 +5993,17 @@ struct CNResumen: View {
                     .font(cnLetra(11.5)).foregroundColor(CNC.pmut).lineLimit(2)
             }
             Spacer(minLength: 6)
+            if !m.catalogo.isEmpty {
+                Menu {
+                    ForEach(m.catalogo, id: \.id) { o in
+                        Button(o.label) { datos.onPanel("agregar", o.id, "") }
+                    }
+                } label: {
+                    Image(systemName: "plus").font(cnLetra(16, .bold)).foregroundColor(CNC.ink)
+                        .frame(width: 40, height: 40).background(CNC.soft, in: Circle())
+                }
+                .accessibilityLabel(cnT("Agregar tarjeta"))
+            }
             Button {
                 UISelectionFeedbackGenerator().selectionChanged()
                 datos.onPanel("editar", "", "listo")
@@ -5986,7 +6014,12 @@ struct CNResumen: View {
                     .background(CNC.acc, in: Capsule())
             }.buttonStyle(CNPulsable())
         }
-        .padding(.horizontal, 16).padding(.top, 8 + max(0, cnMargenArriba() - 44)).padding(.bottom, 10)
+        // LA MISMA ALTURA QUE LA CABECERA NORMAL. Esto llevaba
+        // `8 + max(0, cnMargenArriba() - 44)` —veintitrés puntos en un iPhone
+        // con isla— mientras la cabecera lleva `2 - max(0, … - 56)`, que sube.
+        // Veinticuatro puntos de diferencia: al entrar en organizar, el título
+        // daba un salto hacia abajo.
+        .padding(.horizontal, 16).padding(.top, cnArribaDeLaCabecera()).padding(.bottom, 10)
         .frame(maxWidth: .infinity)
         .background(CNC.scr.ignoresSafeArea(edges: .top))
     }
@@ -6052,32 +6085,22 @@ struct CNResumen: View {
                 alEmpezar: { p in levantar(en: p) },
                 alMover: { desplaza = $0 },
                 alSoltar: { soltar($0, en: vistas) }) : nil)
-            if organiza && !m.catalogo.isEmpty {
-                Menu {
-                    ForEach(m.catalogo, id: \.id) { o in
-                        Button(o.label) { datos.onPanel("agregar", o.id, "") }
-                    }
+            // SOLO LA PUERTA DE ENTRADA. «Agregar tarjeta» y «Listo» vivían
+            // aquí abajo: para terminar había que rodar hasta el fondo, y
+            // arriba ya había otro «Listo». Organizando, estos no salen.
+            if !organiza {
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    withAnimation(.easeOut(duration: 0.2)) { organiza = true }
                 } label: {
                     HStack(spacing: 7) {
-                        Image(systemName: "plus").font(cnLetra(14, .bold))
-                        Text(cnT("Agregar tarjeta")).font(cnLetra(13.5, .bold))
+                        Image(systemName: "square.grid.2x2").font(cnLetra(13, .bold))
+                        Text(cnT("Organizar el panel")).font(cnLetra(13.5, .bold))
                     }
-                    .foregroundColor(CNC.sobreAcc).frame(maxWidth: .infinity).padding(.vertical, 13)
-                    .background(CNC.acc, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                }
+                    .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .background(CNC.soft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                }.buttonStyle(CNPulsable())
             }
-            Button {
-                UISelectionFeedbackGenerator().selectionChanged()
-                withAnimation(.easeOut(duration: 0.2)) { organiza.toggle() }
-            } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: organiza ? "checkmark" : "square.grid.2x2")
-                        .font(cnLetra(13, .bold))
-                    Text(organiza ? "Listo" : "Organizar el panel").font(cnLetra(13.5, .bold))
-                }
-                .foregroundColor(CNC.ink).frame(maxWidth: .infinity).padding(.vertical, 12)
-                .background(CNC.soft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-            }.buttonStyle(CNPulsable())
             Color.clear.frame(height: 104).id("cnAbajo")
         }
         .onAppear { if organizaAlEmpezar { organiza = true } }
@@ -7520,9 +7543,74 @@ struct CNSeccionVista: View {
         }
     }
 
-    private func opcionesVista(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
+    /**
+     * ¿ESTO SE ELIGE LEYENDO O MIRANDO?
+     *
+     * Una moneda, «con centavos» o un idioma se eligen LEYENDO, y para eso una
+     * rejilla de cajas con borde es un formulario web y no una pantalla de
+     * iPhone: dos columnas de cuadros iguales donde lo único que cambia es la
+     * palabra de dentro, con los nombres largos recortados y la selección
+     * marcada con un borde en vez de con una palomita.
+     *
+     * Un color, un tema, un icono o una cabecera se eligen MIRANDO, y ahí la
+     * rejilla es justo lo correcto: lo que decide es el dibujo.
+     *
+     * Así que la forma la decide lo que hay dentro, no quien lo pide. Una lista
+     * con palomita para lo que es texto; la rejilla para lo que se ve.
+     */
+    private func soloTexto(_ q: CNSeccion.Bloque) -> Bool {
+        !q.opciones.isEmpty && q.opciones.allSatisfy {
+            $0.icono.isEmpty && $0.imagen.isEmpty && $0.color.isEmpty
+                && $0.muestra.isEmpty && $0.vista.isEmpty
+        }
+    }
+
+    @ViewBuilder private func opcionesVista(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if !q.titulo.isEmpty { rotulo(q.titulo) }
+            if soloTexto(q) { listaDeOpciones(q, bi) } else { rejillaDeOpciones(q, bi) }
+        }
+    }
+
+    /// Lo que se elige leyendo: una fila por opción y una palomita en la puesta.
+    private func listaDeOpciones(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
+        VStack(spacing: 0) {
+            ForEach(q.opciones.indices, id: \.self) { i in
+                let o = q.opciones[i]
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    withAnimation(.easeOut(duration: 0.16)) { datos.marcarEnSeccion(bloque: bi, opcion: i) }
+                    tocaOpcion(o)
+                } label: {
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(o.label).font(cnLetra(16, o.puesta ? .semibold : .regular))
+                                .foregroundColor(CNC.ink).lineLimit(2)
+                            if !o.sub.isEmpty {
+                                Text(o.sub).font(cnLetra(12.5)).foregroundColor(CNC.pmut).lineLimit(2)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                        if o.puesta {
+                            Image(systemName: "checkmark").font(cnLetra(15, .bold)).foregroundColor(CNC.pos)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 15).padding(.vertical, 13)
+                    .contentShape(Rectangle())
+                }.buttonStyle(CNPulsable())
+                if i < q.opciones.count - 1 {
+                    Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 15)
+                }
+            }
+        }
+        .background(CNC.card)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    /// Y lo que se elige mirando: el dibujo manda, así que va en rejilla.
+    private func rejillaDeOpciones(_ q: CNSeccion.Bloque, _ bi: Int) -> some View {
+        Group {
             CNRejillaFija(columnas: q.columnas, total: q.opciones.count) { i in
                 let o = q.opciones[i]
                 Button {

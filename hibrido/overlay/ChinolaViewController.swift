@@ -702,7 +702,11 @@ class ChinolaViewController: CAPBridgeViewController {
         // que hay en pantalla es el panel, y solo el panel.
         datos.onOrganizando = { [weak self] on in
             guard let s = self else { return }
-            UIView.animate(withDuration: 0.2) { s.barra.barra.alpha = on ? 0.35 : 1 }
+            // EL MENÚ SE VA DEL TODO. Se quedaba al 35 %: translúcido, visible
+            // y sin responder, que es lo peor de las dos cosas —parece que la
+            // app se ha colgado—. Organizando, la pantalla es el panel y nada
+            // más.
+            UIView.animate(withDuration: 0.2) { s.barra.barra.alpha = on ? 0 : 1 }
             s.barra.barra.isUserInteractionEnabled = !on
         }
         // Perfil: la fila se dispara por su sitio en la lista.

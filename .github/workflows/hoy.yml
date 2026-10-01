@@ -233,7 +233,12 @@ jobs:
           # datos que nadie pidió— se quedaba sin ver.
           # LAS TRECE, no ocho. Las que falten no se miran nunca, que es
           # exactamente cómo se coló que «El icono de la app» abriera la web.
-          for P in cuenta seguridad dosPasos libretas integraciones panel cabecera menu letra colores dinero personaje icono-app; do
+          # `organizar` no es una subpantalla de Perfil: es el panel en modo
+          # organizar, que entra por el mismo camino. Se fotografía aquí porque
+          # es donde están las fotos, y porque hasta ahora NADIE la había
+          # fotografiado nunca —de ahí que el menú translúcido, los botones al
+          # final de la lista y el título caído aguantaran tanto—.
+          for P in cuenta seguridad dosPasos libretas integraciones panel cabecera menu letra colores dinero personaje icono-app organizar; do
             echo "=== perfil · $P ==="
             xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
             sleep 2

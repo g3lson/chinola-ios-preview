@@ -515,6 +515,11 @@ struct CNFormCuenta: View {
     /// Así no hay que volver a decirlo aquí.
     var claseInicial: String = ""
     var nombreSugerido: String = ""
+    /// Cómo se pregunta en ESTE tipo. Vienen del catálogo; vacío = no se
+    /// pregunta. A una membresía de gimnasio no se le pide el «Banco», y al
+    /// efectivo no se le pregunta dónde está: está en tu bolsillo.
+    var rotuloDonde: String = "Banco (opcional)"
+    var rotuloCuanto: String = "Saldo actual"
     @State private var nombre = ""
     @State private var banco = ""
     @State private var saldo = ""
@@ -525,10 +530,16 @@ struct CNFormCuenta: View {
     var body: some View {
         CNHoja(titulo: cnT("Nueva cuenta"), guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
-            CNGrupoCampos(campos: [(cnT("Nombre (ej. Cuenta principal)"), $nombre, .default),
-                                   (cnT("Banco (opcional)"), $banco, .default)])
-            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo(cnT("Saldo actual")); CNMontoCampo(monto: $saldo, rotulo: nil) }
-            VStack(alignment: .leading, spacing: 8) { cnHojaTitulo(cnT("Tipo")); CNFichas(opciones: clases, elegida: $clase) }
+            CNGrupoCampos(campos: [(cnT("Nombre (ej. Cuenta principal)"), $nombre, .default)]
+                + (rotuloDonde.isEmpty ? [] : [(cnT(rotuloDonde), $banco, UIKeyboardType.default)]))
+            VStack(alignment: .leading, spacing: 6) { cnHojaTitulo(cnT(rotuloCuanto)); CNMontoCampo(monto: $saldo, rotulo: nil) }
+            // EL SELECTOR DE TIPO, SOLO SI NO LO DIJISTE YA. Viniendo del
+            // catálogo ya elegiste qué es, y volver a enseñarlo no solo sobra:
+            // deja cambiarlo, así que podías elegir «Membresía» y guardarla
+            // como cuenta de banco sin enterarte.
+            if claseInicial.isEmpty {
+                VStack(alignment: .leading, spacing: 8) { cnHojaTitulo(cnT("Tipo")); CNFichas(opciones: clases, elegida: $clase) }
+            }
             CNColorFila(color: $color)
         }
         // Lo que ya se dijo en el catálogo, puesto de partida.
@@ -603,9 +614,14 @@ struct CNFormPrestamo: View {
     var body: some View {
         CNHoja(titulo: cnT("Nuevo préstamo"), guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
-            VStack(alignment: .leading, spacing: 8) {
-                cnHojaTitulo(cnT("¿Cómo es?"))
-                CNFichas(opciones: [("debo", "Yo debo", "mano"), ("meDeben", "Me deben", "billete")], elegida: $sentido)
+            // Igual que el tipo de cuenta: viniendo del catálogo ya dijiste si
+            // lo debes tú o te lo deben, y volver a preguntarlo deja cambiarlo
+            // sin querer.
+            if sentidoInicial.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    cnHojaTitulo(cnT("¿Cómo es?"))
+                    CNFichas(opciones: [("debo", "Yo debo", "mano"), ("meDeben", "Me deben", "billete")], elegida: $sentido)
+                }
             }
             CNGrupoCampos(campos: [(cnT("Nombre (ej. Préstamo del carro)"), $nombre, .default),
                                    (cnT("Entidad o persona (opcional)"), $entidad, .default)])
@@ -738,7 +754,8 @@ struct CNAgregar: View {
             case "prestamo": CNFormPrestamo(datos: datos, onClose: onClose,
                                             sentidoInicial: t.sentido, nombreSugerido: t.titulo)
             default: CNFormCuenta(datos: datos, onClose: onClose,
-                                  claseInicial: t.clase, nombreSugerido: t.titulo)
+                                  claseInicial: t.clase, nombreSugerido: t.titulo,
+                                  rotuloDonde: t.donde, rotuloCuanto: t.cuanto)
             }
         } else {
             chooser
@@ -857,6 +874,20 @@ struct CNTipoAgregar: Identifiable {
     /// Palabras que NO se enseñan pero por las que se busca: la gente escribe
     /// la marca («PayPal», «USDT»), no nuestra palabra.
     var busca: String = ""
+    /**
+     * CÓMO SE LE PREGUNTA A ESTE, que no es igual para los dieciocho.
+     *
+     * El catálogo ofrece dieciocho cosas distintas y detrás había TRES
+     * formularios, así que eligieras lo que eligieras te preguntaban lo mismo:
+     * a una membresía de gimnasio le pedía el «Banco», a una tarjeta del metro
+     * también, y encima enseñaba un selector de «Tipo» con el que podías
+     * deshacer lo que acababas de elegir en el catálogo.
+     *
+     * `donde` vacío = esa pregunta no se hace. Al efectivo no se le pregunta
+     * dónde está: está en tu bolsillo.
+     */
+    var donde: String = "Banco (opcional)"
+    var cuanto: String = "Saldo actual"
 
     static let grupos: [Grupo] = [
         .init(id: "gastar", titulo: "Para gastar", pista: "débito", color: cnColor(0x2f9e5c)),
@@ -875,29 +906,29 @@ struct CNTipoAgregar: Identifiable {
               busca: "nomina corriente debito banreservas popular bhd scotiabank"),
         .init(id: "efectivo", titulo: "Efectivo", sub: "Lo que cargas en la cartera",
               icono: "banknote.fill", grupo: "gastar", forma: "cuenta", clase: "efectivo",
-              busca: "cash dinero cartera bolsillo"),
+              busca: "cash dinero cartera bolsillo", donde: "", cuanto: "Cuánto cargas"),
         .init(id: "billetera", titulo: "Billetera digital", sub: "PayPal, tPago, Qik…",
               icono: "wallet.pass.fill", grupo: "gastar", forma: "cuenta", clase: "billetera",
-              busca: "paypal tpago qik wally azul app movil wallet"),
+              busca: "paypal tpago qik wally azul app movil wallet", donde: "Servicio (ej. PayPal)"),
 
         .init(id: "ahorro", titulo: "Ahorro o certificado", sub: "Dinero guardado que no tocas",
               icono: "lock.fill", grupo: "invertir", forma: "cuenta", clase: "ahorro",
-              busca: "certificado plazo fijo cdt ahorros"),
+              busca: "certificado plazo fijo cdt ahorros", cuanto: "Cuánto tienes guardado"),
         .init(id: "acciones", titulo: "Acciones", sub: "En una casa de bolsa o app",
               icono: "chart.line.uptrend.xyaxis", grupo: "invertir", forma: "cuenta", clase: "inversion",
-              busca: "bolsa broker etf stocks acciones"),
+              busca: "bolsa broker etf stocks acciones", donde: "Casa de bolsa o app", cuanto: "Cuánto vale hoy"),
         .init(id: "fondo", titulo: "Fondo de inversión", sub: "Fondos mutuos o de pensión voluntaria",
               icono: "chart.bar.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
-              busca: "mutuo pension afp fondo"),
+              busca: "mutuo pension afp fondo", donde: "Administradora (opcional)", cuanto: "Cuánto vale hoy"),
         .init(id: "cripto", titulo: "Criptomonedas", sub: "Bitcoin, USDT y otras",
               icono: "bitcoinsign.circle", grupo: "invertir", forma: "cuenta", clase: "inversion",
-              busca: "bitcoin btc usdt ethereum binance cripto crypto"),
+              busca: "bitcoin btc usdt ethereum binance cripto crypto", donde: "Dónde la tienes (ej. Binance)", cuanto: "Cuánto vale hoy"),
         .init(id: "inmueble", titulo: "Bienes raíces", sub: "Casa, solar o apartamento",
               icono: "house.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
-              busca: "casa apartamento solar terreno inmueble propiedad"),
+              busca: "casa apartamento solar terreno inmueble propiedad", donde: "Dónde está (opcional)", cuanto: "Cuánto vale hoy"),
         .init(id: "metales", titulo: "Metales", sub: "Oro o plata",
               icono: "circle.hexagongrid.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
-              busca: "oro plata metal lingote"),
+              busca: "oro plata metal lingote", donde: "Dónde lo guardas (opcional)", cuanto: "Cuánto vale hoy"),
 
         .init(id: "tarjeta", titulo: "Tarjeta de crédito", sub: "Con límite, día de corte y día de pago",
               icono: "creditcard.fill", grupo: "credito", forma: "tarjeta",
@@ -915,16 +946,16 @@ struct CNTipoAgregar: Identifiable {
 
         .init(id: "membresia", titulo: "Membresía", sub: "Gimnasio, club, supermercado",
               icono: "star.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
-              busca: "gimnasio gym club socio supermercado puntos"),
+              busca: "gimnasio gym club socio supermercado puntos", donde: "Dónde es (ej. el gimnasio)", cuanto: "Saldo o puntos"),
         .init(id: "transporte", titulo: "Tarjeta de transporte", sub: "Metro, OMSA, peaje",
               icono: "tram.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
-              busca: "metro omsa peaje paso rapido transporte"),
+              busca: "metro omsa peaje paso rapido transporte", donde: "Operador (ej. Metro)", cuanto: "Saldo de la tarjeta"),
         .init(id: "escolar", titulo: "Tarjeta escolar", sub: "Comedor o cafetería",
               icono: "graduationcap.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
-              busca: "colegio escuela comedor cafeteria"),
+              busca: "colegio escuela comedor cafeteria", donde: "Centro (opcional)", cuanto: "Saldo de la tarjeta"),
         .init(id: "otra", titulo: "Otra con saldo", sub: "Cualquier tarjeta que recargas",
               icono: "tag.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
-              busca: "regalo gift recarga saldo prepago")
+              busca: "regalo gift recarga saldo prepago", donde: "Dónde se usa (opcional)", cuanto: "Saldo de la tarjeta")
     ]
 }
 
