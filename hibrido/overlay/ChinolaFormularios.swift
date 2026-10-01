@@ -2980,12 +2980,38 @@ final class CNDictado: ObservableObject {
     /// Entre el toque y el permiso pasa un momento. Sin esto, dos toques
     /// seguidos arrancaban DOS grabaciones sobre el mismo micrófono.
     private var arrancando = false
+    /// Soltaste antes de que llegara a arrancar: en cuanto arranque, se para.
+    private var pararAlArrancar = false
 
     func alternar() { if grabando { parar() } else { empezar() } }
+
+    /**
+     * SOLTASTE EL DEDO.
+     *
+     * Entre apretar y empezar a grabar hay un momento —el permiso, encender el
+     * micrófono— y en un gesto de mantener pulsado es muy fácil soltar dentro
+     * de ese hueco. Si solo se llamara a `parar()`, no habría nada que parar y
+     * la grabación arrancaría DESPUÉS de haber soltado, sola y sin que nadie
+     * la vigile.
+     *
+     * Así que si todavía está arrancando, se apunta para pararla en cuanto
+     * arranque.
+     */
+    func suelta() {
+        if grabando { parar() } else if arrancando { pararAlArrancar = true }
+    }
+
+    /// Soltar cancelando: ni se manda ni se queda escrito.
+    func cancelar() {
+        texto = ""
+        suelta()
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
 
     func empezar() {
         guard !grabando, !arrancando else { return }
         arrancando = true
+        pararAlArrancar = false
         pega = ""
         SFSpeechRecognizer.requestAuthorization { estado in
             DispatchQueue.main.async {
@@ -3102,6 +3128,8 @@ final class CNDictado: ObservableObject {
                 if err != nil || (res?.isFinal ?? false) { s.parar() }
             }
         }
+        // Y si soltaste mientras esto arrancaba, se para ya.
+        if pararAlArrancar { pararAlArrancar = false; parar() }
     }
     func parar() {
         guard grabando else { return }
@@ -3123,6 +3151,16 @@ struct CNCharlaVista: View {
     @State private var texto = ""
     @StateObject private var dictado = CNDictado()
     @State private var flota = false
+    /// Grabando con el dedo encima (sin fijar). Mientras dure, se puede
+    /// cancelar deslizando y fijar subiendo.
+    @State private var conElDedo = false
+    /// Fijado: sigue grabando con las manos libres, como en WhatsApp.
+    @State private var fijado = false
+    /// Pasado el punto de no retorno hacia la izquierda: al soltar, se cancela.
+    @State private var cancelando = false
+    /// Cuánto se ha llevado el dedo, para que el micrófono lo acompañe.
+    @State private var llevaElDedo: CGSize = .zero
+
     /// ¿Hay algo que mandar? Decide si sale el botón de enviar, y la animación
     /// con la que sale. En un solo sitio para que no se separen.
     private var puedeMandar: Bool {
@@ -3255,16 +3293,83 @@ struct CNCharlaVista: View {
                 .padding(.horizontal, 18).padding(.top, 8)
             }
             HStack(alignment: .bottom, spacing: 6) {
-                Button {
-                    dictado.alternar()
-                } label: {
-                    Image(systemName: dictado.grabando ? "stop.circle.fill" : "mic.fill")
-                        .font(cnLetra(18, .semibold))
-                        .foregroundColor(dictado.grabando ? CNC.neg : CNC.pmut)
-                        .frame(width: 34, height: 34)
-                }
-                .buttonStyle(CNPulsable())
-                .accessibilityLabel(dictado.grabando ? cnT("Parar") : cnT("Dictar"))
+                /*
+                 MANTENER PULSADO PARA HABLAR, como en WhatsApp.
+
+                 Era un interruptor: tocar para empezar, tocar para parar. Eso
+                 obliga a acordarse de volver, y mientras tanto el micrófono
+                 sigue abierto si te distraes. Manteniendo, la grabación dura
+                 exactamente lo que dura el dedo, que es lo que uno espera.
+
+                 Y las dos salidas que la gente ya conoce sin que nadie se las
+                 explique: DESLIZAR A LA IZQUIERDA para tirarlo —porque te
+                 arrepientes a mitad de frase, y soltar sin más lo mandaría— y
+                 DESLIZAR ARRIBA para fijarlo y seguir con las manos libres.
+
+                 FIJADO, vuelve a ser un botón: ahí sí se toca para parar.
+
+                 Ni `Button` ni `onLongPressGesture`: los dos se quedan el dedo
+                 mientras deciden qué fue aquello, y hasta que no sueltan, el
+                 arrastre no ve nada. Es el mismo fallo que tenía el botón
+                 flotante. Con el arrastre desde cero, el dedo manda desde el
+                 primer punto.
+                 */
+                Image(systemName: fijado || dictado.grabando ? "stop.circle.fill" : "mic.fill")
+                    .font(cnLetra(18, .semibold))
+                    .foregroundColor(cancelando ? CNC.neg
+                        : (dictado.grabando ? CNC.pos : CNC.pmut))
+                    .frame(width: 34, height: 34)
+                    .scaleEffect(dictado.grabando && !fijado ? 1.25 : 1)
+                    .offset(x: conElDedo ? max(-70, llevaElDedo.width) : 0)
+                    .contentShape(Rectangle())
+                    .animation(.spring(response: 0.22, dampingFraction: 0.7), value: dictado.grabando)
+                    .animation(.spring(response: 0.2, dampingFraction: 0.8), value: cancelando)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { v in
+                                // Fijado ya no se arrastra: es un botón.
+                                guard !fijado else { return }
+                                if !conElDedo {
+                                    conElDedo = true
+                                    cancelando = false
+                                    dictado.empezar()
+                                }
+                                llevaElDedo = v.translation
+                                // Arriba: fijar. Se mira primero porque subir
+                                // en diagonal es lo normal y no debe cancelar.
+                                if v.translation.height < -60 {
+                                    fijado = true
+                                    conElDedo = false
+                                    llevaElDedo = .zero
+                                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                                    return
+                                }
+                                let tira = v.translation.width < -70
+                                if tira != cancelando {
+                                    cancelando = tira
+                                    UISelectionFeedbackGenerator().selectionChanged()
+                                }
+                            }
+                            .onEnded { _ in
+                                if fijado {
+                                    // Fijado, soltar es tocar: para y manda.
+                                    fijado = false
+                                    dictado.suelta()
+                                    return
+                                }
+                                conElDedo = false
+                                llevaElDedo = .zero
+                                if cancelando {
+                                    cancelando = false
+                                    texto = ""          // antes de parar, o se manda
+                                    dictado.cancelar()
+                                } else {
+                                    dictado.suelta()
+                                }
+                            }
+                    )
+                    .accessibilityLabel(dictado.grabando ? cnT("Parar") : cnT("Dictar"))
+                    .accessibilityHint(cnT("Mantén pulsado para hablar"))
                 // CRECE CON LO QUE ESCRIBES, hasta cinco renglones. Con una
                 // sola línea, un mensaje largo se lee por una rendija. El
                 // `axis` es de iOS 16: debajo se queda como estaba, que es
@@ -3273,13 +3378,33 @@ struct CNCharlaVista: View {
                     // Mientras hablas, la onda ocupa el sitio del texto: lo que
                     // importa en ese momento es que te está oyendo, no leer a
                     // medias lo que todavía estás diciendo.
+                    //
+                    // Y debajo, LO QUE PUEDES HACER AHORA MISMO. Un gesto que
+                    // no se cuenta no existe: nadie desliza un botón a ver qué
+                    // pasa. Se dice mientras lo tienes cogido, que es cuando
+                    // sirve, y cambia al pasarte de la raya para que se vea que
+                    // ya estás en «cancelar» antes de soltar.
                     HStack(spacing: 10) {
                         CNOndaVoz(nivel: dictado.nivel)
-                        Text(texto.isEmpty ? cnT("Te escucho…") : texto)
-                            .font(cnLetra(15)).foregroundColor(texto.isEmpty ? CNC.pmut : CNC.ink)
-                            .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(cancelando ? cnT("Suelta para cancelar")
+                                 : (texto.isEmpty ? cnT("Te escucho…") : texto))
+                                .font(cnLetra(15))
+                                .foregroundColor(cancelando ? CNC.neg : (texto.isEmpty ? CNC.pmut : CNC.ink))
+                                .lineLimit(2)
+                            if conElDedo && !cancelando {
+                                Text(cnT("◀ desliza para cancelar · ▲ para fijar"))
+                                    .font(cnLetra(10.5)).foregroundColor(CNC.pmut.opacity(0.8))
+                                    .lineLimit(1).minimumScaleFactor(0.8)
+                            } else if fijado {
+                                Text(cnT("Toca el botón para terminar"))
+                                    .font(cnLetra(10.5)).foregroundColor(CNC.pmut.opacity(0.8))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 6)
                     .transition(.opacity)
                 } else {
                     Group {
