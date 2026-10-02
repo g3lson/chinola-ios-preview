@@ -1,0 +1,209 @@
+name: "LA PUERTA: las pantallas de bienvenida, una por una"
+
+# Las pantallas de ANTES de entrar: portada, las tres láminas, entrar, crear
+# cuenta, el nombre, el plan, confirmar el correo y «listo».
+#
+# Son las únicas que ningún banco había fotografiado nunca. El de hoy entra con
+# una libreta sembrada, o sea que la puerta ya está pasada antes de que haya
+# nada que mirar — y son justo las primeras que ve alguien que abre la app por
+# primera vez. Lo que nadie mira es lo que peor envejece.
+#
+# Va en su propio camino y no dentro del banco de hoy: diez arranques más allí
+# dejaban el trabajo rozando su tiempo máximo, y estas hay que mirarlas muchas
+# veces seguidas mientras se arreglan.
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['hibrido/app-clasico/**', 'hibrido/overlay/**',
+            'hibrido/siembra.js', '.github/workflows/puerta.yml']
+
+jobs:
+  correr:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # El Xcode por defecto de macos-15 es el 16.4 y no compila lo nativo de
+      # Chinola, que usa cosas de iOS 26. El mismo paso que el otro banco.
+      - name: Usar el Xcode más nuevo
+        run: |
+          NUEVO=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          sudo xcode-select -s "$NUEVO/Contents/Developer"
+          xcodebuild -version
+
+      - name: Montar la app con el controlador real
+        run: |
+          mkdir -p app/www && cd app
+          # LA APP DE VERDAD, no una página de juguete. La de juguete ya dijo
+          # lo que podía decir: con el controlador real sus módulos SÍ corren.
+          # Lo que falta por saber es si la que abre en blanco en el teléfono
+          # abre en blanco aquí — y si abre, su propio cartel dice por qué.
+          cp -R ../hibrido/app-clasico/* www/
+          # UNA LIBRETA DE EJEMPLO, solo aquí. Sin datos, lo único que se ve es
+          # la bienvenida, y las pantallas que hay que mirar —las nativas, las
+          # que tapan el webview— salen vacías porque no hay nada que pintar.
+          cp ../hibrido/siembra.js www/siembra.js
+          # Y EL FICHERO DE ORO, para poder ejecutar el Swift contra él. Va por
+          # `www/` porque Capacitor mete esa carpeta entera en el paquete y así
+          # no hay que tocar el proyecto de Xcode para añadir un recurso.
+          cp ../hibrido/calculo-oro.json www/calculo-oro.json
+          # Y el de la FUSIÓN, que lo genera otro guion: la capa de nube.
+          cp ../hibrido/fusion-oro.json www/fusion-oro.json
+          python3 - <<'PYX'
+          import re, pathlib
+          p = pathlib.Path('www/index.html')
+          h = p.read_text()
+          assert '<script defer src=' in h, 'no encontré el script de la app'
+          h = h.replace('<script defer src=', '<script src="/siembra.js"></script>\n  <script defer src=', 1)
+          p.write_text(h)
+          print('siembra puesta antes del script de la app')
+          PYX
+          npm init -y >/dev/null
+          # Los plugins DE VERDAD. Sin ellos el banco se inventa errores que la
+          # app real no tiene («"App" plugin is not implemented on ios») y
+          # ensucian justo lo que se viene a medir.
+          npm i @capacitor/core@latest @capacitor/cli@latest @capacitor/ios@latest \
+            @capacitor/app @capacitor/status-bar @capacitor/keyboard @capacitor/splash-screen \
+            @capacitor/haptics @capacitor/network @capacitor/share @capacitor/clipboard \
+            @capacitor/filesystem @capacitor/local-notifications @capacitor/browser \
+            @capacitor/preferences >/dev/null 2>&1
+          # LA MISMA CONFIGURACIÓN QUE LA APP, no una de juguete.
+          #
+          # El banco traía la suya, mínima, y por eso no veía el fallo que de
+          # verdad tenía el usuario: la app lleva `launchAutoHide` en la
+          # pantalla de arranque, y el banco no. Con la de juguete el arranque
+          # se quitaba solo y todo parecía ir bien; en el teléfono se quedaba
+          # puesto, crema y liso, tapando la app entera. Un banco que no
+          # reproduce la configuración no reproduce nada.
+          cp ../hibrido/capacitor.config.json capacitor.config.json
+          # La app sirve desde `nativo/` y el banco monta en `www/`. Es lo ÚNICO
+          # que se le cambia a la configuración de la app: todo lo demás
+          # —`launchAutoHide`, los ajustes del WebView— tiene que ser el mismo o
+          # el banco no reproduce nada. Copiándola tal cual, Capacitor no
+          # encontraba los ficheros y no llegaba ni a compilar.
+          node -e "const f='capacitor.config.json';const c=require('./'+f);c.webDir='www';require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
+          grep -q '\"webDir\": \"www\"' capacitor.config.json || { echo '::error::el webDir del banco no quedó puesto'; exit 1; }
+          npx cap add ios
+          npx cap sync ios
+
+          # TODOS los Swift de la app, sin lista a mano.
+          #
+          # Este era el CUARTO banco con los nombres escritos. Los otros tres ya
+          # se arreglaron y a este se me pasó: quedó con diecisiete de veinte, y
+          # falló con «cannot find CNCatalogos in scope». No es un fallo de la
+          # app — es del banco, y cuesta una vuelta entera averiguarlo.
+          #
+          # AppDelegate y SceneDelegate no se copian del overlay: los pone
+          # Capacitor y el de escena lo manda el banco, que es el que quita el
+          # storyboard.
+          for f in ../hibrido/overlay/*.swift; do
+            n=$(basename "$f")
+            case "$n" in AppDelegate.swift|SceneDelegate.swift) continue;; esac
+            cp "$f" "ios/App/App/$n"
+          done
+          cp -R ../hibrido/overlay/Fuentes ios/App/App/Fuentes
+          cp ../hibrido/real/SceneDelegate.swift ios/App/App/SceneDelegate.swift
+          echo "Swift de la app: $(ls ios/App/App/*.swift | wc -l | tr -d ' ')"
+
+          gem install xcodeproj --no-document --quiet
+          # Y al proyecto, los que estén: se leen del disco, no de una lista.
+          ruby -e "
+            require 'xcodeproj'
+            p = Xcodeproj::Project.open('ios/App/App.xcodeproj')
+            g = (p.main_group['App'] || p.main_group)
+            t = p.targets.first
+            ya = t.source_build_phase.files.map { |f| f.file_ref&.path }.compact
+            Dir['ios/App/App/*.swift'].map { |f| File.basename(f) }.sort.each do |n|
+              next if ya.include?(n)
+              puts \"  + #{n}\"
+              t.add_file_references([g.new_file(n)])
+            end
+            r = g.new_reference('Fuentes'); r.set_last_known_file_type('folder'); t.add_resources([r])
+            p.save
+          "
+          # Sin storyboard: manda nuestro SceneDelegate, como en la app.
+          RUTA=':UIApplicationSceneManifest:UISceneConfigurations:UIWindowSceneSessionRoleApplication:0:UISceneStoryboardFile'
+          /usr/libexec/PlistBuddy -c "Delete $RUTA" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Print $RUTA" ios/App/App/Info.plist 2>/dev/null \
+            && { echo '::error::el storyboard sigue puesto'; exit 1; } || echo 'storyboard fuera ✓'
+          /usr/libexec/PlistBuddy -c "Delete :UIMainStoryboardFile" ios/App/App/Info.plist 2>/dev/null || true
+
+      - name: Compilar
+        run: |
+          set -o pipefail
+          cd app
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Debug -sdk iphonesimulator \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xcode.log | tail -25 || true
+          # El `|| true` es para que lo de abajo LLEGUE A CORRER.
+          #
+          # Con `set -o pipefail` y `bash -e`, un xcodebuild que falla cortaba el
+          # paso justo aquí, así que el bloque escrito para enseñar los errores
+          # no se ejecutaba nunca: el banco decía «falló» y no decía dónde, que
+          # es lo mismo que no decir nada y cuesta una vuelta entera averiguarlo.
+          # El fallo no se traga: se mira abajo y se sale con 65.
+          #
+          # Y si falló, los errores DE VERDAD. `tail -25` se come justo lo que
+          # hace falta —el motivo va mucho antes del resumen final— y eso
+          # cuesta una vuelta entera de integración continua cada vez.
+          if ! grep -q "BUILD SUCCEEDED" /tmp/xcode.log; then
+            echo "=== los errores ==="
+            grep -E "error:|error |failed|Failed" /tmp/xcode.log | head -40
+            echo "=== y el final del log, por si el error no lleva la palabra ==="
+            tail -60 /tmp/xcode.log
+            cp /tmp/xcode.log xcode.log || true
+            exit 65
+          fi
+      - name: Ejecutar y fotografiar
+        run: |
+          cd app
+          APP=$(find build/Build/Products -name "App.app" -maxdepth 3 | head -1)
+          RT=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; rs=[r for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and "SimRuntime.iOS" in r["identifier"]]; rs.sort(key=lambda r:[int(n) for n in r["version"].split(".")]); print(rs[-1]["identifier"], rs[-1]["version"])')
+          RT_ID=$(echo "$RT" | cut -d' ' -f1); RT_VER=$(echo "$RT" | cut -d' ' -f2)
+          MODELO=$(xcrun simctl list devicetypes -j | python3 -c 'import json,sys; ns=[d["name"] for d in json.load(sys.stdin)["devicetypes"]]; print(next((q for q in ["iPhone 17 Pro","iPhone 16 Pro","iPhone 16"] if q in ns), "iPhone 16 Pro"))')
+          echo "iOS $RT_VER · $MODELO"
+          xcrun simctl delete "real" 2>/dev/null || true
+          UDID=$(xcrun simctl create "real" "$MODELO" "$RT_ID")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
+          xcrun simctl install "$UDID" "$APP"
+          # El identificador, SACADO DE LA CONFIGURACIÓN y no escrito aquí.
+          #
+          # Estaba escrito a mano —`do.com.fente.chinolareal`— y dejó de ser el
+          # suyo el día que la configuración pasó a ser la de la app. El
+          # lanzamiento no encontraba nada, el `|| true` se tragaba el error, y
+          # las capturas salieron siendo el ESCRITORIO del iPhone: los tres
+          # bancos decían «success» sin haber mirado la app ni una vez.
+          ID=$(node -p "require('./capacitor.config.json').appId")
+          echo "identificador: $ID"
+          # LAS PANTALLAS DE BIENVENIDA, que no se habían mirado NUNCA.
+          #
+          # El banco entra con una libreta sembrada, así que la puerta ya está
+          # pasada antes de que haya nada que fotografiar. Y son las primeras
+          # que ve alguien que abre la app por primera vez: lo que nadie mira
+          # es lo que peor envejece.
+          for P in "onboarding|0" "onboarding|1" "onboarding|2" "onboarding|3" \
+                   "auth" "auth||registro" "nombre" "plan" "verifica" "listo"; do
+            N=$(echo "$P" | tr '|' '-')
+            echo "=== puerta · $P ==="
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+            sleep 2
+            env SIMCTL_CHILD_CN_IR="puerta:$P" SIMCTL_CHILD_CN_CON=sonda \
+              xcrun simctl launch "$UDID" "$ID"
+            sleep 15
+            xcrun simctl io "$UDID" screenshot "puerta-$N.png"
+          done
+
+      - name: Subir
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: puerta
+          path: |
+            app/*.png
+            app/xcode.log

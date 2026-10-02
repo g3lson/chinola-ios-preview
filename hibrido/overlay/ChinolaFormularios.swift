@@ -2531,12 +2531,16 @@ struct CNPuertaVista: View {
                     }
                 }
                 .padding(.horizontal, 22).padding(.top, m.volver.isEmpty ? 26 : 10).padding(.bottom, 40)
-                // La puerta de siempre, la de la web, a un toque. Si algo de
-                // aquí fallara, nadie se queda fuera de su propia app.
-                Button { onAccion("web", "") } label: {
-                    Text(cnT("Seguir en la web")).font(cnLetra(13)).foregroundColor(CNC.pmut)
-                        .frame(maxWidth: .infinity).padding(.bottom, 26)
-                }.buttonStyle(.plain)
+                // SIN «SEGUIR EN LA WEB».
+                //
+                // Era la puerta de siempre a un toque, por si algo de aquí
+                // fallaba. Pero lo primero que ve alguien que abre la app por
+                // primera vez no puede ser una salida de emergencia: dice que
+                // esto es un apaño y que lo de verdad está en otro sitio.
+                //
+                // La red sigue puesta, solo que no se enseña: cuando la puerta
+                // nativa no se puede armar, `mirarPuerta` se pasa a la web
+                // sola. Nadie se queda fuera de su propia app por esto.
             }
             .cnTeclado()
             }

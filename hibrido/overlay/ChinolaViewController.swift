@@ -373,6 +373,23 @@ class ChinolaViewController: CAPBridgeViewController {
             // Perfil —cambiar el correo, la contraseña, darse de baja— se
             // dibujan nativas y no se habían fotografiado nunca, porque solo se
             // abren tocando su fila.
+            // Y «puerta:<paso>», LAS PANTALLAS DE BIENVENIDA.
+            //
+            // Son las únicas que el banco no había fotografiado nunca: entra
+            // con una libreta sembrada, así que la puerta ya está pasada antes
+            // de que haya nada que mirar. Y son las primeras que ve alguien
+            // que abre la app por primera vez.
+            if ir.hasPrefix("puerta:") {
+                let paso = String(ir.dropFirst(7))
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
+                    guard let s = self else { return }
+                    NSLog("CNIR: puerta · \(paso)")
+                    s.puertaRendida = false
+                    s.eval("window.__chinolaPuerta && window.__chinolaPuerta('paso',\(s.comillas(paso)))")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { s.mirarPuerta(intentos: 8) }
+                }
+                return
+            }
             if ir.contains("@") {
                 let t = ir.split(separator: "@", maxSplits: 1).map(String.init)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
