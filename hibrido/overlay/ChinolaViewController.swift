@@ -2506,6 +2506,46 @@ class ChinolaViewController: CAPBridgeViewController {
     }
 
     /**
+     * «AL REINICIAR SÍ FUNCIONAN; DEJAN DE FUNCIONAR DESPUÉS DE USAR OTRA OPCIÓN».
+     *
+     * Eso no es un botón roto: es un estado que se queda mal. Y un estado que
+     * se queda mal no se ve abriendo la app una vez, que es justo lo que hacía
+     * el banco hasta ahora — por eso aquí salía todo bien mientras en el
+     * teléfono no funcionaba.
+     *
+     * Así que se repite la SECUENCIA: elegir un periodo, cerrarlo, y entonces
+     * volver a pedir el mes de al lado y volver a abrir el calendario. Si la
+     * cabecera no cambia de mes la segunda vez, o el calendario ya no trae
+     * opciones, está aquí.
+     */
+    private func bancoUsaYRepite() {
+        let mes = { CNDatos.shared.resumen?.cabecera.periodoCorto ?? "?" }
+        NSLog("CNPERIODO: antes de elegir, la cabecera dice «\(mes())»")
+        CNDatos.shared.onPeriodo("opcion", 1)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let s = self else { return }
+            NSLog("CNPERIODO: elegido · la cabecera dice «\(mes())»")
+            CNDatos.shared.onPeriodo("cerrar", 0)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                let deAntes = mes()
+                CNDatos.shared.onMes(1)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    let ahora = mes()
+                    NSLog("CNPERIODO: flecha del mes · «\(deAntes)» → «\(ahora)»"
+                          + " · \(deAntes == ahora ? "NO SE MOVIÓ" : "se movió")")
+                    CNDatos.shared.onCalendario()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        let p = CNDatos.shared.periodo
+                        let encima = s.presentedViewController.map { String(describing: type(of: $0)) } ?? "nada"
+                        NSLog("CNPERIODO: calendario la SEGUNDA vez · modelo=\(p != nil ? "sí" : "NO")"
+                              + " opciones=\(p?.opciones.count ?? -1) · encima hay \(encima)")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Toca la fila de Perfil que se llame así, COMO LA TOCA EL DEDO.
      *
      * Buscándola en el modelo NATIVO y no en el de la web: el dedo cae sobre lo
@@ -2597,6 +2637,7 @@ class ChinolaViewController: CAPBridgeViewController {
                             + "return 'abierto='+p.abierto+' opciones='+(p.opciones||[]).length;}"
                             + "catch(x){return 'se rompio: '+x}})()") { r2, _ in
                                 NSLog("CNPERIODO: despues de tocar · \((r2 as? String) ?? "sin respuesta")")
+                                s.bancoUsaYRepite()
                             }
                     }
                 }
