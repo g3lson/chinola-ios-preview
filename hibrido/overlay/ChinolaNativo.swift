@@ -5361,9 +5361,8 @@ struct CNResumenModelo {
             x.tipoPanel = s(w, "tipoPanel")
             x.wid = s(w, "wid"); x.ancho = Int(n(w, "ancho")); x.puedeChica = b(w, "puedeChica")
             x.cfgGrafico = s(w, "cfgGrafico"); x.cfgRango = s(w, "cfgRango")
-            x.vistas = l(w, "vistas").map {
-                SerieCfg(id: s($0, "id"), label: s($0, "label"), puesta: ($0["puesta"] as? Bool) ?? false)
-            }
+            x.vistas = lista(w, "vistas").map { SerieCfg(id: s($0, "id"), label: s($0, "label"),
+                                                        puesta: b($0, "puesta")) }
             x.series = lista(w, "series").map { SerieCfg(id: s($0, "id"), label: s($0, "label"),
                                                         color: s($0, "color"), puesta: b($0, "puesta")) }
             x.valor = s(w, "valor"); x.nota = s(w, "nota"); x.color = s(w, "color"); x.texto = s(w, "texto")
