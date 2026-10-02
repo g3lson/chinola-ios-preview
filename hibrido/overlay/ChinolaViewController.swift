@@ -1753,15 +1753,25 @@ class ChinolaViewController: CAPBridgeViewController {
         } completion: { _ in
             host.willMove(toParent: nil); host.view.removeFromSuperview(); host.removeFromParent()
             CNDatos.shared.detalle = nil
+            // Cerrado: ya no hay nada que refrescar. Sin esto, cada refresco
+            // seguiría pidiendo el modelo del último detalle que se abrió.
+            self.detalleQue = ("", "")
             self.soltarAtras()
         }
         traerDatos(intentos: 3); traerCuentas(); traerPlan()
     }
     private func refrescarDetalle() {
-        // Solo si hay uno EN PANTALLA. `detalleQue` recuerda el último que se
-        // abrió aunque ya esté cerrado, y refrescar ese cargaría un modelo que
-        // nadie está mirando.
-        guard detalleVC != nil else { return }
+        // SOLO MIRANDO `detalleQue`, y no si la vista existe ya.
+        //
+        // Puse aquí un `guard detalleVC != nil` para no refrescar un detalle
+        // cerrado, y dejé la pantalla EN BLANCO: `mostrarDetalle` llama a esto
+        // ANTES de crear la vista —para que el modelo esté puesto cuando
+        // aparezca— así que con ese guardián no se cargaba nunca y el detalle
+        // salía vacío, con su botón de volver y nada más.
+        //
+        // Lo que había que hacer era lo otro: vaciar `detalleQue` al cerrar.
+        // Así «hay algo que refrescar» y «la vista ya existe» dejan de ser la
+        // misma pregunta, que es de donde venía el lío.
         let (tipo, id) = detalleQue
         guard !tipo.isEmpty else { return }
         bridge?.webView?.evaluateJavaScript("(window.__chinolaDetalleJSON && window.__chinolaDetalleJSON(\(comillas(tipo)),\(comillas(id)))) || ''") { res, _ in

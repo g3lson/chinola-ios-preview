@@ -63,10 +63,31 @@ extension View {
     /// su botón «Listo» encima.
     @ViewBuilder func cnTeclado() -> some View {
         if #available(iOS 16.0, *) {
-            self.scrollDismissesKeyboard(.interactively).modifier(CNBarraTeclado())
+            self.scrollDismissesKeyboard(.interactively)
+                .modifier(CNBarraTeclado())
+                .modifier(CNTocaYSeVa())
         } else {
-            self.modifier(CNBarraTeclado())
+            self.modifier(CNBarraTeclado()).modifier(CNTocaYSeVa())
         }
+    }
+}
+
+/**
+ * TOCAR EN UN HUECO BAJA EL TECLADO.
+ *
+ * Solo se iba arrastrando la lista o con el «Listo» de su barra, y nadie busca
+ * un «Listo»: lo primero que hace cualquiera es tocar fuera del campo. Al no
+ * pasar nada, el teclado se queda tapando media pantalla y parece que la app
+ * se ha quedado colgada.
+ *
+ * `onTapGesture` y no `simultaneousGesture`: los toques que caen en algo —un
+ * botón, el propio campo— los consume ese algo y aquí no llegan. Con el
+ * simultáneo, tocar el campo para escribir cerraría el teclado que se acaba de
+ * abrir.
+ */
+struct CNTocaYSeVa: ViewModifier {
+    func body(content: Content) -> some View {
+        content.onTapGesture { cnCerrarTeclado() }
     }
 }
 
@@ -3432,15 +3453,26 @@ struct CNCharlaVista: View {
                         .accessibilityHint(cnT("Mantén pulsado para hablar"))
                 }
             }
-            .padding(.leading, 0).padding(.trailing, 5).padding(.vertical, 5)
-            .background(CNC.card, in: Capsule())
-            .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
+            // EL BOTÓN VA FUERA DE LA CAJA.
+            //
+            // Estaba DENTRO, y eso es lo que hacía que aquello pareciera un
+            // formulario web: una caja con borde y cosas metidas a presión. En
+            // el teléfono la cápsula es el CAMPO —el sitio donde escribes— y
+            // los botones son controles aparte, a su lado. Mensajes y WhatsApp
+            // lo hacen así los dos.
+            //
+            // Y sin borde: el campo se distingue del fondo por el color, no
+            // por una raya. Un recuadro de un punto alrededor del texto es de
+            // página web; en iOS, el relleno basta.
+            .padding(.horizontal, 14).padding(.vertical, 9)
+            .background(CNC.soft, in: Capsule())
             .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 10)
             .background(CNC.scr)
             .animation(.spring(response: 0.26, dampingFraction: 0.8), value: puedeMandar)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(CNC.scr.ignoresSafeArea())
+            .cnTeclado()
             .navigationTitle(m.titulo)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
