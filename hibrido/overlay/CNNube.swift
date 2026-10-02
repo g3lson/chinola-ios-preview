@@ -216,6 +216,14 @@ enum CNNube {
      * libreta del primero que se registró se quedó con la llave y la de todos
      * los demás chocaba.
      */
+    /// La fecha de hoy, como la escribe la app: AAAA-MM-DD.
+    static func hoyISO() -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: Date())
+    }
+
     static func nuevaLibretaId() -> String {
         "lb-" + UUID().uuidString.lowercased()
     }
@@ -265,7 +273,14 @@ enum CNNube {
             // rechazar por no ser suya.
             if let i = mias.firstIndex(where: { ($0["id"] as? String) == "lb-uno" }) {
                 var tx = (mias[i]["tx"] as? [[String: Any]]) ?? []
-                tx.append(["id": "m-local", "monto": 777, "concepto": "Anotado aquí"])
+                // CON FECHA. Sin ella, este movimiento de mentira acababa
+                // guardado en la libreta del simulador y TUMBABA la app en los
+                // arranques siguientes: `mesDe` hacía `slice` sobre una fecha
+                // que no estaba y salía el cartel de «Chinola no pudo abrir».
+                // La app ya no se cae por eso, pero una sonda que deja basura
+                // detrás ensucia todo lo que venga después.
+                tx.append(["id": "m-local", "monto": 777, "concepto": "Anotado aquí",
+                           "fecha": CNNube.hoyISO(), "tipo": "Gasto Variable"])
                 mias[i]["tx"] = tx
             }
             mias.append(["id": "lb1", "nombre": "La vieja", "tx": []])
