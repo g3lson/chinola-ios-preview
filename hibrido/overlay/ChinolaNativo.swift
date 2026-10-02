@@ -5977,6 +5977,10 @@ struct CNResumen: View {
     @State private var marcos: [String: CGRect] = [:]
     @State private var desplaza: CGSize = .zero
     @State private var panelGlobal = CGRect.zero
+    /// Sube cada vez que agregas una tarjeta. La lista lo mira y baja hasta
+    /// ella: la nueva entra AL FINAL, y con el panel lleno cae fuera de la
+    /// pantalla. Agregabas, no veías nada, y parecía que no se había agregado.
+    @State private var acaboDeAgregar = 0
     /// Solo para el banco de pruebas: arrancar ya organizando.
     var organizaAlEmpezar = false
     /// Solo para el banco de pruebas: rodar la lista sola para ver el plegado.
@@ -6034,6 +6038,21 @@ struct CNResumen: View {
                                     withAnimation(.easeOut(duration: 0.4)) { lector.scrollTo("cnAbajo", anchor: .bottom) }
                                 }
                             }
+                            // LO QUE ACABAS DE AGREGAR, A LA VISTA.
+                            //
+                            // La tarjeta nueva entra al final del panel, y con
+                            // el panel lleno eso es fuera de la pantalla.
+                            // Agregabas, mirabas, no pasaba nada, y lo lógico
+                            // es pensar que no se agregó —lo raro sería pensar
+                            // «estará abajo»—. Se espera a que la web conteste
+                            // y la pinte; antes de eso no hay a dónde bajar.
+                            .onChange(of: acaboDeAgregar) { _ in
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
+                                    withAnimation(.easeOut(duration: 0.45)) {
+                                        lector.scrollTo("cnAbajo", anchor: .bottom)
+                                    }
+                                }
+                            }
                     }
                 }
             }
@@ -6083,7 +6102,10 @@ struct CNResumen: View {
             if !m.catalogo.isEmpty {
                 Menu {
                     ForEach(m.catalogo, id: \.id) { o in
-                        Button(o.label) { datos.onPanel("agregar", o.id, "") }
+                        Button(o.label) {
+                            datos.onPanel("agregar", o.id, "")
+                            acaboDeAgregar += 1
+                        }
                     }
                 } label: {
                     Image(systemName: "plus").font(cnLetra(16, .bold)).foregroundColor(CNC.ink)
