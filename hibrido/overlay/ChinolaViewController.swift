@@ -380,14 +380,13 @@ class ChinolaViewController: CAPBridgeViewController {
             // de que haya nada que mirar. Y son las primeras que ve alguien
             // que abre la app por primera vez.
             if ir.hasPrefix("puerta:") {
-                let paso = String(ir.dropFirst(7))
-                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
-                    guard let s = self else { return }
-                    NSLog("CNIR: puerta · \(paso)")
-                    s.puertaRendida = false
-                    s.eval("window.__chinolaPuerta && window.__chinolaPuerta('paso',\(s.comillas(paso)))")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { s.mirarPuerta(intentos: 8) }
-                }
+                // ESPERANDO A QUE LA WEB ESTÉ. El primer arranque después de
+                // instalar es el más lento, y la primera pantalla del bucle
+                // —la portada— salía siempre siendo el Resumen: a los nueve
+                // segundos el puente todavía no existía, el `&&` se tragaba la
+                // llamada y la app seguía su camino. Un fallo del banco, no de
+                // la app, pero indistinguible de uno de verdad en la foto.
+                bancoALaPuerta(String(ir.dropFirst(7)), intentos: 14)
                 return
             }
             if ir.contains("@") {
@@ -2671,6 +2670,24 @@ class ChinolaViewController: CAPBridgeViewController {
                             }
                     }
                 }
+        }
+    }
+
+    /// Planta la app en un paso de la puerta, esperando a que el puente exista.
+    private func bancoALaPuerta(_ paso: String, intentos: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let s = self else { return }
+            s.bridge?.webView?.evaluateJavaScript("typeof window.__chinolaPuerta === 'function'") { r, _ in
+                guard (r as? Bool) == true else {
+                    if intentos > 1 { s.bancoALaPuerta(paso, intentos: intentos - 1) }
+                    else { NSLog("CNIR: puerta · \(paso) · el puente nunca llegó") }
+                    return
+                }
+                NSLog("CNIR: puerta · \(paso)")
+                s.puertaRendida = false
+                s.eval("window.__chinolaPuerta && window.__chinolaPuerta('paso',\(s.comillas(paso)))")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { s.mirarPuerta(intentos: 10) }
+            }
         }
     }
 

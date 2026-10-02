@@ -2490,6 +2490,39 @@ struct CNPuerta {
     }
 }
 
+/// Los campos de la puerta, para encadenar el cursor con la tecla de la
+/// esquina del teclado en vez de tener que apuntar con el dedo.
+enum CNPuertaCampo: Hashable { case quien, nombre, correo, clave, clave2, codigo }
+
+/**
+ * LO QUE ENTRA, ENTRA EN ORDEN.
+ *
+ * Todo aparecía de golpe, ya puesto. Escalonado —el dibujo, luego el rótulo,
+ * luego el título, luego el texto— la pantalla se lee en el orden en que está
+ * escrita, que es lo que hace que una bienvenida se sienta contada y no
+ * volcada. Son fracciones de segundo: no se espera a nada, solo se ordena.
+ *
+ * Y sube quince puntos al entrar, no cae: lo que sube se lee como que llega;
+ * lo que cae, como que se descuelga.
+ */
+struct CNEntraEnOrden: ViewModifier {
+    var listo: Bool
+    var orden: Double
+    func body(content: Content) -> some View {
+        content
+            .opacity(listo ? 1 : 0)
+            .offset(y: listo ? 0 : 15)
+            .animation(.spring(response: 0.52, dampingFraction: 0.86).delay(0.04 + orden * 0.055),
+                       value: listo)
+    }
+}
+
+extension View {
+    func cnEntra(_ listo: Bool, _ orden: Double) -> some View {
+        modifier(CNEntraEnOrden(listo: listo, orden: orden))
+    }
+}
+
 /**
  * LA PUERTA, COMO LA TENÍA LA WEB.
  *
@@ -2516,6 +2549,18 @@ struct CNPuertaVista: View {
     @State private var codigo = ""
     @State private var verClave = false
     @State private var verClave2 = false
+    /// Qué campo tiene el cursor. Permite encadenar: del correo al siguiente
+    /// con la tecla de la esquina, sin tener que apuntar con el dedo.
+    @FocusState private var foco: CNPuertaCampo?
+    /// La entrada escalonada: se apaga al cambiar de paso y se enciende en el
+    /// fotograma siguiente, así cada paso entra como el primero.
+    @State private var entro = false
+    /// Chino respirando en la portada.
+    @State private var flota = false
+    /// Con el teclado puesto se guarda lo secundario: en el acceso, Apple,
+    /// Google y el cambio de modo se comen la pantalla justo cuando estás
+    /// escribiendo.
+    @StateObject private var teclado = CNTecladoAbierto()
 
     /// La tinta de la web sobre el verde oscuro (`SOBRE_OSCURO`).
     private let sobreOscuro = cnColor(0xF7F2E4)
@@ -2529,8 +2574,12 @@ struct CNPuertaVista: View {
         // Acceso y plan llenan la pantalla: su contenido empieza arriba. Las
         // de contar algo se centran en el hueco, como en la web.
         let apretada = m.paso == "auth" || m.paso == "plan"
+        // Y el paso en una sola cadena: es lo que dispara que todo vuelva a
+        // entrar. Cambiar de lámina es cambiar de pantalla, aunque la lámina
+        // sea «la misma vista con otro texto».
+        let cual = m.paso + "/" + String(m.indice) + "/" + (m.registro ? "r" : "l") + (m.codigo ? "c" : "")
         return ZStack {
-            (oscura ? CNC.side : CNC.scr).ignoresSafeArea()
+            fondo(oscura: oscura)
             VStack(spacing: 0) {
                 if !oscura { cabecera(m) }
                 GeometryReader { g in
@@ -2552,7 +2601,54 @@ struct CNPuertaVista: View {
                 botonera(m, oscura: oscura)
             }
         }
-        .onAppear { nombre = m.nombre; email = m.email; clave = m.clave; clave2 = m.clave2; quien = m.valor }
+        .onAppear {
+            nombre = m.nombre; email = m.email; clave = m.clave; clave2 = m.clave2; quien = m.valor
+            arranca(m)
+        }
+        // CADA PASO ENTRA COMO EL PRIMERO.
+        //
+        // Sin esto, pasar de lámina era cambiar el texto de sitio: la pantalla
+        // ya estaba puesta y SwiftUI solo reemplazaba las palabras. Apagando y
+        // encendiendo `entro` vuelve a correr la entrada escalonada, que es lo
+        // que hace que se sienta que has AVANZADO y no que te han editado la
+        // pantalla delante.
+        .onChange(of: cual) { _ in
+            entro = false
+            DispatchQueue.main.async { arranca(m) }
+        }
+    }
+
+    /// Arranca la entrada de un paso: lo escalonado y, donde toca, el cursor.
+    private func arranca(_ m: CNPuerta) {
+        entro = true
+        if m.paso == "nombre" {
+            // El nombre es UN campo y nada más: abrir el teclado solo ahorra un
+            // toque a todo el mundo. En el acceso no, que ahí se mira primero.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { foco = .quien }
+        }
+    }
+
+    /**
+     * EL FONDO.
+     *
+     * En las dos de la marca —portada y «listo»— no es un verde plano: lleva
+     * un halo por detrás de Chino y un oscurecido hacia abajo. Un color plano
+     * a pantalla completa se ve barato en un teléfono; esto le da el mismo
+     * cuerpo que tienen las pantallas de bienvenida del sistema, y de paso
+     * separa a Chino del fondo sin ponerle un marco.
+     */
+    private func fondo(oscura: Bool) -> some View {
+        ZStack {
+            (oscura ? CNC.side : CNC.scr)
+            if oscura {
+                RadialGradient(colors: [Color.white.opacity(0.13), .clear],
+                               center: UnitPoint(x: 0.5, y: 0.34),
+                               startRadius: 8, endRadius: 330)
+                LinearGradient(colors: [.clear, Color.black.opacity(0.18)],
+                               startPoint: .center, endPoint: .bottom)
+            }
+        }
+        .ignoresSafeArea()
     }
 
     // MARK: arriba
@@ -2586,6 +2682,9 @@ struct CNPuertaVista: View {
                             .frame(maxWidth: .infinity).frame(height: 5)
                     }
                 }
+                // El tramo se PINTA al pasar de lámina, no aparece pintado:
+                // así se ve que acabas de avanzar uno.
+                .animation(.easeOut(duration: 0.3), value: m.indice)
             } else if m.paso == "auth" {
                 // Entrar es el final del camino: la barra, entera.
                 Capsule().fill(CNC.pos).frame(maxWidth: .infinity).frame(height: 5)
@@ -2603,7 +2702,15 @@ struct CNPuertaVista: View {
         VStack(spacing: 12) {
             if let img = cnImagenBase64(m.chinolo) {
                 let lado: CGFloat = m.paso == "portada" ? 212 : 168
+                // RESPIRANDO. Quieta, una ilustración grande en medio de la
+                // pantalla se ve pegada; subiendo y bajando dos puntos cada dos
+                // segundos y medio parece que está ahí contigo. Es el mismo
+                // gesto que ya hace en la charla.
                 Image(uiImage: img).resizable().scaledToFit().frame(width: lado, height: lado)
+                    .offset(y: flota ? -5 : 5)
+                    .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: flota)
+                    .onAppear { flota = true }
+                    .cnEntra(entro, 0)
             }
             if m.paso == "portada" {
                 // LA MARCA. El punto amarillo y el nombre, como en la web: es
@@ -2613,18 +2720,21 @@ struct CNPuertaVista: View {
                     Text("Chinola").font(cnLetra(19, .heavy)).foregroundColor(sobreOscuro)
                 }
                 .padding(.top, 6)
+                .cnEntra(entro, 1)
             }
             Text(m.titulo).font(cnLetra(m.paso == "portada" ? 30 : 29, .heavy))
                 .foregroundColor(sobreOscuro)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
+                .cnEntra(entro, 2)
             if !m.texto.isEmpty {
                 Text(m.texto).font(cnLetra(14)).foregroundColor(sobreOscuro.opacity(0.72))
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: 300)
+                    .cnEntra(entro, 3)
             }
         }
         .frame(maxWidth: .infinity)
@@ -2639,25 +2749,29 @@ struct CNPuertaVista: View {
                 Image(uiImage: img).resizable().scaledToFit().frame(width: lado, height: lado)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.bottom, 4)
+                    .cnEntra(entro, 0)
             }
-            if !m.rotulo.isEmpty { rotulo(m.rotulo) }
+            if !m.rotulo.isEmpty { rotulo(m.rotulo).cnEntra(entro, 1) }
             Text(m.titulo).font(cnLetra(28, .heavy)).foregroundColor(CNC.ink)
                 .fixedSize(horizontal: false, vertical: true)
+                .cnEntra(entro, 2)
             if !m.texto.isEmpty {
                 Text(m.texto).font(cnLetra(15)).foregroundColor(CNC.pmut)
                     .lineSpacing(3.5)
                     .fixedSize(horizontal: false, vertical: true)
+                    .cnEntra(entro, 3)
             }
             if m.paso == "nombre" {
-                campo("", m.ph, $quien)
+                campo("", m.ph, $quien, cual: .quien, siguiente: nil)
                     .onChange(of: quien) { v in onAccion("nombre", v) }
                     .padding(.top, 4)
+                    .cnEntra(entro, 4)
             }
             if !m.lista.isEmpty {
                 // Cada cosa en su TARJETA, como en la web. Sueltas sobre el
                 // fondo se leían como un párrafo con dibujitos al lado.
                 VStack(spacing: 9) {
-                    ForEach(m.lista) { p in
+                    ForEach(Array(m.lista.enumerated()), id: \.element.id) { k, p in
                         HStack(spacing: 13) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 13, style: .continuous)
@@ -2678,6 +2792,7 @@ struct CNPuertaVista: View {
                         .background(CNC.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .stroke(CNC.line, lineWidth: 1))
+                        .cnEntra(entro, 4 + Double(k))
                     }
                 }
                 .padding(.top, 4)
@@ -2690,17 +2805,21 @@ struct CNPuertaVista: View {
 
     private func acceso(_ m: CNPuerta) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            if !m.rotulo.isEmpty { rotulo(m.rotulo) }
+            if !m.rotulo.isEmpty { rotulo(m.rotulo).cnEntra(entro, 0) }
             Text(m.titulo).font(cnLetra(25, .heavy)).foregroundColor(CNC.ink)
                 .fixedSize(horizontal: false, vertical: true)
+                .cnEntra(entro, 1)
             if !m.texto.isEmpty {
                 Text(m.texto).font(cnLetra(13)).foregroundColor(CNC.pmut)
                     .lineSpacing(2.5)
                     .fixedSize(horizontal: false, vertical: true)
+                    .cnEntra(entro, 2)
             }
             if m.codigo {
-                campo(m.labelCodigo, m.labelCodigo, $codigo, teclado: .asciiCapable)
+                campo(m.labelCodigo, m.labelCodigo, $codigo, teclado: .asciiCapable,
+                      cual: .codigo, siguiente: nil)
                     .onChange(of: codigo) { v in onAccion("campo", "codigo|" + v) }
+                    .cnEntra(entro, 3)
                 if !m.metodos.isEmpty {
                     HStack(spacing: 8) {
                         Text(m.otrosRotulo).font(cnLetra(12)).foregroundColor(CNC.pmut)
@@ -2724,21 +2843,31 @@ struct CNPuertaVista: View {
                 }
             } else {
                 if m.registro {
-                    campo(m.labelNombre, m.labelNombre, $nombre)
+                    campo(m.labelNombre, m.labelNombre, $nombre, cual: .nombre, siguiente: .correo)
                         .onChange(of: nombre) { v in onAccion("campo", "nombre|" + v) }
+                        .cnEntra(entro, 3)
                 }
                 campo(m.labelCorreo, m.phCorreo.isEmpty ? m.labelCorreo : m.phCorreo,
-                      $email, teclado: .emailAddress)
+                      $email, teclado: .emailAddress, cual: .correo, siguiente: .clave)
                     .onChange(of: email) { v in onAccion("campo", "correo|" + v) }
-                campo(m.labelClave, m.labelClave, $clave, oculto: $verClave)
+                    .cnEntra(entro, 4)
+                campo(m.labelClave, m.labelClave, $clave, oculto: $verClave,
+                      cual: .clave, siguiente: m.registro ? .clave2 : nil)
                     .onChange(of: clave) { v in onAccion("campo", "clave|" + v) }
+                    .cnEntra(entro, 5)
                 if m.registro {
                     campo(m.labelClave2, m.phClave2.isEmpty ? m.labelClave2 : m.phClave2,
-                          $clave2, oculto: $verClave2)
+                          $clave2, oculto: $verClave2, cual: .clave2, siguiente: nil)
                         .onChange(of: clave2) { v in onAccion("campo", "clave2|" + v) }
+                        .cnEntra(entro, 6)
                 }
             }
-            if !m.error.isEmpty { aviso(m.error) }
+            if !m.error.isEmpty {
+                // El aviso NO entra escalonado: si acabas de darle a entrar y
+                // el correo está mal, lo que dice por qué no puede llegar el
+                // último ni hacerse esperar.
+                aviso(m.error)
+            }
             if !m.olvide.isEmpty && !m.codigo {
                 // Subrayado y a la izquierda, como el enlace de la web. Antes
                 // era un botón centrado del ancho entero: parecía una acción
@@ -2755,15 +2884,17 @@ struct CNPuertaVista: View {
 
     private func planes(_ m: CNPuerta) -> some View {
         VStack(alignment: .leading, spacing: 13) {
-            if !m.rotulo.isEmpty { rotulo(m.rotulo) }
+            if !m.rotulo.isEmpty { rotulo(m.rotulo).cnEntra(entro, 0) }
             Text(m.titulo).font(cnLetra(27, .heavy)).foregroundColor(CNC.ink)
                 .fixedSize(horizontal: false, vertical: true)
+                .cnEntra(entro, 1)
             if !m.texto.isEmpty {
                 Text(m.texto).font(cnLetra(14)).foregroundColor(CNC.pmut)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
+                    .cnEntra(entro, 2)
             }
-            ForEach(m.planes) { p in
+            ForEach(Array(m.planes.enumerated()), id: \.element.id) { k, p in
                 Button {
                     UISelectionFeedbackGenerator().selectionChanged()
                     onAccion("plan-elegir", String(p.id))
@@ -2801,7 +2932,15 @@ struct CNPuertaVista: View {
                                 in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(p.puesto ? CNC.acc : CNC.line, lineWidth: 2))
+                    // El elegido se levanta un poco. Antes el único aviso era
+                    // el borde, y un borde de dos puntos entre tres tarjetas
+                    // iguales no se ve de un vistazo.
+                    .shadow(color: Color.black.opacity(p.puesto ? 0.09 : 0),
+                            radius: p.puesto ? 12 : 0, y: p.puesto ? 5 : 0)
+                    .scaleEffect(p.puesto ? 1 : 0.985)
+                    .animation(.spring(response: 0.34, dampingFraction: 0.78), value: p.puesto)
                 }.buttonStyle(CNPulsable())
+                .cnEntra(entro, 3 + Double(k))
             }
             if !m.error.isEmpty { aviso(m.error) }
             if !m.pie.isEmpty {
@@ -2830,16 +2969,24 @@ struct CNPuertaVista: View {
     @ViewBuilder private func botonera(_ m: CNPuerta, oscura: Bool) -> some View {
         VStack(spacing: 10) {
             if !m.boton.isEmpty {
-                botonGrande(m.boton, cargando: m.cargando) { principal(m) }
+                botonGrande(m.boton, cargando: m.cargando, activo: activo(m)) { principal(m) }
             }
-            if m.paso == "auth" && !m.codigo { entrarConOtros(m) }
+            // CON EL TECLADO PUESTO, LO DE AL LADO SE GUARDA.
+            //
+            // Apple, Google y «crear una cuenta» son tres cosas más debajo del
+            // botón, y con el teclado abierto empujan la pantalla hasta dejar
+            // el campo que estás escribiendo contra el borde de arriba. Son
+            // para cuando MIRAS la pantalla, no para cuando escribes en ella.
+            if m.paso == "auth" && !m.codigo && !teclado.abierto { entrarConOtros(m) }
             if let otra = segunda(m) {
                 botonTexto(otra.0, color: oscura ? sobreOscuro.opacity(0.75) : CNC.pmut,
                            borde: oscura) { onAccion(otra.1, "") }
             }
         }
+        .animation(.easeInOut(duration: 0.22), value: teclado.abierto)
         .padding(.horizontal, 24).padding(.top, 12)
         .padding(.bottom, cnMargenAbajo() + 10)
+        .cnEntra(entro, 6)
     }
 
     /// Entrar con Apple o con Google, y el cambio entre entrar y crear cuenta.
@@ -2923,11 +3070,18 @@ struct CNPuertaVista: View {
     /// esquinas de 16. `oculto` lo convierte en contraseña, con su ojo.
     private func campo(_ label: String, _ ph: String, _ texto: Binding<String>,
                        teclado: UIKeyboardType = .default,
-                       oculto: Binding<Bool>? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+                       oculto: Binding<Bool>? = nil,
+                       cual: CNPuertaCampo, siguiente: CNPuertaCampo?) -> some View {
+        // EL BORDE DICE DÓNDE ESTÁS ESCRIBIENDO.
+        //
+        // Tres cajas iguales y ninguna pista de en cuál está el cursor: con el
+        // teclado tapando media pantalla, eso se resuelve mirando dónde parpadea
+        // una raya de un punto. El campo con el foco se tiñe del verde.
+        let puesto = foco == cual
+        return VStack(alignment: .leading, spacing: 5) {
             if !label.isEmpty {
                 Text(label.uppercased()).font(cnLetra(11, .heavy)).tracking(0.9)
-                    .foregroundColor(CNC.pmut)
+                    .foregroundColor(puesto ? CNC.pos : CNC.pmut)
             }
             HStack(spacing: 8) {
                 Group {
@@ -2941,6 +3095,14 @@ struct CNPuertaVista: View {
                 .keyboardType(teclado)
                 .textInputAutocapitalization(teclado == .emailAddress ? .never : .sentences)
                 .disableAutocorrection(teclado != .default)
+                .focused($foco, equals: cual)
+                // LA TECLA DE LA ESQUINA ENCADENA. Del correo a la contraseña
+                // sin volver a apuntar con el dedo, y en el último campo la
+                // tecla dice «entrar» y entra.
+                .submitLabel(siguiente == nil ? .go : .next)
+                .onSubmit {
+                    if let sig = siguiente { foco = sig } else { cnCerrarTeclado(); onAccion("entrar", "") }
+                }
                 if let o = oculto {
                     Button { o.wrappedValue.toggle() } label: {
                         Image(systemName: o.wrappedValue ? "eye.slash" : "eye")
@@ -2950,7 +3112,9 @@ struct CNPuertaVista: View {
             }
             .padding(.horizontal, 14).padding(.vertical, 15)
             .background(CNC.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(puesto ? CNC.pos : CNC.line, lineWidth: puesto ? 1.8 : 1))
+            .animation(.easeOut(duration: 0.16), value: puesto)
         }
     }
 
@@ -2965,7 +3129,8 @@ struct CNPuertaVista: View {
 
     /// La acción principal: pastilla, como en la web. Mientras `cargando` da
     /// vueltas y no responde: dos toques no compran dos veces.
-    private func botonGrande(_ t: String, cargando: Bool = false, _ go: @escaping () -> Void) -> some View {
+    private func botonGrande(_ t: String, cargando: Bool = false, activo: Bool = true,
+                             _ go: @escaping () -> Void) -> some View {
         Button { UIImpactFeedbackGenerator(style: .medium).impactOccurred(); go() } label: {
             HStack(spacing: 8) {
                 if cargando {
@@ -2977,7 +3142,18 @@ struct CNPuertaVista: View {
             .background(CNC.acc, in: Capsule())
         }
         .buttonStyle(CNPulsable())
-        .disabled(cargando).opacity(cargando ? 0.75 : 1)
+        .disabled(cargando || !activo)
+        .opacity(cargando ? 0.75 : (activo ? 1 : 0.45))
+        .animation(.easeOut(duration: 0.2), value: activo)
+    }
+
+    /// ¿Hay ya algo que mandar? Solo donde la respuesta es evidente sin
+    /// preguntarle a nadie: el nombre. En el acceso el botón se deja vivo a
+    /// propósito —un «falta el correo» dicho por la app ayuda más que un botón
+    /// apagado que no explica por qué—.
+    private func activo(_ m: CNPuerta) -> Bool {
+        guard m.paso == "nombre" else { return true }
+        return !quien.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     /// Las salidas, en texto. Sobre el verde de la portada llevan su marco
