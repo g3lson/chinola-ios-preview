@@ -5276,6 +5276,8 @@ struct CNResumenModelo {
         /// recalcular la tarjeta aquí sin preguntarle a la web.
         var tipoPanel = ""
         var cfgGrafico = "linea"; var cfgRango = "12"; var series: [SerieCfg] = []
+        /// Las maneras de ver ESTA tarjeta. Vacío = solo tiene una.
+        var vistas: [SerieCfg] = []
         var clase = "texto"
         var valor = ""; var nota = ""; var color = ""
         /// El icono de la tarjeta de cifra (para el panel con color).
@@ -5359,6 +5361,9 @@ struct CNResumenModelo {
             x.tipoPanel = s(w, "tipoPanel")
             x.wid = s(w, "wid"); x.ancho = Int(n(w, "ancho")); x.puedeChica = b(w, "puedeChica")
             x.cfgGrafico = s(w, "cfgGrafico"); x.cfgRango = s(w, "cfgRango")
+            x.vistas = l(w, "vistas").map {
+                SerieCfg(id: s($0, "id"), label: s($0, "label"), puesta: ($0["puesta"] as? Bool) ?? false)
+            }
             x.series = lista(w, "series").map { SerieCfg(id: s($0, "id"), label: s($0, "label"),
                                                         color: s($0, "color"), puesta: b($0, "puesta")) }
             x.valor = s(w, "valor"); x.nota = s(w, "nota"); x.color = s(w, "color"); x.texto = s(w, "texto")
@@ -6464,6 +6469,20 @@ struct CNTarjetaWidget: View {
         if !organiza {
             Button { onOrganizar() } label: {
                 Label(cnT("Organizar el panel"), systemImage: "square.grid.2x2")
+            }
+            Divider()
+        }
+        // CÓMO SE VE ESTA TARJETA. La misma cifra contada de otra manera: los
+        // gastos por categoría en barras, en dona o en lista. Va con la
+        // TARJETA y no con el tipo, así que dos iguales en el mismo panel
+        // pueden verse distinto, que es media gracia de poder tener dos.
+        if !w.vistas.isEmpty {
+            Menu(cnT("Cómo se ve")) {
+                ForEach(w.vistas, id: \.id) { o in
+                    Button { datos.onPanel("vista", w.wid, o.id) } label: {
+                        Label(o.label, systemImage: o.puesta ? "checkmark.circle.fill" : "circle")
+                    }
+                }
             }
             Divider()
         }
@@ -8631,7 +8650,11 @@ final class CNFlotante: ObservableObject {
     /// Cómo se ve: «cara» (Chino) o «aro» (la marca). En la CHARLA sale
     /// siempre la cara, elijas lo que elijas: ahí es quien te está hablando, y
     /// un aro no habla.
-    @Published var como = "cara"
+    ///
+    /// El aro de partida, como en la web: lo manda ella en cuanto arranca,
+    /// pero en los primeros fotogramas manda esto, y que no cambie delante de
+    /// los ojos vale más que el valor en sí.
+    @Published var como = "aro"
     /// DÓNDE ESTÁ DIBUJADO, en coordenadas de la ventana.
     ///
     /// Lo escribe el propio botón al colocarse. No es `@Published` a propósito:

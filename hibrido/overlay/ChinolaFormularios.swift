@@ -1509,7 +1509,15 @@ struct CNHojaAbajo<C: View>: View {
         ZStack(alignment: .bottom) {
             Color.black.opacity(aparecio ? 0.42 : 0)
                 .onTapGesture { cerrar() }
-            contenido()
+            VStack(spacing: 0) {
+                // EL TIRADOR. La hoja ya se arrastraba para cerrarse y no había
+                // forma de saberlo: es la pastilla que lleva cualquier hoja del
+                // sistema, y dice «esto se mueve» sin tener que explicarlo.
+                Capsule().fill(CNC.ink.opacity(0.18))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 8)
+                contenido()
+            }
                 .frame(maxWidth: .infinity)
                 .background(CNC.scr)
                 .clipShape(CNEsquinasArriba(radio: 30))
@@ -1609,31 +1617,49 @@ struct CNLibretasHoja: View {
         let m = datos.libretas ?? CNLibretas()
         let puesta = m.filas.first(where: { $0.enUso })
         let otras = m.filas.filter { !$0.enUso }
-        let altoMax = UIScreen.main.bounds.height * 0.82
-        return NavigationView {
+        let altoMax = UIScreen.main.bounds.height * 0.72
+        /*
+         SIN `NavigationView`, Y POR ESO YA NO TAPA LA PANTALLA.
+
+         Esto es una hoja que crece con lo que lleva dentro: con tres libretas
+         debe ocupar un tercio. Pero llevaba un `NavigationView` —por su barra,
+         con el título y los botones— y un `NavigationView` SIEMPRE se queda
+         toda la altura que le dejen. Así que la hoja medía la pantalla entera y
+         debajo de la última fila quedaba medio teléfono vacío.
+
+         La barra se hace a mano, que son tres cosas en fila: la × para cerrar,
+         el título y el + para crear. Y así, de paso, es la misma barra que
+         llevan las otras hojas de la app.
+
+         UNA × EN VEZ DE «CANCELAR». Esto no cancela nada: no has empezado a
+         hacer nada que se pueda deshacer, solo estás mirando dónde anotas. Una
+         × dice «cierro esto» sin prometer lo que no hay.
+         */
+        return VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Button { onClose() } label: {
+                    Image(systemName: "xmark").font(cnLetra(15, .bold)).foregroundColor(CNC.ink)
+                        .frame(width: 34, height: 34).background(CNC.soft, in: Circle())
+                }.buttonStyle(CNPulsable()).accessibilityLabel(cnT("Cerrar"))
+                Spacer(minLength: 6)
+                Text(m.titulo).font(cnLetra(16, .heavy)).foregroundColor(CNC.ink).lineLimit(1)
+                Spacer(minLength: 6)
+                Button { datos.onLibreta("nueva", 0) } label: {
+                    Image(systemName: "plus").font(cnLetra(16, .bold)).foregroundColor(CNC.ink)
+                        .frame(width: 34, height: 34).background(CNC.soft, in: Circle())
+                }.buttonStyle(CNPulsable()).accessibilityLabel(cnT("Nueva libreta"))
+            }
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 10)
             // Con pocas libretas la hoja mide lo que mide su contenido; solo si
             // son muchas se convierte en una lista que rueda.
-            Group {
-                if m.filas.count > 5 {
-                    ScrollView(showsIndicators: false) { cuerpo(m, puesta: puesta, otras: otras) }
-                        .frame(maxHeight: altoMax)
-                } else {
-                    ScrollView(showsIndicators: false) { cuerpo(m, puesta: puesta, otras: otras) }
-                }
-            }
-            .background(CNC.scr.ignoresSafeArea())
-            .navigationTitle(m.titulo)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(cnT("Cancelar")) { onClose() }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { datos.onLibreta("nueva", 0) } label: { Image(systemName: "plus") }
-                }
+            if m.filas.count > 5 {
+                ScrollView(showsIndicators: false) { cuerpo(m, puesta: puesta, otras: otras) }
+                    .frame(maxHeight: altoMax)
+            } else {
+                cuerpo(m, puesta: puesta, otras: otras)
             }
         }
-        .navigationViewStyle(.stack)
+        .background(CNC.scr)
         .tint(CNC.pos)
     }
 
@@ -1680,14 +1706,14 @@ struct CNLibretasHoja: View {
     private func accion(_ simbolo: String, _ texto: String, tinte: Color?, _ al: @escaping () -> Void) -> some View {
         Button(action: al) {
             HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(tinte.map { $0.opacity(0.16) } ?? CNC.ink.opacity(0.06))
-                    Image(systemName: simbolo).font(cnLetra(16, .bold))
-                        .foregroundColor(tinte ?? CNC.pmut)
-                }
-                .frame(width: 42, height: 42)
-                Text(texto).font(cnLetra(16, .bold)).foregroundColor(CNC.ink).lineLimit(1)
+                // UN GLIFO, NO UN CUADRO DE COLOR. Con el mismo tile que las
+                // libretas, «Libretas y permisos» se leía como una libreta más
+                // —y no lo es: es una puerta a otra pantalla—. Del tamaño de
+                // una fila, pero sin el peso de una.
+                Image(systemName: simbolo).font(cnLetra(16, .semibold))
+                    .foregroundColor(tinte ?? CNC.pmut)
+                    .frame(width: 42, height: 42)
+                Text(texto).font(cnLetra(15.5, .semibold)).foregroundColor(CNC.ink).lineLimit(1)
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right").font(cnLetra(11.5, .bold))
                     .foregroundColor(CNC.pmut.opacity(0.6))
