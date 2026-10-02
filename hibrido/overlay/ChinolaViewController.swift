@@ -2487,7 +2487,20 @@ class ChinolaViewController: CAPBridgeViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
             guard let s = self else { return }
             s.bancoToca(que: "el tour", comoSeLlama: "tour|visite") {
-                s.bancoToca(que: "exportar", comoSeLlama: "export") { }
+                s.bancoToca(que: "exportar", comoSeLlama: "export") {
+                    // Y EL BOTÓN DE DENTRO. Que la hoja se abra no es que
+                    // exportar funcione: lo que tiene que salir al final es la
+                    // hoja de compartir del sistema, y esa no se puede
+                    // presentar si la nuestra sigue encima.
+                    let antes = s.presentedViewController.map { String(describing: type(of: $0)) } ?? "nada"
+                    NSLog("CNBOTONES: le doy a Exportar · encima hay \(antes)")
+                    CNDatos.shared.onHojaEnviar()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                        let fin = s.presentedViewController.map { String(describing: type(of: $0)) } ?? "nada"
+                        NSLog("CNBOTONES: exportado · encima queda \(fin)"
+                              + " · se esperaba UIActivityViewController")
+                    }
+                }
             }
         }
     }
@@ -2533,7 +2546,17 @@ class ChinolaViewController: CAPBridgeViewController {
                         + "+' hayHoja='+!!(window.__chinolaHayHoja&&window.__chinolaHayHoja());}"
                         + "catch(x){return 'se rompio: '+x}})()") { r2, _ in
                             let encima = s.presentedViewController.map { String(describing: type(of: $0)) } ?? "nada"
-                            NSLog("CNBOTONES: \(que) · la web dice \((r2 as? String) ?? "?") · encima hay \(encima)")
+                            // Y EL RECORRIDO, que no se presenta: se monta como
+                            // vista hija. Montado y no verse son cosas
+                            // distintas, así que se dicen las dos.
+                            let t = s.tourVC?.view
+                            let tour = t == nil ? "sin montar"
+                                : "montado padre=\(t?.superview == nil ? "NO" : "sí")"
+                                  + " alpha=\(t?.alpha ?? -1)"
+                                  + " indice=\(t?.superview?.subviews.firstIndex(of: t!) ?? -1)"
+                                  + " de=\(t?.superview?.subviews.count ?? -1)"
+                            NSLog("CNBOTONES: \(que) · la web dice \((r2 as? String) ?? "?")"
+                                  + " · encima hay \(encima) · recorrido \(tour)")
                             luego()
                         }
                 }

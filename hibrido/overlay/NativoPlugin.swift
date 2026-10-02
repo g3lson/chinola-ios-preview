@@ -33,6 +33,7 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "formulario", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "selector", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "hojaPeriodo", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "apartaHojas", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "fallo", returnType: CAPPluginReturnPromise),
         // La sincronización, cuando la lleva el teléfono.
         CAPPluginMethod(name: "nubeManda", returnType: CAPPluginReturnPromise),
@@ -84,6 +85,31 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: Notification.Name("cnAbrirPeriodo"), object: nil)
             call.resolve()
+        }
+    }
+
+    /**
+     * APARTA LO QUE HAYA ENCIMA, Y AVISA CUANDO YA NO ESTÁ.
+     *
+     * Compartir un archivo abre la hoja del sistema, y esa la presenta iOS
+     * desde el controlador de la app. Si hay una hoja NUESTRA presentada
+     * encima —la de «Exportar esta libreta», por ejemplo—, iOS no presenta
+     * nada: no se puede presentar sobre algo que ya está presentando. No da
+     * error en pantalla, simplemente no sale nada. Desde fuera eso es
+     * «exportar no funciona».
+     *
+     * Así que antes de compartir, la web pide que se aparte lo que haya. Y la
+     * promesa no se resuelve hasta que la hoja se ha ido DE VERDAD: con
+     * `dismiss` el controlador sigue presentando hasta que termina la
+     * animación, y compartir justo después vuelve a caer en lo mismo.
+     */
+    @objc func apartaHojas(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            guard let vc = self.bridge?.viewController, let encima = vc.presentedViewController else {
+                call.resolve(["habia": false])
+                return
+            }
+            encima.dismiss(animated: true) { call.resolve(["habia": true]) }
         }
     }
 
