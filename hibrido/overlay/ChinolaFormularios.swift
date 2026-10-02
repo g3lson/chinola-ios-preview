@@ -61,13 +61,19 @@ func cnCerrarTeclado() {
 extension View {
     /// Teclado como en las apps de Apple: se va al arrastrar la lista y trae
     /// su botón «Listo» encima.
-    @ViewBuilder func cnTeclado() -> some View {
+    ///
+    /// `conListo: false` para las pantallas que ya tienen su barra de escribir
+    /// pegada al teclado —la charla—. Ahí el «Listo» es una franja de más
+    /// entre lo que escribes y las teclas, y ninguna app de mensajes la trae:
+    /// el teclado se baja tocando fuera o arrastrando la conversación, que es
+    /// lo que la gente hace de todas formas.
+    @ViewBuilder func cnTeclado(conListo: Bool = true) -> some View {
         if #available(iOS 16.0, *) {
             self.scrollDismissesKeyboard(.interactively)
-                .modifier(CNBarraTeclado())
+                .modifier(CNBarraTeclado(puesta: conListo))
                 .modifier(CNTocaYSeVa())
         } else {
-            self.modifier(CNBarraTeclado()).modifier(CNTocaYSeVa())
+            self.modifier(CNBarraTeclado(puesta: conListo)).modifier(CNTocaYSeVa())
         }
     }
 }
@@ -93,15 +99,46 @@ struct CNTocaYSeVa: ViewModifier {
 
 /// El botón «Listo» encima del teclado.
 struct CNBarraTeclado: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button(cnT("Listo")) { cnCerrarTeclado() }.font(cnLetra(16, .semibold))
+    /// `false` = sin barra ninguna. No vale poner la barra con el botón
+    /// escondido dentro: la barra ocupa su alto igual y el teclado sigue
+    /// empujando esos puntos de más.
+    var puesta: Bool = true
+    @ViewBuilder func body(content: Content) -> some View {
+        if puesta {
+            content
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button(cnT("Listo")) { cnCerrarTeclado() }.font(cnLetra(16, .semibold))
+                    }
                 }
-            }
+        } else {
+            content
+        }
     }
+}
+
+/// ¿ESTÁ EL TECLADO EN PANTALLA?
+///
+/// Para pegarle la barra de escribir cuando sí. Con el teclado fuera, la barra
+/// necesita su hueco por abajo —el del indicador de inicio—; con el teclado
+/// puesto ese hueco lo pone el propio teclado, así que el mismo relleno se
+/// convierte en una franja de nada entre lo que escribes y las teclas.
+final class CNTecladoAbierto: ObservableObject {
+    @Published var abierto = false
+    private var vigilan: [NSObjectProtocol] = []
+    init() {
+        let c = NotificationCenter.default
+        vigilan.append(c.addObserver(forName: UIResponder.keyboardWillShowNotification,
+                                     object: nil, queue: .main) { [weak self] _ in
+            self?.abierto = true
+        })
+        vigilan.append(c.addObserver(forName: UIResponder.keyboardWillHideNotification,
+                                     object: nil, queue: .main) { [weak self] _ in
+            self?.abierto = false
+        })
+    }
+    deinit { vigilan.forEach { NotificationCenter.default.removeObserver($0) } }
 }
 
 /// Cabecera de hoja: tirador, cerrar en vidrio y el título. Sin más ruido: la
@@ -3197,6 +3234,8 @@ struct CNCharlaVista: View {
     var onClose: () -> Void
     @State private var texto = ""
     @StateObject private var dictado = CNDictado()
+    /// Para pegar la barra de escribir al teclado cuando está puesto.
+    @StateObject private var teclado = CNTecladoAbierto()
     @State private var flota = false
     /// Grabando con el dedo encima (sin fijar). Mientras dure, se puede
     /// cancelar deslizando y fijar subiendo.
@@ -3492,13 +3531,21 @@ struct CNCharlaVista: View {
             // página web; en iOS, el relleno basta.
             .padding(.horizontal, 14).padding(.vertical, 9)
             .background(CNC.soft, in: Capsule())
-            .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 10)
+            // PEGADA AL TECLADO.
+            //
+            // Los diez puntos de abajo son para el indicador de inicio, que es
+            // lo que hay debajo cuando el teclado NO está. Con el teclado
+            // puesto ese hueco ya lo pone el teclado, y los diez se veían como
+            // una franja del color de la pantalla entre la cápsula y las
+            // teclas. En Mensajes la barra va pegada.
+            .padding(.horizontal, 12).padding(.top, 8)
+            .padding(.bottom, teclado.abierto ? 3 : 10)
             .background(CNC.scr)
             .animation(.spring(response: 0.26, dampingFraction: 0.8), value: puedeMandar)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(CNC.scr.ignoresSafeArea())
-            .cnTeclado()
+            .cnTeclado(conListo: false)
             .navigationTitle(m.titulo)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

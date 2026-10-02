@@ -399,6 +399,7 @@ class ChinolaViewController: CAPBridgeViewController {
                 }
             }
         }
+        bancoAbreElPeriodo()
         // LA SONDA DEL BOTÓN DE CHINO, para el banco.
         //
         // Con `CN_CON=sonda` se le pregunta a la web, pasados unos segundos,
@@ -1570,8 +1571,41 @@ class ChinolaViewController: CAPBridgeViewController {
         libretasVC = nil
     }
 
-    private func abrirPeriodo() {
-        refrescarPeriodo()
+    /**
+     * PRIMERO EL MODELO, LUEGO LA HOJA.
+     *
+     * Antes se pedía el periodo a la web y se abría la hoja en el mismo
+     * suspiro, sin esperar la respuesta. `CNPeriodoHoja` dibuja
+     * `datos.periodo ?? CNPeriodo()`, así que cuando la respuesta no llegaba
+     * —o llegaba vacía— la hoja salía con su título, su «Listo» y NADA dentro.
+     * Eso es lo que se veía al tocar el calendario de la cabecera.
+     *
+     * Ahora la hoja no se abre hasta tener qué dibujar, y se vuelve a
+     * preguntar unas cuantas veces: la web acaba de cambiar de estado y puede
+     * no haber repintado todavía. Si después de todo no hay periodo, se
+     * enseña la pantalla WEB, que tiene su propia hoja con el mismo estado
+     * por detrás. Mejor la de la web que una hoja vacía.
+     */
+    private func abrirPeriodo(intentos: Int = 5) {
+        guard periodoVC == nil else { refrescarPeriodo(); return }
+        bridge?.webView?.evaluateJavaScript("(window.__chinolaPeriodoJSON && window.__chinolaPeriodoJSON()) || ''") { [weak self] res, _ in
+            guard let s = self else { return }
+            let json = (res as? String) ?? ""
+            if json.count > 2, let p = CNPeriodo.desde(json: json), !p.opciones.isEmpty {
+                CNDatos.shared.cargarPeriodo(json: json)
+                s.presentarPeriodo()
+                return
+            }
+            guard intentos > 1 else {
+                NSLog("CNPERIODO: la web no da el periodo; se enseña la suya")
+                s.webTemporal()
+                return
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { s.abrirPeriodo(intentos: intentos - 1) }
+        }
+    }
+
+    private func presentarPeriodo() {
         guard periodoVC == nil else { return }
         // La misma hoja propia que el selector de libretas: de orilla a orilla,
         // pegada al pie y con el estilo de la app.
@@ -2427,6 +2461,46 @@ class ChinolaViewController: CAPBridgeViewController {
                     NSLog("CNAGREGA: la libreta dice \((r as? String) ?? "?") tarjetas en su panel")
                 }
             }
+        }
+    }
+
+    /**
+     * EL CALENDARIO DE LA CABECERA ABRE UNA HOJA VACÍA.
+     *
+     * Dos sitios lo abren —el botón del calendario y «Rango…» de la tira de
+     * meses— y la hoja sale con su título, su «Listo» y nada dentro. Una hoja
+     * vacía puede ser tres cosas distintas: que la web no tenga el periodo
+     * armado, que lo tenga y el puente devuelva vacío, o que llegue bien y lo
+     * que falle sea el dibujo. Leyendo el código las tres parecen imposibles,
+     * que es exactamente lo que pasó con «no se agregan las tarjetas».
+     *
+     * Con `CN_CON=periodo` el banco toca el calendario y dice, en orden: qué
+     * contesta el puente y qué acabó teniendo la pantalla.
+     */
+    private func bancoAbreElPeriodo() {
+        guard ProcessInfo.processInfo.environment["CN_CON"]?.contains("periodo") == true else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            guard let s = self else { return }
+            s.bridge?.webView?.evaluateJavaScript(
+                "(function(){try{if(!window.__chinolaPeriodoJSON)return 'NO HAY PUENTE';"
+                + "var j=window.__chinolaPeriodoJSON()||'';if(!j)return 'EL PUENTE DEVUELVE VACIO';"
+                + "var p=JSON.parse(j);return 'abierto='+p.abierto+' opciones='+(p.opciones||[]).length"
+                + "+' dias='+(p.dias||[]).length;}catch(x){return 'se rompio: '+x}})()") { r, _ in
+                    NSLog("CNPERIODO: antes de tocar · \((r as? String) ?? "sin respuesta")")
+                    CNDatos.shared.onCalendario()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        let p = CNDatos.shared.periodo
+                        NSLog("CNPERIODO: la pantalla tiene modelo=\(p != nil ? "sí" : "NO")"
+                              + " opciones=\(p?.opciones.count ?? -1) calendario=\(p?.calendario ?? false)")
+                        s.bridge?.webView?.evaluateJavaScript(
+                            "(function(){try{var j=window.__chinolaPeriodoJSON&&window.__chinolaPeriodoJSON();"
+                            + "if(!j)return 'EL PUENTE DEVUELVE VACIO';var p=JSON.parse(j);"
+                            + "return 'abierto='+p.abierto+' opciones='+(p.opciones||[]).length;}"
+                            + "catch(x){return 'se rompio: '+x}})()") { r2, _ in
+                                NSLog("CNPERIODO: despues de tocar · \((r2 as? String) ?? "sin respuesta")")
+                            }
+                    }
+                }
         }
     }
 

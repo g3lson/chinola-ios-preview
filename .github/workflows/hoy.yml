@@ -216,6 +216,28 @@ jobs:
             xcrun simctl io "$UDID" screenshot "pestana-$P.png"
           done
 
+          # EL CALENDARIO DE LA CABECERA, que abría una hoja VACÍA.
+          #
+          # Un lanzamiento aparte y no una pestaña más: la hoja se abre encima
+          # del Resumen, y metiéndola en el bucle la foto del Resumen se
+          # quedaba tapada. Aquí la sonda toca el calendario y dice qué
+          # contesta el puente antes y después, y qué acabó teniendo la
+          # pantalla. Una hoja vacía puede ser tres fallos distintos y leyendo
+          # el código los tres parecen imposibles.
+          echo "=== el calendario de la cabecera ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          env SIMCTL_CHILD_CN_IR=resumen SIMCTL_CHILD_CN_CON=sonda,periodo \
+            xcrun simctl launch "$UDID" "$ID"
+          sleep 16
+          xcrun simctl io "$UDID" screenshot "hoja-periodo.png"
+          # Lo que dijo la sonda, AQUÍ MISMO. El volcado del log de más abajo
+          # mira los últimos minutos y corta a sesenta líneas: lo de este
+          # lanzamiento ya se le ha caído por el otro lado.
+          xcrun simctl spawn "$UDID" log show --last 1m --style compact \
+            --predicate 'eventMessage CONTAINS "CNPERIODO"' 2>/dev/null \
+            | sed 's/^[^Z]*Z //' || true
+
           # UN SERVIDOR DE MENTIRA PARA EL TELÉFONO.
           #
           # La siembra reemplaza `window.fetch`, y eso solo intercepta a la WEB.

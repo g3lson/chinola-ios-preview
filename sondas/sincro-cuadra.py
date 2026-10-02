@@ -86,6 +86,11 @@ def main():
         print('EL TELÉFONO NO SINCRONIZA COMO DEBE:')
         for f in fallos:
             print('  · ' + f)
+        # Y TODO LO QUE DIJO EL SWIFT. Sin esto, «no concilió» no se distingue
+        # de «no había qué conciliar»: la primera vez que falló me costó una
+        # vuelta entera del banco averiguar que la libreta del caso no se había
+        # subido. El payload cabe en una línea y lo dice.
+        print('  lo que dijo el Swift: ' + json.dumps(r, ensure_ascii=False, sort_keys=True))
         return 1
     print('sincroniza: bajó ' + ', '.join(r['bajadas'])
           + ' · rescató ' + renombradas[0]['de'] + ' → ' + renombradas[0]['a'][:12] + '…')

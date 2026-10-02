@@ -245,10 +245,25 @@ enum CNNube {
             salida["deLaCopia"] = deLaCopia
             salida["enLaCopia"] = CNAlmacen.libretas().compactMap { $0["id"] as? String }.sorted()
             var mias = deLaCopia ? CNAlmacen.libretas() : bajadas
+            // `lb-uno` ES EL CASO QUE SE VIENE A PROBAR: la libreta que el
+            // servidor rechaza por atrasada, o sea los dos aparatos tocando la
+            // misma. Es lo único que obliga a bajar, conciliar y volver a
+            // subir.
+            //
+            // Y cuando lo de este aparato sale de la COPIA —y sale en cuanto la
+            // web ha guardado una vez— esa libreta no está: la copia tiene las
+            // de verdad. Entonces no se subía, el servidor no rechazaba nada, y
+            // la sonda decía «no concilió» sin que la app tuviera nada roto.
+            // Se trae de lo bajado para que el caso se pruebe SIEMPRE, con
+            // copia o sin ella.
+            if !mias.contains(where: { ($0["id"] as? String) == "lb-uno" }),
+               let deAlla = bajadas.first(where: { ($0["id"] as? String) == "lb-uno" }) {
+                mias.append(deAlla)
+            }
             // Un movimiento anotado aquí, para ver si sobrevive a la
             // conciliación, y una libreta de llave vieja que el servidor va a
             // rechazar por no ser suya.
-            if let i = mias.firstIndex(where: { ($0["id"] as? String) == "lb-uno" }) ?? mias.indices.first {
+            if let i = mias.firstIndex(where: { ($0["id"] as? String) == "lb-uno" }) {
                 var tx = (mias[i]["tx"] as? [[String: Any]]) ?? []
                 tx.append(["id": "m-local", "monto": 777, "concepto": "Anotado aquí"])
                 mias[i]["tx"] = tx
