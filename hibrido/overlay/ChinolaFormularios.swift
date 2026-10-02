@@ -2490,6 +2490,21 @@ struct CNPuerta {
     }
 }
 
+/**
+ * LA PUERTA, COMO LA TENÍA LA WEB.
+ *
+ * Esto era un re-dibujo a ojo de las pantallas de bienvenida de la web, y
+ * salía peor que el original: todo alineado a la izquierda sobre el gris de
+ * fondo, la portada sin su verde ni la marca, los puntitos en vez de la barra
+ * de progreso, las listas sin tarjeta, «Saltar» del mismo tamaño que
+ * «Siguiente» y los botones con esquinas de formulario en vez de pastilla.
+ *
+ * La web ya lo tenía resuelto —y mejor—, así que esto se guía de ella:
+ * `src/movil/plantilla.html`, los bloques `esPortada`, `esLamina`, `esAuth`,
+ * `esNombre`, `esPlanSetup`, `esVerifica` y `esListo`. Mismas medidas, mismos
+ * colores, mismo reparto: lo que cuenta la pantalla centrado en el hueco de en
+ * medio, y las acciones abajo del todo.
+ */
 struct CNPuertaVista: View {
     @ObservedObject var datos: CNDatos
     var onAccion: (String, String) -> Void
@@ -2499,112 +2514,378 @@ struct CNPuertaVista: View {
     @State private var clave2 = ""
     @State private var quien = ""
     @State private var codigo = ""
+    @State private var verClave = false
+    @State private var verClave2 = false
+
+    /// La tinta de la web sobre el verde oscuro (`SOBRE_OSCURO`).
+    private let sobreOscuro = cnColor(0xF7F2E4)
 
     var body: some View {
         let m = datos.puerta ?? CNPuerta()
-        // CONTENIDO ARRIBA, ACCIONES ABAJO.
-        //
-        // Antes iba todo en la misma lista: el dibujo, el texto y los botones
-        // seguidos, pegados al borde de arriba y con media pantalla de nada
-        // debajo. Y en la del plan —que es larga— el botón de seguir se iba
-        // con el desplazamiento: salía cortado por el borde de abajo y había
-        // que rodar para encontrarlo.
-        //
-        // Las acciones viven ahora en una barra fija al pie, que es donde el
-        // pulgar las alcanza y donde están en cualquier app del teléfono. Lo
-        // que cuenta la pantalla queda arriba, centrado cuando sobra sitio
-        // —las de contar algo— y pegado arriba cuando no —acceso y plan, que
-        // llenan la pantalla—.
+        // Portada y «listo» van sobre el VERDE de la marca y con el texto
+        // centrado: son las dos que dan la cara, la primera y la última. Las
+        // demás, sobre el fondo de la app.
+        let oscura = m.paso == "portada" || m.paso == "listo"
+        // Acceso y plan llenan la pantalla: su contenido empieza arriba. Las
+        // de contar algo se centran en el hueco, como en la web.
         let apretada = m.paso == "auth" || m.paso == "plan"
         return ZStack {
-            CNC.scr.ignoresSafeArea()
+            (oscura ? CNC.side : CNC.scr).ignoresSafeArea()
             VStack(spacing: 0) {
-                cabecera(m)
+                if !oscura { cabecera(m) }
                 GeometryReader { g in
                     ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: oscura ? .center : .leading, spacing: 13) {
                             switch m.paso {
-                            case "portada", "lamina", "verifica", "listo", "nombre": contarUna(m)
+                            case "portada", "listo": laCara(m)
                             case "auth": acceso(m)
                             case "plan": planes(m)
-                            default: EmptyView()
+                            default: contarUna(m)
                             }
                         }
-                        .padding(.horizontal, 22).padding(.vertical, 16)
                         .frame(maxWidth: .infinity, minHeight: g.size.height,
                                alignment: apretada ? .top : .center)
+                        .padding(.horizontal, 24).padding(.vertical, 14)
                     }
                     .cnTeclado()
                 }
-                botonera(m)
+                botonera(m, oscura: oscura)
             }
         }
         .onAppear { nombre = m.nombre; email = m.email; clave = m.clave; clave2 = m.clave2; quien = m.valor }
     }
 
-    /// La flecha de atrás, SIEMPRE EN EL MISMO SITIO.
-    ///
-    /// Antes la fila solo existía cuando había un «antes», así que al pasar de
-    /// la portada a la primera lámina todo lo de debajo daba un salto hacia
-    /// abajo. El hueco se reserva siempre y la flecha sale o no sale.
+    // MARK: arriba
+
+    /**
+     * LA FLECHA Y LA BARRA DE PROGRESO.
+     *
+     * En la web el avance son barras que ocupan el ancho, una por lámina, al
+     * lado de la flecha. Aquí eran tres puntitos sueltos abajo, pegados al
+     * botón: no se leen como «vas por la segunda de tres».
+     *
+     * Y el hueco se reserva siempre, aunque no haya flecha: si la fila
+     * aparece y desaparece, todo lo de debajo da un salto al cambiar de paso.
+     */
     private func cabecera(_ m: CNPuerta) -> some View {
-        HStack {
+        HStack(spacing: 12) {
             if !m.volver.isEmpty {
                 Button {
                     UISelectionFeedbackGenerator().selectionChanged()
                     onAccion(m.volver, "")
                 } label: {
-                    Image(systemName: "chevron.left").font(cnLetra(16, .bold))
+                    Image(systemName: "chevron.left").font(cnLetra(17, .bold))
                         .foregroundColor(CNC.ink).frame(width: 40, height: 40)
                         .background(CNC.soft, in: Circle())
                 }.buttonStyle(CNPulsable())
             }
-            Spacer(minLength: 0)
-        }
-        .frame(height: 44)
-        .padding(.horizontal, 16).padding(.top, 6)
-    }
-
-    /**
-     * LA BARRA DE ABAJO: una acción principal y, como mucho, dos salidas.
-     *
-     * Las segundas eran botones del mismo tamaño que el principal, con su
-     * marco y su fondo: «Saltar» pesaba lo mismo que «Siguiente», y en el
-     * acceso había tres cajas seguidas compitiendo —«Iniciar sesión», «Crear
-     * una cuenta» y «Usar sin cuenta»—. Una pantalla con tres botones iguales
-     * no dice por dónde se sigue.
-     *
-     * Ahora la principal es la única con fondo; las demás son texto. Es lo que
-     * hace el teléfono en sus propias pantallas de bienvenida.
-     */
-    @ViewBuilder private func botonera(_ m: CNPuerta) -> some View {
-        VStack(spacing: 2) {
-            if m.total > 1 && m.paso == "lamina" {
-                HStack(spacing: 6) {
+            if m.paso == "lamina" && m.total > 1 {
+                HStack(spacing: 7) {
                     ForEach(0..<m.total, id: \.self) { i in
                         Capsule().fill(i <= m.indice ? CNC.pos : CNC.line)
-                            .frame(width: i == m.indice ? 20 : 7, height: 7)
+                            .frame(maxWidth: .infinity).frame(height: 5)
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, 10)
+            } else if m.paso == "auth" {
+                // Entrar es el final del camino: la barra, entera.
+                Capsule().fill(CNC.pos).frame(maxWidth: .infinity).frame(height: 5)
+            } else {
+                Spacer(minLength: 0)
             }
+        }
+        .frame(height: 40)
+        .padding(.horizontal, 24).padding(.top, 10)
+    }
+
+    // MARK: las que dan la cara (portada y listo)
+
+    private func laCara(_ m: CNPuerta) -> some View {
+        VStack(spacing: 12) {
+            if let img = cnImagenBase64(m.chinolo) {
+                let lado: CGFloat = m.paso == "portada" ? 212 : 168
+                Image(uiImage: img).resizable().scaledToFit().frame(width: lado, height: lado)
+            }
+            if m.paso == "portada" {
+                // LA MARCA. El punto amarillo y el nombre, como en la web: es
+                // la única pantalla donde la app se presenta.
+                HStack(spacing: 9) {
+                    Circle().fill(CNC.acc).frame(width: 22, height: 22)
+                    Text("Chinola").font(cnLetra(19, .heavy)).foregroundColor(sobreOscuro)
+                }
+                .padding(.top, 6)
+            }
+            Text(m.titulo).font(cnLetra(m.paso == "portada" ? 30 : 29, .heavy))
+                .foregroundColor(sobreOscuro)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 2)
+            if !m.texto.isEmpty {
+                Text(m.texto).font(cnLetra(14)).foregroundColor(sobreOscuro.opacity(0.72))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 300)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: las que cuentan algo (láminas, nombre, verifica)
+
+    private func contarUna(_ m: CNPuerta) -> some View {
+        VStack(alignment: .leading, spacing: 13) {
+            if let img = cnImagenBase64(m.chinolo) {
+                let lado: CGFloat = m.paso == "lamina" ? 148 : 132
+                Image(uiImage: img).resizable().scaledToFit().frame(width: lado, height: lado)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.bottom, 4)
+            }
+            if !m.rotulo.isEmpty { rotulo(m.rotulo) }
+            Text(m.titulo).font(cnLetra(28, .heavy)).foregroundColor(CNC.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            if !m.texto.isEmpty {
+                Text(m.texto).font(cnLetra(15)).foregroundColor(CNC.pmut)
+                    .lineSpacing(3.5)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if m.paso == "nombre" {
+                campo("", m.ph, $quien)
+                    .onChange(of: quien) { v in onAccion("nombre", v) }
+                    .padding(.top, 4)
+            }
+            if !m.lista.isEmpty {
+                // Cada cosa en su TARJETA, como en la web. Sueltas sobre el
+                // fondo se leían como un párrafo con dibujitos al lado.
+                VStack(spacing: 9) {
+                    ForEach(m.lista) { p in
+                        HStack(spacing: 13) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                    .fill(cnColor(hexString: p.fondo)).frame(width: 38, height: 38)
+                                CNSVGShape(d: p.iconoPath)
+                                    .stroke(cnColor(hexString: p.color),
+                                            style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                                    .frame(width: 20, height: 20)
+                            }
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(p.titulo).font(cnLetra(15, .bold)).foregroundColor(CNC.ink)
+                                Text(p.pie).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 13)
+                        .background(CNC.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(CNC.line, lineWidth: 1))
+                    }
+                }
+                .padding(.top, 4)
+            }
+            if !m.error.isEmpty { aviso(m.error) }
+        }
+    }
+
+    // MARK: entrar y crear cuenta
+
+    private func acceso(_ m: CNPuerta) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !m.rotulo.isEmpty { rotulo(m.rotulo) }
+            Text(m.titulo).font(cnLetra(25, .heavy)).foregroundColor(CNC.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            if !m.texto.isEmpty {
+                Text(m.texto).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                    .lineSpacing(2.5)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if m.codigo {
+                campo(m.labelCodigo, m.labelCodigo, $codigo, teclado: .asciiCapable)
+                    .onChange(of: codigo) { v in onAccion("campo", "codigo|" + v) }
+                if !m.metodos.isEmpty {
+                    HStack(spacing: 8) {
+                        Text(m.otrosRotulo).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                        ForEach(m.metodos) { x in
+                            Button {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                onAccion("metodo", String(x.id))
+                            } label: {
+                                Text(x.label).font(cnLetra(12, .bold)).foregroundColor(CNC.ink)
+                                    .padding(.horizontal, 13).padding(.vertical, 8)
+                                    .background(CNC.card, in: Capsule())
+                                    .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
+                            }.buttonStyle(CNPulsable())
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+                if !m.respaldoNota.isEmpty {
+                    Text(m.respaldoNota).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                if m.registro {
+                    campo(m.labelNombre, m.labelNombre, $nombre)
+                        .onChange(of: nombre) { v in onAccion("campo", "nombre|" + v) }
+                }
+                campo(m.labelCorreo, m.phCorreo.isEmpty ? m.labelCorreo : m.phCorreo,
+                      $email, teclado: .emailAddress)
+                    .onChange(of: email) { v in onAccion("campo", "correo|" + v) }
+                campo(m.labelClave, m.labelClave, $clave, oculto: $verClave)
+                    .onChange(of: clave) { v in onAccion("campo", "clave|" + v) }
+                if m.registro {
+                    campo(m.labelClave2, m.phClave2.isEmpty ? m.labelClave2 : m.phClave2,
+                          $clave2, oculto: $verClave2)
+                        .onChange(of: clave2) { v in onAccion("campo", "clave2|" + v) }
+                }
+            }
+            if !m.error.isEmpty { aviso(m.error) }
+            if !m.olvide.isEmpty && !m.codigo {
+                // Subrayado y a la izquierda, como el enlace de la web. Antes
+                // era un botón centrado del ancho entero: parecía una acción
+                // más, y encima competía con la de entrar.
+                Button { onAccion("olvide", "") } label: {
+                    Text(m.olvide).font(cnLetra(13, .semibold)).foregroundColor(CNC.pmut)
+                        .underline()
+                }.buttonStyle(CNPulsable())
+            }
+        }
+    }
+
+    // MARK: el plan
+
+    private func planes(_ m: CNPuerta) -> some View {
+        VStack(alignment: .leading, spacing: 13) {
+            if !m.rotulo.isEmpty { rotulo(m.rotulo) }
+            Text(m.titulo).font(cnLetra(27, .heavy)).foregroundColor(CNC.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            if !m.texto.isEmpty {
+                Text(m.texto).font(cnLetra(14)).foregroundColor(CNC.pmut)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(m.planes) { p in
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    onAccion("plan-elegir", String(p.id))
+                } label: {
+                    VStack(alignment: .leading, spacing: 9) {
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(p.nombre).font(cnLetra(19, .heavy)).foregroundColor(CNC.ink)
+                                if !p.para.isEmpty {
+                                    Text(p.para).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                                }
+                            }
+                            Spacer(minLength: 8)
+                            VStack(alignment: .trailing, spacing: 0) {
+                                Text(p.precio).font(cnLetra(18, .heavy)).foregroundColor(CNC.ink)
+                                if !p.cada.isEmpty {
+                                    Text(p.cada).font(cnLetra(11)).foregroundColor(CNC.pmut)
+                                }
+                            }
+                        }
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(p.items.indices, id: \.self) { k in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Image(systemName: "checkmark").font(cnLetra(11, .bold))
+                                        .foregroundColor(CNC.pos).padding(.top, 2)
+                                    Text(p.items[k]).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(p.puesto ? CNC.soft : CNC.card,
+                                in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(p.puesto ? CNC.acc : CNC.line, lineWidth: 2))
+                }.buttonStyle(CNPulsable())
+            }
+            if !m.error.isEmpty { aviso(m.error) }
+            if !m.pie.isEmpty {
+                Text(m.pie).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    // MARK: abajo
+
+    /**
+     * LAS ACCIONES, ABAJO Y FUERA DE LO QUE RUEDA.
+     *
+     * En la del plan el botón de seguir se iba con el desplazamiento: salía
+     * cortado por el borde y había que rodar para encontrar la única acción de
+     * la pantalla.
+     *
+     * Y una sola con fondo. Las salidas eran cajas del mismo tamaño que la
+     * principal —«Saltar» pesaba lo mismo que «Siguiente»; en el acceso había
+     * tres seguidas—, y una pantalla con tres botones iguales no dice por
+     * dónde se sigue.
+     */
+    @ViewBuilder private func botonera(_ m: CNPuerta, oscura: Bool) -> some View {
+        VStack(spacing: 10) {
             if !m.boton.isEmpty {
                 botonGrande(m.boton, cargando: m.cargando) { principal(m) }
             }
+            if m.paso == "auth" && !m.codigo { entrarConOtros(m) }
             if let otra = segunda(m) {
-                botonTexto(otra.0, fuerte: false) { onAccion(otra.1, "") }
+                botonTexto(otra.0, color: oscura ? sobreOscuro.opacity(0.75) : CNC.pmut,
+                           borde: oscura) { onAccion(otra.1, "") }
             }
-            if m.paso == "auth" && !m.codigo {
-                botonTexto(m.cambiar, fuerte: true) { onAccion("modo", m.registro ? "login" : "registro") }
-                if !m.sinCuenta.isEmpty {
-                    botonTexto(m.sinCuenta, fuerte: false) { onAccion("sin-cuenta", "") }
+        }
+        .padding(.horizontal, 24).padding(.top, 12)
+        .padding(.bottom, cnMargenAbajo() + 10)
+    }
+
+    /// Entrar con Apple o con Google, y el cambio entre entrar y crear cuenta.
+    /// Tal como los pone la web: los dos del mismo ancho, Apple en negro.
+    @ViewBuilder private func entrarConOtros(_ m: CNPuerta) -> some View {
+        if m.conApple || m.conGoogle {
+            HStack(spacing: 12) {
+                Rectangle().fill(CNC.line).frame(height: 1)
+                Text(m.oDirecto.uppercased()).font(cnLetra(11, .heavy)).tracking(0.9)
+                    .foregroundColor(CNC.pmut).fixedSize()
+                Rectangle().fill(CNC.line).frame(height: 1)
+            }
+            HStack(spacing: 10) {
+                if m.conGoogle {
+                    Button { UISelectionFeedbackGenerator().selectionChanged(); onAccion("google", "") } label: {
+                        HStack(spacing: 8) {
+                            CNLogoGoogle().frame(width: 19, height: 19)
+                            Text(m.google).font(cnLetra(15, .bold)).foregroundColor(CNC.ink)
+                        }
+                        .frame(maxWidth: .infinity).padding(.vertical, 13)
+                        .background(CNC.card, in: Capsule())
+                        .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
+                    }.buttonStyle(CNPulsable())
+                }
+                if m.conApple {
+                    Button { UISelectionFeedbackGenerator().selectionChanged(); onAccion("apple", "") } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "apple.logo").font(cnLetra(17, .medium))
+                            Text(m.apple).font(cnLetra(15, .bold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 13)
+                        .background(cnColor(0x1A1A1A), in: Capsule())
+                    }.buttonStyle(CNPulsable())
                 }
             }
         }
-        .padding(.horizontal, 22).padding(.top, 10)
-        .padding(.bottom, cnMargenAbajo() + 6)
-        .background(CNC.scr)
+        // «Ya tengo cuenta» / «Crear una cuenta»: una frase, no un botón.
+        Button { onAccion("modo", m.registro ? "login" : "registro") } label: {
+            Text(m.cambiar).font(cnLetra(13.5, .heavy)).foregroundColor(CNC.ink)
+                .frame(maxWidth: .infinity).padding(.vertical, 6)
+                .contentShape(Rectangle())
+        }.buttonStyle(CNPulsable())
+        if !m.sinCuenta.isEmpty {
+            botonTexto(m.sinCuenta, color: CNC.pmut, borde: false) { onAccion("sin-cuenta", "") }
+        }
     }
 
     /// Qué hace el botón principal de cada paso.
@@ -2620,9 +2901,10 @@ struct CNPuertaVista: View {
         }
     }
 
-    /// La salida de cada paso, si la tiene. El acceso lleva las suyas aparte.
+    /// La salida de cada paso, si la tiene.
     private func segunda(_ m: CNPuerta) -> (String, String)? {
         if m.paso == "plan" { return m.salida.isEmpty ? nil : (m.salida, "plan-salir") }
+        if m.paso == "auth" { return nil }
         guard !m.segundo.isEmpty else { return nil }
         switch m.paso {
         case "portada": return (m.segundo, "ya-tengo")
@@ -2631,254 +2913,103 @@ struct CNPuertaVista: View {
         }
     }
 
-    // Las pantallas que solo cuentan algo y tienen uno o dos botones.
-    private func contarUna(_ m: CNPuerta) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Chino, EN GRANDE. Con los botones abajo sobra sitio arriba, y
-            // quien abre la app por primera vez tiene que verle la cara: es lo
-            // único de esta pantalla que no es texto.
-            if let img = cnImagenBase64(m.chinolo) {
-                Image(uiImage: img).resizable().scaledToFit().frame(width: 164, height: 164)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.bottom, 6)
-            }
-            if !m.rotulo.isEmpty {
-                Text(m.rotulo.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8).foregroundColor(CNC.pmut)
-            }
-            Text(m.titulo).font(cnLetra(29, .bold)).foregroundColor(CNC.ink)
-                .fixedSize(horizontal: false, vertical: true)
-            if !m.texto.isEmpty {
-                Text(m.texto).font(cnLetra(15.5)).foregroundColor(CNC.pmut)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if m.paso == "nombre" {
-                CNCampoTexto(placeholder: m.ph, texto: $quien)
-                    .onChange(of: quien) { v in onAccion("nombre", v) }
-            }
-            if !m.lista.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(m.lista) { p in
-                        HStack(spacing: 12) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(cnColor(hexString: p.fondo)).frame(width: 40, height: 40)
-                                CNSVGShape(d: p.iconoPath)
-                                    .stroke(cnColor(hexString: p.color),
-                                            style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
-                                    .frame(width: 20, height: 20)
-                            }
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(p.titulo).font(cnLetra(15, .bold)).foregroundColor(CNC.ink)
-                                Text(p.pie).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
-                            }
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.vertical, 9)
-                    }
-                }
-            }
-            if !m.error.isEmpty { aviso(m.error) }
-        }
+    // MARK: piezas
+
+    private func rotulo(_ t: String) -> some View {
+        Text(t.uppercased()).font(cnLetra(11, .heavy)).tracking(1.1).foregroundColor(CNC.pmut)
     }
 
-    private func acceso(_ m: CNPuerta) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if !m.rotulo.isEmpty {
-                Text(m.rotulo.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8).foregroundColor(CNC.pmut)
-                    .padding(.top, 8)
+    /// Un campo como los de la web: su rótulo encima en versales y la caja con
+    /// esquinas de 16. `oculto` lo convierte en contraseña, con su ojo.
+    private func campo(_ label: String, _ ph: String, _ texto: Binding<String>,
+                       teclado: UIKeyboardType = .default,
+                       oculto: Binding<Bool>? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            if !label.isEmpty {
+                Text(label.uppercased()).font(cnLetra(11, .heavy)).tracking(0.9)
+                    .foregroundColor(CNC.pmut)
             }
-            Text(m.titulo).font(cnLetra(29, .bold)).foregroundColor(CNC.ink)
-            if !m.texto.isEmpty {
-                Text(m.texto).font(cnLetra(15.5)).foregroundColor(CNC.pmut)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            VStack(spacing: 10) {
-                if m.codigo {
-                    // El código de dos pasos, y nada más: correo y contraseña
-                    // ya se dieron. El teclado normal: un código de respaldo
-                    // lleva letras.
-                    CNCampoTexto(placeholder: m.labelCodigo, texto: $codigo, teclado: .asciiCapable)
-                        .onChange(of: codigo) { v in onAccion("campo", "codigo|" + v) }
-                    if !m.metodos.isEmpty {
-                        // Los otros métodos que tiene: pedir el código por otro lado.
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(m.otrosRotulo).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
-                            HStack(spacing: 8) {
-                                ForEach(m.metodos) { x in
-                                    Button {
-                                        UISelectionFeedbackGenerator().selectionChanged()
-                                        onAccion("metodo", String(x.id))
-                                    } label: {
-                                        Text(x.label).font(cnLetra(12.5, .bold)).foregroundColor(CNC.ink)
-                                            .padding(.horizontal, 12).padding(.vertical, 8)
-                                            .background(CNC.card, in: Capsule())
-                                            .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
-                                    }.buttonStyle(CNPulsable())
-                                }
-                                Spacer(minLength: 0)
-                            }
-                        }.padding(.top, 2)
-                    }
-                    if !m.respaldoNota.isEmpty {
-                        Text(m.respaldoNota).font(cnLetra(12)).foregroundColor(CNC.pmut)
-                    }
-                } else {
-                if m.registro {
-                    CNCampoTexto(placeholder: m.labelNombre, texto: $nombre)
-                        .onChange(of: nombre) { v in onAccion("campo", "nombre|" + v) }
-                }
-                CNCampoTexto(placeholder: m.phCorreo.isEmpty ? m.labelCorreo : m.phCorreo, texto: $email, teclado: .emailAddress)
-                    .onChange(of: email) { v in onAccion("campo", "correo|" + v) }
-                CNCampoClave(placeholder: m.labelClave, texto: $clave)
-                    .onChange(of: clave) { v in onAccion("campo", "clave|" + v) }
-                if m.registro {
-                    CNCampoClave(placeholder: m.phClave2.isEmpty ? m.labelClave2 : m.phClave2, texto: $clave2)
-                        .onChange(of: clave2) { v in onAccion("campo", "clave2|" + v) }
-                }
-                }
-            }
-            if !m.error.isEmpty { aviso(m.error) }
-            if !m.olvide.isEmpty && !m.codigo {
-                Button { onAccion("olvide", "") } label: {
-                    Text(m.olvide).font(cnLetra(14, .semibold)).foregroundColor(CNC.pmut)
-                        .frame(maxWidth: .infinity)
-                }.buttonStyle(CNPulsable())
-            }
-            if (m.conApple || m.conGoogle) && !m.codigo {
-                HStack(spacing: 10) {
-                    Rectangle().fill(CNC.line).frame(height: 0.5)
-                    Text(m.oDirecto).font(cnLetra(12)).foregroundColor(CNC.pmut).fixedSize()
-                    Rectangle().fill(CNC.line).frame(height: 0.5)
-                }.padding(.vertical, 2)
-                HStack(spacing: 10) {
-                    if m.conApple {
-                        proveedor("apple.logo", m.apple) { onAccion("apple", "") }
-                    }
-                    if m.conGoogle {
-                        proveedor("g.circle", m.google) { onAccion("google", "") }
+            HStack(spacing: 8) {
+                Group {
+                    if let o = oculto, !o.wrappedValue {
+                        SecureField(ph, text: texto)
+                    } else {
+                        TextField(ph, text: texto)
                     }
                 }
+                .font(cnLetra(16)).foregroundColor(CNC.ink)
+                .keyboardType(teclado)
+                .textInputAutocapitalization(teclado == .emailAddress ? .never : .sentences)
+                .disableAutocorrection(teclado != .default)
+                if let o = oculto {
+                    Button { o.wrappedValue.toggle() } label: {
+                        Image(systemName: o.wrappedValue ? "eye.slash" : "eye")
+                            .font(cnLetra(15)).foregroundColor(CNC.pmut)
+                    }.buttonStyle(.plain)
+                }
             }
-        }
-    }
-
-    private func planes(_ m: CNPuerta) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if !m.rotulo.isEmpty {
-                Text(m.rotulo.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8).foregroundColor(CNC.pmut)
-                    .padding(.top, 8)
-            }
-            Text(m.titulo).font(cnLetra(27, .bold)).foregroundColor(CNC.ink)
-            if !m.texto.isEmpty {
-                Text(m.texto).font(cnLetra(15)).foregroundColor(CNC.pmut)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            ForEach(m.planes) { p in
-                Button {
-                    UISelectionFeedbackGenerator().selectionChanged()
-                    onAccion("plan-elegir", String(p.id))
-                } label: {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .center, spacing: 10) {
-                            // La marca de elegido, como una opción de iOS: se ve
-                            // cuál está puesto sin leer el borde.
-                            ZStack {
-                                Circle().stroke(p.puesto ? CNC.acc : CNC.line, lineWidth: p.puesto ? 0 : 1.5)
-                                if p.puesto {
-                                    Circle().fill(CNC.acc)
-                                    Image(systemName: "checkmark").font(cnLetra(11, .heavy)).foregroundColor(CNC.sobreAcc)
-                                }
-                            }
-                            .frame(width: 22, height: 22)
-                            Text(p.nombre).font(cnLetra(17, .heavy)).foregroundColor(CNC.ink)
-                            Spacer(minLength: 8)
-                            VStack(alignment: .trailing, spacing: 0) {
-                                Text(p.precio).font(cnLetra(16, .heavy)).foregroundColor(CNC.ink)
-                                if !p.cada.isEmpty {
-                                    Text(p.cada).font(cnLetra(11.5)).foregroundColor(CNC.pmut)
-                                }
-                            }
-                        }
-                        if !p.para.isEmpty {
-                            Text(p.para).font(cnLetra(13)).foregroundColor(CNC.pmut).padding(.leading, 32)
-                        }
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(p.items.indices, id: \.self) { k in
-                                HStack(alignment: .top, spacing: 7) {
-                                    Image(systemName: "checkmark").font(cnLetra(10.5, .bold)).foregroundColor(CNC.pos)
-                                        .padding(.top, 3)
-                                    Text(p.items[k]).font(cnLetra(13)).foregroundColor(CNC.pmut)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                        }
-                        .padding(.leading, 32)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(p.puesto ? CNC.soft : CNC.card,
-                                in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(p.puesto ? CNC.acc : CNC.line, lineWidth: p.puesto ? 2 : 1))
-                }.buttonStyle(CNPulsable())
-            }
-            if !m.error.isEmpty { aviso(m.error) }
-            if !m.pie.isEmpty {
-                Text(m.pie).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            .padding(.horizontal, 14).padding(.vertical, 15)
+            .background(CNC.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
         }
     }
 
     private func aviso(_ t: String) -> some View {
-        Text(t).font(cnLetra(13.5)).foregroundColor(CNC.neg)
+        Text(t).font(cnLetra(13)).foregroundColor(CNC.neg)
+            .lineSpacing(2)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(CNC.neg.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(CNC.neg.opacity(0.10), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
     }
 
-    /// Mientras `cargando` (la caja de Apple, el servidor) el botón da vueltas
-    /// y no responde: dos toques no compran dos veces.
+    /// La acción principal: pastilla, como en la web. Mientras `cargando` da
+    /// vueltas y no responde: dos toques no compran dos veces.
     private func botonGrande(_ t: String, cargando: Bool = false, _ go: @escaping () -> Void) -> some View {
         Button { UIImpactFeedbackGenerator(style: .medium).impactOccurred(); go() } label: {
             HStack(spacing: 8) {
                 if cargando {
                     ProgressView().progressViewStyle(CircularProgressViewStyle(tint: CNC.sobreAcc))
                 }
-                Text(t).font(cnLetra(16, .bold)).foregroundColor(CNC.sobreAcc)
+                Text(t).font(cnLetra(16, .heavy)).foregroundColor(CNC.sobreAcc)
             }
-            .frame(maxWidth: .infinity).padding(.vertical, 16)
-            .background(CNC.acc, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .frame(maxWidth: .infinity).padding(.vertical, 17)
+            .background(CNC.acc, in: Capsule())
         }
-        .buttonStyle(CNPulsable()).padding(.top, 2)
+        .buttonStyle(CNPulsable())
         .disabled(cargando).opacity(cargando ? 0.75 : 1)
     }
 
-    /// Las salidas, en TEXTO. Con marco y fondo pesaban lo mismo que la acción
-    /// principal, y una pantalla con dos botones iguales no dice por dónde se
-    /// sigue. `fuerte` para la que lleva a otro sitio de verdad —crear cuenta—,
-    /// que se distingue por el color, no por el tamaño.
-    private func botonTexto(_ t: String, fuerte: Bool, _ go: @escaping () -> Void) -> some View {
+    /// Las salidas, en texto. Sobre el verde de la portada llevan su marco
+    /// claro, que es como las pone la web ahí: sin él no se ven.
+    private func botonTexto(_ t: String, color: Color, borde: Bool,
+                            _ go: @escaping () -> Void) -> some View {
         Button { UISelectionFeedbackGenerator().selectionChanged(); go() } label: {
-            Text(t).font(cnLetra(15, fuerte ? .bold : .semibold))
-                .foregroundColor(fuerte ? CNC.pos : CNC.pmut)
-                .frame(maxWidth: .infinity).padding(.vertical, 11)
+            Text(t).font(cnLetra(15, .bold)).foregroundColor(borde ? sobreOscuro : color)
+                .frame(maxWidth: .infinity).padding(.vertical, borde ? 16 : 12)
+                .background(Color.white.opacity(borde ? 0.07 : 0), in: Capsule())
+                .overlay(Capsule().stroke(Color.white.opacity(borde ? 0.28 : 0), lineWidth: 1))
                 .contentShape(Rectangle())
         }.buttonStyle(CNPulsable())
     }
+}
 
-    private func proveedor(_ icono: String, _ t: String, _ go: @escaping () -> Void) -> some View {
-        Button { UISelectionFeedbackGenerator().selectionChanged(); go() } label: {
-            HStack(spacing: 7) {
-                Image(systemName: icono).font(cnLetra(16, .semibold))
-                Text(t).font(cnLetra(15, .semibold))
+/// La G de Google, con sus cuatro colores. Es una marca: en un solo color o
+/// como símbolo del sistema no es su logo, y se nota.
+struct CNLogoGoogle: View {
+    private static let trozos: [(String, UInt)] = [
+        ("M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z", 0xEA4335),
+        ("M46.98 24.55c0-1.6-.15-3.15-.42-4.64H24v9.02h12.94c-.56 2.9-2.2 5.36-4.7 7.02l7.6 5.9c4.44-4.1 7.14-10.15 7.14-17.3z", 0x4285F4),
+        ("M10.49 28.6a14.5 14.5 0 0 1 0-9.2l-7.9-6.2a24 24 0 0 0 0 21.6l7.9-6.2z", 0xFBBC05),
+        ("M24 48c6.2 0 11.5-2.05 15.32-5.58l-7.6-5.9c-2.1 1.42-4.8 2.28-7.72 2.28-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.2C6.5 42.6 14.6 48 24 48z", 0x34A853)
+    ]
+    var body: some View {
+        ZStack {
+            ForEach(CNLogoGoogle.trozos.indices, id: \.self) { i in
+                CNSVGShape(d: CNLogoGoogle.trozos[i].0, viewBox: 48)
+                    .fill(cnColor(CNLogoGoogle.trozos[i].1))
             }
-            .foregroundColor(CNC.ink)
-            .frame(maxWidth: .infinity).padding(.vertical, 13)
-            .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
-        }.buttonStyle(CNPulsable())
+        }
     }
 }
 

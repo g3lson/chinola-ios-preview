@@ -1953,6 +1953,19 @@ class ChinolaViewController: CAPBridgeViewController {
         // bien, la web lo pedía bien, y no se veía. La barra ya se subía aquí;
         // el botón no, y es el único que va por encima de la barra.
         if let f = flotanteVista { view.bringSubviewToFront(f) }
+        // Y EL RECORRIDO, QUE SE HUNDÍA.
+        //
+        // El recorrido no se presenta: se monta como vista hija, encima de la
+        // pantalla de la que habla el paso. Pero cada pantalla nativa que
+        // entra después se añade POR ENCIMA, así que cualquier cambio de
+        // pestaña lo enterraba — la sonda del banco lo vio pasar del cuarto
+        // sitio de cinco al primero en un solo toque, y en el primero no se ve
+        // nada. Desde fuera eso es «le doy a ver el tour otra vez y no pasa
+        // nada»: pasa, pero debajo.
+        //
+        // `pasoDelTour` ya lo subía al cambiar de paso; faltaba aquí, que es
+        // por donde entra toda pantalla nativa.
+        if let t = tourVC?.view { view.bringSubviewToFront(t) }
         // La libreta solo si cambió, y DESPUÉS de que entre la pantalla: si se
         // pide aquí mismo, el puente se come los primeros fotogramas de la
         // animación y el cambio se siente pesado.
