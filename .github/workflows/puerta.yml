@@ -195,7 +195,13 @@ jobs:
             sleep 2
             env SIMCTL_CHILD_CN_IR="puerta:$P" SIMCTL_CHILD_CN_CON=sonda \
               xcrun simctl launch "$UDID" "$ID"
-            sleep 15
+            # VEINTIDÓS, no quince. El primer arranque después de instalar es
+            # el más lento, y la sonda espera a que el puente con la web exista
+            # —hasta veintiún segundos—. Con quince, la foto se tomaba ANTES de
+            # que la espera terminara: salía el Resumen, con el menú todavía en
+            # inglés porque la web no había entregado ni los textos. Dos veces
+            # me hizo creer que la portada estaba rota.
+            sleep 22
             xcrun simctl io "$UDID" screenshot "puerta-$N.png"
           done
 
