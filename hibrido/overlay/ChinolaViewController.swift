@@ -2400,12 +2400,43 @@ class ChinolaViewController: CAPBridgeViewController {
         }
     }
 
+    /**
+     * AGREGAR UNA TARJETA, EN EL BANCO.
+     *
+     * «Agrego una tarjeta y no se agrega» no se puede perseguir leyendo: el
+     * camino de la web ejecutado a mano SÍ la añade, así que lo que falla está
+     * entre el dedo y ahí, o entre ahí y la pantalla. Con `CN_CON=agrega` el
+     * banco entra en organizar, agrega una y dice cuántas había y cuántas hay.
+     *
+     * Si el número sube, lo que falla es el dibujo. Si no sube, no llegó.
+     */
+    private func bancoAgregaUna() {
+        guard ProcessInfo.processInfo.environment["CN_CON"]?.contains("agrega") == true else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            guard let s = self else { return }
+            let antes = CNDatos.shared.resumen?.widgets.count ?? -1
+            let cual = CNDatos.shared.resumen?.catalogo.first?.id ?? "kpi-diario"
+            NSLog("CNAGREGA: antes \(antes) · catalogo \(CNDatos.shared.resumen?.catalogo.count ?? -1) · agrego \(cual)")
+            CNDatos.shared.onPanel("agregar", cual, "")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                let ahora = CNDatos.shared.resumen?.widgets.count ?? -1
+                NSLog("CNAGREGA: despues \(ahora) · \(ahora > antes ? "SUBIÓ" : "NO SUBIÓ")")
+                // Y lo que dice la web que tiene la libreta, para saber si se
+                // guardó y lo que falla es el dibujo.
+                s.bridge?.webView?.evaluateJavaScript("String(((window.__chinolaDatosJSON && JSON.parse(window.__chinolaDatosJSON()||'{}').panel)||[]).length)") { r, _ in
+                    NSLog("CNAGREGA: la libreta dice \((r as? String) ?? "?") tarjetas en su panel")
+                }
+            }
+        }
+    }
+
     /// Al resumen, organizando: desde Perfil o desde donde sea.
     private func irAOrganizar() {
         menuEstado.activa = "resumen"; barra.pintar(activa: "resumen", titulos: menuEstado.titulos)
         eval("window.__chinolaMenu && window.__chinolaMenu('resumen')")
         mostrarNativo("resumen")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { CNDatos.shared.organizarPanel = true }
+        bancoAgregaUna()
     }
 
     private func puertaAccion(_ que: String, _ valor: String) {

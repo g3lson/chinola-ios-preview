@@ -242,7 +242,11 @@ jobs:
             echo "=== perfil · $P ==="
             xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
             sleep 2
-            env SIMCTL_CHILD_CN_IR=perfil:$P SIMCTL_CHILD_CN_CON=sonda,flota \
+            # `organizar` además AGREGA una tarjeta y cuenta: «agrego y no se
+            # agrega» no se persigue leyendo, y el camino de la web ejecutado a
+            # mano sí la añade. Esto dice si llegó, si se guardó y si se dibujó.
+            EXTRA=""; [ "$P" = "organizar" ] && EXTRA=",agrega"
+            env SIMCTL_CHILD_CN_IR=perfil:$P SIMCTL_CHILD_CN_CON=sonda,flota$EXTRA \
               SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
             sleep 18
             xcrun simctl io "$UDID" screenshot "perfil-$P.png"
