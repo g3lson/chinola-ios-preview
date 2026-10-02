@@ -400,6 +400,7 @@ class ChinolaViewController: CAPBridgeViewController {
             }
         }
         bancoAbreElPeriodo()
+        bancoTocaLosBotones()
         // LA SONDA DEL BOTÓN DE CHINO, para el banco.
         //
         // Con `CN_CON=sonda` se le pregunta a la web, pasados unos segundos,
@@ -2464,6 +2465,79 @@ class ChinolaViewController: CAPBridgeViewController {
                 }
             }
         }
+    }
+
+    /**
+     * BOTONES DE PERFIL QUE NO HACEN NADA.
+     *
+     * «Exportar» y «Ver el tour otra vez» se tocan y no pasa nada. Los dos
+     * están en los ÚLTIMOS grupos de la lista, que es la pista: las filas del
+     * Perfil nativo se disparan POR SU SITIO —grupo y fila—, y esa lista la
+     * arma la web filtrando los grupos vacíos. Si entre que el teléfono dibujó
+     * la lista y el dedo la toca la web se repinta con un grupo de más o de
+     * menos, el número apunta a otra fila. O a ninguna.
+     *
+     * O puede que la fila sí se dispare y lo que falle sea después. Son dos
+     * fallos distintos con la misma cara, y leyendo el código los dos parecen
+     * imposibles. Con `CN_CON=botones` el banco busca las dos filas por su
+     * nombre, las toca, y dice en cada paso qué pasó.
+     */
+    private func bancoTocaLosBotones() {
+        guard ProcessInfo.processInfo.environment["CN_CON"]?.contains("botones") == true else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
+            guard let s = self else { return }
+            s.bancoToca(que: "el tour", comoSeLlama: "tour|visite") {
+                s.bancoToca(que: "exportar", comoSeLlama: "export") { }
+            }
+        }
+    }
+
+    /**
+     * Toca la fila de Perfil que se llame así, COMO LA TOCA EL DEDO.
+     *
+     * Buscándola en el modelo NATIVO y no en el de la web: el dedo cae sobre lo
+     * que el teléfono tiene dibujado, y el número que manda es el de ESA lista.
+     * Si la web se ha repintado por el camino, el mismo número apunta a otra
+     * fila — y eso es justo lo que hay que poder ver, así que se dicen las dos.
+     */
+    private func bancoToca(que: String, comoSeLlama: String, luego: @escaping () -> Void) {
+        guard let a = CNDatos.shared.ajustes else {
+            NSLog("CNBOTONES: \(que) · el teléfono no tiene los ajustes")
+            luego(); return
+        }
+        var sitio: (Int, Int)? = nil
+        for (g, grupo) in a.grupos.enumerated() {
+            for (f, fila) in grupo.filas.enumerated()
+            where fila.label.range(of: comoSeLlama, options: [.regularExpression, .caseInsensitive]) != nil {
+                if sitio == nil { sitio = (g, f) }
+            }
+        }
+        guard let donde = sitio else {
+            NSLog("CNBOTONES: \(que) · no hay ninguna fila que se llame así en \(a.grupos.count) grupos")
+            luego(); return
+        }
+        let g = donde.0, f = donde.1
+        let suyo = a.grupos[g].filas[f].label
+        bridge?.webView?.evaluateJavaScript(
+            "(function(){try{var gs=JSON.parse(window.__chinolaAjustesJSON()||'{}').grupos||[];"
+            + "var fs=(gs[\(g)]||{}).filas||[];return 'grupos='+gs.length+' fila='+((fs[\(f)]||{}).label||'NO HAY');}"
+            + "catch(x){return 'se rompio: '+x}})()") { [weak self] r, _ in
+                guard let s = self else { return }
+                NSLog("CNBOTONES: \(que) · toco \(g),\(f) · el telefono dice «\(suyo)» · la web \((r as? String) ?? "?")")
+                CNDatos.shared.onAjuste(g, f, nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    s.bridge?.webView?.evaluateJavaScript(
+                        "(function(){try{var t=(window.__chinolaTourJSON&&window.__chinolaTourJSON())||'';"
+                        + "var h=(window.__chinolaHojaJSON&&window.__chinolaHojaJSON())||'';"
+                        + "return 'tour='+(t?t.length:0)+' hoja='+(h?h.length:0)"
+                        + "+' hayHoja='+!!(window.__chinolaHayHoja&&window.__chinolaHayHoja());}"
+                        + "catch(x){return 'se rompio: '+x}})()") { r2, _ in
+                            let encima = s.presentedViewController.map { String(describing: type(of: $0)) } ?? "nada"
+                            NSLog("CNBOTONES: \(que) · la web dice \((r2 as? String) ?? "?") · encima hay \(encima)")
+                            luego()
+                        }
+                }
+            }
     }
 
     /**

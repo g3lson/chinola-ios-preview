@@ -231,11 +231,30 @@ jobs:
             xcrun simctl launch "$UDID" "$ID"
           sleep 16
           xcrun simctl io "$UDID" screenshot "hoja-periodo.png"
+
           # Lo que dijo la sonda, AQUÍ MISMO. El volcado del log de más abajo
           # mira los últimos minutos y corta a sesenta líneas: lo de este
           # lanzamiento ya se le ha caído por el otro lado.
           xcrun simctl spawn "$UDID" log show --last 1m --style compact \
             --predicate 'eventMessage CONTAINS "CNPERIODO"' 2>/dev/null \
+            | sed 's/^[^Z]*Z //' || true
+
+          # LOS BOTONES DE PERFIL QUE NO HACEN NADA.
+          #
+          # «Exportar» y «Ver el tour otra vez». Las filas del Perfil nativo se
+          # disparan por su SITIO en la lista, y esa lista la arma la web
+          # filtrando grupos vacíos: si se repinta entre que se dibuja y se
+          # toca, el número apunta a otra fila. O la fila sí se dispara y lo
+          # que falla es después. Dos fallos con la misma cara.
+          echo "=== los botones de Perfil ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          env SIMCTL_CHILD_CN_IR=perfil SIMCTL_CHILD_CN_CON=sonda,botones \
+            xcrun simctl launch "$UDID" "$ID"
+          sleep 18
+          xcrun simctl io "$UDID" screenshot "botones-perfil.png"
+          xcrun simctl spawn "$UDID" log show --last 1m --style compact \
+            --predicate 'eventMessage CONTAINS "CNBOTONES"' 2>/dev/null \
             | sed 's/^[^Z]*Z //' || true
 
           # UN SERVIDOR DE MENTIRA PARA EL TELÉFONO.
