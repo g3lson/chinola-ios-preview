@@ -1362,45 +1362,79 @@ struct CNPeriodo {
     }
 }
 
+private struct CNAltoDelPeriodo: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 struct CNPeriodoHoja: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
+    /// Lo que mide lo que hay dentro. La hoja se queda de ese alto.
+    @State private var alto: CGFloat = 0
+
     var body: some View {
         let p = datos.periodo ?? CNPeriodo()
-        // Una lista del sistema con su palomita, como cualquier pantalla de
-        // ajustes que elige una opción. Era una rejilla de pastillas blancas
-        // repartidas en dos columnas con una X redonda arriba: ni se parecía a
-        // iOS ni dejaba claro qué estaba elegido.
+        // LA HOJA MIDE LO QUE HAY DENTRO.
+        //
+        // Antes era `maxHeight: 0.86` de la pantalla, y un `List` dentro de un
+        // `NavigationView` se come todo lo que le ofrezcan: siete opciones y
+        // media pantalla de gris debajo. Una hoja de abajo se queda del alto de
+        // su contenido —eso es lo que la distingue de una pantalla— y por eso
+        // el sistema las hace así.
+        //
+        // El `List` no se puede medir: es perezoso y crece hasta llenar. Así
+        // que las filas van a mano, con la misma cara que las de ajustes
+        // —tarjeta blanca, raya metida y palomita—, y un `GeometryReader` dice
+        // cuánto ocupan. El tope sigue estando por si el calendario viene
+        // abierto con la letra muy grande.
+        let tope = UIScreen.main.bounds.height * 0.82
         return NavigationView {
-            List {
-                Section {
-                    ForEach(p.opciones.indices, id: \.self) { i in
-                        let o = p.opciones[i]
-                        Button { datos.onPeriodo("opcion", o.id) } label: {
-                            HStack {
-                                Text(o.label).foregroundColor(CNC.ink)
-                                Spacer(minLength: 8)
-                                if o.puesta {
-                                    Image(systemName: "checkmark")
-                                        .font(cnLetra(15, .semibold)).foregroundColor(CNC.pos)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) {
+                    VStack(spacing: 0) {
+                        ForEach(p.opciones.indices, id: \.self) { i in
+                            let o = p.opciones[i]
+                            Button { datos.onPeriodo("opcion", o.id) } label: {
+                                HStack(spacing: 8) {
+                                    Text(o.label).font(cnLetra(17)).foregroundColor(CNC.ink)
+                                    Spacer(minLength: 8)
+                                    if o.puesta {
+                                        Image(systemName: "checkmark")
+                                            .font(cnLetra(15, .semibold)).foregroundColor(CNC.pos)
+                                    }
                                 }
+                                .padding(.horizontal, 16).padding(.vertical, 14)
+                                .contentShape(Rectangle())
                             }
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+                            if i < p.opciones.count - 1 {
+                                Divider().padding(.leading, 16)
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
-                } footer: {
-                    if !p.resumen.isEmpty { Text(p.resumen) }
+                    .background(CNC.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    if !p.resumen.isEmpty {
+                        HStack {
+                            Text(p.resumen).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 16).padding(.top, -6)
+                    }
+                    if p.calendario {
+                        calendario(p)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(CNC.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
                 }
-                if p.calendario {
-                    Section { calendario(p) }
-                        .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-                }
+                .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, cnMargenAbajo() + 10)
+                .background(GeometryReader { g in
+                    Color.clear.preference(key: CNAltoDelPeriodo.self, value: g.size.height)
+                })
             }
-            .listStyle(.insetGrouped)
-            .modifier(CNFondoLista())
+            .onPreferenceChange(CNAltoDelPeriodo.self) { alto = $0 }
             .background(CNC.scr.ignoresSafeArea())
-            .font(cnLetra(17))
             .navigationTitle(cnT("Periodo"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1412,6 +1446,8 @@ struct CNPeriodoHoja: View {
             }
         }
         .navigationViewStyle(.stack)
+        // El 56 es la barra del título, que va fuera de lo medido.
+        .frame(height: min(max(alto + 56, 180), tope))
         .tint(CNC.pos)
         .environment(\.locale, Locale(identifier: CNC.fmt.loc))
     }

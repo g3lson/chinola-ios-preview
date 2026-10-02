@@ -1615,8 +1615,10 @@ class ChinolaViewController: CAPBridgeViewController {
             self?.cerrarPeriodo()
         }
         let host = UIHostingController(rootView: CNHojaAbajo(onClose: cerrar) {
+            // Sin tope aquí: la hoja se mide ella sola y se queda del alto de
+            // lo que lleva dentro, con su propio límite por si viene el
+            // calendario abierto.
             CNPeriodoHoja(datos: d, onClose: cerrar)
-                .frame(maxHeight: UIScreen.main.bounds.height * 0.86)
         })
         host.view.backgroundColor = .clear
         host.modalPresentationStyle = .overFullScreen
