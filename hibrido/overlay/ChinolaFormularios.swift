@@ -2502,58 +2502,145 @@ struct CNPuertaVista: View {
 
     var body: some View {
         let m = datos.puerta ?? CNPuerta()
+        // CONTENIDO ARRIBA, ACCIONES ABAJO.
+        //
+        // Antes iba todo en la misma lista: el dibujo, el texto y los botones
+        // seguidos, pegados al borde de arriba y con media pantalla de nada
+        // debajo. Y en la del plan —que es larga— el botón de seguir se iba
+        // con el desplazamiento: salía cortado por el borde de abajo y había
+        // que rodar para encontrarlo.
+        //
+        // Las acciones viven ahora en una barra fija al pie, que es donde el
+        // pulgar las alcanza y donde están en cualquier app del teléfono. Lo
+        // que cuenta la pantalla queda arriba, centrado cuando sobra sitio
+        // —las de contar algo— y pegado arriba cuando no —acceso y plan, que
+        // llenan la pantalla—.
+        let apretada = m.paso == "auth" || m.paso == "plan"
         return ZStack {
             CNC.scr.ignoresSafeArea()
             VStack(spacing: 0) {
-            // La flecha de atrás, la misma de los detalles, en todos los pasos
-            // que tienen un «antes». Deslizar desde la orilla hace lo mismo.
-            if !m.volver.isEmpty {
-                HStack {
-                    Button {
-                        UISelectionFeedbackGenerator().selectionChanged()
-                        onAccion(m.volver, "")
-                    } label: {
-                        Image(systemName: "chevron.left").font(cnLetra(16, .bold))
-                            .foregroundColor(CNC.ink).frame(width: 40, height: 40)
-                            .background(CNC.soft, in: Circle())
-                    }.buttonStyle(CNPulsable())
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 16).padding(.top, 6)
-            }
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    switch m.paso {
-                    case "portada", "lamina", "verifica", "listo", "nombre": contarUna(m)
-                    case "auth": acceso(m)
-                    case "plan": planes(m)
-                    default: EmptyView()
+                cabecera(m)
+                GeometryReader { g in
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            switch m.paso {
+                            case "portada", "lamina", "verifica", "listo", "nombre": contarUna(m)
+                            case "auth": acceso(m)
+                            case "plan": planes(m)
+                            default: EmptyView()
+                            }
+                        }
+                        .padding(.horizontal, 22).padding(.vertical, 16)
+                        .frame(maxWidth: .infinity, minHeight: g.size.height,
+                               alignment: apretada ? .top : .center)
                     }
+                    .cnTeclado()
                 }
-                .padding(.horizontal, 22).padding(.top, m.volver.isEmpty ? 26 : 10).padding(.bottom, 40)
-                // SIN «SEGUIR EN LA WEB».
-                //
-                // Era la puerta de siempre a un toque, por si algo de aquí
-                // fallaba. Pero lo primero que ve alguien que abre la app por
-                // primera vez no puede ser una salida de emergencia: dice que
-                // esto es un apaño y que lo de verdad está en otro sitio.
-                //
-                // La red sigue puesta, solo que no se enseña: cuando la puerta
-                // nativa no se puede armar, `mirarPuerta` se pasa a la web
-                // sola. Nadie se queda fuera de su propia app por esto.
-            }
-            .cnTeclado()
+                botonera(m)
             }
         }
         .onAppear { nombre = m.nombre; email = m.email; clave = m.clave; clave2 = m.clave2; quien = m.valor }
     }
 
+    /// La flecha de atrás, SIEMPRE EN EL MISMO SITIO.
+    ///
+    /// Antes la fila solo existía cuando había un «antes», así que al pasar de
+    /// la portada a la primera lámina todo lo de debajo daba un salto hacia
+    /// abajo. El hueco se reserva siempre y la flecha sale o no sale.
+    private func cabecera(_ m: CNPuerta) -> some View {
+        HStack {
+            if !m.volver.isEmpty {
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    onAccion(m.volver, "")
+                } label: {
+                    Image(systemName: "chevron.left").font(cnLetra(16, .bold))
+                        .foregroundColor(CNC.ink).frame(width: 40, height: 40)
+                        .background(CNC.soft, in: Circle())
+                }.buttonStyle(CNPulsable())
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(height: 44)
+        .padding(.horizontal, 16).padding(.top, 6)
+    }
+
+    /**
+     * LA BARRA DE ABAJO: una acción principal y, como mucho, dos salidas.
+     *
+     * Las segundas eran botones del mismo tamaño que el principal, con su
+     * marco y su fondo: «Saltar» pesaba lo mismo que «Siguiente», y en el
+     * acceso había tres cajas seguidas compitiendo —«Iniciar sesión», «Crear
+     * una cuenta» y «Usar sin cuenta»—. Una pantalla con tres botones iguales
+     * no dice por dónde se sigue.
+     *
+     * Ahora la principal es la única con fondo; las demás son texto. Es lo que
+     * hace el teléfono en sus propias pantallas de bienvenida.
+     */
+    @ViewBuilder private func botonera(_ m: CNPuerta) -> some View {
+        VStack(spacing: 2) {
+            if m.total > 1 && m.paso == "lamina" {
+                HStack(spacing: 6) {
+                    ForEach(0..<m.total, id: \.self) { i in
+                        Capsule().fill(i <= m.indice ? CNC.pos : CNC.line)
+                            .frame(width: i == m.indice ? 20 : 7, height: 7)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 10)
+            }
+            if !m.boton.isEmpty {
+                botonGrande(m.boton, cargando: m.cargando) { principal(m) }
+            }
+            if let otra = segunda(m) {
+                botonTexto(otra.0, fuerte: false) { onAccion(otra.1, "") }
+            }
+            if m.paso == "auth" && !m.codigo {
+                botonTexto(m.cambiar, fuerte: true) { onAccion("modo", m.registro ? "login" : "registro") }
+                if !m.sinCuenta.isEmpty {
+                    botonTexto(m.sinCuenta, fuerte: false) { onAccion("sin-cuenta", "") }
+                }
+            }
+        }
+        .padding(.horizontal, 22).padding(.top, 10)
+        .padding(.bottom, cnMargenAbajo() + 6)
+        .background(CNC.scr)
+    }
+
+    /// Qué hace el botón principal de cada paso.
+    private func principal(_ m: CNPuerta) {
+        switch m.paso {
+        case "portada": onAccion("portada", "")
+        case "lamina": onAccion("lamina", "")
+        case "nombre": onAccion("nombre-seguir", "")
+        case "verifica": onAccion("verifica-reenviar", "")
+        case "auth": cnCerrarTeclado(); onAccion("entrar", "")
+        case "plan": onAccion("plan-seguir", "")
+        default: onAccion("listo", "")
+        }
+    }
+
+    /// La salida de cada paso, si la tiene. El acceso lleva las suyas aparte.
+    private func segunda(_ m: CNPuerta) -> (String, String)? {
+        if m.paso == "plan" { return m.salida.isEmpty ? nil : (m.salida, "plan-salir") }
+        guard !m.segundo.isEmpty else { return nil }
+        switch m.paso {
+        case "portada": return (m.segundo, "ya-tengo")
+        case "lamina": return (m.segundo, "lamina-2")
+        default: return (m.segundo, "verifica-volver")
+        }
+    }
+
     // Las pantallas que solo cuentan algo y tienen uno o dos botones.
     private func contarUna(_ m: CNPuerta) -> some View {
         VStack(alignment: .leading, spacing: 14) {
+            // Chino, EN GRANDE. Con los botones abajo sobra sitio arriba, y
+            // quien abre la app por primera vez tiene que verle la cara: es lo
+            // único de esta pantalla que no es texto.
             if let img = cnImagenBase64(m.chinolo) {
-                Image(uiImage: img).resizable().scaledToFit().frame(width: 132, height: 132)
-                    .frame(maxWidth: .infinity, alignment: .center).padding(.top, 10)
+                Image(uiImage: img).resizable().scaledToFit().frame(width: 164, height: 164)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.bottom, 6)
             }
             if !m.rotulo.isEmpty {
                 Text(m.rotulo.uppercased()).font(cnLetra(12, .heavy)).tracking(0.8).foregroundColor(CNC.pmut)
@@ -2591,32 +2678,6 @@ struct CNPuertaVista: View {
                 }
             }
             if !m.error.isEmpty { aviso(m.error) }
-            if m.total > 1 && m.paso == "lamina" {
-                HStack(spacing: 6) {
-                    ForEach(0..<m.total, id: \.self) { i in
-                        Capsule().fill(i <= m.indice ? CNC.pos : CNC.line)
-                            .frame(width: i == m.indice ? 18 : 7, height: 7)
-                    }
-                }.padding(.top, 2)
-            }
-            botonGrande(m.boton) {
-                switch m.paso {
-                case "portada": onAccion("portada", "")
-                case "lamina": onAccion("lamina", "")
-                case "nombre": onAccion("nombre-seguir", "")
-                case "verifica": onAccion("verifica-reenviar", "")
-                default: onAccion("listo", "")
-                }
-            }
-            if !m.segundo.isEmpty {
-                botonSuave(m.segundo) {
-                    switch m.paso {
-                    case "portada": onAccion("ya-tengo", "")
-                    case "lamina": onAccion("lamina-2", "")
-                    default: onAccion("verifica-volver", "")
-                    }
-                }
-            }
         }
     }
 
@@ -2677,7 +2738,6 @@ struct CNPuertaVista: View {
                 }
             }
             if !m.error.isEmpty { aviso(m.error) }
-            botonGrande(m.boton, cargando: m.cargando) { cnCerrarTeclado(); onAccion("entrar", "") }
             if !m.olvide.isEmpty && !m.codigo {
                 Button { onAccion("olvide", "") } label: {
                     Text(m.olvide).font(cnLetra(14, .semibold)).foregroundColor(CNC.pmut)
@@ -2698,18 +2758,6 @@ struct CNPuertaVista: View {
                         proveedor("g.circle", m.google) { onAccion("google", "") }
                     }
                 }
-            }
-            if !m.codigo {
-            HStack(spacing: 6) {
-                Spacer(minLength: 0)
-                Button { onAccion("modo", m.registro ? "login" : "registro") } label: {
-                    Text(m.cambiar).font(cnLetra(14.5, .bold)).foregroundColor(CNC.pos)
-                }.buttonStyle(CNPulsable())
-                Spacer(minLength: 0)
-            }.padding(.top, 4)
-            }
-            if !m.sinCuenta.isEmpty && !m.codigo {
-                botonSuave(m.sinCuenta) { onAccion("sin-cuenta", "") }
             }
         }
     }
@@ -2779,8 +2827,6 @@ struct CNPuertaVista: View {
                 Text(m.pie).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            botonGrande(m.boton, cargando: m.cargando) { onAccion("plan-seguir", "") }
-            if !m.salida.isEmpty { botonSuave(m.salida) { onAccion("plan-salir", "") } }
         }
     }
 
@@ -2809,12 +2855,16 @@ struct CNPuertaVista: View {
         .disabled(cargando).opacity(cargando ? 0.75 : 1)
     }
 
-    private func botonSuave(_ t: String, _ go: @escaping () -> Void) -> some View {
+    /// Las salidas, en TEXTO. Con marco y fondo pesaban lo mismo que la acción
+    /// principal, y una pantalla con dos botones iguales no dice por dónde se
+    /// sigue. `fuerte` para la que lleva a otro sitio de verdad —crear cuenta—,
+    /// que se distingue por el color, no por el tamaño.
+    private func botonTexto(_ t: String, fuerte: Bool, _ go: @escaping () -> Void) -> some View {
         Button { UISelectionFeedbackGenerator().selectionChanged(); go() } label: {
-            Text(t).font(cnLetra(15, .semibold)).foregroundColor(CNC.ink)
-                .frame(maxWidth: .infinity).padding(.vertical, 14)
-                .background(CNC.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(CNC.line, lineWidth: 1))
+            Text(t).font(cnLetra(15, fuerte ? .bold : .semibold))
+                .foregroundColor(fuerte ? CNC.pos : CNC.pmut)
+                .frame(maxWidth: .infinity).padding(.vertical, 11)
+                .contentShape(Rectangle())
         }.buttonStyle(CNPulsable())
     }
 
