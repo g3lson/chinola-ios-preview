@@ -2986,6 +2986,21 @@ struct CNPuertaVista: View {
         .animation(.easeInOut(duration: 0.22), value: teclado.abierto)
         .padding(.horizontal, 24).padding(.top, 12)
         .padding(.bottom, cnMargenAbajo() + 10)
+        // LO QUE RUEDA SE DESVANECE AL LLEGAR AQUÍ.
+        //
+        // En la del plan la tercera tarjeta quedaba cortada en seco por el
+        // borde del botón, como si la pantalla se hubiera roto ahí. Un
+        // degradado del color del fondo por encima dice «esto sigue hacia
+        // abajo» sin pintar una raya.
+        .background(
+            LinearGradient(colors: [CNC.scr.opacity(0), CNC.scr.opacity(oscura ? 0 : 1)],
+                           startPoint: .top, endPoint: .bottom)
+                .frame(height: 26).frame(maxHeight: .infinity, alignment: .top)
+                .offset(y: -26)
+                .allowsHitTesting(false),
+            alignment: .top
+        )
+        .background(oscura ? Color.clear : CNC.scr)
         .cnEntra(entro, 6)
     }
 
