@@ -451,7 +451,7 @@ enum CNCatalogos {
     ]
 
     /// Cuál es el icono de fábrica de la app.
-    static let iconoPrincipal = "1e"
+    static let iconoPrincipal = "1d"
 
     /// Los nueve, con su nombre y por qué es distinto. El dibujo NO va
     /// aquí: el teléfono enseña el de verdad —`Chinola-1e`, dentro del
