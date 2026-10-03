@@ -376,9 +376,14 @@ jobs:
           # porque la app estaba muerta—. Un fallo que solo se ve en una foto
           # es un fallo que no se ve, así que aquí se mira y se para el banco.
           echo "--- ¿se cayó la app? ---"
+          # CON `grep` Y NO SOLO CON EL PREDICADO. `log show` imprime su
+          # cabecera —«Timestamp Ty Process[PID:TID]»— aunque no encuentre
+          # nada, así que el fichero NUNCA estaba vacío y la puerta saltaba
+          # siempre. Un cortafuegos que salta siempre es uno que se desconecta
+          # en dos días.
           xcrun simctl spawn "$UDID" log show --last 12m --style compact \
             --predicate 'eventMessage CONTAINS "CNFALLO"' 2>/dev/null \
-            | sed 's/^[^Z]*Z //' | sed 's/.*CNFALLO/  CNFALLO/' | sort -u > /tmp/fallos.txt || true
+            | grep -F 'CNFALLO:' | sed 's/.*CNFALLO/  CNFALLO/' | sort -u > /tmp/fallos.txt || true
           cat /tmp/fallos.txt
           if [ -s /tmp/fallos.txt ]; then
             echo "::error::la web se cayó en algún arranque (ver arriba)"
@@ -394,11 +399,11 @@ jobs:
           echo "--- la cadena de libretas ---"
           xcrun simctl spawn "$UDID" log show --last 10m --style compact \
             --predicate 'eventMessage CONTAINS "CNLIBRETAS"' 2>/dev/null \
-            | sed 's/^[^Z]*Z //' | sed 's/.*CNLIBRETAS/  CNLIBRETAS/' | sort -u || true
+            | grep -F 'CNLIBRETAS:' | sed 's/.*CNLIBRETAS/  CNLIBRETAS/' | sort -u || true
           echo "--- y qué quedó en pantalla ---"
           xcrun simctl spawn "$UDID" log show --last 10m --style compact \
             --predicate 'eventMessage CONTAINS "CNPANTALLA"' 2>/dev/null \
-            | sed 's/^[^Z]*Z //' | sed 's/.*CNPANTALLA/  CNPANTALLA/' | sort -u || true
+            | grep -F 'CNPANTALLA:' | sed 's/.*CNPANTALLA/  CNPANTALLA/' | sort -u || true
           python3 ../sondas/quien-armo-perfil.py /tmp/sec.txt \
             cuenta seguridad dosPasos libretas panel dinero menu letra cabecera colores icono-app
 
