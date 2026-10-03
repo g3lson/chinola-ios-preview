@@ -3615,6 +3615,8 @@ struct CNCharla {
     var chinolo = ""; var vacioTexto = ""
     var mensajes: [Mensaje] = []
     var sugerencias: [Sugerencia] = []
+    /// «Te quedan 3 de 20 conversaciones este mes». Vacío mientras sobren.
+    var avisoBolsa = ""
     /// Lo que tiene sentido preguntar después de la última respuesta.
     var chips: [String] = []
     static func desde(json: String) -> CNCharla? {
@@ -3648,6 +3650,7 @@ struct CNCharla {
             Sugerencia(id: i, texto: s(x, "texto"), iconoPath: s(x, "iconoPath"), color: s(x, "color"))
         }
         m.chips = ((r["chips"] as? [String]) ?? []).filter { !$0.isEmpty }
+        m.avisoBolsa = s(r, "avisoBolsa")
         var antes = ""
         m.mensajes = ((r["mensajes"] as? [[String: Any]]) ?? []).map { j in
             let de = s(j, "de")
@@ -4006,6 +4009,108 @@ struct CNLoQueSeOye {
 }
 
 /**
+ * LA PANTALLA DE QUIEN ACABA DE PAGAR.
+ *
+ * Era un cartelito de dos segundos —«¡Ya tienes Pro!»— que se iba solo. El
+ * único momento en el que alguien paga, y lo que se llevaba era un parpadeo.
+ *
+ * Y lo que de verdad falta ahí no es la celebración: es QUÉ HAGO AHORA. Acaba
+ * de pagar por cosas que todavía no sabe dónde están, así que las tres van a un
+ * toque y cada una lleva a su sitio. Por eso las filas son botones y no adorno.
+ */
+struct CNExitoPlan {
+    struct Primero: Identifiable { var id: Int; var texto = ""; var iconoPath = ""; var ir = "" }
+    var titulo = ""; var texto = ""; var boton = ""; var chinolo = ""; var plan = ""
+    var primeros: [Primero] = []
+    static func desde(json: String) -> CNExitoPlan? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
+        var x = CNExitoPlan()
+        x.titulo = s(r, "titulo"); x.texto = s(r, "texto"); x.boton = s(r, "boton")
+        x.chinolo = s(r, "chinolo"); x.plan = s(r, "plan")
+        x.primeros = ((r["primeros"] as? [[String: Any]]) ?? []).enumerated().map { i, o in
+            Primero(id: i, texto: s(o, "texto"), iconoPath: s(o, "iconoPath"), ir: s(o, "ir"))
+        }
+        return x.titulo.isEmpty ? nil : x
+    }
+}
+
+struct CNExitoPlanVista: View {
+    let x: CNExitoPlan
+    var onIr: (String) -> Void = { _ in }
+    var onCerrar: () -> Void = {}
+    @State private var brinca = false
+
+    private var banda: Color {
+        x.plan == "negocio" ? Color(red: 0.91, green: 0.90, blue: 0.98)
+            : x.plan == "pro" ? Color(red: 1.0, green: 0.95, blue: 0.84)
+            : CNC.soft
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let img = cnImagenBase64(x.chinolo) {
+                Image(uiImage: img).resizable().scaledToFit()
+                    .frame(width: 132, height: 132)
+                    // Brinca, y poco: una celebración que no para cansa a los
+                    // tres segundos, y esta pantalla se queda hasta que la
+                    // cierren.
+                    .offset(y: brinca ? -10 : 0)
+                    .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: brinca)
+                    .onAppear { brinca = true }
+            }
+            Text(x.titulo).font(.system(size: 29, weight: .heavy))
+                .foregroundColor(CNC.ink)
+                .multilineTextAlignment(.center)
+                .padding(.top, 22)
+            Text(x.texto).font(cnLetra(15)).foregroundColor(CNC.pmut)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8).padding(.horizontal, 10)
+
+            VStack(spacing: 0) {
+                ForEach(x.primeros) { p in
+                    Button { onIr(p.ir) } label: {
+                        HStack(spacing: 12) {
+                            CNSVGShape(d: p.iconoPath)
+                                .stroke(style: StrokeStyle(lineWidth: 1.9, lineCap: .round, lineJoin: .round))
+                                .foregroundColor(CNC.pos)
+                                .frame(width: 16, height: 16).frame(width: 32, height: 32)
+                                .background(banda, in: Circle())
+                            Text(p.texto).font(cnLetra(16)).foregroundColor(CNC.ink)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 6)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .bold)).foregroundColor(CNC.pmut.opacity(0.6))
+                        }
+                        .padding(.horizontal, 16).padding(.vertical, 13)
+                    }
+                    .buttonStyle(CNPulsable())
+                    if p.id != (x.primeros.last?.id ?? -1) {
+                        Divider().overlay(CNC.pmut.opacity(0.18)).padding(.leading, 60)
+                    }
+                }
+            }
+            .background(CNC.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(.top, 24)
+
+            Spacer(minLength: 20)
+            Button { onCerrar() } label: {
+                Text(x.boton).font(cnLetra(17, .semibold)).foregroundColor(CNC.sobreAcc)
+                    .frame(maxWidth: .infinity).padding(.vertical, 16)
+                    .background(CNC.acc, in: Capsule())
+            }
+            .buttonStyle(CNPulsable())
+        }
+        .padding(.horizontal, 22).padding(.top, 96).padding(.bottom, 32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(banda.ignoresSafeArea())
+    }
+}
+
+/**
  * LA TARJETA DEBAJO DE LA RESPUESTA.
  *
  * Tres formas y nada más: una cifra, unas barras o una lista. Son las mismas
@@ -4325,6 +4430,28 @@ struct CNCharlaVista: View {
              Y solo si las propuso. Unas sugerencias de relleno, siempre las
              mismas, enseñan en dos días a no mirar esta fila.
              */
+            /*
+             LO QUE TE QUEDA, PEGADO A LA CAJA.
+
+             Chino cortaba en seco: hablabas veinte veces y a la veintiuna te
+             decía que se acabó el mes. Un tope del que nadie avisa es una
+             puerta que se cierra en la cara.
+
+             Sale solo cuando ya queda poco, y en el sitio donde se va a seguir
+             escribiendo. Un contador puesto desde la primera pregunta convierte
+             cada conversación en una cuenta atrás.
+             */
+            if !m.avisoBolsa.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "hourglass")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(m.avisoBolsa).font(cnLetra(12))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .foregroundColor(CNC.pmut)
+                .padding(.horizontal, 18).padding(.bottom, 6)
+            }
             if !m.chips.isEmpty && !m.pensando {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 7) {

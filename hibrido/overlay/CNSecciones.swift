@@ -738,8 +738,19 @@ enum CNSecciones {
             // que sin cuenta esta línea se quedaba VACÍA y la fila era un
             // nombre suelto. La de la web decía «Personal · 2 personas», y
             // sustituirla por menos no es arreglarla.
+            // Y TRES REDES, NO UNA.
+            //
+            // El papel sale de los miembros y sin sesión no hay ninguno; el
+            // tipo y el color viven FUERA del cuerpo de la libreta —son columna
+            // en el servidor— y hay caminos por los que llegan vacíos. Con una
+            // sola fuente, la fila se quedaba en un nombre suelto.
+            //
+            // Lo último que se prueba es lo que SIEMPRE está, porque se cuenta
+            // aquí mismo: cuántos movimientos tiene dentro. Una fila que dice
+            // «35 movimientos» no es la ideal, pero es información; un nombre
+            // solo no es nada.
             let suyo = [f.tipo, f.rol].filter { !$0.isEmpty }.joined(separator: " · ")
-            it.detalle = suyo.isEmpty ? f.detalle : suyo
+            it.detalle = !suyo.isEmpty ? suyo : (!f.detalle.isEmpty ? f.detalle : f.pie)
             it.chip = f.enUso ? f.rotuloEnUso : ""
             it.abre = "libreta:" + f.lid
             return it

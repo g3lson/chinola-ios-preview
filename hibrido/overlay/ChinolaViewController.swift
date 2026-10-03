@@ -2073,6 +2073,11 @@ class ChinolaViewController: CAPBridgeViewController {
             s.traerResumen(intentos: 6); s.traerCuentas(); s.traerPlan(intentos: 6); s.traerAjustes()
             s.traerSeccionesDePerfil()
         }
+        // Y SI ACABA DE PAGAR, su pantalla. La compra la cierra la web —es
+        // ella quien habla con Apple—, así que el teléfono se entera justo
+        // cuando recupera el mando. Es barato: sin compra, el puente devuelve
+        // vacío y no se dibuja nada.
+        mirarExitoDePlan()
     }
 
     /// SI LO NATIVO NO TIENE NADA QUE PINTAR, MANDA LA WEB.
@@ -3034,6 +3039,7 @@ class ChinolaViewController: CAPBridgeViewController {
         traerDatos(intentos: 8)
         mostrarNativo(menuEstado.activa)
         mirarAviso()
+        mirarExitoDePlan()
     }
 
     // MARK: el aviso que manda el portal
@@ -3101,6 +3107,43 @@ class ChinolaViewController: CAPBridgeViewController {
         } else if destino == "planes" {
             CNDatos.shared.onPlan()
         }
+    }
+
+    // MARK: La pantalla de quien acaba de pagar
+    private var exitoVC: UIViewController?
+
+    /**
+     * ¿HAY QUE FELICITAR A ALGUIEN?
+     *
+     * Se pregunta en el mismo sitio donde ya se mira si hay un aviso que dar:
+     * la compra la cierra la web —es ella quien habla con Apple y con el
+     * servidor— y el teléfono se entera por aquí. Un puente propio para esto
+     * sería un camino más que mantener para algo que pasa una vez.
+     */
+    fileprivate func mirarExitoDePlan() {
+        guard exitoVC == nil else { return }
+        bridge?.webView?.evaluateJavaScript("(window.__chinolaExitoPlanJSON && window.__chinolaExitoPlanJSON()) || ''") { [weak self] res, _ in
+            guard let s = self, s.exitoVC == nil,
+                  let json = res as? String, json.count > 2,
+                  let x = CNExitoPlan.desde(json: json) else { return }
+            let host = UIHostingController(rootView: CNExitoPlanVista(x: x, onIr: { [weak self] destino in
+                self?.cerrarExitoDePlan()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { self?.irA(destino) }
+            }, onCerrar: { [weak self] in
+                self?.cerrarExitoDePlan()
+            }))
+            host.modalPresentationStyle = .fullScreen
+            s.exitoVC = host
+            var arriba: UIViewController = s
+            while let otro = arriba.presentedViewController { arriba = otro }
+            arriba.present(host, animated: true)
+        }
+    }
+
+    private func cerrarExitoDePlan() {
+        eval("window.__chinolaExitoPlanFuera && window.__chinolaExitoPlanFuera()")
+        exitoVC?.dismiss(animated: true)
+        exitoVC = nil
     }
 
     // MARK: Chino en grande (mantener pulsado en Perfil)
