@@ -471,9 +471,22 @@ jobs:
           # de acceso y el banco fotografiaba pantallas vacías dando «success».
           # Un dato que el banco imprime y no comprueba es un dato que no
           # existe.
-          xcrun simctl spawn "$UDID" log show --last 4m --style compact \
+          # CON LOS DOS PUNTOS, Y CON VENTANA DE SOBRA.
+          #
+          # Dos arreglos a la misma puerta, y los dos de lo mismo. `log show`
+          # escribe por la salida —la que va al fichero— una línea diciendo con
+          # qué está filtrando, y esa línea LLEVA DENTRO «CNSONDA». Así que con
+          # la ventana vacía el fichero no estaba vacío: la puerta se daba por
+          # satisfecha, no encontraba ningún «paso» y cantaba que la app no
+          # había entrado. Buscando «CNSONDA:» —con los dos puntos— solo
+          # entran las líneas de verdad.
+          #
+          # Y cuatro minutos se quedaron cortos en cuanto el banco creció: esto
+          # corre al final de todo, y para entonces el último arranque con
+          # sonda ya se había caído por el otro lado de la ventana.
+          xcrun simctl spawn "$UDID" log show --last 12m --style compact \
             --predicate 'eventMessage CONTAINS "CNSONDA"' 2>/dev/null > /tmp/sonda.txt || true
-          if grep -q "CNSONDA" /tmp/sonda.txt; then
+          if grep -q "CNSONDA:" /tmp/sonda.txt; then
             if grep -q '"paso":"app"' /tmp/sonda.txt; then
               echo "la app entró ✓"
             else
