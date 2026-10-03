@@ -324,8 +324,15 @@ jobs:
           # El teléfono usa `URLSession` y salía a internet de verdad con un vale
           # inventado: 401, y las tres subpantallas que hablan con el servidor
           # caían a la de la web. Lo peor no es que fallaran: es que NO fallaban.
+          # ESPERANDO A QUE ABRA, no dos segundos y a ver. Con el runner
+          # cargado tardó más de dos, el `curl` no conectó, y como `curl`
+          # devuelve 7 al no conectar, el banco ENTERO se cayó por eso — después
+          # de haber hecho bien todo lo demás.
           python3 ../sondas/api-de-mentira.py &
-          sleep 2
+          for i in $(seq 1 20); do
+            curl -s -o /dev/null --max-time 2 http://127.0.0.1:8099/api/yo && break
+            sleep 1
+          done
           curl -s -o /dev/null -w "api de mentira: %{http_code}\n" \
             -H "authorization: Bearer x" http://127.0.0.1:8099/api/yo
 

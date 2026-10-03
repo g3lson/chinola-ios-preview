@@ -44,14 +44,29 @@ RESPUESTAS = {
     # Dos libretas para que el teléfono tenga qué bajar, conciliar y subir. La
     # primera con un movimiento, para ver si lo que sube lleva lo de los DOS
     # lados; la segunda solo para que la lista no sea de una.
+    #
+    # CON `tipo` Y `color`, COMO LAS DE VERDAD. No los traían, y eso me costó
+    # cuatro vueltas de banco: «Libretas y permisos» salía con los nombres
+    # sueltos —sin icono y sin segunda línea— y parecía un fallo de la app. No
+    # lo era: en el servidor de verdad `tipo` y `color` son COLUMNAS y la ruta
+    # los vuelve a meter en el objeto. Un servidor de mentira que devuelve menos
+    # que el de verdad no prueba la app: inventa fallos.
+    #
+    # Y LA SEGUNDA SE QUEDA SIN `prestamos` A PROPÓSITO. Así es como se
+    # descubrió que una libreta a la que le falta una lista se llevaba por
+    # delante el render entero —«Chinola no pudo abrir»—, y así es como se
+    # comprueba que ya no.
     '/api/libretas': {
         'libretas': [
-            {'id': 'lb-uno', 'nombre': 'Personal', '__version': 3, '__rol': 'Dueño',
+            {'id': 'lb-uno', 'nombre': 'Personal', 'tipo': 'Personal',
+             'color': 'oklch(0.42 0.1 155)', '__version': 3, '__rol': 'Dueño',
              'miembros': [{'email': 'ana@banco.prueba', 'rol': 'Dueño'}],
              'cuentas': [{'id': 1, 'nombre': 'Banco', 'saldo': 50000}],
              'tarjetas': [], 'categorias': [], 'presupuesto': {}, 'metas': [],
+             'prestamos': [],
              'tx': [{'id': 'm-servidor', 'monto': 100, 'concepto': 'Del servidor'}]},
-            {'id': 'lb-dos', 'nombre': 'Negocio', '__version': 1, '__rol': 'Dueño',
+            {'id': 'lb-dos', 'nombre': 'Negocio', 'tipo': 'Negocio',
+             'color': 'oklch(0.52 0.16 275)', '__version': 1, '__rol': 'Dueño',
              'miembros': [{'email': 'ana@banco.prueba', 'rol': 'Dueño'}],
              'cuentas': [], 'tarjetas': [], 'categorias': [], 'presupuesto': {},
              'metas': [], 'tx': []}
