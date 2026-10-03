@@ -368,6 +368,24 @@ jobs:
           # Al entrar, la web manda su modelo, el teléfono arma el suyo y
           # después hay dos refrescos más: cualquiera de los dos puede llegar el
           # último. La lista de arriba dice quién lo INTENTÓ; esta, qué quedó.
+          # ¿SE CAYÓ LA APP EN ALGÚN ARRANQUE?
+          #
+          # La pantalla de «Chinola no pudo abrir» solo se veía mirando una
+          # foto, y por eso una caída que tumbaba la app entera se pasó por
+          # «esta subpantalla la armó la web» —que era verdad: la armó la web
+          # porque la app estaba muerta—. Un fallo que solo se ve en una foto
+          # es un fallo que no se ve, así que aquí se mira y se para el banco.
+          echo "--- ¿se cayó la app? ---"
+          xcrun simctl spawn "$UDID" log show --last 12m --style compact \
+            --predicate 'eventMessage CONTAINS "CNFALLO"' 2>/dev/null \
+            | sed 's/^[^Z]*Z //' | sed 's/.*CNFALLO/  CNFALLO/' | sort -u > /tmp/fallos.txt || true
+          cat /tmp/fallos.txt
+          if [ -s /tmp/fallos.txt ]; then
+            echo "::error::la web se cayó en algún arranque (ver arriba)"
+            exit 1
+          fi
+          echo "  ninguna caída"
+
           # LA CADENA DE «LIBRETAS Y PERMISOS», ESLABÓN A ESLABÓN.
           #
           # Esto se arregló una vez, se le puso prueba, y siguió roto: la prueba

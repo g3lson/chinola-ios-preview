@@ -640,6 +640,17 @@ final class CNAvisoDeFallo {
     func mostrar(_ texto: String) {
         guard !puesto else { return }          // uno basta; el segundo taparía al primero
         puesto = true
+        /*
+         DICHO EN VOZ ALTA, SIEMPRE.
+         
+         Esto solo se veía MIRANDO LA PANTALLA. En el banco, una caída que
+         tumbaba la app entera pasaba por «esta subpantalla la armó la web» —que
+         es verdad: la armó la web porque la app estaba muerta— y nadie la
+         miraba dos veces. Se encontró de casualidad, abriendo una foto.
+         
+         Un fallo que solo se ve en una foto es un fallo que no se ve.
+         */
+        NSLog("CNFALLO: la web se cayó · %@", texto.replacingOccurrences(of: "\n", with: " | "))
         reloj?.invalidate()
         guard let raiz = UIApplication.shared.connectedScenes
             .compactMap({ ($0 as? UIWindowScene)?.keyWindow })
