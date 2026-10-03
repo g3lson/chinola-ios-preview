@@ -2425,7 +2425,16 @@ struct CNMascotaVista: View {
 // navegador; aquí solo se dibuja lo que toca y se le dice qué han tocado.
 struct CNPuerta {
     struct Punto: Identifiable { var id: Int; var titulo = ""; var pie = ""; var iconoPath = ""; var color = ""; var fondo = "" }
-    struct Plan: Identifiable { var id: Int; var clave = ""; var nombre = ""; var para = ""; var precio = ""; var cada = ""; var items: [String] = []; var puesto = false }
+    struct Linea: Identifiable { var id: Int; var t = ""; var pie = ""; var icono = ""; var ia = false }
+    struct Plan: Identifiable {
+        var id: Int; var clave = ""; var nombre = ""; var para = ""
+        var precio = ""; var cada = ""; var prefijo = ""
+        var acento = ""; var tinta = ""; var banda = ""
+        var items: [Linea] = []
+        var puesto = false
+        /// El que tiene puesto hoy, que no es lo mismo que el que está mirando.
+        var actual = false
+    }
     var paso = ""
     var rotulo = ""; var titulo = ""; var texto = ""; var boton = ""; var segundo = ""; var atras = ""
     var chinolo = ""; var error = ""; var cargando = false; var pie = ""
@@ -2483,8 +2492,12 @@ struct CNPuerta {
         m.ph = s(r, "ph"); m.valor = s(r, "valor"); m.salida = s(r, "salida")
         m.planes = ((r["planes"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
             Plan(id: i, clave: s(x, "id"), nombre: s(x, "nombre"), para: s(x, "para"),
-                 precio: s(x, "precio"), cada: s(x, "cada"),
-                 items: (x["items"] as? [String]) ?? [], puesto: b(x, "puesto"))
+                 precio: s(x, "precio"), cada: s(x, "cada"), prefijo: s(x, "prefijo"),
+                 acento: s(x, "acento"), tinta: s(x, "tinta"), banda: s(x, "banda"),
+                 items: ((x["items"] as? [[String: Any]]) ?? []).enumerated().map { k, it in
+                     Linea(id: k, t: s(it, "t"), pie: s(it, "s"), icono: s(it, "icono"), ia: b(it, "ia"))
+                 },
+                 puesto: b(x, "puesto"), actual: b(x, "actual"))
         }
         return m
     }
@@ -2886,8 +2899,26 @@ struct CNPuertaVista: View {
 
     // MARK: el plan
 
+    /**
+     * EL PLAN: ELEGIR ARRIBA, LEER ABAJO.
+     *
+     * Eran tres tarjetones largos, uno debajo de otro, y para comparar había
+     * que rodar media pantalla y acordarse. Ahora es una sola pantalla con tres
+     * piezas, que es como lo resuelven las apps que viven de esto:
+     *
+     *  · arriba, TRES PASTILLAS con el nombre y el precio: se elige de un
+     *    vistazo y se compara sin moverse;
+     *  · debajo, UNA tarjeta con lo que lleva el elegido, línea por línea, cada
+     *    una con su icono — una lista de once frases seguidas no se lee;
+     *  · y el botón, fijo abajo, que nunca se va con el desplazamiento.
+     *
+     * Cada plan trae su propia paleta desde la web (verde, ámbar, lila): no es
+     * decoración, es lo que hace que al tocar otro plan se note que has cambiado
+     * de sitio sin leer una palabra.
+     */
     private func planes(_ m: CNPuerta) -> some View {
-        VStack(alignment: .leading, spacing: 13) {
+        let elegido = m.planes.first(where: { $0.puesto }) ?? m.planes.first ?? CNPuerta.Plan(id: 0)
+        return VStack(alignment: .leading, spacing: 14) {
             if !m.rotulo.isEmpty { rotulo(m.rotulo).cnEntra(entro, 0) }
             Text(m.titulo).font(cnLetra(27, .heavy)).foregroundColor(CNC.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -2898,64 +2929,150 @@ struct CNPuertaVista: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .cnEntra(entro, 2)
             }
-            ForEach(Array(m.planes.enumerated()), id: \.element.id) { k, p in
-                Button {
-                    UISelectionFeedbackGenerator().selectionChanged()
-                    onAccion("plan-elegir", String(p.id))
-                } label: {
-                    VStack(alignment: .leading, spacing: 9) {
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(p.nombre).font(cnLetra(19, .heavy)).foregroundColor(CNC.ink)
-                                if !p.para.isEmpty {
-                                    Text(p.para).font(cnLetra(12)).foregroundColor(CNC.pmut)
-                                }
-                            }
-                            Spacer(minLength: 8)
-                            VStack(alignment: .trailing, spacing: 0) {
-                                Text(p.precio).font(cnLetra(18, .heavy)).foregroundColor(CNC.ink)
-                                if !p.cada.isEmpty {
-                                    Text(p.cada).font(cnLetra(11)).foregroundColor(CNC.pmut)
-                                }
-                            }
-                        }
-                        VStack(alignment: .leading, spacing: 5) {
-                            ForEach(p.items.indices, id: \.self) { k in
-                                HStack(alignment: .top, spacing: 8) {
-                                    Image(systemName: "checkmark").font(cnLetra(11, .bold))
-                                        .foregroundColor(CNC.pos).padding(.top, 2)
-                                    Text(p.items[k]).font(cnLetra(13)).foregroundColor(CNC.pmut)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-                    .background(p.puesto ? CNC.soft : CNC.card,
-                                in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(p.puesto ? CNC.acc : CNC.line, lineWidth: 2))
-                    // El elegido se levanta un poco. Antes el único aviso era
-                    // el borde, y un borde de dos puntos entre tres tarjetas
-                    // iguales no se ve de un vistazo.
-                    .shadow(color: Color.black.opacity(p.puesto ? 0.09 : 0),
-                            radius: p.puesto ? 12 : 0, y: p.puesto ? 5 : 0)
-                    .scaleEffect(p.puesto ? 1 : 0.985)
-                    .animation(.spring(response: 0.34, dampingFraction: 0.78), value: p.puesto)
-                }.buttonStyle(CNPulsable())
-                .cnEntra(entro, 3 + Double(k))
+
+            // ── las tres pastillas
+            HStack(spacing: 9) {
+                ForEach(m.planes) { p in pastillaDePlan(p) }
             }
+            .padding(.top, 4)
+            .cnEntra(entro, 3)
+
+            // ── la tarjeta del elegido
+            tarjetaDelPlan(elegido)
+                .cnEntra(entro, 4)
+
             if !m.error.isEmpty { aviso(m.error) }
             if !m.pie.isEmpty {
                 Text(m.pie).font(cnLetra(12)).foregroundColor(CNC.pmut)
                     .multilineTextAlignment(.center)
+                    .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity)
+                    .padding(.top, 2)
+                    .cnEntra(entro, 5)
             }
         }
     }
 
+    /// Una de las tres de arriba. La elegida se tiñe de su color y se marca con
+    /// un borde grueso; la que ya tiene puesta lleva su etiqueta flotando.
+    private func pastillaDePlan(_ p: CNPuerta.Plan) -> some View {
+        let acento = p.acento.isEmpty ? CNC.acc : cnColor(hexString: p.acento)
+        let banda = p.banda.isEmpty ? CNC.soft : cnColor(hexString: p.banda)
+        let tinta = p.tinta.isEmpty ? CNC.ink : cnColor(hexString: p.tinta)
+        return Button {
+            UISelectionFeedbackGenerator().selectionChanged()
+            onAccion("plan-elegir", String(p.id))
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(p.nombre).font(cnLetra(14, .semibold))
+                    .foregroundColor(p.puesto ? tinta : CNC.ink)
+                Text(p.precio).font(cnLetra(21, .heavy)).monospacedDigit()
+                    .foregroundColor(p.puesto ? tinta : CNC.ink)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text(p.cada).font(cnLetra(11))
+                    .foregroundColor(p.puesto ? acento : CNC.pmut)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10).padding(.top, 13).padding(.bottom, 12)
+            .background(p.puesto ? banda : CNC.card,
+                        in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(p.puesto ? acento : Color.clear, lineWidth: 2.5))
+            .overlay(alignment: .topLeading) {
+                // «El tuyo ahora», flotando sobre el borde: dentro se perdía
+                // entre el nombre y el precio, que es justo lo que no puede
+                // pasarle al dato que dice dónde estás.
+                if p.actual {
+                    Text(cnT("El tuyo ahora")).font(cnLetra(10, .heavy))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(CNC.pos, in: Capsule())
+                        .offset(x: 8, y: -10)
+                }
+            }
+        }
+        .buttonStyle(CNPulsable())
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: p.puesto)
+    }
+
+    /// Lo que lleva el plan elegido, línea por línea.
+    private func tarjetaDelPlan(_ p: CNPuerta.Plan) -> some View {
+        let acento = p.acento.isEmpty ? CNC.acc : cnColor(hexString: p.acento)
+        let banda = p.banda.isEmpty ? CNC.soft : cnColor(hexString: p.banda)
+        let tinta = p.tinta.isEmpty ? CNC.ink : cnColor(hexString: p.tinta)
+        return VStack(alignment: .leading, spacing: 0) {
+            // la banda de arriba, del color del plan
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(p.para).font(cnLetra(13, .semibold)).foregroundColor(acento)
+                    Spacer(minLength: 8)
+                    if p.actual {
+                        Text(cnT("Es el que tienes")).font(cnLetra(12, .semibold))
+                            .foregroundColor(acento)
+                            .padding(.horizontal, 10).padding(.vertical, 4)
+                            .background(Color.white.opacity(0.75), in: Capsule())
+                    }
+                }
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(p.nombre).font(cnLetra(28, .heavy)).foregroundColor(tinta)
+                    Spacer(minLength: 8)
+                    Text(p.precio).font(cnLetra(30, .heavy)).monospacedDigit().foregroundColor(tinta)
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                    Text(p.cada).font(cnLetra(14)).foregroundColor(acento)
+                }
+            }
+            .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(banda)
+
+            if !p.prefijo.isEmpty {
+                Text(p.prefijo).font(cnLetra(14, .semibold)).foregroundColor(CNC.pmut)
+                    .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 2)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(p.items) { it in
+                    lineaDePlan(it, acento: acento, banda: banda,
+                                ultima: it.id == (p.items.last?.id ?? -1))
+                }
+            }
+            .padding(.vertical, 6)
+        }
+        .background(CNC.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    /// Un renglón: su pastilla con el icono, lo que es, y el pie si lo lleva.
+    /// Las de IA van en lila a propósito: son las que explican el precio.
+    private func lineaDePlan(_ it: CNPuerta.Linea, acento: Color, banda: Color, ultima: Bool) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle().fill(it.ia ? cnColor(0xEEE9FF) : banda).frame(width: 30, height: 30)
+                CNSVGShape(d: cnIconoDePlan(it.icono))
+                    .stroke(it.ia ? cnColor(0x6A4FD6) : acento,
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                    .frame(width: 16, height: 16)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(it.t).font(cnLetra(16)).foregroundColor(CNC.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !it.pie.isEmpty {
+                    Text(it.pie).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if !ultima {
+                    Rectangle().fill(CNC.line).frame(height: 0.5).padding(.top, 10)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.leading, 16).padding(.trailing, 18)
+        .padding(.vertical, 10)
+    }
+
+    // MARK: abajo
     // MARK: abajo
 
     /**
@@ -4270,5 +4387,38 @@ struct CNAvisoVista: View {
     private func cerrar(_ que: String) {
         withAnimation(.easeIn(duration: 0.22)) { entro = false }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { onAccion(que) }
+    }
+}
+
+/**
+ * Los dibujos de los renglones del plan.
+ *
+ * Van aquí y no los manda la web porque son FIJOS: diecinueve trazos que no
+ * cambian con los datos de nadie. Mandarlos en cada modelo sería mandar lo
+ * mismo cien veces para que al final se dibuje igual.
+ */
+func cnIconoDePlan(_ cual: String) -> String {
+    switch cual {
+    case "libro": return "M4 5h7v14H4zM13 5h7v14h-7z"
+    case "libros": return "M3 5h5v14H3zM10 5h5v14h-5zM17 6l3 .8-2.6 13-3-.8z"
+    case "flechas": return "M7 4v16M7 20l-3-3M17 20V4M17 4l3 3"
+    case "pastel": return "M12 3v9h9a9 9 0 1 1-9-9"
+    case "hucha": return "M4 13a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v3H4zM7 18v2M17 18v2M16 11h1"
+    case "campana": return "M6 16V11a6 6 0 0 1 12 0v5l2 3H4zM10 22h4"
+    case "ia": return "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"
+    case "llave": return "M15 7a4 4 0 1 1-3.9 4.9L4 19v2h3v-2h2v-2h2l1.1-1.1A4 4 0 0 1 15 7zM16 9h.01"
+    case "paleta": return "M12 21a9 9 0 1 1 0-18c5 0 9 3.6 9 8 0 2.2-1.8 3-3.4 3H15a2 2 0 0 0-1.4 3.4c.4.6 0 1.6-1.6 1.6M8 8h.01M7 12h.01M11 7h.01"
+    case "descarga": return "M12 4v10M8 11l4 4 4-4M4 20h16"
+    case "sync": return "M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4"
+    case "gente": return "M8 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M17 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5M2 20a6 6 0 0 1 12 0M15 20a5 5 0 0 1 7-4"
+    case "micro": return "M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3M5 11a7 7 0 0 0 14 0M12 18v3"
+    case "chat": return "M4 5h16v11H9l-5 4z"
+    case "correo": return "M3 6h18v12H3zM3 7l9 6 9-6"
+    case "soporte": return "M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v5H4zM17 14h3v5h-3z"
+    case "escudo": return "M12 21s7-3.5 7-9V5l-7-2-7 2v7c0 5.5 7 9 7 9z"
+    case "informe": return "M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h6"
+    case "codigo": return "M8 8l-4 4 4 4M16 8l4 4-4 4M13 6l-2 12"
+    // Sin icono conocido, una marca de verificación: nunca un hueco vacío.
+    default: return "M5 12.5l5 5L19 7"
     }
 }
