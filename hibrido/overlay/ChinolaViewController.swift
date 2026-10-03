@@ -417,6 +417,7 @@ class ChinolaViewController: CAPBridgeViewController {
         }
         bancoAbreElPeriodo()
         bancoTocaLosBotones()
+        bancoAgregaTarjetasYUsaLaCabecera()
         // LA SONDA DEL BOTÓN DE CHINO, para el banco.
         //
         // Con `CN_CON=sonda` se le pregunta a la web, pasados unos segundos,
@@ -2601,6 +2602,65 @@ class ChinolaViewController: CAPBridgeViewController {
                               + " opciones=\(p?.opciones.count ?? -1) · encima hay \(encima)")
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * AGREGA LAS TARJETAS QUE NO SE PODÍAN AGREGAR, Y LUEGO USA LA CABECERA.
+     *
+     * Las dos mitades del fallo, en una sola secuencia y en el orden en que las
+     * encontró él: primero se meten en el panel «ahorro del mes», «días sin
+     * gastar» y «racha anotando» —las tres que la lógica no sabe calcular—, y
+     * después se toca la flecha del mes y la pastilla de la libreta.
+     *
+     * Lo que se mira no es que las tarjetas salgan bonitas: es que la cabecera
+     * SIGA RESPONDIENDO después. Con el fallo puesto, la excepción de la primera
+     * se llevaba el render y de ahí en adelante el mes no se movía nunca más.
+     * Por eso se dice el mes antes y después de cada paso: si deja de moverse
+     * justo detrás de una tarjeta, ya se sabe cuál.
+     */
+    private func bancoAgregaTarjetasYUsaLaCabecera() {
+        guard ProcessInfo.processInfo.environment["CN_CON"]?.contains("panel") == true else { return }
+        NSLog("CNPANEL: antes · mes=«\(bancoMes())» tarjetas=\(bancoCuantasTarjetas())")
+        bancoAgrega(["kpi-ahorro", "kpi-sin-gastar", "kpi-racha"], 0)
+    }
+
+    private func bancoMes() -> String { CNDatos.shared.resumen?.cabecera.periodoCorto ?? "?" }
+    private func bancoCuantasTarjetas() -> Int { CNDatos.shared.resumen?.widgets.count ?? -1 }
+
+    /// Una tarjeta, y a por la siguiente. Como método y no como `func` dentro de
+    /// otro: así la recursión no pasa por un cierre que se captura a sí mismo.
+    private func bancoAgrega(_ cuales: [String], _ i: Int) {
+        guard i < cuales.count else { bancoUsaLaCabecera(); return }
+        CNDatos.shared.onPanel("agregar", cuales[i], "")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in
+            guard let s = self else { return }
+            NSLog("CNPANEL: agregada «\(cuales[i])» · mes=«\(s.bancoMes())»"
+                  + " tarjetas=\(s.bancoCuantasTarjetas())")
+            s.bancoAgrega(cuales, i + 1)
+        }
+    }
+
+    /// Y AHORA la cabecera, que es la mitad del fallo que no se ve venir.
+    private func bancoUsaLaCabecera() {
+        let deAntes = bancoMes()
+        CNDatos.shared.onMes(1)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let s = self else { return }
+            let ahora = s.bancoMes()
+            NSLog("CNPANEL: flecha del mes · «\(deAntes)» → «\(ahora)»"
+                  + " · \(deAntes == ahora ? "NO SE MOVIÓ" : "se movió")")
+            CNDatos.shared.onSelector()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                // Lo que él ve es que la hoja se despliega y se esconde sola. Se
+                // mira en dos sitios a la vez —si el controlador sigue puesto y
+                // si la lista llegó—, porque «se cerró sola» y «nunca tuvo qué
+                // enseñar» se parecen en la pantalla y no son lo mismo.
+                let puesta = s.libretasVC != nil
+                NSLog("CNPANEL: pastilla de la libreta · hoja="
+                      + "\(puesta ? "abierta" : "SE CERRÓ SOLA")"
+                      + " libretas=\(CNDatos.shared.libretas?.count ?? -1)")
             }
         }
     }
