@@ -7217,6 +7217,16 @@ struct CNSeccion {
         var valor = ""
     }
     var id = ""; var titulo = ""; var bloques: [Bloque] = []
+    /**
+     * QUIÉN ARMÓ ESTO: «nativa» o «web».
+     *
+     * La sonda del banco decía quién fue el ÚLTIMO en INTENTAR armarla, no
+     * quién armó lo que se está viendo. Y son cosas distintas: al entrar, la
+     * web manda su modelo, el teléfono arma el suyo, y cualquiera de los dos
+     * puede llegar después y pisar al otro. Una sonda que mira el intento y no
+     * el resultado puede dar por buena una pantalla que salió de la web.
+     */
+    var deQuien = "web"
     /// A dónde vuelve la flecha de atrás (otra sección), si no es a Perfil.
     var volverA = ""
     /// El menú ⋯ de la cabecera (editar, invitar, eliminar…), si la pantalla lo tiene.

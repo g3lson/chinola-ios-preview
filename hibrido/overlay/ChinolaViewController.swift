@@ -1037,6 +1037,19 @@ class ChinolaViewController: CAPBridgeViewController {
                     s.traerSeccion(id)
                 }
             }
+            // Y QUÉ QUEDÓ EN PANTALLA, pasado el barullo.
+            //
+            // Al entrar, la web manda su modelo, el teléfono arma el suyo y
+            // después hay dos refrescos más: cualquiera de los dos puede llegar
+            // el último. Preguntar quién armó cuando ya nadie va a tocar nada
+            // es lo único que dice la verdad; mirar quién lo INTENTÓ puede dar
+            // por buena una pantalla que salió de la web.
+            if ProcessInfo.processInfo.environment["CN_CON"]?.contains("sonda") == true {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { [weak s] in
+                    guard let s = s, let v = s.datos.seccion, v.id == id else { return }
+                    NSLog("CNPANTALLA: %@ la está enseñando %@", id, v.deQuien)
+                }
+            }
         }
         datos.onSeccionAccion = { [weak self] i, valor in
             guard let s = self, let id = CNDatos.shared.seccion?.id else { return }
@@ -1597,12 +1610,24 @@ class ChinolaViewController: CAPBridgeViewController {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretasJSON && window.__chinolaLibretasJSON()) || ''") { [weak self] res, _ in
             if let json = res as? String, json.count > 2 {
                 CNDatos.shared.cargarLibretas(json: json)
-                // Y si se está mirando una subpantalla que se arma con esto,
-                // se rehace: acaba de llegar lo que le faltaba.
-                if let s = self, let cual = s.datos.seccion?.id,
-                   cual == "libretas" || cual.hasPrefix("libreta:"),
-                   let hecha = CNSecciones.arma(cual) {
-                    s.ponSeccion(hecha, si: cual)
+                // Y si se está mirando —o se acaba de PEDIR— una subpantalla
+                // que se arma con esto, se rehace: acaba de llegar lo que le
+                // faltaba.
+                //
+                // Lo de «o se acaba de pedir» es el arreglo. Este guardián
+                // miraba solo `seccion`, que es la que YA está puesta, y al
+                // entrar en «Libretas y permisos» todavía no lo está: se pide la
+                // lista y, en lo que la web contesta, la sección aún no existe.
+                // Así que la condición no se cumplía nunca por este camino, la
+                // versión nativa no se rehacía, y se quedaba la de la web.
+                // `ponSeccion` ya miraba las dos; este, no.
+                if let s = self {
+                    let pedida = s.datos.seccionPedida
+                    let cual = pedida.isEmpty || pedida == "-" ? (s.datos.seccion?.id ?? "") : pedida
+                    if cual == "libretas" || cual.hasPrefix("libreta:"),
+                       let hecha = CNSecciones.arma(cual) {
+                        s.ponSeccion(hecha, si: cual)
+                    }
                 }
                 return
             }
@@ -2714,10 +2739,34 @@ class ChinolaViewController: CAPBridgeViewController {
                 // Y ahora con respuesta: la ficha la arma la app con la libreta
                 // sembrada, así que los números de la foto son de verdad.
                 s.eval("window.__chinolaCharlaDePrueba && window.__chinolaCharlaDePrueba('resumen')")
+                s.bancoLeeLoQueSeOye()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     s.traerCharlaDelBanco()
                 }
             }
+        }
+    }
+
+    /**
+     * LO QUE SE ENTIENDE DE UNA FRASE DICTADA, CON LA LIBRETA DE VERDAD.
+     *
+     * Las cápsulas de la pantalla son cuatro textos en fila; donde viven los
+     * fallos es en el lector —qué cuenta como monto, si «2.50» son dos y medio
+     * o doscientos cincuenta, si «Visa» se come a «Visa Popular»—. Así que lo
+     * que se prueba en el banco es el lector, contra la libreta sembrada y con
+     * frases de las que se dicen.
+     */
+    private func bancoLeeLoQueSeOye() {
+        let lb = CNDatos.shared.libreta
+        let frases = ["pagué 2,300 de servicios con la visa popular ayer",
+                      "gasté 2.50 en transporte",
+                      "pagué la 2 de luz, 2300",
+                      "almuerzo 450",
+                      "hola qué tal"]
+        for f in frases {
+            let r = CNLoQueSeOye.de(f, lb)
+            let dice = r.etiquetas.isEmpty ? "(nada)" : r.etiquetas.joined(separator: " · ")
+            NSLog("CNOIDO: «%@» → %@", f, dice)
         }
     }
 

@@ -82,7 +82,10 @@ enum CNSecciones {
      * que una pantalla a medias. Pedir los datos es cosa aparte (`traer`).
      */
     @MainActor static func arma(_ id: String) -> CNSeccion? {
-        let hecha = armaDeVerdad(id)
+        var hecha = armaDeVerdad(id)
+        // Marcada, para que después se pueda preguntar quién armó LO QUE ESTÁ
+        // EN PANTALLA y no solo quién fue el último en intentarlo.
+        hecha?.deQuien = "nativa"
         // QUIÉN ARMÓ ESTA PANTALLA, dicho en voz alta para el banco.
         //
         // «Libretas y permisos» estuvo armándose en la web mientras la versión

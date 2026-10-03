@@ -295,6 +295,10 @@ jobs:
           xcrun simctl spawn "$UDID" log show --last 10m --style compact \
             --predicate 'eventMessage CONTAINS "CNCHARLA"' 2>/dev/null \
             | sed 's/^[^Z]*Z //' || true
+          # Y lo que se entiende de una frase dictada, con la libreta sembrada.
+          xcrun simctl spawn "$UDID" log show --last 10m --style compact \
+            --predicate 'eventMessage CONTAINS "CNOIDO"' 2>/dev/null \
+            | sed 's/^[^Z]*Z //' || true
 
           # LOS BOTONES DE PERFIL QUE NO HACEN NADA.
           #
@@ -359,6 +363,15 @@ jobs:
           echo "=== ¿quién armó cada subpantalla? ==="
           xcrun simctl spawn "$UDID" log show --last 6m --style compact \
             --predicate 'eventMessage CONTAINS "CNSECCION"' 2>/dev/null > /tmp/sec.txt || true
+          # Y QUIÉN ARMÓ LO QUE SE QUEDÓ EN PANTALLA, que no es lo mismo.
+          #
+          # Al entrar, la web manda su modelo, el teléfono arma el suyo y
+          # después hay dos refrescos más: cualquiera de los dos puede llegar el
+          # último. La lista de arriba dice quién lo INTENTÓ; esta, qué quedó.
+          echo "--- y qué quedó en pantalla ---"
+          xcrun simctl spawn "$UDID" log show --last 10m --style compact \
+            --predicate 'eventMessage CONTAINS "CNPANTALLA"' 2>/dev/null \
+            | sed 's/^[^Z]*Z //' | sed 's/.*CNPANTALLA/  CNPANTALLA/' | sort -u || true
           python3 ../sondas/quien-armo-perfil.py /tmp/sec.txt \
             cuenta seguridad dosPasos libretas panel dinero menu letra cabecera colores icono-app
 

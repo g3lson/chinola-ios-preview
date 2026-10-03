@@ -3893,6 +3893,111 @@ final class CNDictado: ObservableObject {
 }
 
 /**
+ * LO QUE SE VA ENTENDIENDO MIENTRAS HABLAS.
+ *
+ * Dictar era un acto de fe: hablabas, se paraba, se mandaba, y lo que había
+ * entendido no se sabía hasta que Chino contestaba. Si confundía la cuenta o
+ * se comía el monto, te enterabas con el movimiento ya anotado.
+ *
+ * Esto lee la transcripción EN VIVO y enseña lo que ya reconoce —cuánto, de
+ * qué, con qué, cuándo— como etiquetas que van apareciendo. No adivina ni
+ * completa: si no está seguro, no pone la etiqueta. Un dato equivocado con
+ * aspecto de confirmado es peor que ninguno.
+ *
+ * Y no llama a nadie. Pasa en el teléfono, con la libreta que ya está aquí,
+ * mientras hablas: una llamada por palabra no existe como idea.
+ *
+ * Lo que entiende es a propósito poco:
+ *
+ * · EL MONTO, de las cifras que escribe el reconocedor. Los números dichos con
+ *   letra —«mil doscientos»— los convierte él mismo casi siempre; traducirlos
+ *   aquí sería escribir un lector de números en tres idiomas para cubrir el
+ *   caso que ya viene resuelto.
+ * · LA CATEGORÍA, LA CUENTA Y LA TARJETA, por su nombre y solo si está entero.
+ *   Buscar parecidos es lo que hace que «luz» caiga en «Lujo».
+ * · CUÁNDO, con tres palabras: hoy, ayer y anteayer. Van por el diccionario,
+ *   así que funcionan en el idioma que tenga puesto la app y no solo en
+ *   español.
+ */
+struct CNLoQueSeOye {
+    var monto = ""
+    var categoria = ""
+    var donde = ""
+    var cuando = ""
+
+    var hay: Bool { !monto.isEmpty || !categoria.isEmpty || !donde.isEmpty || !cuando.isEmpty }
+
+    /// Las etiquetas en el orden en que se leen: cuánto, de qué, con qué, cuándo.
+    var etiquetas: [String] { [monto, categoria, donde, cuando].filter { !$0.isEmpty } }
+
+    /**
+     * LAS CIFRAS DE UNA FRASE, CON EL PUNTO Y LA COMA RESUELTOS.
+     *
+     * «2,300» y «2.300» son dos mil trescientos; «2.50» son dos y medio. La
+     * diferencia está en CUÁNTOS DÍGITOS VAN DETRÁS: tres es un separador de
+     * miles, uno o dos es un decimal. Sin esta regla, «pagué 2.50 de peaje»
+     * salía en pantalla como RD$250 —y con cara de confirmado, que es lo que lo
+     * hace peor que no enseñar nada—.
+     *
+     * Lo que no se puede resolver se descarta: más vale una etiqueta de menos.
+     */
+    static func cifrasDe(_ texto: String) -> [Double] {
+        var out: [Double] = []
+        for crudo in texto.split(whereSeparator: { !$0.isNumber && $0 != "." && $0 != "," }) {
+            let partes = crudo.split(whereSeparator: { $0 == "." || $0 == "," }).map(String.init)
+            guard let primera = partes.first, !primera.isEmpty else { continue }
+            if partes.count == 1 {
+                if let n = Double(primera) { out.append(n) }
+                continue
+            }
+            let ultima = partes[partes.count - 1]
+            let demasEnMiles = partes.dropFirst().allSatisfy { $0.count == 3 }
+            if demasEnMiles {
+                if let n = Double(partes.joined()) { out.append(n) }
+            } else if partes.count == 2 && (ultima.count == 1 || ultima.count == 2) {
+                if let n = Double(primera + "." + ultima) { out.append(n) }
+            }
+            // Cualquier otra forma —«1.2.3»— no es un número que se haya dicho:
+            // se deja fuera en vez de inventarle una lectura.
+        }
+        return out
+    }
+
+    static func de(_ dicho: String, _ lb: CNLibreta) -> CNLoQueSeOye {
+        var out = CNLoQueSeOye()
+        let bajo = dicho.lowercased()
+        guard !bajo.isEmpty else { return out }
+
+        // EL MONTO: la cifra MAYOR de la frase. La mayor y no la primera
+        // porque «pagué la 2 de luz, 2300» empieza por un número que no es el
+        // dinero; el dinero casi siempre es el número gordo.
+        var mejor: Double = 0
+        for trozo in CNLoQueSeOye.cifrasDe(bajo) where trozo > mejor { mejor = trozo }
+        if mejor > 0 { out.monto = cnDinero(mejor) }
+
+        // LA CATEGORÍA Y LA CUENTA, por su nombre completo. Las más largas
+        // primero: con «Visa» y «Visa Oro» en la misma libreta, decir «Visa
+        // Oro» tiene que dar «Visa Oro».
+        func nombrado(_ nombres: [String]) -> String {
+            for n in nombres.sorted(by: { $0.count > $1.count })
+            where !n.isEmpty && bajo.contains(n.lowercased()) { return n }
+            return ""
+        }
+        out.categoria = nombrado(lb.categorias.map { $0.nombre })
+        out.donde = nombrado(lb.tarjetas.map { $0.nombre })
+        if out.donde.isEmpty { out.donde = nombrado(lb.cuentas.map { $0.nombre }) }
+
+        // CUÁNDO. Solo lo que no se puede confundir: hoy es hoy.
+        for palabra in [cnT("anteayer"), cnT("ayer"), cnT("hoy")]
+        where !palabra.isEmpty && bajo.contains(palabra.lowercased()) {
+            out.cuando = palabra
+            break
+        }
+        return out
+    }
+}
+
+/**
  * LA TARJETA DEBAJO DE LA RESPUESTA.
  *
  * Tres formas y nada más: una cifra, unas barras o una lista. Son las mismas
@@ -4030,6 +4135,11 @@ struct CNCharlaVista: View {
     private var puedeMandar: Bool {
         !texto.trimmingCharacters(in: .whitespaces).isEmpty && !(datos.charla?.pensando ?? false)
     }
+
+    /// Lo que se va entendiendo de lo que dictas, con la libreta de este
+    /// teléfono. Aparte del cuerpo porque dentro de un VStack una declaración
+    /// es territorio resbaladizo, y aquí no compila nadie antes del banco.
+    private var loOido: CNLoQueSeOye { CNLoQueSeOye.de(texto, CNDatos.shared.libreta) }
 
     var body: some View {
         let m = datos.charla ?? CNCharla()
@@ -4267,6 +4377,38 @@ struct CNCharlaVista: View {
                                 Text(cnT("Toca el botón para terminar"))
                                     .font(cnLetra(10.5)).foregroundColor(CNC.pmut.opacity(0.8))
                                     .lineLimit(1)
+                            }
+                            /*
+                             LO QUE YA HA ENTENDIDO, MIENTRAS SIGUES HABLANDO.
+
+                             Dictar era un acto de fe: hablabas, se paraba, se
+                             mandaba, y lo que había entendido no se sabía hasta
+                             que Chino contestaba. Si confundía la cuenta o se
+                             comía el monto, te enterabas con el movimiento ya
+                             anotado.
+
+                             Ahora van apareciendo —RD$1,200 · Servicios · Visa
+                             · ayer— según las reconoce. Lo que no reconoce no
+                             sale: un dato equivocado con cara de confirmado es
+                             peor que ninguno.
+
+                             Y mientras estás cancelando NO se enseñan. Lo que
+                             importa en ese medio segundo es que vas a soltar y
+                             no se manda nada; unas etiquetas creciendo debajo
+                             dicen lo contrario.
+                             */
+                            if !cancelando && loOido.hay {
+                                    HStack(spacing: 5) {
+                                        ForEach(loOido.etiquetas, id: \.self) { e in
+                                            Text(e).font(cnLetra(11, .medium))
+                                                .foregroundColor(CNC.pos)
+                                                .lineLimit(1)
+                                                .padding(.horizontal, 8).padding(.vertical, 3)
+                                                .background(CNC.pos.opacity(0.12), in: Capsule())
+                                        }
+                                    }
+                                    .padding(.top, 3)
+                                    .transition(.opacity)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
