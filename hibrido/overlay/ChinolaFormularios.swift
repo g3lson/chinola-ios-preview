@@ -3626,14 +3626,15 @@ struct CNCharla {
         if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
         m.ph = s(r, "ph"); m.iaOn = b(r, "iaOn"); m.pensando = b(r, "pensando")
         m.chinolo = s(r, "chinolo"); m.vacioTexto = s(r, "vacioTexto")
-        func d(_ o: [String: Any], _ k: String) -> Double { ((o[k] as? NSNumber)?.doubleValue) ?? 0 }
+        // `num` y no `d`: arriba, `d` es ya el Data del JSON.
+        func num(_ o: [String: Any], _ k: String) -> Double { ((o[k] as? NSNumber)?.doubleValue) ?? 0 }
         func ficha(_ o: Any?) -> Ficha? {
             guard let j = o as? [String: Any], !s(j, "clase").isEmpty else { return nil }
             var f = Ficha(clase: s(j, "clase"), titulo: s(j, "titulo"), valor: s(j, "valor"),
                           nota: s(j, "nota"), color: s(j, "color"), ir: s(j, "ir"),
                           deshacer: s(j, "deshacer"))
             f.filas = ((j["filas"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
-                Fila(id: i, label: s(x, "label"), valor: s(x, "valor"), pct: d(x, "pct"), color: s(x, "color"))
+                Fila(id: i, label: s(x, "label"), valor: s(x, "valor"), pct: num(x, "pct"), color: s(x, "color"))
             }
             f.items = ((j["items"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
                 Item(id: i, sigla: s(x, "sigla"), color: s(x, "color"), titulo: s(x, "titulo"),

@@ -2679,8 +2679,8 @@ class ChinolaViewController: CAPBridgeViewController {
     /// Sube una tarjeta del panel al primer sitio, y dice qué hay en el panel.
     private func bancoSubeLaTarjeta(_ tipo: String) {
         let ws = CNDatos.shared.resumen?.widgets ?? []
-        NSLog("CNPANEL: el panel tiene \(ws.count) · "
-              + ws.map { $0.tipoPanel + "(" + $0.clase + ")" }.joined(separator: " "))
+        let tipos: [String] = ws.map { $0.tipoPanel + "(" + $0.clase + ")" }
+        NSLog("CNPANEL: el panel tiene \(ws.count) · " + tipos.joined(separator: " "))
         guard let w = ws.first(where: { $0.tipoPanel == tipo }) else {
             NSLog("CNPANEL: «\(tipo)» NO ESTÁ en el panel")
             return
@@ -2708,8 +2708,9 @@ class ChinolaViewController: CAPBridgeViewController {
             s.abrirCharla()
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                 let m = CNDatos.shared.charla
-                NSLog("CNCHARLA: vacía · sugerencias=\(m?.sugerencias.count ?? -1)"
-                      + " mensajes=\(m?.mensajes.count ?? -1)")
+                let sug: Int = m?.sugerencias.count ?? -1
+                let msj: Int = m?.mensajes.count ?? -1
+                NSLog("CNCHARLA: vacía · sugerencias=\(sug) mensajes=\(msj)")
                 // Y ahora con respuesta: la ficha la arma la app con la libreta
                 // sembrada, así que los números de la foto son de verdad.
                 s.eval("window.__chinolaCharlaDePrueba && window.__chinolaCharlaDePrueba('resumen')")
@@ -2725,10 +2726,13 @@ class ChinolaViewController: CAPBridgeViewController {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaCharlaJSON && window.__chinolaCharlaJSON()) || ''") { res, _ in
             if let json = res as? String, json.count > 2 { CNDatos.shared.cargarCharla(json: json) }
             let m = CNDatos.shared.charla
-            let f = m?.mensajes.last?.ficha
-            NSLog("CNCHARLA: con respuesta · mensajes=\(m?.mensajes.count ?? -1)"
-                  + " chips=\(m?.chips.count ?? -1)"
-                  + " ficha=\(f.map { $0.clase + "/" + $0.valor + "/" + String($0.filas.count) + " barras" } ?? "NINGUNA")")
+            let cuantos: Int = m?.mensajes.count ?? -1
+            let chips: Int = m?.chips.count ?? -1
+            var dice = "NINGUNA"
+            if let f = m?.mensajes.last?.ficha {
+                dice = "\(f.clase)/\(f.valor)/\(f.filas.count) barras"
+            }
+            NSLog("CNCHARLA: con respuesta · mensajes=\(cuantos) chips=\(chips) ficha=\(dice)")
         }
     }
 
