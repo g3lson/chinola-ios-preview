@@ -250,6 +250,28 @@ jobs:
             --predicate 'eventMessage CONTAINS "CNPERIODO"' 2>/dev/null \
             | sed 's/^[^Z]*Z //' || true
 
+          # LAS TARJETAS QUE NO SE PODÍAN AGREGAR, Y LA CABECERA DESPUÉS.
+          #
+          # «Días sin gastar», «ahorro del mes» y «racha anotando» se agregaban
+          # y no aparecían; y a partir de ahí la cabecera dejaba de cambiar de
+          # mes y la hoja de libretas se abría y se cerraba sola. Es el MISMO
+          # fallo: la cifra reventaba el render entero y la pantalla no se
+          # volvía a dibujar. Así que la sonda hace las dos mitades seguidas y
+          # en ese orden; la foto de después del todo es la que lo demuestra.
+          echo "=== las tarjetas del panel y la cabecera ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          env SIMCTL_CHILD_CN_IR=resumen SIMCTL_CHILD_CN_CON=sonda,panel \
+            xcrun simctl launch "$UDID" "$ID"
+          # 1,6s por tarjeta y 4,5s de cabecera, más el arranque.
+          sleep 14
+          xcrun simctl io "$UDID" screenshot "panel-tarjetas.png"
+          sleep 10
+          xcrun simctl io "$UDID" screenshot "panel-cabecera.png"
+          xcrun simctl spawn "$UDID" log show --last 10m --style compact \
+            --predicate 'eventMessage CONTAINS "CNPANEL"' 2>/dev/null \
+            | sed 's/^[^Z]*Z //' || true
+
           # LOS BOTONES DE PERFIL QUE NO HACEN NADA.
           #
           # «Exportar» y «Ver el tour otra vez». Las filas del Perfil nativo se
