@@ -368,6 +368,15 @@ jobs:
           # Al entrar, la web manda su modelo, el teléfono arma el suyo y
           # después hay dos refrescos más: cualquiera de los dos puede llegar el
           # último. La lista de arriba dice quién lo INTENTÓ; esta, qué quedó.
+          # LA CADENA DE «LIBRETAS Y PERMISOS», ESLABÓN A ESLABÓN.
+          #
+          # Esto se arregló una vez, se le puso prueba, y siguió roto: la prueba
+          # miraba quién lo INTENTÓ y no qué quedó. Así que ahora se dice qué
+          # llegó de la web, para qué sección y si sirvió para armarla.
+          echo "--- la cadena de libretas ---"
+          xcrun simctl spawn "$UDID" log show --last 10m --style compact \
+            --predicate 'eventMessage CONTAINS "CNLIBRETAS"' 2>/dev/null \
+            | sed 's/^[^Z]*Z //' | sed 's/.*CNLIBRETAS/  CNLIBRETAS/' | sort -u || true
           echo "--- y qué quedó en pantalla ---"
           xcrun simctl spawn "$UDID" log show --last 10m --style compact \
             --predicate 'eventMessage CONTAINS "CNPANTALLA"' 2>/dev/null \

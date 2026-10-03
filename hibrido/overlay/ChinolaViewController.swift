@@ -1607,9 +1607,11 @@ class ChinolaViewController: CAPBridgeViewController {
         }
     }
     private func refrescarLibretas(intentos: Int = 4) {
+        let sonda = ProcessInfo.processInfo.environment["CN_CON"]?.contains("sonda") == true
         bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretasJSON && window.__chinolaLibretasJSON()) || ''") { [weak self] res, _ in
-            if let json = res as? String, json.count > 2 {
-                CNDatos.shared.cargarLibretas(json: json)
+            let crudo = (res as? String) ?? ""
+            if crudo.count > 2 {
+                CNDatos.shared.cargarLibretas(json: crudo)
                 // Y si se está mirando —o se acaba de PEDIR— una subpantalla
                 // que se arma con esto, se rehace: acaba de llegar lo que le
                 // faltaba.
@@ -1618,21 +1620,38 @@ class ChinolaViewController: CAPBridgeViewController {
                 // miraba solo `seccion`, que es la que YA está puesta, y al
                 // entrar en «Libretas y permisos» todavía no lo está: se pide la
                 // lista y, en lo que la web contesta, la sección aún no existe.
-                // Así que la condición no se cumplía nunca por este camino, la
-                // versión nativa no se rehacía, y se quedaba la de la web.
                 // `ponSeccion` ya miraba las dos; este, no.
                 if let s = self {
                     let pedida = s.datos.seccionPedida
                     let cual = pedida.isEmpty || pedida == "-" ? (s.datos.seccion?.id ?? "") : pedida
-                    if cual == "libretas" || cual.hasPrefix("libreta:"),
-                       let hecha = CNSecciones.arma(cual) {
-                        s.ponSeccion(hecha, si: cual)
+                    var armo = "no tocaba"
+                    if cual == "libretas" || cual.hasPrefix("libreta:") {
+                        if let hecha = CNSecciones.arma(cual) {
+                            s.ponSeccion(hecha, si: cual)
+                            armo = "sí"
+                        } else {
+                            armo = "NO (sin datos)"
+                        }
+                    }
+                    if sonda {
+                        // CADA ESLABÓN, DICHO. Esto se arregló una vez, se le
+                        // puso prueba, y siguió roto: la prueba miraba el
+                        // intento y no el resultado. Así que ahora se dice qué
+                        // llegó, para quién y si sirvió.
+                        NSLog("CNLIBRETAS: llegaron %d filas · pedida=«%@» seccion=«%@» → armó %@",
+                              CNDatos.shared.libretas?.filas.count ?? -1,
+                              s.datos.seccionPedida, s.datos.seccion?.id ?? "",
+                              armo)
                     }
                 }
                 return
             }
             // La web puede estar a medio pintar: se vuelve a pedir en vez de
             // dejar la hoja vacía.
+            if sonda {
+                NSLog("CNLIBRETAS: la web devolvió %d caracteres · quedan %d intentos",
+                      crudo.count, intentos - 1)
+            }
             guard intentos > 1 else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { self?.refrescarLibretas(intentos: intentos - 1) }
         }

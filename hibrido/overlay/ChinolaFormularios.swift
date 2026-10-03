@@ -3973,7 +3973,15 @@ struct CNLoQueSeOye {
         // dinero; el dinero casi siempre es el número gordo.
         var mejor: Double = 0
         for trozo in CNLoQueSeOye.cifrasDe(bajo) where trozo > mejor { mejor = trozo }
-        if mejor > 0 { out.monto = cnDinero(mejor) }
+        // CON LOS CENTAVOS SI LOS DIJO. El formateador de siempre se rige por
+        // la preferencia de la persona, y con «sin centavos» puesto «2.50»
+        // salía como RD$2. Repetir mal lo que alguien acaba de decir es el
+        // único fallo que esta pantalla no se puede permitir.
+        if mejor > 0 {
+            out.monto = mejor == mejor.rounded()
+                ? cnDinero(mejor)
+                : (CNFormateadores.dineroExacto.string(from: NSNumber(value: mejor)) ?? cnDinero(mejor))
+        }
 
         // LA CATEGORÍA Y LA CUENTA, por su nombre completo. Las más largas
         // primero: con «Visa» y «Visa Oro» en la misma libreta, decir «Visa
@@ -4555,7 +4563,17 @@ struct CNCharlaVista: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(cnT("Cerrar")) { onClose() }
+                    // UNA EQUIS, como los tres puntos de enfrente.
+                    //
+                    // «Cerrar» escrito a la izquierda y un icono redondo a la
+                    // derecha son dos pesos distintos tirando de la cabecera, y
+                    // el texto además cambia de ancho con el idioma: en francés
+                    // empuja al nombre de Chino fuera del centro. El nombre se
+                    // queda donde está con un icono a cada lado.
+                    Button { onClose() } label: {
+                        Image(systemName: "xmark.circle")
+                    }
+                    .accessibilityLabel(cnT("Cerrar"))
                 }
                 // LOS TRES PUNTOS. Estaban puestos en la charla de la WEB, y
                 // la que se ve en el teléfono es ESTA, la nativa: por eso no

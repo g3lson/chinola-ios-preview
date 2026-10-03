@@ -1276,6 +1276,27 @@ enum CNFormateadores {
     private static var fechas: [String: DateFormatter] = [:]
     private static let cerrojo = NSLock()
 
+    /**
+     * COMO `dinero`, PERO CON LOS CENTAVOS SIEMPRE.
+     *
+     * Para cuando hay que repetir lo que alguien acaba de decir. Con «sin
+     * centavos» puesto, dictar «gasté 2.50 en transporte» enseñaba RD$2: un
+     * número que nadie dijo, puesto en pantalla con cara de confirmado. La
+     * preferencia es sobre cómo se mira la libreta, no sobre qué se oyó.
+     */
+    static var dineroExacto: NumberFormatter {
+        let clave = "\(CNC.fmt.loc)|\(CNC.fmt.moneda)|exacto"
+        cerrojo.lock(); defer { cerrojo.unlock() }
+        if let f = numeros[clave] { return f }
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.locale = Locale(identifier: CNC.fmt.loc)
+        f.currencyCode = CNC.fmt.moneda
+        f.minimumFractionDigits = 2; f.maximumFractionDigits = 2
+        numeros[clave] = f
+        return f
+    }
+
     static var dinero: NumberFormatter {
         let dec = CNC.fmt.centavos ? 2 : 0
         let clave = "\(CNC.fmt.loc)|\(CNC.fmt.moneda)|\(dec)"
