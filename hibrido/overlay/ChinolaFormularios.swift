@@ -3183,8 +3183,15 @@ struct CNPuertaVista: View {
             Text(m.labelCodigo.isEmpty ? cnT("Código") : m.labelCodigo)
                 .font(cnLetra(11, .heavy)).tracking(0.9)
                 .foregroundColor(puesto ? CNC.pos : CNC.pmut)
+            // SIN `tracking` AQUÍ.
+            //
+            // Separar las cifras con `tracking` queda mejor, pero ese
+            // modificador sobre un campo pide iOS 16 y la app llega más atrás:
+            // el banco lo cazó —«'tracking' is only available in iOS 16.0 or
+            // newer»— antes de que llegara a nadie. Lo que lo hace legible de
+            // verdad es el tamaño y que esté centrado, no la separación.
             TextField("······", text: $codigo)
-                .font(cnLetra(26, .heavy)).tracking(10)
+                .font(cnLetra(30, .heavy))
                 .multilineTextAlignment(.center)
                 .foregroundColor(CNC.ink)
                 .keyboardType(.asciiCapable)
