@@ -2103,13 +2103,30 @@ final class CNDatos: ObservableObject {
         guard let x = CNSeccion.desde(json: json) else { return }
         seccionesVistas[x.id] = x
         // Y si resulta que es justo la que se está mirando, se refresca: viene
-        // más nueva que la que hay puesta.
-        if seccion?.id == x.id { seccion = x }
+        // más nueva que la que hay puesta. Salvo que la puesta la haya armado
+        // el teléfono, por lo mismo de arriba: esta es la precarga de las doce
+        // de golpe, y pisaría la nativa sin que nadie hubiera pedido nada.
+        if seccion?.id == x.id, seccion?.deQuien != "nativa" { seccion = x }
     }
 
     func cargarSeccion(json: String) {
         guard let x = CNSeccion.desde(json: json) else { return }
         if !seccionPedida.isEmpty && x.id != seccionPedida { return }
+        /*
+         LA WEB NO PISA UNA QUE ARMÓ EL TELÉFONO.
+         
+         Aquí se perdía «Libretas y permisos». Al entrar se le pide el modelo a
+         la web y además se vuelve a pedir a los 0,5 y 1,4 segundos; el teléfono
+         arma el suyo por el camino, y el último que llega manda. Las otras
+         subpantallas nativas se salvaban de casualidad: la web no las construye
+         —devuelve nada y no hay con qué pisar—. Libretas sí la construye, así
+         que su copia ganaba siempre, por los pelos y en cada entrada.
+         
+         La de la web se queda como red: si el teléfono no puede armarla —sin
+         datos todavía—, es ella la que se ve. Lo que no puede es ganarle a una
+         que ya está hecha.
+         */
+        if let ya = seccion, ya.id == x.id, ya.deQuien == "nativa", x.deQuien != "nativa" { return }
         // La web acaba de decir lo suyo: a partir de aquí manda ella y lo que
         // se apuntó al tocar ya no pinta nada. Es lo que impide que existan dos
         // copias del mismo ajuste discrepando — que era el motivo de no
