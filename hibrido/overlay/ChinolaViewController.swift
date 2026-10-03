@@ -2660,7 +2660,7 @@ class ChinolaViewController: CAPBridgeViewController {
                 let puesta = s.libretasVC != nil
                 NSLog("CNPANEL: pastilla de la libreta · hoja="
                       + "\(puesta ? "abierta" : "SE CERRÓ SOLA")"
-                      + " libretas=\(CNDatos.shared.libretas?.count ?? -1)")
+                      + " libretas=\(CNDatos.shared.libretas?.filas.count ?? -1)")
             }
         }
     }

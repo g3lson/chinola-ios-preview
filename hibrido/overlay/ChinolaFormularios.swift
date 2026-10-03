@@ -3940,11 +3940,13 @@ struct CNCharlaVista: View {
                             }
                             .id(-1)
                         }
-                        if !m.mensajes.isEmpty && !m.pensando {
-                            Button { datos.onCharlaLimpiar() } label: {
-                                Text(cnT("Empezar de nuevo")).font(cnLetra(13)).foregroundColor(CNC.pmut).padding(6)
-                            }.buttonStyle(CNPulsable())
-                        }
+                        // «Empezar de nuevo» NO va aquí. Estaba al final de la
+                        // conversación, flotando entre la última respuesta y la
+                        // caja de escribir, y ahí parece parte de la charla:
+                        // Chino acaba de contestarte y debajo hay un botón que
+                        // borra lo que acaba de decirte. Vive en los tres
+                        // puntos de arriba, que es donde se buscan las cosas
+                        // que se hacen una vez.
                         Color.clear.frame(height: 6).id("fin")
                     }
                     .padding(.horizontal, 16).padding(.top, 6)
