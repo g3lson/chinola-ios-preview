@@ -1633,6 +1633,16 @@ class ChinolaViewController: CAPBridgeViewController {
                             armo = "NO (sin datos)"
                         }
                     }
+                    if sonda, let f = CNDatos.shared.libretas?.filas.first {
+                        // QUÉ TRAE UNA FILA, campo por campo. En la foto salen
+                        // los nombres sueltos —sin icono, sin color y sin
+                        // segunda línea— y el código que los pone está puesto,
+                        // así que lo que falta son los datos. Decir «llegaron 2
+                        // filas» no distingue dos filas llenas de dos vacías.
+                        NSLog("CNFILA: nombre=«%@» detalle=«%@» tipo=«%@» rol=«%@» color=«%@» icono=%d enUso=%@",
+                              f.nombre, f.detalle, f.tipo, f.rol, f.color,
+                              f.iconoPath.count, f.enUso ? "sí" : "no")
+                    }
                     if sonda {
                         // CADA ESLABÓN, DICHO. Esto se arregló una vez, se le
                         // puso prueba, y siguió roto: la prueba miraba el

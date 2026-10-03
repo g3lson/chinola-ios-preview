@@ -398,8 +398,8 @@ jobs:
           # llegó de la web, para qué sección y si sirvió para armarla.
           echo "--- la cadena de libretas ---"
           xcrun simctl spawn "$UDID" log show --last 10m --style compact \
-            --predicate 'eventMessage CONTAINS "CNLIBRETAS"' 2>/dev/null \
-            | grep -F 'CNLIBRETAS:' | sed 's/.*CNLIBRETAS/  CNLIBRETAS/' | sort -u || true
+            --predicate 'eventMessage CONTAINS "CNLIBRETAS" OR eventMessage CONTAINS "CNFILA"' 2>/dev/null \
+            | grep -E 'CNLIBRETAS:|CNFILA:' | sed 's/.*CN\(LIBRETAS\|FILA\)/  CN\1/' | sort -u || true
           echo "--- y qué quedó en pantalla ---"
           xcrun simctl spawn "$UDID" log show --last 10m --style compact \
             --predicate 'eventMessage CONTAINS "CNPANTALLA"' 2>/dev/null \
