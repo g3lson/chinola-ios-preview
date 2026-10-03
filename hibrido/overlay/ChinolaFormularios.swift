@@ -2561,6 +2561,8 @@ struct CNPuertaVista: View {
     /// Google y el cambio de modo se comen la pantalla justo cuando estás
     /// escribiendo.
     @StateObject private var teclado = CNTecladoAbierto()
+    /// La hoja con las otras maneras de recibir el código de dos pasos.
+    @State private var abiertoOtras = false
 
     /// La tinta de la web sobre el verde oscuro (`SOBRE_OSCURO`).
     private let sobreOscuro = cnColor(0xF7F2E4)
@@ -2625,6 +2627,11 @@ struct CNPuertaVista: View {
             // El nombre es UN campo y nada más: abrir el teclado solo ahorra un
             // toque a todo el mundo. En el acceso no, que ahí se mira primero.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { foco = .quien }
+        }
+        if m.paso == "auth" && m.codigo {
+            // Al código se llega a escribirlo. Lo de dos pasos ya es un paso de
+            // más; que encima haya que apuntar al campo con el dedo, no.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { foco = .codigo }
         }
     }
 
@@ -2816,30 +2823,27 @@ struct CNPuertaVista: View {
                     .cnEntra(entro, 2)
             }
             if m.codigo {
-                campo(m.labelCodigo, m.labelCodigo, $codigo, teclado: .asciiCapable,
-                      cual: .codigo, siguiente: nil)
+                // EL CÓDIGO, Y NADA MÁS.
+                //
+                // Esta pantalla tiene UNA tarea: escribir seis cifras. Antes, al
+                // lado del campo salían sueltas todas las demás maneras de
+                // pedirlo —«mándalo al correo», «mándalo por Telegram», «usa la
+                // app»— cada una en su pastilla. Con el teclado puesto, media
+                // pantalla eran salidas y la otra media el sitio donde hay que
+                // escribir. Ahora las salidas viven todas detrás de un solo
+                // enlace, abajo.
+                //
+                // Y el campo es de código: grande, centrado, con las cifras
+                // separadas, y marcado como `oneTimeCode` para que el teléfono
+                // ofrezca pegarlo él solo en cuanto llegue el correo.
+                campoCodigo(m)
                     .onChange(of: codigo) { v in onAccion("campo", "codigo|" + v) }
                     .cnEntra(entro, 3)
-                if !m.metodos.isEmpty {
-                    HStack(spacing: 8) {
-                        Text(m.otrosRotulo).font(cnLetra(12)).foregroundColor(CNC.pmut)
-                        ForEach(m.metodos) { x in
-                            Button {
-                                UISelectionFeedbackGenerator().selectionChanged()
-                                onAccion("metodo", String(x.id))
-                            } label: {
-                                Text(x.label).font(cnLetra(12, .bold)).foregroundColor(CNC.ink)
-                                    .padding(.horizontal, 13).padding(.vertical, 8)
-                                    .background(CNC.card, in: Capsule())
-                                    .overlay(Capsule().stroke(CNC.line, lineWidth: 1))
-                            }.buttonStyle(CNPulsable())
-                        }
-                        Spacer(minLength: 0)
-                    }
-                }
                 if !m.respaldoNota.isEmpty {
-                    Text(m.respaldoNota).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                    Text(m.respaldoNota).font(cnLetra(12.5)).foregroundColor(CNC.pmut)
+                        .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
+                        .cnEntra(entro, 4)
                 }
             } else {
                 if m.registro {
@@ -2978,6 +2982,7 @@ struct CNPuertaVista: View {
             // el campo que estás escribiendo contra el borde de arriba. Son
             // para cuando MIRAS la pantalla, no para cuando escribes en ella.
             if m.paso == "auth" && !m.codigo && !teclado.abierto { entrarConOtros(m) }
+            if m.paso == "auth" && m.codigo { otrasManeras(m) }
             if let otra = segunda(m) {
                 botonTexto(otra.0, color: oscura ? sobreOscuro.opacity(0.75) : CNC.pmut,
                            borde: oscura) { onAccion(otra.1, "") }
@@ -3047,6 +3052,43 @@ struct CNPuertaVista: View {
         }.buttonStyle(CNPulsable())
         if !m.sinCuenta.isEmpty {
             botonTexto(m.sinCuenta, color: CNC.pmut, borde: false) { onAccion("sin-cuenta", "") }
+        }
+    }
+
+    /**
+     * TODAS LAS MANERAS, DETRÁS DE UN SOLO ENLACE.
+     *
+     * Las otras formas de recibir el código salían sueltas en la pantalla, una
+     * pastilla cada una, al lado del campo donde hay que escribir. Pero nadie
+     * llega a esta pantalla queriendo cambiar de método: llega a escribir seis
+     * cifras. Las salidas son para cuando algo no llega, y entonces lo que se
+     * busca es «y si no, ¿qué?» — una sola puerta, y dentro todo lo que hay.
+     *
+     * Una hoja del sistema y no un menú escondido: las opciones salen con su
+     * nombre entero y a tamaño de dedo, que es como el teléfono pregunta
+     * «¿por dónde?».
+     */
+    @ViewBuilder private func otrasManeras(_ m: CNPuerta) -> some View {
+        if !m.metodos.isEmpty {
+            Button {
+                UISelectionFeedbackGenerator().selectionChanged()
+                abiertoOtras = true
+            } label: {
+                Text(cnT("Probar otro método")).font(cnLetra(15, .bold)).foregroundColor(CNC.pos)
+                    .frame(maxWidth: .infinity).padding(.vertical, 11)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(CNPulsable())
+            .confirmationDialog(m.otrosRotulo.isEmpty ? cnT("Probar otro método") : m.otrosRotulo,
+                                isPresented: $abiertoOtras, titleVisibility: .visible) {
+                ForEach(m.metodos) { x in
+                    Button(x.label) {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        onAccion("metodo", String(x.id))
+                    }
+                }
+                Button(cnT("Cancelar"), role: .cancel) { }
+            }
         }
     }
 
@@ -3130,6 +3172,34 @@ struct CNPuertaVista: View {
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(puesto ? CNC.pos : CNC.line, lineWidth: puesto ? 1.8 : 1))
             .animation(.easeOut(duration: 0.16), value: puesto)
+        }
+    }
+
+    /// El campo del código de dos pasos. Seis cifras, grandes y separadas, con
+    /// el cursor puesto y el teléfono ofreciendo pegarlo en cuanto llegue.
+    private func campoCodigo(_ m: CNPuerta) -> some View {
+        let puesto = foco == .codigo
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(m.labelCodigo.isEmpty ? cnT("Código") : m.labelCodigo)
+                .font(cnLetra(11, .heavy)).tracking(0.9)
+                .foregroundColor(puesto ? CNC.pos : CNC.pmut)
+            TextField("······", text: $codigo)
+                .font(cnLetra(26, .heavy)).tracking(10)
+                .multilineTextAlignment(.center)
+                .foregroundColor(CNC.ink)
+                .keyboardType(.asciiCapable)
+                .textContentType(.oneTimeCode)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+                .focused($foco, equals: .codigo)
+                .submitLabel(.go)
+                .onSubmit { cnCerrarTeclado(); onAccion("entrar", "") }
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
+                .background(CNC.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(puesto ? CNC.pos : CNC.line, lineWidth: puesto ? 1.8 : 1))
+                .animation(.easeOut(duration: 0.16), value: puesto)
         }
     }
 
@@ -3648,6 +3718,8 @@ struct CNCharlaVista: View {
     @StateObject private var dictado = CNDictado()
     /// Para pegar la barra de escribir al teclado cuando está puesto.
     @StateObject private var teclado = CNTecladoAbierto()
+    /// La hoja con las otras maneras de recibir el código de dos pasos.
+    @State private var abiertoOtras = false
     @State private var flota = false
     /// Grabando con el dedo encima (sin fijar). Mientras dure, se puede
     /// cancelar deslizando y fijar subiendo.
@@ -4025,5 +4097,171 @@ struct CNBurbuja: Shape {
         p.addArc(center: CGPoint(x: r.minX + ai, y: r.minY + ai), radius: ai, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
         p.closeSubpath()
         return p
+    }
+}
+
+// ── Avisos dentro de la app ─────────────────────────────────────────────────
+//
+// Lo que se le enseña a alguien cuando abre: una novedad, una recomendación,
+// una oferta. Lo escribe una persona en el portal y lo ve quien abra la app a
+// partir de ese momento, sin versión nueva ni revisión de Apple.
+//
+// Y se dibuja AQUÍ, no en la web, por una razón que se nota: aquí están las
+// plantillas, el muelle de la entrada escalonada y el dibujo de Chino a tamaño
+// de verdad. Un aviso que parece pegado encima de la app no lo lee nadie; uno
+// que parece la app es una pantalla más.
+
+struct CNAviso {
+    var id = ""
+    /// personaje · cifra · lamina · tarjeta · imagen
+    var plantilla = "personaje"
+    var animo = "feliz"
+    /// crema · marca · suave · oscuro
+    var fondo = "crema"
+    var acento = ""
+    var rotulo = ""; var titulo = ""; var texto = ""; var cifra = ""
+    var imagen = ""; var chinolo = ""
+    var boton = ""; var ir = ""; var segundo = ""
+    var esperaSegundos: Double = 2.5
+
+    static func desde(json: String) -> CNAviso? {
+        guard let d = json.data(using: .utf8),
+              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+        func s(_ k: String) -> String { (r[k] as? String) ?? "" }
+        guard !s("id").isEmpty else { return nil }
+        var a = CNAviso()
+        a.id = s("id"); a.plantilla = s("plantilla").isEmpty ? "personaje" : s("plantilla")
+        a.animo = s("animo"); a.fondo = s("fondo").isEmpty ? "crema" : s("fondo")
+        a.acento = s("acento")
+        a.rotulo = s("rotulo"); a.titulo = s("titulo"); a.texto = s("texto"); a.cifra = s("cifra")
+        a.imagen = s("imagen"); a.chinolo = s("chinolo")
+        a.boton = s("boton"); a.ir = s("ir"); a.segundo = s("segundo")
+        a.esperaSegundos = ((r["esperaSegundos"] as? NSNumber)?.doubleValue) ?? 2.5
+        return a
+    }
+}
+
+struct CNAvisoVista: View {
+    let aviso: CNAviso
+    /// `que` es "tocado" o "descartado": las dos maneras de responder.
+    var onAccion: (String) -> Void
+    @State private var entro = false
+    @State private var flota = false
+
+    private var oscuro: Bool { aviso.fondo == "marca" || aviso.fondo == "oscuro" }
+    private var tinta: Color { oscuro ? cnColor(0xF7F2E4) : CNC.ink }
+    private var tintaSuave: Color { oscuro ? cnColor(0xF7F2E4).opacity(0.72) : CNC.pmut }
+    private var acento: Color { aviso.acento.isEmpty ? CNC.acc : cnColor(hexString: aviso.acento) }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            cuerpo
+                .padding(.horizontal, 26).padding(.top, 30)
+                .padding(.bottom, cnMargenAbajo() + 18)
+                .frame(maxWidth: .infinity)
+                .background(fondo)
+                .clipShape(CNEsquinasArriba(radio: 30))
+                .shadow(color: .black.opacity(0.2), radius: 26, y: -6)
+                .offset(y: entro ? 0 : 620)
+        }
+        .ignoresSafeArea()
+        .background(
+            Color.black.opacity(entro ? 0.4 : 0)
+                .ignoresSafeArea()
+                .onTapGesture { cerrar("descartado") }
+        )
+        .onAppear {
+            withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) { entro = true }
+            flota = true
+        }
+    }
+
+    /// El fondo de cada piel. El de la marca no es un verde plano: lleva el
+    /// mismo halo que la portada, que es lo que le da cuerpo.
+    @ViewBuilder private var fondo: some View {
+        switch aviso.fondo {
+        case "marca":
+            ZStack {
+                CNC.side
+                RadialGradient(colors: [Color.white.opacity(0.13), .clear],
+                               center: UnitPoint(x: 0.5, y: 0.3), startRadius: 8, endRadius: 320)
+            }
+        case "oscuro": cnColor(0x1B221F)
+        case "suave": acento.opacity(0.12)
+        default: CNC.scr
+        }
+    }
+
+    @ViewBuilder private var cuerpo: some View {
+        VStack(spacing: 13) {
+            // EL TIRADOR, porque esto se cierra arrastrando como cualquier hoja.
+            Capsule().fill(tinta.opacity(0.18)).frame(width: 36, height: 5)
+                .padding(.bottom, 4)
+
+            if aviso.plantilla == "cifra" && !aviso.cifra.isEmpty {
+                Text(aviso.cifra)
+                    .font(cnLetra(56, .heavy)).foregroundColor(acento)
+                    .lineLimit(1).minimumScaleFactor(0.5)
+                    .cnEntra(entro, 0)
+            } else if aviso.plantilla == "imagen", let img = cnImagenBase64(aviso.imagen) {
+                Image(uiImage: img).resizable().scaledToFit()
+                    .frame(maxWidth: .infinity).frame(maxHeight: 260)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .cnEntra(entro, 0)
+            } else if let img = cnImagenBase64(aviso.chinolo) {
+                let lado: CGFloat = aviso.plantilla == "lamina" ? 168 : 124
+                Image(uiImage: img).resizable().scaledToFit().frame(width: lado, height: lado)
+                    .offset(y: flota ? -4 : 4)
+                    .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: flota)
+                    .cnEntra(entro, 0)
+            }
+
+            if !aviso.rotulo.isEmpty {
+                Text(aviso.rotulo.uppercased()).font(cnLetra(11, .heavy)).tracking(1.1)
+                    .foregroundColor(tintaSuave)
+                    .cnEntra(entro, 1)
+            }
+            if !aviso.titulo.isEmpty {
+                Text(aviso.titulo).font(cnLetra(24, .heavy)).foregroundColor(tinta)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .cnEntra(entro, 2)
+            }
+            if !aviso.texto.isEmpty {
+                Text(aviso.texto).font(cnLetra(15)).foregroundColor(tintaSuave)
+                    .multilineTextAlignment(.center).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 320)
+                    .cnEntra(entro, 3)
+            }
+
+            VStack(spacing: 8) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    cerrar("tocado")
+                } label: {
+                    Text(aviso.boton.isEmpty ? cnT("Entendido") : aviso.boton)
+                        .font(cnLetra(16, .heavy)).foregroundColor(cnSobre(acento))
+                        .frame(maxWidth: .infinity).padding(.vertical, 16)
+                        .background(acento, in: Capsule())
+                }.buttonStyle(CNPulsable())
+                // LA SALIDA SIEMPRE EXISTE, la escriba quien lo escribió o no.
+                // Un aviso del que no se puede salir es una pantalla secuestrada.
+                Button { cerrar("descartado") } label: {
+                    Text(aviso.segundo.isEmpty ? cnT("Ahora no") : aviso.segundo)
+                        .font(cnLetra(15, .semibold)).foregroundColor(tintaSuave)
+                        .frame(maxWidth: .infinity).padding(.vertical, 11)
+                        .contentShape(Rectangle())
+                }.buttonStyle(CNPulsable())
+            }
+            .padding(.top, 6)
+            .cnEntra(entro, 4)
+        }
+    }
+
+    private func cerrar(_ que: String) {
+        withAnimation(.easeIn(duration: 0.22)) { entro = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { onAccion(que) }
     }
 }

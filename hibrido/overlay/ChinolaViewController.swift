@@ -1965,6 +1965,9 @@ class ChinolaViewController: CAPBridgeViewController {
         // `pasoDelTour` ya lo subía al cambiar de paso; faltaba aquí, que es
         // por donde entra toda pantalla nativa.
         if let t = tourVC?.view { view.bringSubviewToFront(t) }
+        // Y la barra, según haya puerta o no: si alguna vez se quedó escondida,
+        // aquí se arregla sola en cuanto se cambia de pantalla.
+        barraSegunLaPuerta()
         // La libreta solo si cambió, y DESPUÉS de que entre la pantalla: si se
         // pide aquí mismo, el puente se come los primeros fotogramas de la
         // animación y el cambio se siente pesado.
@@ -2196,6 +2199,11 @@ class ChinolaViewController: CAPBridgeViewController {
             if json.count > 2 {
                 if let m = CNPuerta.desde(json: json), m.paso == "app" {
                     s.cerrarPuerta()
+                    // AQUÍ Y NO SOLO AL CERRAR LA PUERTA: quien ya tiene la
+                    // sesión abierta nunca ve la puerta, así que `cerrarPuerta`
+                    // se sale por el guardia y el aviso no se miraría jamás —
+                    // justo para la mayoría de la gente.
+                    s.mirarAviso()
                 } else {
                     // Fuera de la app: o es alguien nuevo o alguien que cerró
                     // sesión. Lo guardado es de la persona de antes y no puede
@@ -2220,8 +2228,24 @@ class ChinolaViewController: CAPBridgeViewController {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { s.mirarPuerta(intentos: intentos - 1) }
         }
     }
+    /**
+     * LA BARRA DE ABAJO SE PINTA POR ESTADO, NO POR ORDEN SUELTA.
+     *
+     * Eran tres órdenes repartidas —`isHidden = true` al abrir la puerta y al
+     * irse a la web, `= false` al cerrarla—, y bastaba con que la de volver no
+     * llegara para que el menú se quedara escondido. Cerrar sesión y volver a
+     * entrar lo conseguía: la barra no volvía hasta reiniciar la app.
+     *
+     * Ahora hay una sola regla —hay puerta, no hay barra— y se vuelve a aplicar
+     * en cada sitio donde eso puede cambiar. Si alguna vez se queda mal, se
+     * arregla sola en el siguiente cambio de pantalla.
+     */
+    fileprivate func barraSegunLaPuerta() {
+        let hayPuerta = puertaVC != nil || puertaRendida
+        if barra.barra.isHidden != hayPuerta { barra.barra.isHidden = hayPuerta }
+    }
+
     private func abrirPuerta() {
-        barra.barra.isHidden = true
         quitarCortina()
         guard puertaVC == nil else { return }
         let host = UIHostingController(rootView: CNPuertaVista(datos: datos, onAccion: { [weak self] que, valor in
@@ -2242,13 +2266,20 @@ class ChinolaViewController: CAPBridgeViewController {
         orilla.edges = .left
         host.view.addGestureRecognizer(orilla)
         puertaVC = host
+        barraSegunLaPuerta()
         // Y se vuelve a mirar cada poco mientras esté puesta: la web cambia de
         // paso por su cuenta (la caja de Apple que se cierra, el correo que se
         // verifica, un error) y antes solo se miraba unas veces tras un toque;
         // lo que pasara después se quedaba sin pintar («Un momento…» eterno).
         puertaReloj?.invalidate()
         puertaReloj = Timer.scheduledTimer(withTimeInterval: 0.7, repeats: true) { [weak self] _ in
-            guard let s = self, s.puertaVC != nil, !s.puertaRendida else { return }
+            // TAMBIÉN CUANDO SE HA IDO A LA WEB.
+            //
+            // Antes se paraba ahí, que es justo cuando más falta hace saber que
+            // ya entró: el único que seguía mirando era una cadena de trescientos
+            // intentos. Quien tardara cuatro minutos en poner la contraseña se
+            // quedaba sin menú hasta reiniciar.
+            guard let s = self, s.puertaVC != nil || s.puertaRendida else { return }
             s.mirarPuerta(intentos: 1)
         }
     }
@@ -2715,18 +2746,24 @@ class ChinolaViewController: CAPBridgeViewController {
     }
     /// Dejar la puerta nativa y seguir en la de la web.
     private func puertaALaWeb() {
-        barra.barra.isHidden = true
         quitarCortina()
-        puertaReloj?.invalidate(); puertaReloj = nil
         if let host = puertaVC {
             puertaVC = nil
             host.willMove(toParent: nil); host.view.removeFromSuperview(); host.removeFromParent()
         }
         CNDatos.shared.puerta = nil
         puertaRendida = true
+        barraSegunLaPuerta()
         mostrarWeb()
-        // Y se sigue mirando: en cuanto entre, se monta lo nativo.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in self?.mirarPuerta(intentos: 300) }
+        // Y EL RELOJ SE QUEDA PUESTO. Antes se apagaba aquí y lo único que
+        // seguía mirando era una cadena de trescientos intentos: cuatro minutos
+        // y pico. Quien tardara más en entrar se quedaba sin menú.
+        if puertaReloj == nil {
+            puertaReloj = Timer.scheduledTimer(withTimeInterval: 0.7, repeats: true) { [weak self] _ in
+                guard let s = self, s.puertaVC != nil || s.puertaRendida else { return }
+                s.mirarPuerta(intentos: 1)
+            }
+        }
     }
     /// Una vez que se ha ido a la web, la puerta nativa no vuelve a asomar en
     /// esta sesión: quien está entrando no necesita que le cambien la pantalla
@@ -2734,9 +2771,10 @@ class ChinolaViewController: CAPBridgeViewController {
     private var puertaRendida = false
 
     private func cerrarPuerta() {
-        barra.barra.isHidden = false
         quitarCortina()
         puertaReloj?.invalidate(); puertaReloj = nil
+        puertaRendida = false
+        barraSegunLaPuerta()
         guard let host = puertaVC else { return }
         puertaVC = nil
         UIView.animate(withDuration: 0.25) { host.view.alpha = 0 } completion: { _ in
@@ -2745,6 +2783,61 @@ class ChinolaViewController: CAPBridgeViewController {
         }
         traerDatos(intentos: 8)
         mostrarNativo(menuEstado.activa)
+        mirarAviso()
+    }
+
+    // MARK: el aviso que manda el portal
+    //
+    // Se mira cuando la app YA ESTÁ QUIETA, no al abrir: un aviso encima de lo
+    // que la persona vino a hacer no se lee, se cierra. Y uno por sesión: el
+    // resto de los topes los pone el servidor, pero este se cumple aquí porque
+    // es de esta pantalla.
+    private var avisoVC: UIViewController?
+    private var avisoYaMirado = false
+
+    fileprivate func mirarAviso() {
+        guard !avisoYaMirado, avisoVC == nil, puertaVC == nil, !puertaRendida else { return }
+        bridge?.webView?.evaluateJavaScript("(window.__chinolaAvisoJSON && window.__chinolaAvisoJSON()) || ''") { [weak self] r, _ in
+            guard let s = self, let json = r as? String, json.count > 2,
+                  let a = CNAviso.desde(json: json) else { return }
+            s.avisoYaMirado = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + a.esperaSegundos) {
+                guard s.avisoVC == nil, s.puertaVC == nil else { return }
+                s.eval("window.__chinolaAviso && window.__chinolaAviso(\(s.comillas(a.id)),'visto')")
+                let host = UIHostingController(rootView: CNAvisoVista(aviso: a, onAccion: { [weak s] que in
+                    s?.respuestaAlAviso(a, que)
+                }))
+                host.view.backgroundColor = .clear
+                host.modalPresentationStyle = .overFullScreen
+                s.avisoVC = host
+                if let actual = s.presentedViewController {
+                    actual.dismiss(animated: true) { s.present(host, animated: false) }
+                } else {
+                    s.present(host, animated: false)
+                }
+            }
+        }
+    }
+
+    /// Lo tocó o lo cerró. Y si lo tocó, se le lleva donde decía el aviso: un
+    /// aviso que explica una ruta en vez de llevarte a ella es media tarea que
+    /// la gente abandona.
+    private func respuestaAlAviso(_ a: CNAviso, _ que: String) {
+        eval("window.__chinolaAviso && window.__chinolaAviso(\(comillas(a.id)),\(comillas(que)))")
+        avisoVC?.dismiss(animated: false)
+        avisoVC = nil
+        guard que == "tocado", !a.ir.isEmpty else { return }
+        if a.ir.hasPrefix("seccion:") {
+            let id = String(a.ir.dropFirst(8))
+            menuEstado.alTocar("perfil")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { CNDatos.shared.onAbrirSeccion(id) }
+        } else if a.ir.hasPrefix("tab:") {
+            menuEstado.alTocar(String(a.ir.dropFirst(4)))
+        } else if a.ir == "chino" {
+            abrirCharla()
+        } else if a.ir == "planes" {
+            CNDatos.shared.onPlan()
+        }
     }
 
     // MARK: Chino en grande (mantener pulsado en Perfil)
