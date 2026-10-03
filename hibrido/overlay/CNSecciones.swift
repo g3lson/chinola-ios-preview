@@ -725,9 +725,21 @@ enum CNSecciones {
         lista.items = ls.filas.map { f in
             var it = CNSeccion.Item()
             it.titulo = f.nombre
-            it.detalle = [f.tipo, f.rol].filter { !$0.isEmpty }.joined(separator: " · ")
+            // EL ICONO DE LA LIBRETA. Se ponía el fondo de color y el blanco
+            // de encima, pero nunca el dibujo: un círculo de color vacío. Es la
+            // misma cara que tiene en el selector y en la cabecera, y es por lo
+            // que se reconoce una libreta de un vistazo sin leer su nombre.
+            it.icono = f.iconoPath
             it.fondo = f.color
             it.color = "#ffffff"
+            // EL TIPO Y EL PAPEL, Y SI NO, LO QUE YA VIENE HECHO.
+            //
+            // El papel solo existe habiendo sesión —sale de los miembros—, así
+            // que sin cuenta esta línea se quedaba VACÍA y la fila era un
+            // nombre suelto. La de la web decía «Personal · 2 personas», y
+            // sustituirla por menos no es arreglarla.
+            let suyo = [f.tipo, f.rol].filter { !$0.isEmpty }.joined(separator: " · ")
+            it.detalle = suyo.isEmpty ? f.detalle : suyo
             it.chip = f.enUso ? f.rotuloEnUso : ""
             it.abre = "libreta:" + f.lid
             return it
