@@ -418,6 +418,7 @@ class ChinolaViewController: CAPBridgeViewController {
         bancoAbreElPeriodo()
         bancoTocaLosBotones()
         bancoAgregaTarjetasYUsaLaCabecera()
+        bancoAbreLaCharla()
         // LA SONDA DEL BOTÓN DE CHINO, para el banco.
         //
         // Con `CN_CON=sonda` se le pregunta a la web, pasados unos segundos,
@@ -703,7 +704,35 @@ class ChinolaViewController: CAPBridgeViewController {
         // Los tres puntos de la charla. Las tres cosas las hace la web, que ya
         // las tenía montadas; aquí solo se le dice cuál.
         datos.onCharlaAccion = { [weak self] que in
-            self?.eval("window.__chinolaCharlaMenu && window.__chinolaCharlaMenu(" + (self?.comillas(que) ?? "''") + ")")
+            guard let s = self else { return }
+            // TOCAR LA FICHA DE CHINO. Va por aquí y no por un puente nuevo:
+            // es lo mismo que tocar un aviso, y lleva al mismo sitio. Se cierra
+            // la charla primero, o la pantalla a la que lleva queda debajo.
+            if que.hasPrefix("ir:") {
+                let destino = String(que.dropFirst(3))
+                s.charlaReloj?.invalidate(); s.charlaReloj = nil
+                s.cerrar()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { s.irA(destino) }
+                return
+            }
+            // DESHACER LO QUE CHINO ACABA DE ANOTAR. Por el mismo camino que
+            // borra un movimiento desde la pantalla de movimientos: un segundo
+            // camino para borrar es un segundo sitio donde el saldo de la
+            // cuenta se puede quedar sin devolver.
+            if que.hasPrefix("deshacer:") {
+                // Por el MISMO camino que borra desde la pantalla de
+                // movimientos, no por uno propio: ese ya sabe si escribe el
+                // teléfono o la web, y devuelve el saldo a la cuenta. Un
+                // segundo camino para borrar es un segundo sitio donde el
+                // saldo se queda sin devolver.
+                CNDatos.shared.onBorrarMov(String(que.dropFirst(9)))
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    s.eval("window.__chinolaCharlaMenu && window.__chinolaCharlaMenu('anotado-fuera')")
+                    s.traerCharla()
+                }
+                return
+            }
+            s.eval("window.__chinolaCharlaMenu && window.__chinolaCharlaMenu(" + s.comillas(que) + ")")
         }
         datos.onInvitar = { [weak self] dict in
             guard let s = self else { return }
@@ -2622,8 +2651,85 @@ class ChinolaViewController: CAPBridgeViewController {
      */
     private func bancoAgregaTarjetasYUsaLaCabecera() {
         guard ProcessInfo.processInfo.environment["CN_CON"]?.contains("panel") == true else { return }
-        NSLog("CNPANEL: antes · mes=«\(bancoMes())» tarjetas=\(bancoCuantasTarjetas())")
-        bancoAgrega(["kpi-ahorro", "kpi-sin-gastar", "kpi-racha"], 0)
+        // CON RELOJ ABSOLUTO, no encadenado. Encadenando, cada paso empuja al
+        // siguiente y la foto del flujo de trabajo cae donde cae: la primera
+        // vuelta salió con la hoja de libretas tapando justo las tarjetas que
+        // venía a fotografiar.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
+            guard let s = self else { return }
+            NSLog("CNPANEL: antes · mes=«\(s.bancoMes())» tarjetas=\(s.bancoCuantasTarjetas())")
+            s.bancoAgrega(["kpi-ahorro", "kpi-sin-gastar", "kpi-racha"], 0)
+        }
+        // +15: la de «días sin gastar» ARRIBA del todo. Las nuevas se añaden al
+        // final y en el teléfono quedan bajo el pliegue, así que la foto no
+        // enseñaría lo que vino a enseñar. Se mueve por el camino de verdad, el
+        // mismo que mueve una tarjeta con el dedo.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15.0) { [weak self] in
+            self?.bancoSubeLaTarjeta("kpi-sin-gastar")
+        }
+        // +30: y AHORA la cabecera, con la foto de las tarjetas ya hecha. Tan
+        // tarde a propósito: entre el +15 y el +30 la pantalla no cambia, así
+        // que la foto puede caer en cualquier punto de esos quince segundos. El
+        // runner tarda lo que quiere, y una ventana de cinco se falla.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) { [weak self] in
+            self?.bancoUsaLaCabecera()
+        }
+    }
+
+    /// Sube una tarjeta del panel al primer sitio, y dice qué hay en el panel.
+    private func bancoSubeLaTarjeta(_ tipo: String) {
+        let ws = CNDatos.shared.resumen?.widgets ?? []
+        NSLog("CNPANEL: el panel tiene \(ws.count) · "
+              + ws.map { $0.tipoPanel + "(" + $0.clase + ")" }.joined(separator: " "))
+        guard let w = ws.first(where: { $0.tipoPanel == tipo }) else {
+            NSLog("CNPANEL: «\(tipo)» NO ESTÁ en el panel")
+            return
+        }
+        CNDatos.shared.onPanel("mover", w.wid, "0")
+    }
+
+    /**
+     * LA CHARLA DE CHINO, FOTOGRAFIADA.
+     *
+     * Con `CN_CON=charla` se abre la charla y se hacen DOS fotos: la pantalla
+     * vacía con las sugerencias sacadas de la libreta sembrada, y una respuesta
+     * con su ficha debajo y los chips de seguimiento.
+     *
+     * La segunda hace falta porque esas tres cosas —la tarjeta, la fila de
+     * chips y las sugerencias— solo salen con datos: leyendo el código se ve
+     * que están escritas, no que quepan, ni que los colores salgan, ni que la
+     * barra mida lo que debe.
+     */
+    private func bancoAbreLaCharla() {
+        guard ProcessInfo.processInfo.environment["CN_CON"]?.contains("charla") == true else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
+            guard let s = self else { return }
+            s.eval("window.__CN_BANCO=1")
+            s.abrirCharla()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                let m = CNDatos.shared.charla
+                NSLog("CNCHARLA: vacía · sugerencias=\(m?.sugerencias.count ?? -1)"
+                      + " mensajes=\(m?.mensajes.count ?? -1)")
+                // Y ahora con respuesta: la ficha la arma la app con la libreta
+                // sembrada, así que los números de la foto son de verdad.
+                s.eval("window.__chinolaCharlaDePrueba && window.__chinolaCharlaDePrueba('resumen')")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    s.traerCharlaDelBanco()
+                }
+            }
+        }
+    }
+
+    /// Vuelve a pedirle la charla a la web y dice qué trajo.
+    private func traerCharlaDelBanco() {
+        bridge?.webView?.evaluateJavaScript("(window.__chinolaCharlaJSON && window.__chinolaCharlaJSON()) || ''") { res, _ in
+            if let json = res as? String, json.count > 2 { CNDatos.shared.cargarCharla(json: json) }
+            let m = CNDatos.shared.charla
+            let f = m?.mensajes.last?.ficha
+            NSLog("CNCHARLA: con respuesta · mensajes=\(m?.mensajes.count ?? -1)"
+                  + " chips=\(m?.chips.count ?? -1)"
+                  + " ficha=\(f.map { $0.clase + "/" + $0.valor + "/" + String($0.filas.count) + " barras" } ?? "NINGUNA")")
+        }
     }
 
     private func bancoMes() -> String { CNDatos.shared.resumen?.cabecera.periodoCorto ?? "?" }
@@ -2632,7 +2738,7 @@ class ChinolaViewController: CAPBridgeViewController {
     /// Una tarjeta, y a por la siguiente. Como método y no como `func` dentro de
     /// otro: así la recursión no pasa por un cierre que se captura a sí mismo.
     private func bancoAgrega(_ cuales: [String], _ i: Int) {
-        guard i < cuales.count else { bancoUsaLaCabecera(); return }
+        guard i < cuales.count else { return }
         CNDatos.shared.onPanel("agregar", cuales[i], "")
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in
             guard let s = self else { return }
@@ -2661,6 +2767,8 @@ class ChinolaViewController: CAPBridgeViewController {
                 NSLog("CNPANEL: pastilla de la libreta · hoja="
                       + "\(puesta ? "abierta" : "SE CERRÓ SOLA")"
                       + " libretas=\(CNDatos.shared.libretas?.filas.count ?? -1)")
+                // Y fuera, que la última foto es del panel y no de la hoja.
+                s.libretasVC?.dismiss(animated: false)
             }
         }
     }
@@ -2887,15 +2995,28 @@ class ChinolaViewController: CAPBridgeViewController {
         avisoVC?.dismiss(animated: false)
         avisoVC = nil
         guard que == "tocado", !a.ir.isEmpty else { return }
-        if a.ir.hasPrefix("seccion:") {
-            let id = String(a.ir.dropFirst(8))
+        irA(a.ir)
+    }
+
+    /**
+     * A DÓNDE LLEVA UN DESTINO.
+     *
+     * Lo usan el aviso y la ficha que Chino pone debajo de su respuesta. En un
+     * solo sitio porque son el mismo vocabulario: en cuanto estuviera escrito
+     * dos veces, un destino nuevo funcionaría en uno y no en el otro, y eso no
+     * se ve hasta que alguien lo toca.
+     */
+    fileprivate func irA(_ destino: String) {
+        guard !destino.isEmpty else { return }
+        if destino.hasPrefix("seccion:") {
+            let id = String(destino.dropFirst(8))
             menuEstado.alTocar("perfil")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { CNDatos.shared.onAbrirSeccion(id) }
-        } else if a.ir.hasPrefix("tab:") {
-            menuEstado.alTocar(String(a.ir.dropFirst(4)))
-        } else if a.ir == "chino" {
+        } else if destino.hasPrefix("tab:") {
+            menuEstado.alTocar(String(destino.dropFirst(4)))
+        } else if destino == "chino" {
             abrirCharla()
-        } else if a.ir == "planes" {
+        } else if destino == "planes" {
             CNDatos.shared.onPlan()
         }
     }

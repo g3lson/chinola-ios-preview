@@ -263,13 +263,37 @@ jobs:
           sleep 2
           env SIMCTL_CHILD_CN_IR=resumen SIMCTL_CHILD_CN_CON=sonda,panel \
             xcrun simctl launch "$UDID" "$ID"
-          # 1,6s por tarjeta y 4,5s de cabecera, más el arranque.
-          sleep 14
+          # La sonda arranca a los 9s, mete las tres tarjetas y a los 15 sube
+          # «días sin gastar» al primer sitio. De ahí al segundo 30 no cambia
+          # nada: esta foto puede caer en cualquier punto de esa ventana.
+          sleep 20
           xcrun simctl io "$UDID" screenshot "panel-tarjetas.png"
-          sleep 10
+          # Y a los 30 empieza la cabecera: mes, hoja de libretas y la hoja
+          # fuera. Esta se toma con todo eso ya hecho.
+          sleep 20
           xcrun simctl io "$UDID" screenshot "panel-cabecera.png"
           xcrun simctl spawn "$UDID" log show --last 10m --style compact \
             --predicate 'eventMessage CONTAINS "CNPANEL"' 2>/dev/null \
+            | sed 's/^[^Z]*Z //' || true
+
+          # LA CHARLA DE CHINO.
+          #
+          # Dos fotos: la pantalla vacía con las sugerencias sacadas de la
+          # libreta sembrada, y una respuesta con su ficha debajo. Las tres
+          # cosas nuevas —la tarjeta, los chips y las sugerencias— solo salen
+          # con datos: del código se ve que están escritas, no que quepan, ni
+          # que los colores salgan, ni que la barra mida lo que debe.
+          echo "=== la charla de Chino ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          env SIMCTL_CHILD_CN_IR=resumen SIMCTL_CHILD_CN_CON=sonda,charla \
+            xcrun simctl launch "$UDID" "$ID"
+          sleep 13
+          xcrun simctl io "$UDID" screenshot "charla-vacia.png"
+          sleep 6
+          xcrun simctl io "$UDID" screenshot "charla-ficha.png"
+          xcrun simctl spawn "$UDID" log show --last 10m --style compact \
+            --predicate 'eventMessage CONTAINS "CNCHARLA"' 2>/dev/null \
             | sed 's/^[^Z]*Z //' || true
 
           # LOS BOTONES DE PERFIL QUE NO HACEN NADA.

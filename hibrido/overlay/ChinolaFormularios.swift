@@ -3572,6 +3572,36 @@ import Speech
 import AVFoundation
 
 struct CNCharla {
+    /// Una barra de la ficha: «Entró · RD$80,000 · 94%».
+    struct Fila: Identifiable {
+        var id: Int; var label = ""; var valor = ""; var pct: Double = 0; var color = ""
+    }
+    /// Una línea de lista: una cuenta, un gasto, una suscripción.
+    struct Item: Identifiable {
+        var id: Int; var sigla = ""; var color = ""; var titulo = ""
+        var detalle = ""; var monto = ""; var montoColor = ""
+    }
+    /**
+     * LA TARJETA QUE VA DEBAJO DE LA RESPUESTA.
+     *
+     * No la dibuja ni la calcula el modelo: la arma la app con la libreta de
+     * este teléfono, y lo único que dijo Chino fue CUÁL encajaba. Por eso aquí
+     * llega con los números y los colores ya hechos.
+     */
+    struct Ficha {
+        var clase = ""; var titulo = ""; var valor = ""; var nota = ""; var color = ""
+        /// A dónde lleva al tocarla («seccion:cuentas», «tab:resumen»).
+        var ir = ""
+        /// El id del movimiento que Chino acaba de anotar. Con esto puesto, la
+        /// tarjeta lleva «Deshacer» — la red va DESPUÉS de guardar, que es lo
+        /// que permite anotar sin preguntar.
+        var deshacer = ""
+        var filas: [Fila] = []; var items: [Item] = []
+    }
+    /// Lo que se le puede preguntar al abrir, sacado de SU libreta.
+    struct Sugerencia: Identifiable {
+        var id: Int; var texto = ""; var iconoPath = ""; var color = ""
+    }
     struct Mensaje: Identifiable {
         var id: Int; var de = ""; var texto = ""; var error = false
         /// Quién contestó, ya escrito por la web («Apple Intelligence · sin
@@ -3579,10 +3609,14 @@ struct CNCharla {
         var quien = ""
         /// Si es el primero de una tanda suya. Solo ese lleva la cara.
         var primeroDeChino = false
+        var ficha: Ficha? = nil
     }
     var titulo = "Chino"; var ph = ""; var iaOn = false; var pensando = false
     var chinolo = ""; var vacioTexto = ""
     var mensajes: [Mensaje] = []
+    var sugerencias: [Sugerencia] = []
+    /// Lo que tiene sentido preguntar después de la última respuesta.
+    var chips: [String] = []
     static func desde(json: String) -> CNCharla? {
         guard let d = json.data(using: .utf8),
               let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
@@ -3592,13 +3626,35 @@ struct CNCharla {
         if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
         m.ph = s(r, "ph"); m.iaOn = b(r, "iaOn"); m.pensando = b(r, "pensando")
         m.chinolo = s(r, "chinolo"); m.vacioTexto = s(r, "vacioTexto")
+        func d(_ o: [String: Any], _ k: String) -> Double { ((o[k] as? NSNumber)?.doubleValue) ?? 0 }
+        func ficha(_ o: Any?) -> Ficha? {
+            guard let j = o as? [String: Any], !s(j, "clase").isEmpty else { return nil }
+            var f = Ficha(clase: s(j, "clase"), titulo: s(j, "titulo"), valor: s(j, "valor"),
+                          nota: s(j, "nota"), color: s(j, "color"), ir: s(j, "ir"),
+                          deshacer: s(j, "deshacer"))
+            f.filas = ((j["filas"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
+                Fila(id: i, label: s(x, "label"), valor: s(x, "valor"), pct: d(x, "pct"), color: s(x, "color"))
+            }
+            f.items = ((j["items"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
+                Item(id: i, sigla: s(x, "sigla"), color: s(x, "color"), titulo: s(x, "titulo"),
+                     detalle: s(x, "detalle"), monto: s(x, "monto"), montoColor: s(x, "montoColor"))
+            }
+            // Una ficha sin nada que enseñar es peor que ninguna: deja un
+            // rectángulo vacío debajo de la respuesta.
+            return (f.valor.isEmpty && f.filas.isEmpty && f.items.isEmpty) ? nil : f
+        }
+        m.sugerencias = ((r["sugerencias"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
+            Sugerencia(id: i, texto: s(x, "texto"), iconoPath: s(x, "iconoPath"), color: s(x, "color"))
+        }
+        m.chips = ((r["chips"] as? [String]) ?? []).filter { !$0.isEmpty }
         var antes = ""
         m.mensajes = ((r["mensajes"] as? [[String: Any]]) ?? []).map { j in
             let de = s(j, "de")
             defer { antes = de }
             return Mensaje(id: ((j["indice"] as? NSNumber)?.intValue) ?? 0, de: de,
                            texto: s(j, "texto"), error: b(j, "error"), quien: s(j, "quien"),
-                           primeroDeChino: de != "yo" && antes != de)
+                           primeroDeChino: de != "yo" && antes != de,
+                           ficha: ficha(j["ficha"]))
         }
         return m
     }
@@ -3835,6 +3891,119 @@ final class CNDictado: ObservableObject {
     }
 }
 
+/**
+ * LA TARJETA DEBAJO DE LA RESPUESTA.
+ *
+ * Tres formas y nada más: una cifra, unas barras o una lista. Son las mismas
+ * que ya dibuja el panel del resumen, y a propósito: lo que Chino te enseña al
+ * contestar tiene que ser lo mismo que verías al ir a mirarlo, con los mismos
+ * colores y el mismo orden. Una tarjeta parecida pero distinta hace dudar de
+ * las dos.
+ *
+ * Se toca y te lleva a donde está el dato entero. Esa es la mitad que la hace
+ * útil y no decorativa: la respuesta corta primero, y el sitio para seguir
+ * mirando a un dedo de distancia.
+ */
+struct CNFichaVista: View {
+    let f: CNCharla.Ficha
+    var onIr: (String) -> Void = { _ in }
+    var onDeshacer: (String) -> Void = { _ in }
+    private var tinte: Color { f.color.isEmpty ? CNC.ink : cnColor(hexString: f.color) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if !f.titulo.isEmpty {
+                Text(f.titulo).font(cnLetra(12)).foregroundColor(CNC.pmut)
+            }
+            if !f.valor.isEmpty {
+                Text(f.valor).font(.system(size: 25, weight: .heavy)).foregroundColor(tinte)
+                    .lineLimit(1).minimumScaleFactor(0.5)
+            }
+            if !f.nota.isEmpty {
+                Text(f.nota).font(cnLetra(12)).foregroundColor(CNC.pmut)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !f.filas.isEmpty {
+                VStack(alignment: .leading, spacing: 9) {
+                    ForEach(f.filas) { x in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text(x.label).font(cnLetra(13)).foregroundColor(CNC.ink)
+                                    .lineLimit(1)
+                                Spacer(minLength: 8)
+                                Text(x.valor).font(cnLetra(13, .semibold)).foregroundColor(CNC.ink)
+                            }
+                            // La barra, con su sitio reservado: sin el fondo,
+                            // una fila corta y una larga no se comparan.
+                            GeometryReader { g in
+                                ZStack(alignment: .leading) {
+                                    Capsule().fill(CNC.pmut.opacity(0.18))
+                                    Capsule().fill(x.color.isEmpty ? tinte : cnColor(hexString: x.color))
+                                        .frame(width: max(3, g.size.width * CGFloat(min(100, max(0, x.pct)) / 100)))
+                                }
+                            }
+                            .frame(height: 6)
+                        }
+                    }
+                }
+            }
+            if !f.items.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(f.items) { x in
+                        HStack(spacing: 10) {
+                            Text(x.sigla).font(cnLetra(12, .bold)).foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(x.color.isEmpty ? tinte : cnColor(hexString: x.color), in: Circle())
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(x.titulo).font(cnLetra(13)).foregroundColor(CNC.ink).lineLimit(1)
+                                if !x.detalle.isEmpty {
+                                    Text(x.detalle).font(cnLetra(11)).foregroundColor(CNC.pmut).lineLimit(1)
+                                }
+                            }
+                            Spacer(minLength: 6)
+                            Text(x.monto).font(cnLetra(13, .semibold))
+                                .foregroundColor(x.montoColor.isEmpty ? CNC.ink : cnColor(hexString: x.montoColor))
+                        }
+                        .padding(.vertical, 7)
+                        if x.id != (f.items.last?.id ?? -1) {
+                            Divider().overlay(CNC.pmut.opacity(0.18))
+                        }
+                    }
+                }
+            }
+            // EL PIE. O lleva al dato entero, o deshace lo que acaba de
+            // anotarse. Nunca las dos: una tarjeta con dos cosas que hacer en
+            // la misma línea se toca mal.
+            if !f.deshacer.isEmpty {
+                Divider().overlay(CNC.pmut.opacity(0.18)).padding(.top, 2)
+                Button { onDeshacer(f.deshacer) } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.system(size: 11, weight: .bold))
+                        Text(cnT("Deshacer")).font(cnLetra(13, .medium))
+                    }
+                    .foregroundColor(CNC.neg)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 3)
+                }
+                .buttonStyle(CNPulsable())
+            } else if !f.ir.isEmpty {
+                HStack(spacing: 3) {
+                    Text(cnT("Ver más")).font(cnLetra(13, .medium))
+                    Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold))
+                }
+                .foregroundColor(CNC.pos)
+                .padding(.top, 2)
+            }
+        }
+        .padding(13)
+        .frame(maxWidth: 270, alignment: .leading)
+        .background(CNC.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .onTapGesture { if !f.ir.isEmpty { onIr(f.ir) } }
+    }
+}
+
 struct CNCharlaVista: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
@@ -3880,6 +4049,49 @@ struct CNCharlaVista: View {
                                 Text(m.vacioTexto).font(cnLetra(14)).foregroundColor(CNC.pmut)
                                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                                     .padding(.horizontal, 24)
+                                /*
+                                 QUÉ PREGUNTARLE, SACADO DE SU PROPIA LIBRETA.
+
+                                 Antes aquí solo había una frase explicando que
+                                 se le podía preguntar por el dinero, y eso deja
+                                 el trabajo entero en quien abre: hay que saber
+                                 YA qué preguntar, y escribirlo.
+
+                                 Estas cuatro no son ejemplos. Dicen la
+                                 categoría en la que de verdad se le va el mes y
+                                 la tarjeta que de verdad tiene, así que la
+                                 primera respuesta que ve es sobre su dinero. Y
+                                 se calculan en el teléfono: no cuestan ni una
+                                 llamada ni un token.
+                                 */
+                                if !m.sugerencias.isEmpty {
+                                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 9),
+                                                        GridItem(.flexible(), spacing: 9)], spacing: 9) {
+                                        ForEach(m.sugerencias) { g in
+                                            Button { datos.onCharla(g.texto) } label: {
+                                                VStack(alignment: .leading, spacing: 8) {
+                                                    CNSVGShape(d: g.iconoPath)
+                                                        .stroke(style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                                                        .foregroundColor(g.color.isEmpty ? CNC.pos : cnColor(hexString: g.color))
+                                                        .frame(width: 16, height: 16)
+                                                        .padding(7)
+                                                        .background((g.color.isEmpty ? CNC.pos : cnColor(hexString: g.color)).opacity(0.14),
+                                                                    in: Circle())
+                                                    Text(g.texto).font(cnLetra(13.5, .medium))
+                                                        .foregroundColor(CNC.ink)
+                                                        .multilineTextAlignment(.leading)
+                                                        .fixedSize(horizontal: false, vertical: true)
+                                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                                }
+                                                .padding(12)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .background(CNC.card, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                                            }
+                                            .buttonStyle(CNPulsable())
+                                        }
+                                    }
+                                    .padding(.top, 10)
+                                }
                             }
                             .padding(.top, 30)
                         }
@@ -3927,6 +4139,17 @@ struct CNCharlaVista: View {
                                         // burbuja y no bajo el personaje.
                                         .padding(.leading, x.de == "yo" ? 4 : 40).padding(.trailing, 4)
                                 }
+                                // LA TARJETA, DEBAJO Y ALINEADA CON LA BURBUJA.
+                                //
+                                // Con el mismo sangrado que la firma (36 = la
+                                // cara más su hueco): colgando del personaje se
+                                // leería como otra cosa, y es parte de la misma
+                                // respuesta.
+                                if let fi = x.ficha {
+                                    CNFichaVista(f: fi, onIr: { datos.onCharlaAccion("ir:" + $0) },
+                                                 onDeshacer: { datos.onCharlaAccion("deshacer:" + $0) })
+                                        .padding(.leading, 36).padding(.top, 2)
+                                }
                             }
                             .frame(maxWidth: .infinity, alignment: x.de == "yo" ? .trailing : .leading)
                             .id(x.id)
@@ -3972,6 +4195,35 @@ struct CNCharlaVista: View {
              Y la raya de arriba: separa lo escrito de lo que se escribe, que
              es lo que hace que el texto parezca pasar por debajo.
              */
+            /*
+             LO QUE TIENE SENTIDO PREGUNTAR AHORA.
+
+             Chino las propone al contestar —«¿qué recorto?», «¿cuándo pago la
+             Visa?»— y salen aquí, pegadas a la caja. Es la diferencia entre una
+             charla y un formulario: la siguiente pregunta está a un toque, no
+             hay que pensarla ni escribirla.
+
+             Y solo si las propuso. Unas sugerencias de relleno, siempre las
+             mismas, enseñan en dos días a no mirar esta fila.
+             */
+            if !m.chips.isEmpty && !m.pensando {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 7) {
+                        ForEach(m.chips, id: \.self) { c in
+                            Button { datos.onCharla(c) } label: {
+                                Text(c).font(cnLetra(13.5)).foregroundColor(CNC.pos)
+                                    .lineLimit(1)
+                                    .padding(.horizontal, 13).padding(.vertical, 8)
+                                    .background(CNC.card, in: Capsule())
+                                    .overlay(Capsule().stroke(CNC.pos.opacity(0.3), lineWidth: 1))
+                            }
+                            .buttonStyle(CNPulsable())
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .padding(.bottom, 6)
+            }
             // POR QUÉ NO SE PUDO DICTAR.
             //
             // Antes esto no existía: con el micrófono cogido por otra app, la
