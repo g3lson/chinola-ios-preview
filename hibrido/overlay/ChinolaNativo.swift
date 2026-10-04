@@ -7243,6 +7243,8 @@ struct CNSeccion {
     struct AccionItem { var label = ""; var peligro = false; var accion = -1; var abre = "" }
     /// Un botón chico en la fila del rótulo de una lista («Abrir», «+ Invitar»).
     struct Boton { var label = ""; var estilo = "suave"; var accion = -1; var abre = "" }
+    /// Una cosa entre las que una fila deja elegir.
+    struct Elegible { var id = ""; var label = "" }
     struct Item {
         var titulo = ""; var detalle = ""; var icono = ""; var color = ""; var fondo = ""
         var chip = ""; var chipFondo = ""; var accion = -1
@@ -7250,6 +7252,14 @@ struct CNSeccion {
         /// acción de la web («libreta:3», «hoja:invitar:3»).
         var abre = ""
         var acciones: [AccionItem] = []
+        /// SI VIENEN, LA FILA ELIGE ENTRE ELLAS.
+        ///
+        /// «Libreta por defecto» es la primera: enseñaba cuál estaba puesta y al
+        /// tocarla no pasaba nada, porque la fila no tenía ni las opciones ni
+        /// acción que disparar. Con esto el toque abre el menú y lo elegido se
+        /// manda por `accion` como valor.
+        var opciones: [Elegible] = []
+        var puesta = ""
     }
     struct Bloque {
         var tipo = "grupo"
@@ -7338,7 +7348,9 @@ struct CNSeccion {
                      abre: s(it, "abre"),
                      acciones: l(it, "acciones").map {
                          AccionItem(label: s($0, "label"), peligro: b($0, "peligro"), accion: n($0, "accion"))
-                     })
+                     },
+                     opciones: l(it, "opciones").map { Elegible(id: s($0, "id"), label: s($0, "label")) },
+                     puesta: s(it, "puesta"))
             }
             q.botones = l(bq, "botones").map {
                 Boton(label: s($0, "label"), estilo: s($0, "estilo"), accion: n($0, "accion"), abre: s($0, "abre"))
@@ -7346,6 +7358,45 @@ struct CNSeccion {
             return q
         }
         return x
+    }
+}
+
+/**
+ * EL TOQUE DE UNA FILA DE LISTA.
+ *
+ * Como modificador y no como un `if` dentro de la vista porque un `Menu` y un
+ * `onTapGesture` son dos vistas distintas, y en SwiftUI eso no se puede decidir
+ * con un `if` sin envolver la fila entera en un `AnyView` por cada renglón.
+ *
+ * Con opciones, el toque despliega el menú y lo elegido se manda por el mismo
+ * sitio por el que viaja cualquier otra acción, con el id como valor. Sin
+ * opciones, se comporta exactamente como antes.
+ */
+private struct CNElige: ViewModifier {
+    let it: CNSeccion.Item
+    let datos: CNDatos
+    @ViewBuilder func body(content: Content) -> some View {
+        if it.opciones.isEmpty {
+            content.onTapGesture {
+                if !it.abre.isEmpty { datos.onAbrirSeccion(it.abre) }
+                else if it.accion >= 0 { datos.onSeccionAccion(it.accion, nil) }
+            }
+        } else {
+            Menu {
+                // Marcada la que está puesta: sin eso el menú no dice cuál es
+                // la de ahora, que es justo lo que se va a cambiar.
+                ForEach(it.opciones.indices, id: \.self) { k in
+                    let o = it.opciones[k]
+                    Button {
+                        if it.accion >= 0 { datos.onSeccionAccion(it.accion, o.id) }
+                    } label: {
+                        if o.id == it.puesta { Label(o.label, systemImage: "checkmark") }
+                        else { Text(o.label) }
+                    }
+                }
+            } label: { content }
+            .buttonStyle(.plain)
+        }
     }
 }
 
@@ -7954,10 +8005,7 @@ struct CNSeccionVista: View {
                         }
                     }
                     .padding(.horizontal, 14).padding(.vertical, 11).contentShape(Rectangle())
-                    .onTapGesture {
-                        if !it.abre.isEmpty { datos.onAbrirSeccion(it.abre) }
-                        else if it.accion >= 0 { datos.onSeccionAccion(it.accion, nil) }
-                    }
+                    .modifier(CNElige(it: it, datos: datos))
                     .overlay(alignment: .bottom) {
                         if i < q.items.count - 1 {
                             Rectangle().fill(CNC.soft).frame(height: 0.5).padding(.leading, 58)

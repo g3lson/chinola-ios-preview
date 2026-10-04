@@ -2211,28 +2211,48 @@ struct CNTourVista: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                HStack(spacing: 10) {
-                    HStack(spacing: 5) {
-                        ForEach(0..<m.total, id: \.self) { i in
-                            Capsule().fill(i == m.paso ? CNC.acc : CNC.line)
-                                .frame(width: i == m.paso ? 16 : 5, height: 5)
-                        }
+                /*
+                 * LOS PUNTOS, EN SU PROPIO RENGLÓN.
+                 *
+                 * Iban en la misma fila que «Saltar» y «Siguiente», y con diez
+                 * pasos los puntos se llevan más de un tercio del ancho: lo que
+                 * sobraba no daba para las dos palabras y SwiftUI partía la
+                 * última por la mitad, «Siguie / nte». Con la letra en grande,
+                 * o en francés, no hacía falta ni que fueran diez.
+                 *
+                 * Separados, los botones tienen el ancho entero de la tarjeta y
+                 * los puntos usan el suyo —estirándose a lo que haya, como en la
+                 * web—. Y además se lee mejor: una fila dice por dónde vas y la
+                 * otra, qué hacer.
+                 */
+                HStack(spacing: 5) {
+                    ForEach(0..<m.total, id: \.self) { i in
+                        Capsule().fill(i == m.paso ? CNC.acc : CNC.line)
+                            .frame(maxWidth: .infinity).frame(height: 4)
                     }
-                    Spacer(minLength: 8)
+                }
+                .padding(.top, 14)
+                HStack(spacing: 9) {
                     Button { onPaso("saltar") } label: {
                         Text(m.textoSaltar).font(cnLetra(14.5, .semibold)).foregroundColor(CNC.pmut)
-                            .padding(.horizontal, 12).padding(.vertical, 9)
+                            // Una palabra en un botón no se parte NUNCA: antes
+                            // que eso, se encoge.
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 14).padding(.vertical, 11)
                     }.buttonStyle(CNPulsable())
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         onPaso("siguiente")
                     } label: {
                         Text(m.textoSiguiente).font(cnLetra(14.5, .bold)).foregroundColor(CNC.sobreAcc)
-                            .padding(.horizontal, 18).padding(.vertical, 10)
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
                             .background(CNC.acc, in: Capsule())
                     }.buttonStyle(CNPulsable())
                 }
-                .padding(.top, 14)
+                .padding(.top, 10)
             }
             .padding(16)
             .background(CNC.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))

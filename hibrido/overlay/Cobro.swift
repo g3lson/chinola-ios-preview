@@ -1,6 +1,7 @@
 import Foundation
 import Capacitor
 import StoreKit
+import UIKit
 
 /**
  * El cobro de las suscripciones, con StoreKit 2.
@@ -23,7 +24,9 @@ public class CobroPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "productos", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "diagnostico", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "comprar", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "restaurar", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "restaurar", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "gestionar", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "historial", returnType: CAPPluginReturnPromise)
     ]
 
     /// POR QUÉ NO SE PUEDE COMPRAR.
@@ -56,6 +59,33 @@ public class CobroPlugin: CAPPlugin, CAPBridgedPlugin {
                 salida["fallo"] = error.localizedDescription
             }
             call.resolve(salida)
+        }
+    }
+
+    /**
+     * ABRE LA PANTALLA DE SUSCRIPCIONES DE APPLE.
+     *
+     * Cancelar una suscripción solo se puede ahí: Apple no deja que lo haga la
+     * app, y además es lo correcto —quien cobra es quien tiene que dejar de
+     * cobrar—. Lo que sí es nuestro es LLEVAR hasta esa pantalla.
+     *
+     * No tenerlo era lo peor de los dos mundos: no se podía cancelar desde la
+     * app Y tampoco se decía dónde. Quien quiere irse y no encuentra la puerta
+     * no se queda: se enfada y lo cuenta.
+     */
+    @objc func gestionar(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            guard let escena = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene }).first else {
+                call.reject("No se pudo abrir la pantalla de suscripciones.")
+                return
+            }
+            do {
+                try await AppStore.showManageSubscriptions(in: escena)
+                call.resolve(["ok": true])
+            } catch {
+                call.reject(error.localizedDescription)
+            }
         }
     }
 
@@ -95,7 +125,24 @@ public class CobroPlugin: CAPPlugin, CAPBridgedPlugin {
         Task {
             do {
                 guard let producto = try await Product.products(for: [id]).first else {
-                    call.reject("Apple no conoce ese producto.")
+                    /*
+                     APPLE NO DEVUELVE EL PRODUCTO, Y CASI NUNCA ES EL ID.
+                     
+                     «Apple no conoce ese producto» mandaba a buscar donde no
+                     era: lo normal es que el id esté perfecto y StoreKit no lo
+                     devuelva por otra cosa. Y StoreKit no dice cuál —devuelve
+                     una lista vacía y ya—, así que lo único honesto es nombrar
+                     las tres de siempre, en el orden en que pasan.
+                     
+                     Pasó de verdad: los dos productos existían con el id
+                     exacto, en «Prepare for Submission», y el mensaje mandó a
+                     revisar el id durante un buen rato.
+                     */
+                    call.reject("Apple no devolvió el producto «\(id)». El id suele estar bien: "
+                        + "mira que en App Store Connect la suscripción no esté en «Prepare for Submission» "
+                        + "—hace falta precio, nombre y descripción para que pase a «Ready to Submit»—, "
+                        + "que el contrato de apps de pago esté activo en Business, y que estés probando "
+                        + "con un usuario de Sandbox.")
                     return
                 }
                 let resultado = try await producto.purchase()
@@ -127,6 +174,58 @@ public class CobroPlugin: CAPPlugin, CAPBridgedPlugin {
             } catch {
                 call.reject("No se pudo completar la compra: \(error.localizedDescription)")
             }
+        }
+    }
+
+    /**
+     * TODOS LOS COBROS, UNO POR UNO.
+     *
+     * La app no enseñaba ninguno. Quien paga una suscripción quiere ver sus
+     * cobros —es lo primero que se busca cuando aparece un cargo y no se
+     * recuerda de qué— y en Chinola no había dónde mirarlos.
+     *
+     * Y hay un sitio donde se nota el doble: en SANDBOX, Apple renueva cada
+     * pocos minutos en vez de cada mes, justo para poder ver cómo se comporta
+     * una suscripción con el tiempo. Sin esta lista eso no se puede comprobar:
+     * las renovaciones pasan y no se ve ninguna.
+     *
+     * `Transaction.all` las trae todas, también las de otros aparatos y las de
+     * antes de reinstalar, porque viven en la cuenta de Apple y no aquí.
+     */
+    @objc func historial(_ call: CAPPluginCall) {
+        Task {
+            var filas: [[String: Any]] = []
+            for await resultado in Transaction.all {
+                guard case .verified(let t) = resultado else { continue }
+                var f: [String: Any] = [
+                    "id": String(t.id),
+                    "original": String(t.originalID),
+                    "producto": t.productID,
+                    "cuando": ISO8601DateFormatter().string(from: t.purchaseDate),
+                    // La primera de una suscripción es la compra; las demás son
+                    // renovaciones. Se distingue por el id original, y es lo que
+                    // de verdad se quiere ver en sandbox.
+                    "esRenovacion": t.id != t.originalID
+                ]
+                if let caduca = t.expirationDate {
+                    f["caduca"] = ISO8601DateFormatter().string(from: caduca)
+                }
+                // Devuelto o cancelado por Apple: sin esto, un cobro devuelto
+                // sigue en la lista como si se hubiera cobrado.
+                if let devuelta = t.revocationDate {
+                    f["devuelta"] = ISO8601DateFormatter().string(from: devuelta)
+                }
+                if #available(iOS 15.0, *), let precio = t.price {
+                    f["precio"] = NSDecimalNumber(decimal: precio).doubleValue
+                }
+                if #available(iOS 16.0, *) {
+                    f["moneda"] = t.currency?.identifier ?? ""
+                }
+                filas.append(f)
+            }
+            // La más nueva arriba: lo que se busca es el último cobro.
+            filas.sort { (String($0["cuando"] as? String ?? "")) > (String($1["cuando"] as? String ?? "")) }
+            call.resolve(["cobros": filas])
         }
     }
 

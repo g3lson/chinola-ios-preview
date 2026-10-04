@@ -516,17 +516,46 @@ class ChinolaViewController: CAPBridgeViewController {
         avisarAltoBarra()
     }
 
-    /// Dónde está cada pestaña, para que el tour las señale. Los botones de
-    /// la UITabBar no tienen nombre público: se cogen por su clase y se
-    /// ordenan de izquierda a derecha, que es el orden de las pestañas.
+    /**
+     * DÓNDE ESTÁ CADA PESTAÑA, PARA QUE EL TOUR LAS SEÑALE.
+     *
+     * Esto medía los botones de dentro de la UITabBar cogiéndolos por el nombre
+     * de su clase —`TabBarButton`, que es privado de UIKit—, y cuando ese nombre
+     * no cuadra el `guard` se va de puntillas: cero anclas, sin decir nada.
+     *
+     * Y así estaba: de los diez pasos del tour, CINCO señalan una pestaña y
+     * ninguna se medía. El globo salía en medio de la pantalla diciendo «esta
+     * pestaña es donde anotas» sin que se viera ninguna pestaña marcada — el
+     * texto no correspondía con nada de lo que se estaba enseñando.
+     *
+     * Ahora se reparte por aritmética, que es lo que hace la propia barra
+     * (`itemPositioning = .fill` le da a cada pestaña el mismo ancho), y los
+     * botones internos se usan solo si aparecen, porque miden mejor. Lo que no
+     * se hace es depender de ellos.
+     */
     private func apuntarPestanas() {
+        let cuantas = CNTabs.todas.count
+        guard cuantas > 0, barra.barra.bounds.width > 1 else { return }
         let botones = barra.barra.subviews
             .filter { String(describing: type(of: $0)).contains("TabBarButton") }
             .sorted { $0.frame.minX < $1.frame.minX }
-        guard botones.count == CNTabs.todas.count else { return }
-        for (i, b) in botones.enumerated() {
-            let r = view.convert(b.frame, from: barra.barra)
-            CNDatos.shared.apuntaAncla("tab-" + CNTabs.todas[i].id, r)
+        if botones.count == cuantas {
+            for (i, b) in botones.enumerated() {
+                CNDatos.shared.apuntaAncla("tab-" + CNTabs.todas[i].id, view.convert(b.frame, from: barra.barra))
+            }
+            return
+        }
+        // Sin los botones: el hueco de cada pestaña. El alto es el del
+        // contenido, sin el margen seguro de abajo, que es espacio vacío y
+        // metido en el aro hace que el foco parezca descolgado.
+        let marco = view.convert(barra.barra.bounds, from: barra.barra)
+        let abajo = view.safeAreaInsets.bottom
+        let alto = max(30, marco.height - abajo)
+        let ancho = marco.width / CGFloat(cuantas)
+        for (i, t) in CNTabs.todas.enumerated() {
+            CNDatos.shared.apuntaAncla("tab-" + t.id, CGRect(
+                x: marco.minX + ancho * CGFloat(i) + 3, y: marco.minY + 2,
+                width: ancho - 6, height: alto - 4))
         }
     }
 
@@ -733,6 +762,14 @@ class ChinolaViewController: CAPBridgeViewController {
                 return
             }
             s.eval("window.__chinolaCharlaMenu && window.__chinolaCharlaMenu(" + s.comillas(que) + ")")
+            // Y SE VUELVE A PEDIR LA CHARLA.
+            //
+            // «Empezar de nuevo» vaciaba la charla en la web y esta pantalla
+            // seguía enseñando la conversación de antes: no se veía vacía hasta
+            // cerrarla y volver a abrirla, que es cuando se vuelve a pedir. La
+            // web no avisa de que cambió —aquí se pide, no se escucha—, así que
+            // después de cada acción del menú hay que volver a preguntar.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { s.traerCharla() }
         }
         datos.onInvitar = { [weak self] dict in
             guard let s = self else { return }
