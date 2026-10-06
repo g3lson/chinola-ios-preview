@@ -209,8 +209,14 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func sesion(_ call: CAPPluginCall) {
         let token = call.getString("token") ?? ""
         DispatchQueue.main.async {
-            if token.isEmpty { UserDefaults.standard.removeObject(forKey: "cnSesion") }
-            else { UserDefaults.standard.set(token, forKey: "cnSesion") }
+            if token.isEmpty {
+                UserDefaults.standard.removeObject(forKey: "cnSesion")
+                // SIN SESIÓN NO QUEDA NADA DE LA DE ANTES. Lo guardado en disco
+                // y lo que hay cargado en memoria: las dos cosas son de quien
+                // acaba de salir. Sin esto, la app seguía enseñando su
+                // patrimonio y sus totales a quien cogiera el teléfono después.
+                CNDatos.shared.olvidaTodo()
+            } else { UserDefaults.standard.set(token, forKey: "cnSesion") }
             call.resolve()
         }
     }

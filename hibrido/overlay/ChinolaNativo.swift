@@ -1666,6 +1666,35 @@ final class CNDatos: ObservableObject {
         }
     }
 
+    /**
+     * Y LO QUE HAY EN PANTALLA AHORA MISMO.
+     *
+     * `olvidaLoGuardado` borra lo del disco: lo que se pintaría en el PRÓXIMO
+     * arranque. Lo que está cargado en memoria seguía ahí, y como un modelo
+     * «a medias» no pisa al bueno —`if m.listo || x == nil`, que es lo que
+     * evita que la pantalla parpadee mientras la web repinta— los modelos
+     * nuevos, todos con `listo: false` porque ya no hay libreta, no lo
+     * reemplazaban NUNCA.
+     *
+     * Resultado: cerrabas sesión y la app seguía enseñando el patrimonio, el
+     * balance del mes y los totales de la persona que acababa de salir. Los
+     * movimientos y las tarjetas sí desaparecían —esos salen de la libreta, que
+     * no lleva guardia— y eso era justo lo que lo hacía parecer medio normal.
+     *
+     * Se llama cuando la web dice que ya no hay sesión, que es una señal clara
+     * y no una suposición: la manda `salir()` y la caducidad.
+     */
+    func olvidaTodo() {
+        olvidaLoGuardado()
+        ultimo.removeAll()
+        libreta = CNLibreta()
+        perfil = CNPerfilInfo()
+        resumen = nil; cuentas = nil; plan = nil; ajustes = nil
+        mascota = nil; charla = nil; detalle = nil; movDetalle = nil
+        seccion = nil; hojaWeb = nil; periodo = nil; libretas = nil
+        libretaNueva = nil; invitar = nil; categoria = nil; tour = nil
+    }
+
     /// La libreta que acaba de llegar, guardada para el próximo arranque.
     func guardaLaLibreta(_ json: String) { guarda("libreta", json) }
 
@@ -2165,6 +2194,12 @@ final class CNDatos: ObservableObject {
         guard let p = CNPaletaTema.desde(json: json) else { return }
         CNC.tema = p
         selloTema += 1
+        // Los textos vienen en el mismo paquete que el tema, así que este es el
+        // momento en que puede haber cambiado el idioma. Se avisa a la barra de
+        // abajo, que lleva los nombres DIBUJADOS DENTRO de sus iconos y no se
+        // entera de otra manera.
+        CNMenuEstado.shared.sello += 1
+        CNMenuEstado.shared.alRepintar()
         // Guardado para el próximo arranque: así la primera pantalla ya sale
         // con el tema, la letra y la moneda del usuario, sin el parpadeo de
         // empezar en crema y cambiar medio segundo después.
@@ -2291,12 +2326,22 @@ struct CNMovs: View {
         for m in movimientos { if mapa[m.fecha] == nil { orden.append(m.fecha) }; mapa[m.fecha, default: []].append(m) }
         return orden.map { ($0, mapa[$0] ?? []) }
     }
+    /*
+     * CON QUÉ SE PAGÓ, EN EL IDIOMA DE LA APP.
+     *
+     * «Efectivo» iba a pelo, sin pasar por el diccionario, y el nombre de la
+     * cuenta tampoco: con la app en inglés la lista de movimientos decía
+     * «Efectivo» debajo de cada fila. El nombre de fábrica de una cuenta es un
+     * texto nuestro, no algo que haya escrito nadie, y por eso se traduce; uno
+     * que no esté en el diccionario —el que ponga cada quien— sale tal cual,
+     * que es justo lo que tiene que pasar.
+     */
     private func medioNombre(_ medio: String) -> String {
         if medio.hasPrefix("cuenta:"), let id = Int(medio.dropFirst(7)),
-           let c = datos.libreta.cuentas.first(where: { $0.id == id }) { return c.nombre }
+           let c = datos.libreta.cuentas.first(where: { $0.id == id }) { return cnT(c.nombre) }
         if medio.hasPrefix("tarjeta:"), let id = Int(medio.dropFirst(8)),
-           let t = datos.libreta.tarjetas.first(where: { $0.id == id }) { return t.nombre }
-        return "Efectivo"
+           let t = datos.libreta.tarjetas.first(where: { $0.id == id }) { return cnT(t.nombre) }
+        return cnT("Efectivo")
     }
 
     var body: some View {
@@ -2527,6 +2572,16 @@ final class CNMenuEstado: ObservableObject {
     static let shared = CNMenuEstado()
     @Published var activa: String = "resumen"
     @Published var titulos: Bool = true
+    /*
+     * EL SELLO DEL IDIOMA.
+     *
+     * Los nombres de las pestañas se sacan con `cnT` al dibujar, y `cnT` lee
+     * una tabla estática: cambiarla no le dice nada a SwiftUI, que solo repinta
+     * cuando cambia algo que observa. Como la barra solo observaba `activa` y
+     * `titulos`, al cambiar de idioma se quedaba con los nombres de antes hasta
+     * que tocabas otra pestaña o cerrabas la app.
+     */
+    @Published var sello = 0
     var alTocar: (String) -> Void = { _ in }
     /// Lo pone el contenedor: repinta la barra de UIKit cuando la web avisa de
     /// un cambio (pestaña activa, títulos, tema).
@@ -2594,6 +2649,18 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
     let barra = UITabBar()
     private var ids: [String] = []
     private var conTitulos = true
+    /*
+     * CON QUÉ RÓTULOS SE ARMÓ LA BARRA.
+     *
+     * Los nombres de las pestañas van DIBUJADOS DENTRO de la imagen de cada
+     * una —es la única forma de que iOS 26 no los corte en «Cu...»—, así que
+     * cambiar de idioma no los cambia: la imagen ya está hecha. Y la barra solo
+     * se rehacía al encender o apagar los rótulos, nunca por el idioma.
+     *
+     * Resultado: cambiabas la app a inglés y abajo seguía poniendo «Cuentas» y
+     * «Perfil» hasta que cerrabas la app y la volvías a abrir.
+     */
+    private var conRotulos = ""
     /// Encogida: solo iconos, y más baja.
     private var compacto = false
     private var altoC: NSLayoutConstraint?
@@ -2830,6 +2897,7 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
             item.accessibilityLabel = nombre
             items.append(item); ids.append(t.id)
         }
+        conRotulos = CNTabs.todas.map { cnT($0.titulo) }.joined(separator: "·")
         let antes = barra.selectedItem?.tag
         barra.setItems(items, animated: false)
         if let t = antes, t < items.count { barra.selectedItem = items[t] }
@@ -2837,7 +2905,12 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
 
     /// Pestaña activa, títulos y colores del tema.
     func pintar(activa: String, titulos: Bool) {
-        if titulos != conTitulos { conTitulos = titulos; rehacer(); ajustar() }
+        let rotulos = CNTabs.todas.map { cnT($0.titulo) }.joined(separator: "·")
+        if titulos != conTitulos || rotulos != conRotulos {
+            conTitulos = titulos
+            conRotulos = rotulos
+            rehacer(); ajustar()
+        }
         barra.tintColor = UIColor(CNC.pos)
         barra.overrideUserInterfaceStyle = CNC.tema.oscuro ? .dark : .light
         if let i = ids.firstIndex(of: activa), let items = barra.items, i < items.count,
@@ -2868,7 +2941,10 @@ struct CNBarraMenu: View {
         .init(id: "perfil", label: "Perfil", path: CNTabIcono.perfil)
     ]
     var body: some View {
-        HStack(spacing: 4) {
+        // Leer el sello es lo que ata este dibujo al idioma: `cnT` devuelve lo
+        // nuevo, pero sin esto nadie vuelve a llamarlo.
+        let _ = estado.sello
+        return HStack(spacing: 4) {
             ForEach(items, id: \.id) { it in
                 let sel = estado.activa == it.id
                 Button { estado.alTocar(it.id) } label: {
@@ -3967,7 +4043,9 @@ struct CNNuevoMov: View {
                     }
                     Picker(cnT("Pagado con"), selection: $medio) {
                         ForEach(datos.libreta.cuentas) { c in
-                            Text(c.nombre).tag("cuenta:\(c.id)")
+                            // Por el diccionario, como en la lista: el nombre de
+                            // fábrica es un texto nuestro.
+                            Text(cnT(c.nombre)).tag("cuenta:\(c.id)")
                         }
                         // Las tarjetas también: gastar con la tarjeta es como
                         // sube la deuda, y sin esta parte la pantalla de

@@ -2479,6 +2479,11 @@ struct CNPuerta {
     // Nombre y plan
     var ph = ""; var valor = ""
     var salida = ""
+    /// Lo que pasa al bajar de plan: Apple no lo aplica hoy, sino en la
+    /// siguiente renovación. La web lo decía y al teléfono no llegaba: el campo
+    /// no estaba ni en el modelo ni en el JSON, así que se tocaba «Seguir»,
+    /// Apple decía que sí, y el plan de arriba seguía siendo el de antes.
+    var aviso = ""
     var planes: [Plan] = []
 
     static func desde(json: String) -> CNPuerta? {
@@ -2510,6 +2515,7 @@ struct CNPuerta {
         m.conApple = b(r, "conApple"); m.conGoogle = b(r, "conGoogle")
         m.olvide = s(r, "olvide"); m.cambiar = s(r, "cambiar"); m.sinCuenta = s(r, "sinCuenta")
         m.ph = s(r, "ph"); m.valor = s(r, "valor"); m.salida = s(r, "salida")
+        m.aviso = s(r, "aviso")
         m.planes = ((r["planes"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
             Plan(id: i, clave: s(x, "id"), nombre: s(x, "nombre"), para: s(x, "para"),
                  precio: s(x, "precio"), cada: s(x, "cada"), prefijo: s(x, "prefijo"),
@@ -2621,10 +2627,10 @@ struct CNPuertaVista: View {
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: oscura ? .center : .leading, spacing: 13) {
                             switch m.paso {
-                            case "portada", "listo": laCara(m)
+                            case "portada", "listo": laCara(m, alto: g.size.height)
                             case "auth": acceso(m)
                             case "plan": planes(m)
-                            default: contarUna(m)
+                            default: contarUna(m, alto: g.size.height)
                             }
                         }
                         .frame(maxWidth: .infinity, minHeight: g.size.height,
@@ -2738,10 +2744,10 @@ struct CNPuertaVista: View {
 
     // MARK: las que dan la cara (portada y listo)
 
-    private func laCara(_ m: CNPuerta) -> some View {
+    private func laCara(_ m: CNPuerta, alto: CGFloat) -> some View {
         VStack(spacing: 12) {
             if let img = cnImagenBase64(m.chinolo) {
-                let lado: CGFloat = m.paso == "portada" ? 212 : 168
+                let lado = ladoDeChino(alto, base: m.paso == "portada" ? 212 : 168)
                 // RESPIRANDO. Quieta, una ilustración grande en medio de la
                 // pantalla se ve pegada; subiendo y bajando dos puntos cada dos
                 // segundos y medio parece que está ahí contigo. Es el mismo
@@ -2762,18 +2768,19 @@ struct CNPuertaVista: View {
                 .padding(.top, 6)
                 .cnEntra(entro, 1)
             }
-            Text(m.titulo).font(cnLetra(m.paso == "portada" ? 30 : 29, .heavy))
+            Text(m.titulo).font(cnLetra(alto > 660 ? 34 : (alto < 520 ? 27 : 30), .heavy))
                 .foregroundColor(sobreOscuro)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
                 .cnEntra(entro, 2)
             if !m.texto.isEmpty {
-                Text(m.texto).font(cnLetra(14)).foregroundColor(sobreOscuro.opacity(0.72))
+                Text(m.texto).font(cnLetra(alto > 660 ? 15.5 : 14))
+                    .foregroundColor(sobreOscuro.opacity(0.72))
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 300)
+                    .frame(maxWidth: 320)
                     .cnEntra(entro, 3)
             }
         }
@@ -2782,17 +2789,18 @@ struct CNPuertaVista: View {
 
     // MARK: las que cuentan algo (láminas, nombre, verifica)
 
-    private func contarUna(_ m: CNPuerta) -> some View {
-        VStack(alignment: .leading, spacing: 13) {
+    private func contarUna(_ m: CNPuerta, alto: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: m.lista.isEmpty ? 13 : 11) {
             if let img = cnImagenBase64(m.chinolo) {
-                let lado: CGFloat = m.paso == "lamina" ? 148 : 132
+                let lado = ladoDeChino(alto, base: m.paso == "lamina" ? 148 : 132,
+                                       conLista: !m.lista.isEmpty)
                 Image(uiImage: img).resizable().scaledToFit().frame(width: lado, height: lado)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.bottom, 4)
                     .cnEntra(entro, 0)
             }
             if !m.rotulo.isEmpty { rotulo(m.rotulo).cnEntra(entro, 1) }
-            Text(m.titulo).font(cnLetra(28, .heavy)).foregroundColor(CNC.ink)
+            Text(m.titulo).font(cnLetra(alto > 660 ? 30 : 28, .heavy)).foregroundColor(CNC.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .cnEntra(entro, 2)
             if !m.texto.isEmpty {
@@ -2935,6 +2943,19 @@ struct CNPuertaVista: View {
      * Cada plan trae su propia paleta desde la web (verde, ámbar, lila): no es
      * decoración, es lo que hace que al tocar otro plan se note que has cambiado
      * de sitio sin leer una palabra.
+     *
+     * Y LA SEGUNDA PASADA, QUE ES DE LA QUE SALE EL SITIO.
+     *
+     * La tarjeta de abajo repetía ENTERO lo que la pastilla elegida ya decía
+     * dos dedos más arriba: el nombre otra vez a 28, el precio otra vez a 30,
+     * «al mes» otra vez — ciento veinte puntos de pantalla para decir lo que ya
+     * estaba dicho. Y «el tuyo ahora» salía a la vez en los dos sitios.
+     *
+     * Ahora la tarjeta empieza por lo ÚNICO que la pastilla no dice —para quién
+     * es ese plan— en una cinta de su color, y los once renglones van apretados:
+     * el aro del icono a 26 en vez de 38 y la raya separando de verdad, de
+     * borde a borde, en vez de colgando del texto. Son unos doscientos cincuenta
+     * puntos menos que rodar para ver lo mismo.
      */
     private func planes(_ m: CNPuerta) -> some View {
         let elegido = m.planes.first(where: { $0.puesto }) ?? m.planes.first ?? CNPuerta.Plan(id: 0)
@@ -2951,15 +2972,32 @@ struct CNPuertaVista: View {
             }
 
             // ── las tres pastillas
+            // El hueco de arriba es para la etiqueta de «el tuyo ahora», que
+            // flota medio fuera de su pastilla: sin él la corta el borde.
             HStack(spacing: 9) {
                 ForEach(m.planes) { p in pastillaDePlan(p) }
             }
-            .padding(.top, 4)
+            .padding(.top, 10)
             .cnEntra(entro, 3)
+
+            // ── lo que pasa si es una bajada, antes de tocar y no después
+            if !m.aviso.isEmpty {
+                HStack(alignment: .top, spacing: 9) {
+                    Image(systemName: "clock").font(cnLetra(13, .bold)).foregroundColor(CNC.acc)
+                    Text(m.aviso).font(cnLetra(12.5)).foregroundColor(CNC.ink)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 13).padding(.vertical, 11)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(CNC.acc.opacity(0.10),
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .cnEntra(entro, 4)
+            }
 
             // ── la tarjeta del elegido
             tarjetaDelPlan(elegido)
-                .cnEntra(entro, 4)
+                .cnEntra(entro, 5)
 
             if !m.error.isEmpty { aviso(m.error) }
             if !m.pie.isEmpty {
@@ -2969,7 +3007,7 @@ struct CNPuertaVista: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 2)
-                    .cnEntra(entro, 5)
+                    .cnEntra(entro, 6)
             }
         }
     }
@@ -3009,7 +3047,9 @@ struct CNPuertaVista: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(CNC.pos, in: Capsule())
-                        .offset(x: 8, y: -10)
+                        // Flotando medio fuera de la pastilla y NO por encima
+                        // del nombre: a −10 se le comía la primera línea.
+                        .offset(x: 8, y: -11)
                 }
             }
         }
@@ -3017,82 +3057,76 @@ struct CNPuertaVista: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: p.puesto)
     }
 
-    /// Lo que lleva el plan elegido, línea por línea.
+    /// Lo que lleva el plan elegido. Empieza por lo que la pastilla de arriba
+    /// NO dice —para quién es— y sigue con los renglones, apretados.
     private func tarjetaDelPlan(_ p: CNPuerta.Plan) -> some View {
         let acento = p.acento.isEmpty ? CNC.acc : cnColor(hexString: p.acento)
         let banda = p.banda.isEmpty ? CNC.soft : cnColor(hexString: p.banda)
         let tinta = p.tinta.isEmpty ? CNC.ink : cnColor(hexString: p.tinta)
         return VStack(alignment: .leading, spacing: 0) {
-            // la banda de arriba, del color del plan
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(p.para).font(cnLetra(13, .semibold)).foregroundColor(acento)
-                    Spacer(minLength: 8)
-                    if p.actual {
-                        Text(cnT("Es el que tienes")).font(cnLetra(12, .semibold))
-                            .foregroundColor(acento)
-                            .padding(.horizontal, 10).padding(.vertical, 4)
-                            .background(Color.white.opacity(0.75), in: Capsule())
-                    }
-                }
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(p.nombre).font(cnLetra(28, .heavy)).foregroundColor(tinta)
-                    Spacer(minLength: 8)
-                    Text(p.precio).font(cnLetra(30, .heavy)).monospacedDigit().foregroundColor(tinta)
-                        .lineLimit(1).minimumScaleFactor(0.6)
-                    Text(p.cada).font(cnLetra(14)).foregroundColor(acento)
-                }
-            }
-            .padding(.horizontal, 18).padding(.top, 18).padding(.bottom, 16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(banda)
+            // la cinta de arriba: del color del plan, y una sola línea
+            Text(p.para).font(cnLetra(13.5, .heavy)).foregroundColor(tinta)
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .padding(.horizontal, 16).padding(.vertical, 11)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(banda)
 
+            // «Todo lo del gratis, y además:» es un ENCABEZADO de la lista, no
+            // una frase más: en versales y pequeño dice de qué va lo que sigue
+            // sin pelearse con los renglones.
             if !p.prefijo.isEmpty {
-                Text(p.prefijo).font(cnLetra(14, .semibold)).foregroundColor(CNC.pmut)
-                    .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 2)
+                Text(p.prefijo.uppercased()).font(cnLetra(10.5, .heavy)).tracking(0.8)
+                    .foregroundColor(CNC.pmut)
+                    .lineLimit(1).minimumScaleFactor(0.75)
+                    .padding(.horizontal, 16).padding(.top, 13).padding(.bottom, 2)
             }
 
             VStack(spacing: 0) {
-                ForEach(p.items) { it in
-                    lineaDePlan(it, acento: acento, banda: banda,
-                                ultima: it.id == (p.items.last?.id ?? -1))
+                ForEach(Array(p.items.enumerated()), id: \.element.id) { k, it in
+                    lineaDePlan(it, acento: acento, banda: banda, primera: k == 0)
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 5)
         }
-        .background(CNC.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(CNC.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
-    /// Un renglón: su pastilla con el icono, lo que es, y el pie si lo lleva.
+    /// Un renglón: su aro con el icono, lo que es, y el pie si lo lleva.
     /// Las de IA van en lila a propósito: son las que explican el precio.
-    private func lineaDePlan(_ it: CNPuerta.Linea, acento: Color, banda: Color, ultima: Bool) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+    ///
+    /// La raya separaba colgando del texto, DENTRO de la columna de la derecha,
+    /// así que se metía entre el título y su pie y parecía que el pie era del
+    /// renglón siguiente. Va arriba de cada uno —menos del primero— y empieza
+    /// donde empieza el texto.
+    private func lineaDePlan(_ it: CNPuerta.Linea, acento: Color, banda: Color,
+                             primera: Bool) -> some View {
+        HStack(alignment: .top, spacing: 11) {
             ZStack {
-                Circle().fill(it.ia ? cnColor(0xEEE9FF) : banda).frame(width: 30, height: 30)
+                Circle().fill(it.ia ? cnColor(0xEEE9FF) : banda).frame(width: 26, height: 26)
                 CNSVGShape(d: cnIconoDePlan(it.icono))
                     .stroke(it.ia ? cnColor(0x6A4FD6) : acento,
                             style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                    .frame(width: 16, height: 16)
+                    .frame(width: 14, height: 14)
             }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(it.t).font(cnLetra(16)).foregroundColor(CNC.ink)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(it.t).font(cnLetra(14.5)).foregroundColor(CNC.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 if !it.pie.isEmpty {
-                    Text(it.pie).font(cnLetra(13)).foregroundColor(CNC.pmut)
+                    Text(it.pie).font(cnLetra(12)).foregroundColor(CNC.pmut)
                         .fixedSize(horizontal: false, vertical: true)
-                }
-                if !ultima {
-                    Rectangle().fill(CNC.line).frame(height: 0.5).padding(.top, 10)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.leading, 16).padding(.trailing, 18)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16).padding(.vertical, 7)
+        .overlay(alignment: .top) {
+            if !primera {
+                Rectangle().fill(CNC.line).frame(height: 0.5).padding(.leading, 53)
+            }
+        }
     }
 
-    // MARK: abajo
     // MARK: abajo
 
     /**
@@ -3258,6 +3292,28 @@ struct CNPuertaVista: View {
 
     private func rotulo(_ t: String) -> some View {
         Text(t.uppercased()).font(cnLetra(11, .heavy)).tracking(1.1).foregroundColor(CNC.pmut)
+    }
+
+    /**
+     * EL DIBUJO SE AJUSTA AL HUECO QUE HAY.
+     *
+     * Chino iba a un tamaño fijo, el mismo en un SE de 4,7 pulgadas que en un
+     * Pro Max de 6,9. En el pequeño empujaba la lista fuera de la pantalla, y
+     * en el grande dejaba un palmo de nada debajo del último renglón: la misma
+     * medida sobra en uno y falta en el otro.
+     *
+     * Aquí se mide el hueco de verdad —lo que queda entre la cabecera y la
+     * botonera, que es lo que da el `GeometryReader`— y el dibujo crece o se
+     * encoge con él. Cuando el hueco es de verdad corto y debajo hay una lista
+     * que leer, el dibujo se va: entre mirar a Chino y poder leer las tres
+     * cosas que hace la app, ganan las tres cosas.
+     */
+    private func ladoDeChino(_ alto: CGFloat, base: CGFloat, conLista: Bool = false) -> CGFloat {
+        let corto: CGFloat = conLista ? 560 : 440
+        if alto < corto - 90 { return conLista ? 0 : base * 0.66 }
+        if alto < corto { return base * 0.76 }
+        if alto > corto + 150 { return base * 1.16 }
+        return base
     }
 
     /// Un campo como los de la web: su rótulo encima en versales y la caja con
