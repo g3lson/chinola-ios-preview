@@ -187,6 +187,22 @@ jobs:
           # pasada antes de que haya nada que fotografiar. Y son las primeras
           # que ve alguien que abre la app por primera vez: lo que nadie mira
           # es lo que peor envejece.
+          # UN ARRANQUE DE CALENTAMIENTO, QUE SE TIRA.
+          #
+          # El primero después de instalar es el más lento de todos: compila lo
+          # que el simulador guarda en caché y la web entrega sus textos por
+          # primera vez. Con veintidós segundos seguía sin llegar, y la foto de
+          # la PORTADA salía siendo el Resumen a medio pintar — justo la
+          # pantalla que había que mirar, y la única que se perdía siempre.
+          #
+          # Se arranca una vez sin fotografiar nada y se tira. Cuesta medio
+          # minuto y deja las diez fotos buenas en vez de nueve.
+          echo "=== calentando ==="
+          env SIMCTL_CHILD_CN_IR="puerta:onboarding|1" SIMCTL_CHILD_CN_CON=sonda \
+            xcrun simctl launch "$UDID" "$ID" || true
+          sleep 30
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
           for P in "onboarding|0" "onboarding|1" "onboarding|2" "onboarding|3" \
                    "auth" "auth||registro" "nombre" "plan" "verifica" "listo"; do
             N=$(echo "$P" | tr '|' '-')
