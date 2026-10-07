@@ -50,17 +50,22 @@ enum CNCuentasFilas {
         return c
     }
 
-    /// El glifo que le toca a una cuenta. Primero el suyo, si eligió uno; si
-    /// no, el de su clase. Lo que no se reconozca va con el del banco, que es
-    /// lo que hace la web: nunca un hueco.
+    /**
+     * EL GLIFO DE UNA CUENTA: EL SUYO, O EL DE SU NOMBRE.
+     *
+     * NO el de su clase. Esto lo escribí por clase —efectivo el billete,
+     * ahorro la hucha— y la foto lo cazó en el acto: las tres cuentas del
+     * banco salieron con el icono del banco, porque ninguna trae clase. La web
+     * no mira la clase en ningún momento; mira el icono que se haya elegido y,
+     * si no hay, el que le toca AL NOMBRE («Efectivo» → billete, «Ahorros» →
+     * hucha). Y lo que no esté en esa tabla son los tres puntos, no el banco.
+     *
+     * `iconoDe = c => ICONOS[c.icono || CAT_ICONO[c.nombre] || 'puntos']`
+     */
     static func glifoDeCuenta(_ c: CNCuenta) -> String {
-        if !c.icono.isEmpty, let p = CNCatalogos.iconos[c.icono] { return p }
-        let porClase: [String: String] = [
-            "banco": "banco", "efectivo": "billete", "billetera": "telefono",
-            "ahorro": "hucha", "inversion": "grafico"
-        ]
-        let nombre = porClase[c.clase] ?? "banco"
-        return CNCatalogos.iconos[nombre] ?? CNCatalogos.iconos["banco"] ?? ""
+        let clave = !c.icono.isEmpty ? c.icono
+            : (CNCatalogos.iconoPorCategoria[c.nombre] ?? "puntos")
+        return CNCatalogos.iconos[clave] ?? CNCatalogos.iconos["puntos"] ?? ""
     }
 
     /// Cuántos movimientos tocan esta cuenta. Va en el subtítulo de la fila.
@@ -68,9 +73,12 @@ enum CNCuentasFilas {
         // También los que SALEN hacia esta cuenta: una transferencia toca
         // dos cuentas y contarla solo en una deja la otra diciendo «0 movs»
         // con dinero dentro.
+        // CON LOS DOS PUNTOS. El medio es «cuenta:3», y sin ellos el resto no
+        // es un número: `Int(":3")` es nada, y todas las filas salían diciendo
+        // «0 movs» con quince movimientos detrás. También lo cazó la foto.
         l.tx.filter { m in
-            CNCalculo.idDe(m.medio, "cuenta") == id
-                || CNCalculo.idDe(m.destino, "cuenta") == id
+            CNCalculo.idDe(m.medio, "cuenta:") == id
+                || CNCalculo.idDe(m.destino, "cuenta:") == id
         }.count
     }
 
