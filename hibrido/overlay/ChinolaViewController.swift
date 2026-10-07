@@ -1546,6 +1546,14 @@ class ChinolaViewController: CAPBridgeViewController {
                 CNDatos.shared.libreta = l
                 CNDatos.shared.guardaLaLibreta(json)
                 CNDatos.shared.apuntaQueLlego()
+                // Y SE RECALCULA CON ELLA. Por aquí entra la libreta en cada
+                // refresco, y era el único camino que no rehacía las
+                // pantallas: si la web no mandaba su esqueleto —parada en otra
+                // pestaña—, Cuentas se quedaba vacía teniendo la libreta
+                // entera a mano.
+                CNDatos.shared.refrescarCifras()
+                CNDatos.shared.refrescarCuentas()
+                CNDatos.shared.refrescarPlan()
                 if !huella.isEmpty { self.huellaLibreta = huella }
                 self.bridge?.webView?.evaluateJavaScript("(window.__chinolaPerfilJSON && window.__chinolaPerfilJSON()) || ''") { p, _ in
                     if let ps = p as? String, ps.count > 2 { CNDatos.shared.cargarPerfil(json: ps) }

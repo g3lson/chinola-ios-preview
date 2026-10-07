@@ -1822,17 +1822,31 @@ final class CNDatos: ObservableObject {
     /// si el dinero está oculto, que entonces la web manda cifras tapadas y
     /// destaparlas sería un fallo de verdad.
     func refrescarCuentas() {
-        guard var m = cuentas, !m.oculto, !libreta.sinLlegar else { return }
+        guard !libreta.sinLlegar else { return }
+        // SIN MODELO TAMBIÉN SE PINTA.
+        //
+        // Esto empezaba con `guard var m = cuentas`: si la web no había
+        // mandado su esqueleto —porque estaba parada en otra pestaña—, el
+        // cálculo nativo no tenía dónde escribir y se iba sin hacer nada. La
+        // pantalla se quedaba con la tarjeta del patrimonio y ni una cuenta
+        // debajo, con los números ya calculados aquí al lado.
+        var m = cuentas ?? CNCuentasModelo()
+        guard !m.oculto else { return }
         let l = libreta
-        for i in m.cuentas.indices where i < l.cuentas.count {
-            m.cuentas[i].valor = cnDineroFirmado(l.cuentas[i].saldo)
-        }
-        for i in m.tarjetas.indices where i < l.tarjetas.count {
-            m.tarjetas[i].valor = cnDinero(l.tarjetas[i].saldo)
-        }
-        for i in m.prestamos.indices where i < l.prestamos.count {
-            m.prestamos[i].valor = cnDinero(max(0, l.prestamos[i].total - l.prestamos[i].pagado))
-        }
+
+        // LAS FILAS, DE LA LIBRETA Y NO DE LA WEB.
+        //
+        // Los colores que cambian con la paleta salen del modelo del resumen
+        // si ya llegó, y si no, del tema que tenga puesto: el verde de un tema
+        // no es el verde de otro, y escribir el de fábrica deja un parche.
+        let cab = resumen?.cabecera
+        let t = CNCuentasFilas.Tinte(
+            positivo: cab?.positivo.isEmpty == false ? cab!.positivo : cnHexDe(CNC.pos),
+            aviso: cab?.aviso.isEmpty == false ? cab!.aviso : cnHexDe(CNC.acc),
+            negativo: cab?.negativo.isEmpty == false ? cab!.negativo : cnHexDe(CNC.neg))
+        m.cuentas = conLoDeLaWeb(CNCuentasFilas.cuentas(l), como: m.cuentas)
+        m.tarjetas = conLoDeLaWeb(CNCuentasFilas.tarjetas(l, tinte: t), como: m.tarjetas)
+        m.prestamos = conLoDeLaWeb(CNCuentasFilas.prestamos(l, tinte: t), como: m.prestamos)
         // Los tres totales y el patrimonio, por el módulo. Aquí se calculaban a
         // mano, y el de préstamos se quedaba a medias: solo se escribía el
         // NÚMERO y el rótulo seguía siendo el que mandó la web. Si cobrabas el
@@ -1848,7 +1862,36 @@ final class CNDatos: ObservableObject {
         m.patrimonio.valor = pat.valor
         m.patrimonio.activos = pat.activos
         m.patrimonio.pasivos = pat.pasivos
+        // Y los rótulos, por si el esqueleto nunca llegó: sin ellos los tres
+        // grupos salen sin título.
+        if m.rotuloCuentas.isEmpty { m.rotuloCuentas = cnT("Cuentas") }
+        if m.rotuloTarjetas.isEmpty { m.rotuloTarjetas = cnT("Tarjetas de crédito") }
+        if m.rotuloPrestamos.isEmpty { m.rotuloPrestamos = cnT("Préstamos") }
+        if m.patrimonio.titulo.isEmpty { m.patrimonio.titulo = cnT("Patrimonio") }
+        if m.patrimonio.activosLabel.isEmpty { m.patrimonio.activosLabel = cnT("Activos") }
+        if m.patrimonio.pasivosLabel.isEmpty { m.patrimonio.pasivosLabel = cnT("Pasivos") }
         cuentas = m
+    }
+
+    /**
+     * LO QUE TODAVÍA ES DE LA WEB, CONSERVADO.
+     *
+     * Las filas se arman aquí, pero lo que sale al DESLIZAR una —editar,
+     * eliminar, poner como predeterminada— son funciones que viven en la web y
+     * se disparan por su número. Moverlas sin más sería cambiar
+     * comportamiento, no aspecto. Se emparejan por posición, que es el mismo
+     * orden de la libreta en los dos lados, y se conservan tal cual.
+     */
+    private func conLoDeLaWeb(_ nuevas: [CNCuentasModelo.Fila],
+                              como viejas: [CNCuentasModelo.Fila]) -> [CNCuentasModelo.Fila] {
+        nuevas.enumerated().map { i, f in
+            guard i < viejas.count, viejas[i].nombre == f.nombre else { return f }
+            var x = f
+            x.acciones = viejas[i].acciones
+            x.predeterminada = viejas[i].predeterminada
+            x.rotuloPred = viejas[i].rotuloPred
+            return x
+        }
     }
 
     /**
