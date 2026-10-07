@@ -161,4 +161,63 @@ enum CNTarjetasGrafico {
     static let sabeHacer: Set<String> = [
         "barras-categorias", "columnas-tendencia", "dona-mezcla"
     ]
+    /* ------------------------- presupuesto por categoría ------------------ */
+
+    /**
+     * CUÁNTO LLEVAS DE CADA TOPE.
+     *
+     * Solo las categorías CON presupuesto —las que no tienen no se pueden
+     * pasar de nada— y ordenadas por lo lleno que va, no por lo que gastaste:
+     * lo que hay que mirar es la que está a punto de reventar, aunque sean
+     * cuatrocientos pesos.
+     */
+    static func porPresupuesto(_ l: CNLibreta, _ p: CNCalculo.Periodo) -> [FilaBarra] {
+        let gastado = Dictionary(uniqueKeysWithValues:
+            CNCalculo.porCategoria(l, p).map { ($0.categoria, $0.gastado) })
+        return l.presupuesto.filter { $0.value > 0 }
+            .map { (nombre, tope) -> (FilaBarra, Int) in
+                let g = gastado[nombre] ?? 0
+                let pct = min(999, Int((g / tope * 100).rounded()))
+                return (FilaBarra(label: nombre,
+                                  valor: cnDinero(g) + " / " + cnDinero(tope),
+                                  pct: min(100, pct), categoria: nombre), pct)
+            }
+            .sorted { $0.1 > $1.1 }
+            .prefix(5)
+            .map { $0.0 }
+    }
+
+    /* ------------------------- gastos por medio de pago ------------------- */
+
+    /**
+     * CON QUÉ PAGASTE.
+     *
+     * Las barras van contra la MAYOR, no contra el total: con cinco medios, el
+     * porcentaje sobre el total deja todas las barras pequeñas y no se compara
+     * nada. Y un medio que ya no existe —una cuenta borrada— se cuenta como
+     * efectivo, que es lo que hace la web: perder el gasto sería peor.
+     */
+    static func porMedio(_ l: CNLibreta, _ p: CNCalculo.Periodo) -> [FilaBarra] {
+        func nombre(_ medio: String) -> String {
+            if medio.isEmpty || medio == "efectivo" { return cnT("Efectivo") }
+            let partes = medio.split(separator: ":", maxSplits: 1)
+            guard partes.count == 2, let id = Int(partes[1]) else { return cnT("Efectivo") }
+            if partes[0] == "tarjeta" {
+                return l.tarjetas.first { $0.id == id }?.nombre ?? cnT("Efectivo")
+            }
+            return l.cuentas.first { $0.id == id }?.nombre ?? cnT("Efectivo")
+        }
+        var por: [String: Double] = [:]
+        for x in l.tx where (x.tipo == "Gasto Fijo" || x.tipo == "Gasto Variable")
+            && CNCalculo.enPeriodo(x.fecha, p) {
+            por[nombre(x.medio), default: 0] += x.monto
+        }
+        let orden = por.sorted { $0.value > $1.value }.prefix(5)
+        let mayor = max(1, orden.first?.value ?? 1)
+        return orden.map { k, v in
+            FilaBarra(label: k, valor: cnDinero(v),
+                      pct: min(100, Int((v / mayor * 100).rounded())), categoria: "")
+        }
+    }
+
 }

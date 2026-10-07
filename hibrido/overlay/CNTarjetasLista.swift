@@ -197,4 +197,97 @@ enum CNTarjetasLista {
     static let sabeHacer: Set<String> = [
         "lista-recientes", "lista-recordatorios", "lista-metas", "texto-consejo"
     ]
+    /* ------------------------- lo que se repite --------------------------- */
+
+    /**
+     * LAS SUSCRIPCIONES: EL GASTO QUE NO DECIDES CADA MES.
+     *
+     * Ya marcas movimientos como «se repite cada mes» y eso no se enseñaba en
+     * ninguna parte. Es justo el gasto que más cuesta ver, porque no se decide.
+     *
+     * De cada concepto se queda el ÚLTIMO: el importe de hace ocho meses no es
+     * el de hoy, y enseñar el viejo haría que la suma mintiera. Y se comparan
+     * en minúsculas y sin espacios de los lados, que «Netflix» y «netflix »
+     * son el mismo recibo.
+     */
+    static func suscripciones(_ l: CNLibreta, tinte t: Tinte) -> (filas: [Fila], nota: String) {
+        var ultimas: [String: CNMov] = [:]
+        for x in l.tx where x.recurrente {
+            guard x.tipo == "Gasto Fijo" || x.tipo == "Gasto Variable" else { continue }
+            let k = x.concepto.trimmingCharacters(in: .whitespaces).lowercased()
+            if let antes = ultimas[k], antes.fecha >= x.fecha { continue }
+            ultimas[k] = x
+        }
+        let subs = ultimas.values.sorted { abs($0.monto) > abs($1.monto) }
+        guard !subs.isEmpty else {
+            return ([Fila(titulo: cnT("Nada que se repita"),
+                          detalle: cnT("Marca un movimiento como «se repite cada mes»"),
+                          monto: "", montoColor: t.gris, sigla: "", color: t.gris,
+                          categoria: "")], "")
+        }
+        let suma = subs.reduce(0.0) { $0 + abs($1.monto) }
+        return (subs.prefix(6).map { x in
+            Fila(titulo: x.concepto, detalle: x.categoria, monto: cnDinero(abs(x.monto)),
+                 montoColor: colorDeCategoria(l, x.categoria, t), sigla: sigla(x.concepto),
+                 color: colorDeCategoria(l, x.categoria, t), categoria: x.categoria)
+        }, cnT("{n} al mes").replacingOccurrences(of: "{n}", with: cnDinero(suma)))
+    }
+
+    /* ------------------------- los mayores del mes ------------------------ */
+
+    /// Los cinco gastos más grandes del mes, de mayor a menor.
+    static func mayores(_ l: CNLibreta, _ p: CNCalculo.Periodo, tinte t: Tinte) -> [Fila] {
+        l.tx.filter { ($0.tipo == "Gasto Fijo" || $0.tipo == "Gasto Variable")
+                      && CNCalculo.enPeriodo($0.fecha, p) }
+            .sorted { $0.monto > $1.monto }
+            .prefix(CABEN)
+            .map { x in
+                // El día y el mes, en ese orden: «14/10». Es el detalle, no la
+                // fecha completa, que al lado de la categoría no cabe.
+                let d = String(x.fecha.dropFirst(8).prefix(2))
+                let m = String(x.fecha.dropFirst(5).prefix(2))
+                return Fila(titulo: x.concepto, detalle: x.categoria + " · " + d + "/" + m,
+                            monto: "\u{2212}" + cnDinero(x.monto), montoColor: t.negativo,
+                            sigla: "", color: colorDeCategoria(l, x.categoria, t),
+                            categoria: x.categoria)
+            }
+    }
+
+    /* ------------------------- saldos y cupos ----------------------------- */
+
+    /// Cuánto hay en cada cuenta. Sin banco lo dice: dejar el hueco parece que
+    /// falta un dato y lo que pasa es que no lo hay.
+    static func saldoPorCuenta(_ l: CNLibreta, tinte t: Tinte) -> [Fila] {
+        l.cuentas.map { c in
+            Fila(titulo: c.nombre, detalle: c.banco.isEmpty ? cnT("Cuenta") : c.banco,
+                 monto: cnDineroFirmado(c.saldo), montoColor: c.color, sigla: sigla(c.nombre),
+                 color: c.color, categoria: "")
+        }
+    }
+
+    /// Cuánto se lleva usado de cada tarjeta. El porcentaje manda el color:
+    /// por encima del 90 va en rojo, que es cuando deja de ser un dato y pasa
+    /// a ser un aviso.
+    static func cupoDeTarjetas(_ l: CNLibreta, tinte t: Tinte) -> [Fila] {
+        l.tarjetas.map { c in
+            let pct = c.limite > 0 ? min(999, Int((c.saldo / c.limite * 100).rounded())) : 0
+            let color = pct > 90 ? t.negativo : (pct > 60 ? t.ambar : t.positivo)
+            return Fila(titulo: c.nombre,
+                        detalle: cnDinero(c.saldo) + " " + cnT("de") + " " + cnDinero(c.limite),
+                        monto: String(pct) + "%", montoColor: color, sigla: sigla(c.nombre),
+                        color: color, categoria: "")
+        }
+    }
+
+    /// La inicial, en mayúscula, para la pastilla de las filas sin icono.
+    private static func sigla(_ t: String) -> String {
+        String(t.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased()
+    }
+
+    /// El color de una categoría, o el gris si no la encuentra.
+    private static func colorDeCategoria(_ l: CNLibreta, _ nombre: String, _ t: Tinte) -> String {
+        let c = l.categorias.first { $0.nombre == nombre }
+        return (c?.color.isEmpty == false) ? c!.color : t.gris
+    }
+
 }

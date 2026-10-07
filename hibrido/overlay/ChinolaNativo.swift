@@ -2118,6 +2118,37 @@ final class CNDatos: ObservableObject {
                 resumen?.widgets[i].items = CNTarjetasLista
                     .metas(libreta, tinte: tinteL).map { itemDe($0) }
 
+            // ── las cuatro listas y las dos barras que faltaban ────────────
+            //
+            // Las armaba la web en `tarjetaExtra` y llegaban escritas por el
+            // puente: sin web salían en blanco. Son la misma forma que las de
+            // arriba, así que la vista ya sabe dibujarlas; lo único que faltaba
+            // era la cuenta.
+            case "lista-suscripciones":
+                let sus = CNTarjetasLista.suscripciones(libreta, tinte: tinteL)
+                resumen?.widgets[i].items = sus.filas.map { itemDe($0) }
+                resumen?.widgets[i].nota = sus.nota
+
+            case "lista-top":
+                resumen?.widgets[i].items = CNTarjetasLista
+                    .mayores(libreta, periodoCalculo, tinte: tinteL).map { itemDe($0) }
+
+            case "lista-cuentas":
+                resumen?.widgets[i].items = CNTarjetasLista
+                    .saldoPorCuenta(libreta, tinte: tinteL).map { itemDe($0) }
+
+            case "lista-tarjetas":
+                resumen?.widgets[i].items = CNTarjetasLista
+                    .cupoDeTarjetas(libreta, tinte: tinteL).map { itemDe($0) }
+
+            case "barras-presupuesto":
+                resumen?.widgets[i].filas = CNTarjetasGrafico
+                    .porPresupuesto(libreta, periodoCalculo).map { f in filaBarraDe(f) }
+
+            case "barras-medios":
+                resumen?.widgets[i].filas = CNTarjetasGrafico
+                    .porMedio(libreta, periodoCalculo).map { f in filaBarraDe(f) }
+
             // ── el consejo ─────────────────────────────────────────────────
             case "texto-consejo":
                 resumen?.widgets[i].texto = CNTarjetasLista.consejo(libreta, periodoCalculo)
