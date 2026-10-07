@@ -51,35 +51,53 @@ enum CNCuentasFilas {
     }
 
     /**
-     * EL GLIFO DE UNA CUENTA: EL SUYO, O EL DE SU NOMBRE.
+     * EL GLIFO DE UNA CUENTA, Y LA CLASE QUE SE ADIVINA.
      *
-     * NO el de su clase. Esto lo escribí por clase —efectivo el billete,
-     * ahorro la hucha— y la foto lo cazó en el acto: las tres cuentas del
-     * banco salieron con el icono del banco, porque ninguna trae clase. La web
-     * no mira la clase en ningún momento; mira el icono que se haya elegido y,
-     * si no hay, el que le toca AL NOMBRE («Efectivo» → billete, «Ahorros» →
-     * hucha). Y lo que no esté en esa tabla son los tres puntos, no el banco.
+     * Dos pasadas me costó esto, y las dos las cazó la foto:
      *
-     * `iconoDe = c => ICONOS[c.icono || CAT_ICONO[c.nombre] || 'puntos']`
+     *  · por clase, sin más: las tres cuentas salieron con el icono del banco,
+     *    porque ninguna trae clase guardada;
+     *  · por el nombre contra la tabla de categorías: salieron los tres puntos,
+     *    porque esa tabla es de CATEGORÍAS («Vivienda», «Transporte») y una
+     *    cuenta no se llama así.
+     *
+     * Lo que hace la web es las dos cosas en orden: el icono que hayas elegido
+     * tú; si no, el de su clase; y la clase, si la cuenta no la lleva —las de
+     * antes de que existiera el campo no la llevan— se ADIVINA por el nombre.
+     * «Ahorros» es de ahorro y lleva hucha; «Efectivo» es efectivo y lleva el
+     * billete; lo demás es banco.
      */
+    static func claseDeCuenta(_ c: CNCuenta) -> String {
+        if !c.clase.isEmpty { return c.clase }
+        let n = c.nombre.lowercased()
+        func tiene(_ cuales: [String]) -> Bool { cuales.contains { n.contains($0) } }
+        if tiene(["ahorr", "saving", "épargne", "epargne"]) { return "ahorro" }
+        if tiene(["efectivo", "mano", "cash", "espèce", "espece"]) { return "efectivo" }
+        return "banco"
+    }
+
+    /// Qué glifo lleva cada clase. El mismo reparto que `ICONO_DE_CLASE`.
+    static let iconoDeClase: [String: String] = [
+        "banco": "banco", "efectivo": "billete", "billetera": "telefono",
+        "inversion": "grafico", "ahorro": "hucha"
+    ]
+
     static func glifoDeCuenta(_ c: CNCuenta) -> String {
         let clave = !c.icono.isEmpty ? c.icono
-            : (CNCatalogos.iconoPorCategoria[c.nombre] ?? "puntos")
-        return CNCatalogos.iconos[clave] ?? CNCatalogos.iconos["puntos"] ?? ""
+            : (iconoDeClase[claseDeCuenta(c)] ?? "banco")
+        return CNCatalogos.iconos[clave] ?? CNCatalogos.iconos["banco"] ?? ""
     }
 
     /// Cuántos movimientos tocan esta cuenta. Va en el subtítulo de la fila.
     static func movimientosDe(_ l: CNLibreta, cuenta id: Int) -> Int {
-        // También los que SALEN hacia esta cuenta: una transferencia toca
-        // dos cuentas y contarla solo en una deja la otra diciendo «0 movs»
-        // con dinero dentro.
         // CON LOS DOS PUNTOS. El medio es «cuenta:3», y sin ellos el resto no
         // es un número: `Int(":3")` es nada, y todas las filas salían diciendo
         // «0 movs» con quince movimientos detrás. También lo cazó la foto.
-        l.tx.filter { m in
-            CNCalculo.idDe(m.medio, "cuenta:") == id
-                || CNCalculo.idDe(m.destino, "cuenta:") == id
-        }.count
+        //
+        // Y el destino cuenta SOLO en una transferencia, que es la única que
+        // tiene dos cuentas: en un gasto, `destino` es otra cosa.
+        let suyo = "cuenta:" + String(id)
+        return l.tx.filter { $0.medio == suyo || ($0.tipo == "Transferencia" && $0.destino == suyo) }.count
     }
 
     // MARK: - Las tres listas
@@ -100,8 +118,10 @@ enum CNCuentasFilas {
             // «Banco Popular · 12 movs». Sin banco lo dice, que dejar el hueco
             // parece que falta un dato y lo que pasa es que no lo hay.
             let banco = c.banco.isEmpty ? cnT("Sin banco") : c.banco
-            let movs = cnT("{n} movs").replacingOccurrences(
-                of: "{n}", with: String(movimientosDe(l, cuenta: c.id)))
+            // «1 mov» en singular: la web lo dice así y un «1 movs» canta.
+            let n = movimientosDe(l, cuenta: c.id)
+            let movs = n == 1 ? cnT("1 mov")
+                : cnT("{n} movs").replacingOccurrences(of: "{n}", with: String(n))
             f.detalle = banco + " · " + movs
             f.valor = cnDineroFirmado(c.saldo)
             f.iconoPath = glifoDeCuenta(c)

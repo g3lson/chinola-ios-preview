@@ -513,4 +513,62 @@ enum CNCatalogos {
         "chinola_noche": "chinola",
         "sistema_noche": "sistema"
     ]
+
+    /// Cómo se dibuja cada tipo de tarjeta del panel. Sacado de lo que la
+    /// web dibuja de verdad (`test/panel-oro.json`), no del catálogo.
+    struct TarjetaDePanel {
+        var tipo: String; var titulo: String; var clase: String
+        var periodo: String; var puedeChica: Bool
+    }
+    static let tarjetasDePanel: [String: TarjetaDePanel] = [
+        "kpi-balance": TarjetaDePanel(tipo: "kpi-balance", titulo: "Balance del mes", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-ingresos": TarjetaDePanel(tipo: "kpi-ingresos", titulo: "Ingresos del mes", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-gastos": TarjetaDePanel(tipo: "kpi-gastos", titulo: "Gastos del mes", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-deuda": TarjetaDePanel(tipo: "kpi-deuda", titulo: "Deuda total", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-patrimonio": TarjetaDePanel(tipo: "kpi-patrimonio", titulo: "Patrimonio", clase: "cifra", periodo: "", puedeChica: true),
+        "texto-consejo": TarjetaDePanel(tipo: "texto-consejo", titulo: "Consejo de Chino", clase: "texto", periodo: "", puedeChica: true),
+        "barras-categorias": TarjetaDePanel(tipo: "barras-categorias", titulo: "Gastos por categoría", clase: "barras", periodo: "", puedeChica: false),
+        "columnas-tendencia": TarjetaDePanel(tipo: "columnas-tendencia", titulo: "Ingresos y gastos", clase: "columnas", periodo: "6 meses", puedeChica: false),
+        "dona-mezcla": TarjetaDePanel(tipo: "dona-mezcla", titulo: "Mezcla de gastos", clase: "dona", periodo: "", puedeChica: false),
+        "serie-tiempo": TarjetaDePanel(tipo: "serie-tiempo", titulo: "Evolución en el tiempo", clase: "serie", periodo: "", puedeChica: false),
+        "lista-recientes": TarjetaDePanel(tipo: "lista-recientes", titulo: "Últimos movimientos", clase: "lista", periodo: "", puedeChica: false),
+        "lista-recordatorios": TarjetaDePanel(tipo: "lista-recordatorios", titulo: "Recordatorios de pago", clase: "lista", periodo: "", puedeChica: false),
+        "lista-metas": TarjetaDePanel(tipo: "lista-metas", titulo: "Avance de metas", clase: "lista", periodo: "", puedeChica: false),
+        "kpi-ahorro": TarjetaDePanel(tipo: "kpi-ahorro", titulo: "Ahorro del mes", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-diario": TarjetaDePanel(tipo: "kpi-diario", titulo: "Gasto por día", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-vs-mes": TarjetaDePanel(tipo: "kpi-vs-mes", titulo: "Frente al mes pasado", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-presupuesto": TarjetaDePanel(tipo: "kpi-presupuesto", titulo: "Presupuesto usado", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-cuotas": TarjetaDePanel(tipo: "kpi-cuotas", titulo: "Cuotas fijas", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-racha": TarjetaDePanel(tipo: "kpi-racha", titulo: "Racha anotando", clase: "cifra", periodo: "", puedeChica: true),
+        "barras-presupuesto": TarjetaDePanel(tipo: "barras-presupuesto", titulo: "Presupuesto por categoría", clase: "barras", periodo: "", puedeChica: false),
+        "barras-medios": TarjetaDePanel(tipo: "barras-medios", titulo: "Gastos por medio de pago", clase: "barras", periodo: "", puedeChica: false),
+        "lista-top": TarjetaDePanel(tipo: "lista-top", titulo: "Mayores gastos del mes", clase: "lista", periodo: "", puedeChica: false),
+        "lista-cuentas": TarjetaDePanel(tipo: "lista-cuentas", titulo: "Saldo por cuenta", clase: "lista", periodo: "", puedeChica: false),
+        "lista-tarjetas": TarjetaDePanel(tipo: "lista-tarjetas", titulo: "Cupo de las tarjetas", clase: "lista", periodo: "", puedeChica: false),
+        "kpi-queda-dia": TarjetaDePanel(tipo: "kpi-queda-dia", titulo: "Te queda por día", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-cierre": TarjetaDePanel(tipo: "kpi-cierre", titulo: "A este ritmo cierras en", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-proximo": TarjetaDePanel(tipo: "kpi-proximo", titulo: "Próximo pago", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-sin-gastar": TarjetaDePanel(tipo: "kpi-sin-gastar", titulo: "Días sin gastar", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-comprometido": TarjetaDePanel(tipo: "kpi-comprometido", titulo: "Fijo frente a variable", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-ahorro-ano": TarjetaDePanel(tipo: "kpi-ahorro-ano", titulo: "Ahorrado este año", clase: "cifra", periodo: "", puedeChica: true),
+        "kpi-ano-pasado": TarjetaDePanel(tipo: "kpi-ano-pasado", titulo: "Frente al año pasado", clase: "cifra", periodo: "", puedeChica: true),
+        "lista-suscripciones": TarjetaDePanel(tipo: "lista-suscripciones", titulo: "Lo que se repite cada mes", clase: "lista", periodo: "", puedeChica: false)
+    ]
+
+    /// El panel de fábrica: lo que se ve recién instalada la app.
+    struct EntradaDePanel { var id: String; var tipo: String; var ancho: Int }
+    static let panelDeFabrica: [EntradaDePanel] = [
+        EntradaDePanel(id: "w1", tipo: "kpi-ingresos", ancho: 1),
+        EntradaDePanel(id: "w2", tipo: "kpi-gastos", ancho: 1),
+        EntradaDePanel(id: "w3", tipo: "kpi-deuda", ancho: 1),
+        EntradaDePanel(id: "w4", tipo: "kpi-patrimonio", ancho: 1),
+        EntradaDePanel(id: "w0", tipo: "serie-tiempo", ancho: 4),
+        EntradaDePanel(id: "w6", tipo: "columnas-tendencia", ancho: 2),
+        EntradaDePanel(id: "w5", tipo: "barras-categorias", ancho: 2),
+        EntradaDePanel(id: "w7", tipo: "lista-recientes", ancho: 2),
+        EntradaDePanel(id: "w8", tipo: "lista-recordatorios", ancho: 2),
+        EntradaDePanel(id: "w9", tipo: "texto-consejo", ancho: 2),
+        EntradaDePanel(id: "w10", tipo: "dona-mezcla", ancho: 2),
+        EntradaDePanel(id: "w11", tipo: "lista-suscripciones", ancho: 2)
+    ]
 }
