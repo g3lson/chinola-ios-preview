@@ -1147,7 +1147,11 @@ struct CNEntradaPanel: Decodable, Identifiable {
         id = (try? c.decodeIfPresent(String.self, forKey: .id)) ?? ""
         tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? ""
         ancho = (try? c.decodeIfPresent(Int.self, forKey: .ancho)) ?? 2
-        if let cfg = try? c.decodeIfPresent(Cfg.self, forKey: .cfg), let g = cfg {
+        // UN SOLO `let`. `try?` sobre algo que ya es opcional NO da dos capas:
+        // Swift las aplana, así que el segundo `let` no compila —«initializer
+        // for conditional binding must have Optional type»—. Aquí no hay
+        // Xcode: esto solo se ve en el banco, y cuesta una vuelta entera.
+        if let g = try? c.decodeIfPresent(Cfg.self, forKey: .cfg) {
             grafico = g.grafico; rango = g.rango; series = g.series; vista = g.vista
         }
     }
