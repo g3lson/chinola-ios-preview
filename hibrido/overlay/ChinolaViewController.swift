@@ -960,16 +960,17 @@ class ChinolaViewController: CAPBridgeViewController {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                     s.bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretaNuevaJSON && window.__chinolaLibretaNuevaJSON()) || ''") { res, _ in
                         if let json = res as? String, json.count > 2 { CNDatos.shared.cargarLibretaNueva(json: json) }
-                        s.presentar(AnyView(CNFormLibreta(datos: s.datos, onClose: {
+                        s.presentar(AnyView(CNFormLibreta(datos: s.datos, onClose: { s.cerrar() })),
+                                    alCerrar: { [weak s] in
                             // Al cerrar (guardado o no) la web suelta la edición y
                             // la pantalla de la libreta se repinta con lo nuevo.
+                            guard let s = s else { return }
                             s.eval("window.__chinolaEditarLibreta && window.__chinolaEditarLibreta('')")
-                            s.cerrar()
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                 if let sid = CNDatos.shared.seccion?.id { s.traerSeccion(sid) }
                                 s.traerDatos(intentos: 2)
                             }
-                        })))
+                        })
                     }
                 }
                 return
@@ -1605,17 +1606,40 @@ class ChinolaViewController: CAPBridgeViewController {
     /// Se reintenta: la web solo calcula las tarjetas del panel estando EN el
     /// resumen, y al cambiar de pestaña el repintado tarda un instante. Leerlo
     /// antes devolvía un panel vacío y la pantalla salía en blanco.
+    /**
+     * «NO ESTOY EN ESA PESTAÑA» SE CONTESTA DICIÉNDOSELO, NO PREGUNTANDO OTRA VEZ.
+     *
+     * La web solo calcula las tarjetas de la pestaña EN LA QUE ESTÁ. Cuando
+     * contestaba a medias, esto volvía a hacer la MISMA pregunta hasta seis
+     * veces y se rendía en silencio: si la web se había quedado en otra
+     * pestaña, las seis respuestas eran idénticas.
+     *
+     * Y a medias no es vacío, que es lo que lo hace difícil de ver: el Resumen
+     * se queda con la cabecera y sin una sola tarjeta, y Cuentas con la
+     * tarjeta del patrimonio y sin una sola cuenta. Parece una libreta vacía,
+     * y lo que hay es una pregunta hecha en el sitio equivocado.
+     */
+    private func empujarALaWeb(_ id: String) {
+        // SOLO la pestaña que se está mirando. Cuentas y Plan se piden desde
+        // media app a la vez, y empujar a la web a una pestaña que no se ve
+        // sería robarle la vista a la que sí: el mismo fallo, del revés.
+        guard menuEstado.activa == id else { return }
+        eval("window.__chinolaMenu && window.__chinolaMenu('\(id)')")
+    }
+
     private func traerResumen(intentos: Int = 1) {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaResumenJSON && window.__chinolaResumenJSON()) || ''") { [weak self] res, _ in
             guard let s = self else { return }
             guard let json = res as? String, json.count > 2 else {
                 if intentos > 1 {
+                    s.empujarALaWeb("resumen")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { s.traerResumen(intentos: intentos - 1) }
                 }
                 return
             }
             CNDatos.shared.cargarResumen(json: json)
             if intentos > 1, CNDatos.shared.resumen?.listo != true {
+                s.empujarALaWeb("resumen")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { s.traerResumen(intentos: intentos - 1) }
             }
         }
@@ -1955,10 +1979,20 @@ class ChinolaViewController: CAPBridgeViewController {
     }
 
     /// La pantalla de Cuentas, armada por la web.
-    private func traerCuentas() {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaCuentasJSON && window.__chinolaCuentasJSON()) || ''") { res, _ in
-            guard let json = res as? String, json.count > 2 else { return }
-            CNDatos.shared.cargarCuentas(json: json)
+    /// Cuentas no reintentaba NADA: una sola pregunta, y si la web estaba en
+    /// otra pestaña la pantalla se quedaba con la tarjeta del patrimonio y sin
+    /// una sola cuenta debajo, para siempre.
+    private func traerCuentas(intentos: Int = 4) {
+        bridge?.webView?.evaluateJavaScript("(window.__chinolaCuentasJSON && window.__chinolaCuentasJSON()) || ''") { [weak self] res, _ in
+            guard let s = self else { return }
+            if let json = res as? String, json.count > 2 { CNDatos.shared.cargarCuentas(json: json) }
+            // Y solo se insiste si Cuentas es lo que se está mirando: desde
+            // otra pestaña la respuesta a medias es la correcta y no hay nada
+            // que arreglar.
+            if intentos > 1, s.menuEstado.activa == "cuentas", CNDatos.shared.cuentas?.listo != true {
+                s.empujarALaWeb("cuentas")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { s.traerCuentas(intentos: intentos - 1) }
+            }
         }
     }
 
@@ -1968,6 +2002,7 @@ class ChinolaViewController: CAPBridgeViewController {
             guard let s = self else { return }
             if let json = res as? String, json.count > 2 { CNDatos.shared.cargarPlan(json: json) }
             if intentos > 1, CNDatos.shared.plan?.listo != true {
+                s.empujarALaWeb("plan")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { s.traerPlan(intentos: intentos - 1) }
             }
         }
@@ -2176,11 +2211,12 @@ class ChinolaViewController: CAPBridgeViewController {
                 s.bridge?.webView?.evaluateJavaScript("(window.__chinolaCatJSON && window.__chinolaCatJSON()) || ''") { rc, _ in
                     if let j = rc as? String, j.count > 2 {
                         CNDatos.shared.cargarCategoria(json: j)
-                        s.presentar(AnyView(CNFormCategoria(datos: s.datos, onClose: {
+                        s.presentar(AnyView(CNFormCategoria(datos: s.datos, onClose: { s.cerrar() })),
+                                    alCerrar: { [weak s] in
+                            guard let s = s else { return }
                             s.eval("window.__chinolaCat && window.__chinolaCat('cerrar','')")
-                            s.cerrar()
                             s.traerPlan(intentos: 4); s.traerDatos(intentos: 3)
-                        })))
+                        })
                         return
                     }
             s.bridge?.webView?.evaluateJavaScript("(window.__chinolaHojaJSON && window.__chinolaHojaJSON()) || ''") { res, _ in
@@ -2601,11 +2637,13 @@ class ChinolaViewController: CAPBridgeViewController {
             self?.eval("window.__chinolaCharlaLimpiar && window.__chinolaCharlaLimpiar()")
             self?.traerCharla()
         }
-        presentar(AnyView(CNCharlaVista(datos: datos, onClose: { [weak self] in
+        presentar(AnyView(CNCharlaVista(datos: datos, onClose: { [weak self] in self?.cerrar() })),
+                  alCerrar: { [weak self] in
+            // El reloj de la charla late cada poco mientras está abierta.
+            // Arrastrándola para cerrarla se quedaba latiendo para siempre.
             self?.charlaReloj?.invalidate(); self?.charlaReloj = nil
-            self?.cerrar()
             self?.traerDatos(intentos: 2); self?.traerResumen(intentos: 2)
-        })))
+        })
     }
     private func traerCharla() {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaCharlaJSON && window.__chinolaCharlaJSON()) || ''") { res, _ in
@@ -3359,9 +3397,36 @@ class ChinolaViewController: CAPBridgeViewController {
 
     // MARK: hojas y detalles nativos (presentados encima)
     private weak var hojaVC: UIViewController?
-    private func presentar(_ vista: AnyView) {
+    /**
+     * LO QUE HAY QUE DESHACER CUANDO LA HOJA SE CIERRE, VENGA DE DONDE VENGA.
+     *
+     * Una hoja del sistema se cierra de DOS maneras: con su botón, que llama a
+     * `onClose`, y ARRASTRÁNDOLA HACIA ABAJO con el dedo, que no llama a nada.
+     * Todo lo que había que deshacer al cerrar vivía dentro del `onClose`, así
+     * que arrastrando no se deshacía nada.
+     *
+     * Con la categoría eso dejaba a la web creyendo que su modal seguía
+     * abierto PARA SIEMPRE. Y como lo nativo, antes de cada acción, le
+     * pregunta a la web «¿qué has abierto?», la respuesta era siempre la
+     * misma: tocabas tu nombre para cambiar de plan y se abría «Nueva
+     * categoría». Lo mismo con la libreta en edición, y con el reloj de la
+     * charla, que se quedaba latiendo solo.
+     *
+     * Aquí se guarda, y se ejecuta una vez, la cierre quien la cierre.
+     */
+    private var alCerrarHoja: (() -> Void)?
+
+    /// Corre lo pendiente del cierre, UNA sola vez.
+    private func hojaSeCerro() {
+        guard let hacer = alCerrarHoja else { return }
+        alCerrarHoja = nil
+        hacer()
+    }
+
+    private func presentar(_ vista: AnyView, alCerrar: (() -> Void)? = nil) {
         let mostrar = { [weak self] in
             guard let self = self else { return }
+            self.alCerrarHoja = alCerrar
             let host = UIHostingController(rootView: vista)
             // Hoja del sistema: tirador, esquinas, atenuado y arrastre elástico
             // los pone iOS, como en cualquier app de Apple.
@@ -3379,12 +3444,16 @@ class ChinolaViewController: CAPBridgeViewController {
         // Si ya hay algo encima (p.ej. el detalle al tocar «abonar»), se cierra
         // primero y se abre la nueva cuando termine.
         if let actual = presentedViewController {
+            // Y la que se va tampoco se va sin despedirse: cerrarla desde el
+            // código no avisa al delegado, así que lo suyo se hace aquí.
+            if actual === hojaVC { hojaSeCerro() }
             actual.dismiss(animated: true, completion: mostrar)
         } else {
             mostrar()
         }
     }
     private func cerrar() {
+        hojaSeCerro()
         hojaVC?.dismiss(animated: true) { [weak self] in self?.traerDatos(intentos: 3) }
     }
 
@@ -3572,6 +3641,10 @@ extension ChinolaViewController: UIAdaptivePresentationControllerDelegate {
             CNDatos.shared.hojaWeb = nil
             traerDatos(intentos: 3); traerResumen(intentos: 4); traerAjustes()
         } else if p.presentedViewController === hojaVC {
+            // ARRASTRADA CON EL DEDO. Lo mismo que si se hubiera tocado su
+            // botón de cerrar: si no, la web se queda creyendo que lo suyo
+            // sigue abierto y se lo cuenta a la siguiente acción.
+            hojaSeCerro()
             hojaVC = nil
             traerDatos(intentos: 3)
         }
