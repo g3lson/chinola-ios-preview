@@ -1877,7 +1877,10 @@ class ChinolaViewController: CAPBridgeViewController {
         guard id != 0 else { return }
         let l = CNDatos.shared.libreta
         if que == "editar" {
-            let cerrar = { [weak self] in self?.cerrar() }
+            // CON EL TIPO ESCRITO. `self?.cerrar()` devuelve `()?`, así que sin
+            // anotarlo el cierre es un `() -> ()?` y no encaja donde se pide un
+            // `() -> Void`. Aquí no hay Xcode: esto solo se ve en el banco.
+            let cerrar: () -> Void = { [weak self] in self?.cerrar() }
             switch tipo {
             case "cuenta":
                 guard let c = l.cuentas.first(where: { $0.id == id }) else { return }
