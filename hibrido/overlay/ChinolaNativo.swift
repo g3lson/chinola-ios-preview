@@ -3743,7 +3743,33 @@ struct CNDetalle {
     /// El menú repetía los dos botones que ya se ven debajo, así que no servía
     /// para nada, y editar una tarjeta o un préstamo no estaba en ningún sitio
     /// de la app.
-    struct Accion: Identifiable { var id: Int; var label = ""; var peligro = false }
+    struct Accion: Identifiable {
+        var id: Int; var label = ""; var peligro = false
+        /// QUÉ ES, no en qué posición está.
+        ///
+        /// Vacío = es de la web y se dispara por su número. Con algo
+        /// —«editar», «borrar»— lo hace el teléfono. Va por nombre y no por
+        /// posición porque la lista cambia: una cuenta que ya es la de siempre
+        /// no trae «Predeterminada», así que el número de «Editar» no es el
+        /// mismo en todas las filas.
+        var que = ""
+    }
+    /// De qué es este detalle —«cuenta», «tarjeta», «prestamo»— y de cuál. Lo
+    /// sabe el controlador; se guarda aquí para que las acciones nativas no
+    /// tengan que volver a preguntárselo.
+    var deQue = ""; var deCual = 0
+    /**
+     * LAS DE LA WEB, GUARDADAS POR SI ACASO.
+     *
+     * El teléfono escribe sobre la copia que se trajo. Si mientras tanto la
+     * web tiene algo que esa copia no —Chino anotó por el servidor, otro
+     * equipo sincronizó—, rechaza la adopción y escribe ella. En ese caso el
+     * borrado tiene que hacerlo la web, y para eso hace falta su acción.
+     *
+     * Sin esto, un borrado rechazado no pasaba NADA: ni error ni aviso, y la
+     * cuenta seguía ahí.
+     */
+    var accionesWeb: [Accion] = []
     struct Hero {
         var iconoPath = ""; var iconoColor = ""; var iconoBg = ""
         var rotulo = ""; var valor = ""; var color = ""

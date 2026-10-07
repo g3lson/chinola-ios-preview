@@ -633,6 +633,13 @@ class ChinolaViewController: CAPBridgeViewController {
         }
         datos.onDetalleAccion = { [weak self] tipo, i in
             guard let s = self else { return }
+            // Las del ⋯ que lleva el teléfono: editar abre su formulario y
+            // eliminar quita de la libreta. Ninguna pasa ya por la web.
+            if tipo == "menu", let a = CNDatos.shared.detalle?.acciones.first(where: { $0.id == i }),
+               !a.que.isEmpty {
+                s.accionDelDetalle(a.que)
+                return
+            }
             // El chip se marca AQUÍ, sin esperar a la web: tocar un periodo y
             // que no pase nada durante medio segundo es lo que hace que la
             // pantalla se sienta lenta.
@@ -1854,6 +1861,61 @@ class ChinolaViewController: CAPBridgeViewController {
     // MARK: un detalle cualquiera, empujado encima
     private var detalleVC: UIViewController?
     private var detalleQue = ("", "")
+    /**
+     * EDITAR O ELIMINAR LO QUE SE ESTÁ MIRANDO.
+     *
+     * `editar` abre el formulario nativo con lo que ya hay dentro —lo que no
+     * se podía hacer hasta que las formas aprendieron a editar—, y `borrar`
+     * lo quita de su lista y escribe la libreta por el camino de siempre.
+     *
+     * Eliminar NO pregunta, igual que antes: la acción va en rojo y es lo que
+     * hacía la web. Cambiarlo sería cambiar comportamiento, no quitar web.
+     */
+    private func accionDelDetalle(_ que: String) {
+        guard let d = CNDatos.shared.detalle else { return }
+        let tipo = d.deQue, id = d.deCual
+        guard id != 0 else { return }
+        let l = CNDatos.shared.libreta
+        if que == "editar" {
+            let cerrar = { [weak self] in self?.cerrar() }
+            switch tipo {
+            case "cuenta":
+                guard let c = l.cuentas.first(where: { $0.id == id }) else { return }
+                presentar(AnyView(CNFormCuenta(datos: datos, onClose: cerrar, editar: c)))
+            case "tarjeta":
+                guard let t = l.tarjetas.first(where: { $0.id == id }) else { return }
+                presentar(AnyView(CNFormTarjeta(datos: datos, onClose: cerrar, editar: t)))
+            default:
+                guard let p = l.prestamos.first(where: { $0.id == id }) else { return }
+                presentar(AnyView(CNFormPrestamo(datos: datos, onClose: cerrar, editar: p)))
+            }
+            return
+        }
+        guard que == "borrar" else { return }
+        var nueva = l
+        switch tipo {
+        case "cuenta": nueva.cuentas.removeAll { $0.id == id }
+        case "tarjeta": nueva.tarjetas.removeAll { $0.id == id }
+        default: nueva.prestamos.removeAll { $0.id == id }
+        }
+        // Y se cierra el detalle: quedarse mirando la ficha de algo que acaba
+        // de dejar de existir es lo que hace pensar que no se borró.
+        cerrarDetalle()
+        // Y si la web rechaza la adopción porque tiene algo más nuevo, que
+        // borre ella: se dispara SU acción, la que viene marcada como
+        // peligrosa. Por ahí y no por el rótulo —«Delete» no encaja con
+        // `/elimin|borrar/i`— ni por la posición, que cambia según la fila.
+        let suya = d.accionesWeb.first { $0.peligro }
+        adopta(nueva) { [weak self] in
+            guard let s = self, let a = suya else {
+                NSLog("CNBORRAR: la web no adoptó y no tiene su propia acción · no se borró")
+                return
+            }
+            s.eval("window.__chinolaDetalleAccion && window.__chinolaDetalleAccion('menu',\(a.id))")
+            s.refrescarPronto()
+        }
+    }
+
     fileprivate func mostrarDetalle(_ tipo: String, _ id: String) {
         detalleQue = (tipo, id)
         refrescarDetalle()
@@ -1983,6 +2045,21 @@ class ChinolaViewController: CAPBridgeViewController {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaDetalleJSON && window.__chinolaDetalleJSON(\(comillas(tipo)),\(comillas(id)))) || ''") { res, _ in
             guard let json = res as? String, json.count > 2 else { return }
             CNDatos.shared.cargarDetalle(json: json)
+            // EDITAR Y ELIMINAR, PUESTAS POR EL TELÉFONO.
+            //
+            // Venían de la web y se disparaban por su número. Ahora las dos
+            // las hace este lado: el formulario ya sabe editar y quitar de la
+            // libreta es quitar de una lista. Se marcan con `que` para no
+            // depender de la posición — la lista no siempre trae las mismas.
+            CNDatos.shared.detalle?.deQue = tipo
+            CNDatos.shared.detalle?.deCual = Int(id) ?? 0
+            if ["cuenta", "tarjeta", "prestamo"].contains(tipo), Int(id) != nil {
+                CNDatos.shared.detalle?.accionesWeb = CNDatos.shared.detalle?.acciones ?? []
+                CNDatos.shared.detalle?.acciones = [
+                    CNDetalle.Accion(id: -1, label: cnT("Editar"), peligro: false, que: "editar"),
+                    CNDetalle.Accion(id: -2, label: cnT("Eliminar"), peligro: true, que: "borrar")
+                ]
+            }
         }
     }
 
