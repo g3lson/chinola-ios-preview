@@ -2010,6 +2010,53 @@ final class CNDatos: ObservableObject {
     }
 
     /**
+     * LA CABECERA, ARMADA AQUÍ CUANDO NO LLEGA.
+     *
+     * Los colores salen de `CNCabecera`, que es la misma función de la web
+     * rama por rama; las piezas que lleva cada diseño están medidas en
+     * `test/cabecera-oro.json`. Las cifras ya las sabía calcular el teléfono.
+     *
+     * Solo se arma si falta: cuando la web contesta, manda ella, porque
+     * todavía trae cosas que aquí no se calculan —la tira de meses con sus
+     * nombres y el estado de plegado—.
+     */
+    func armaLaCabecera() {
+        var m = resumen ?? CNResumenModelo()
+        var c = m.cabecera
+        let p = CNCabecera.paleta(
+            diseno: CNC.fmt.cabecera, color: CNC.fmt.cabeceraColor,
+            integrada: CNC.fmt.cabeceraIntegrada,
+            tema: CNCabecera.Tema(
+                bg: CNC.hexScr, card: CNC.hexCard, suave: CNC.hexSoft,
+                borde: cnHexDe(CNC.line), tinta: cnHexDe(CNC.ink),
+                gris: cnHexDe(CNC.pmut), side: CNC.hexSide))
+        let f = CNCabecera.fondo(p.fondo)
+        c.diseno = CNC.fmt.cabecera
+        c.fondo = CNResumenModelo.Fondo(
+            tipo: f.tipo, color: f.color, angulo: f.angulo,
+            paradas: f.paradas.map { CNResumenModelo.Parada(color: $0.color, pos: $0.pos) })
+        c.tinta = p.tinta; c.gris = p.gris
+        c.pastilla = p.pastilla; c.pastillaFuerte = p.pastillaFuerte
+        let piezas = CNCabecera.piezas(CNC.fmt.cabecera)
+        c.grande = piezas.grande
+        c.tarjeta = CNC.fmt.cabeceraTarjeta
+        if c.positivo.isEmpty { c.positivo = cnHexDe(CNC.pos) }
+        if c.negativo.isEmpty { c.negativo = cnHexDe(CNC.neg) }
+        // Las cifras del mes, que ya se sabían calcular.
+        let t = CNCalculo.totales(libreta, periodoCalculo)
+        if c.balanceRotulo.isEmpty { c.balanceRotulo = cnT("Balance del mes") }
+        if c.ingRotulo.isEmpty { c.ingRotulo = cnT("Ingresos") }
+        if c.gasRotulo.isEmpty { c.gasRotulo = cnT("Gastos") }
+        if piezas.conRotulo && c.rotulo.isEmpty { c.rotulo = cnT("te queda este mes") }
+        c.balanceFmt = cnDineroFirmado(t.bal)
+        c.ingFmt = cnDinero(t.ing); c.gasFmt = cnDinero(t.gas)
+        c.entraFmt = cnDinero(t.ing); c.saleFmt = cnDinero(t.gas)
+        c.nombre = c.nombre.isEmpty ? libreta.nombre : c.nombre
+        m.cabecera = c
+        resumen = m
+    }
+
+    /**
      * EL PANEL ENTERO, RECALCULADO AQUÍ EN CUANTO CAMBIAN LOS DATOS.
      *
      * La cabecera ya lo hacía; las tarjetas no, y se quedaban con lo que la web
@@ -2043,6 +2090,11 @@ final class CNDatos: ObservableObject {
             m.widgets = CNResumenPanel.widgets(
                 libreta, ocultas: CNResumenPanel.ocultas(libreta: libreta.nombre))
             resumen = m
+        }
+        // Y LA CABECERA, si tampoco llegó. Es lo que da el color a todo lo de
+        // arriba: sin ella el bloque sale sin fondo y la cifra sin tinta.
+        if resumen?.cabecera.fondo.paradas.isEmpty == true, resumen?.cabecera.fondo.color.isEmpty == true {
+            armaLaCabecera()
         }
         let t = CNCalculo.totales(libreta, periodoCalculo)
         resumen?.cabecera.balanceFmt = cnDineroFirmado(t.bal)

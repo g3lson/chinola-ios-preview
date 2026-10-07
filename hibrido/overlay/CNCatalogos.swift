@@ -349,21 +349,21 @@ enum CNCatalogos {
 
     /// Y sus colores. Todos oscuros o de tono medio a propósito: la
     /// tinta de la cabecera es clara, así que sobre estos se lee.
-    static let coloresDeCabecera: [(id: String, nombre: String, css: String)] = [
-        (id: "chinola", nombre: "Chinola", css: "linear-gradient(150deg, #f7c948, #ec9a2e 55%, #3f9d54)"),
-        (id: "mango", nombre: "Mango", css: "linear-gradient(150deg, #f9c04b, #ef8a2c)"),
-        (id: "durazno", nombre: "Durazno", css: "linear-gradient(150deg, #f8b370, #f4845f)"),
-        (id: "lima", nombre: "Lima", css: "linear-gradient(150deg, #cfe95f, #85bb3e)"),
-        (id: "pino", nombre: "Pino", css: "linear-gradient(150deg, #33a565, #14683b)"),
-        (id: "bosque", nombre: "Bosque", css: "linear-gradient(150deg, #2c8f5a, #15412c)"),
-        (id: "oceano", nombre: "Oceano", css: "linear-gradient(150deg, #3f8ad0, #1f4f89)"),
-        (id: "medianoche", nombre: "Medianoche", css: "linear-gradient(150deg, #3d4f96, #1f2550)"),
-        (id: "ciruela", nombre: "Ciruela", css: "linear-gradient(150deg, #834fa6, #47256e)"),
-        (id: "uva", nombre: "Uva", css: "linear-gradient(150deg, #9a5cc7, #5c3096)"),
-        (id: "coral", nombre: "Coral", css: "linear-gradient(150deg, #ea6a52, #c0343c)"),
-        (id: "cacao", nombre: "Cacao", css: "linear-gradient(150deg, #7d4b30, #472a1b)"),
-        (id: "carbon", nombre: "Carbon", css: "linear-gradient(150deg, #2a2e2b, #141714)"),
-        (id: "noche", nombre: "Noche", css: "linear-gradient(150deg, #27313b, #12181e)")
+    static let coloresDeCabecera: [(id: String, nombre: String, css: String, tinta: String, sobre: String)] = [
+        (id: "chinola", nombre: "Chinola", css: "linear-gradient(150deg, #f7c948, #ec9a2e 55%, #3f9d54)", tinta: "#2b2010", sobre: "oscuro"),
+        (id: "mango", nombre: "Mango", css: "linear-gradient(150deg, #f9c04b, #ef8a2c)", tinta: "#33230b", sobre: "oscuro"),
+        (id: "durazno", nombre: "Durazno", css: "linear-gradient(150deg, #f8b370, #f4845f)", tinta: "#3a2214", sobre: "oscuro"),
+        (id: "lima", nombre: "Lima", css: "linear-gradient(150deg, #cfe95f, #85bb3e)", tinta: "#243409", sobre: "oscuro"),
+        (id: "pino", nombre: "Pino", css: "linear-gradient(150deg, #33a565, #14683b)", tinta: "#f1fbf5", sobre: "claro"),
+        (id: "bosque", nombre: "Bosque", css: "linear-gradient(150deg, #2c8f5a, #15412c)", tinta: "#e9f8ef", sobre: "claro"),
+        (id: "oceano", nombre: "Oceano", css: "linear-gradient(150deg, #3f8ad0, #1f4f89)", tinta: "#ecf5fd", sobre: "claro"),
+        (id: "medianoche", nombre: "Medianoche", css: "linear-gradient(150deg, #3d4f96, #1f2550)", tinta: "#eef0fc", sobre: "claro"),
+        (id: "ciruela", nombre: "Ciruela", css: "linear-gradient(150deg, #834fa6, #47256e)", tinta: "#f6effb", sobre: "claro"),
+        (id: "uva", nombre: "Uva", css: "linear-gradient(150deg, #9a5cc7, #5c3096)", tinta: "#f6effc", sobre: "claro"),
+        (id: "coral", nombre: "Coral", css: "linear-gradient(150deg, #ea6a52, #c0343c)", tinta: "#fdece7", sobre: "claro"),
+        (id: "cacao", nombre: "Cacao", css: "linear-gradient(150deg, #7d4b30, #472a1b)", tinta: "#f6ece2", sobre: "claro"),
+        (id: "carbon", nombre: "Carbon", css: "linear-gradient(150deg, #2a2e2b, #141714)", tinta: "#eef0e8", sobre: "claro"),
+        (id: "noche", nombre: "Noche", css: "linear-gradient(150deg, #27313b, #12181e)", tinta: "#eef2f6", sobre: "claro")
     ]
 
     /// Los colores de las cifras: lo que entra, lo que sale y lo que
