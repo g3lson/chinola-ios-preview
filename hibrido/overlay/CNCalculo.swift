@@ -402,8 +402,8 @@ enum CNCalculo {
 
     static func retrato(_ l: CNLibreta, meses: Int = 12, hoy: Date = Date()) -> Retrato {
         var r = Retrato()
-        r.paraGastar = l.cuentas.filter { clasesGasto.contains($0.clase) }.reduce(0) { $0 + $1.saldo }
-        r.ahorro = l.cuentas.filter { !clasesGasto.contains($0.clase) }.reduce(0) { $0 + $1.saldo }
+        r.paraGastar = l.cuentas.filter { clasesGasto.contains($0.claseParaAgrupar) }.reduce(0) { $0 + $1.saldo }
+        r.ahorro = l.cuentas.filter { !clasesGasto.contains($0.claseParaAgrupar) }.reduce(0) { $0 + $1.saldo }
         r.porCobrar = porCobrarPrestamos(l)
         r.tienes = saldoCuentas(l) + r.porCobrar
         r.prestamos = deudaPrestamos(l)

@@ -927,7 +927,24 @@ func cnClaro(_ c: Color) -> Bool {
 }
 
 // ── Modelos (tolerantes: campos faltantes toman un valor por defecto) ───────
-struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var color: String = "#137d41"; var clase: String = "banco"; var icono: String = ""
+struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String = ""; var banco: String = ""; var saldo: Double = 0; var color: String = "#137d41"; var clase: String = ""; var icono: String = ""
+    /**
+     * LA CLASE, CON SU RELLENO APARTE.
+     *
+     * `clase` guarda lo que de verdad viene, que puede ser nada. El «banco»
+     * de relleno es `claseParaAgrupar`, y se usa donde hace falta repartir las
+     * cuentas en grupos: una cuenta sin clase se gasta, como la del banco.
+     *
+     * Estaban fundidos —`clase` salía «banco» cuando no venía ninguna— y así
+     * no hay manera de saber si alguien la eligió. El icono sí lo necesita:
+     * sin clase guardada se adivina por el nombre, y «Ahorros» lleva hucha.
+     * Con el relleno por delante, las tres cuentas del banco de pruebas
+     * salieron con el icono del banco tres fotos seguidas.
+     *
+     * Es el fallo de siempre aquí: un valor por defecto que se traga lo que no
+     * encaja. No falla; miente.
+     */
+    var claseParaAgrupar: String { clase.isEmpty ? "banco" : clase }
     /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no
     /// regala el de por defecto.
     init() {}
@@ -937,7 +954,7 @@ struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String =
         banco = (try? c.decodeIfPresent(String.self, forKey: .banco)) ?? ""
         saldo = (try? c.decodeIfPresent(Double.self, forKey: .saldo)) ?? 0
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#137d41"
-        clase = (try? c.decodeIfPresent(String.self, forKey: .clase)) ?? "banco"
+        clase = (try? c.decodeIfPresent(String.self, forKey: .clase)) ?? ""
         icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "" }
     enum K: String, CodingKey { case id, nombre, banco, saldo, color, clase, icono } }
 
@@ -4429,7 +4446,7 @@ struct CNCuentas: View {
     }
 
     private func claseDe(_ f: CNCuentasModelo.Fila) -> String {
-        cuentaDe(f)?.clase ?? "banco"
+        cuentaDe(f)?.claseParaAgrupar ?? "banco"
     }
 
     /// Lo que se puede gastar hoy.

@@ -68,6 +68,9 @@ enum CNCuentasFilas {
      * billete; lo demás es banco.
      */
     static func claseDeCuenta(_ c: CNCuenta) -> String {
+        // `clase` tal como viene, NO `claseParaAgrupar`: esa sale «banco» de
+        // relleno cuando la cuenta no trae ninguna, y entonces no hay nada que
+        // adivinar nunca. Tres fotos me costó.
         if !c.clase.isEmpty { return c.clase }
         let n = c.nombre.lowercased()
         func tiene(_ cuales: [String]) -> Bool { cuales.contains { n.contains($0) } }

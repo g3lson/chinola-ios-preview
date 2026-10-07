@@ -506,7 +506,7 @@ enum CNOro {
         if let casos = raiz["crearCasos"] as? [String: Any] {
             func resumen(_ x: CNLibreta) -> [String: Any] {
                 ["cuentas": x.cuentas.map { ["id": $0.id, "nombre": $0.nombre, "saldo": $0.saldo,
-                                             "clase": $0.clase.isEmpty ? "banco" : $0.clase] },
+                                             "clase": $0.claseParaAgrupar] },
                  "tarjetas": x.tarjetas.map { ["id": $0.id, "nombre": $0.nombre, "saldo": $0.saldo,
                                                "limite": $0.limite, "corte": $0.corte, "pago": $0.pago] },
                  "prestamos": x.prestamos.map { ["id": $0.id, "nombre": $0.nombre, "total": $0.total,
