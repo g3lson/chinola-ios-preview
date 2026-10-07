@@ -189,4 +189,61 @@ enum CNCabecera {
         default: return Piezas()
         }
     }
+    /**
+     * LA TIRA DE MESES.
+     *
+     * Cuatro meses y «Rango»: dos atrás, el de ahora y el siguiente. El de
+     * ahora va con el nombre LARGO —«octubre»— y los otros tres en corto
+     * —«ago», «sept», «nov»—: así se ve de un vistazo en cuál estás sin
+     * tener que mirar cuál lleva el color.
+     *
+     * Y los que no están elegidos NO llevan pastilla propia: el carril que los
+     * envuelve ya los agrupa. Con una cada uno parecían cinco botones sueltos
+     * puestos encima de la cabecera, no un selector. Por eso su fondo es el
+     * del carril —la pastilla de la paleta— y no uno suyo.
+     *
+     * El punto final del mes abreviado se quita a mano: en español el
+     * formateador escribe «sept.» y en la tira, pegado al siguiente, parece
+     * una palabra cortada.
+     */
+    static func meses(mes: String, hayRango: Bool, paleta p: Paleta,
+                      acento: String, sobreAcento: String) -> [(label: String, puesto: Bool, bg: String, fg: String)] {
+        var fuera: [(label: String, puesto: Bool, bg: String, fg: String)] = []
+        for d in -2...1 {
+            let ym = CNCabecera.mesVecino(mes, d)
+            let viva = d == 0 && !hayRango
+            fuera.append((label: nombreDeMes(ym, largo: d == 0),
+                          puesto: viva,
+                          bg: viva ? acento : p.pastilla,
+                          fg: viva ? sobreAcento : p.tinta))
+        }
+        fuera.append((label: cnT("Rango"), puesto: hayRango,
+                      bg: hayRango ? acento : p.pastilla,
+                      fg: hayRango ? sobreAcento : p.tinta))
+        return fuera
+    }
+
+    /// «2026-10» más tres meses es «2027-01», no «2026-13».
+    static func mesVecino(_ mes: String, _ cuantos: Int) -> String {
+        let t = mes.split(separator: "-")
+        guard t.count >= 2, let y = Int(t[0]), let m = Int(t[1]) else { return mes }
+        let total = y * 12 + (m - 1) + cuantos
+        return String(format: "%04d-%02d", total / 12, total % 12 + 1)
+    }
+
+    /// El nombre del mes en el idioma de la app —no en el del teléfono, que
+    /// pueden no ser el mismo— y sin el punto del abreviado.
+    static func nombreDeMes(_ ym: String, largo: Bool) -> String {
+        let t = ym.split(separator: "-")
+        guard t.count >= 2, let y = Int(t[0]), let m = Int(t[1]) else { return ym }
+        var c = DateComponents(); c.year = y; c.month = m; c.day = 1
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = .current
+        guard let fecha = cal.date(from: c) else { return ym }
+        let f = DateFormatter()
+        f.calendar = cal
+        f.locale = Locale(identifier: CNTextos.idioma)
+        f.setLocalizedDateFormatFromTemplate(largo ? "MMMM" : "MMM")
+        return f.string(from: fecha).replacingOccurrences(of: ".", with: "")
+    }
+
 }

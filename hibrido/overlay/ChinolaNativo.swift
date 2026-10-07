@@ -2052,6 +2052,19 @@ final class CNDatos: ObservableObject {
         c.ingFmt = cnDinero(t.ing); c.gasFmt = cnDinero(t.gas)
         c.entraFmt = cnDinero(t.ing); c.saleFmt = cnDinero(t.gas)
         c.nombre = c.nombre.isEmpty ? libreta.nombre : c.nombre
+        // Y la tira de meses, si el diseño la lleva. El acento y su tinta
+        // salen del tema, que es de donde los saca la web.
+        if piezas.conMeses, c.meses.isEmpty {
+            c.meses = CNCabecera.meses(
+                mes: periodoCalculo.mes, hayRango: periodoCalculo.aMedida, paleta: p,
+                acento: cnHexDe(CNC.acc), sobreAcento: cnHexDe(CNC.sobreAcc)
+            ).enumerated().map { i, x in
+                CNResumenModelo.MesTira(indice: i, label: x.label, puesto: x.puesto,
+                                        bg: x.bg, fg: x.fg)
+            }
+        }
+        if c.mesLargo.isEmpty { c.mesLargo = CNCabecera.nombreDeMes(periodoCalculo.mes, largo: false) }
+        if c.mesCorto.isEmpty { c.mesCorto = c.mesLargo }
         m.cabecera = c
         resumen = m
     }
