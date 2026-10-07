@@ -1127,6 +1127,44 @@ struct CNMov: Decodable, Identifiable {
     var esGasto: Bool { tipo.hasPrefix("Gasto") }
     var esTransfer: Bool { tipo == "Transferencia" } }
 
+/**
+ * UNA TARJETA DEL PANEL, COMO LA GUARDA LA LIBRETA.
+ *
+ * `cfg` solo lo lleva la serie de tiempo —qué gráfico, cuántos meses, qué
+ * series— y la vista elegida de las tarjetas que tienen varias.
+ */
+struct CNEntradaPanel: Decodable, Identifiable {
+    var id: String = ""
+    var tipo: String = ""
+    var ancho: Int = 2
+    var grafico: String = ""
+    var rango: Int = 0
+    var series: [String] = []
+    var vista: String = ""
+    init() {}
+    init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: K.self)
+        id = (try? c.decodeIfPresent(String.self, forKey: .id)) ?? ""
+        tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? ""
+        ancho = (try? c.decodeIfPresent(Int.self, forKey: .ancho)) ?? 2
+        if let cfg = try? c.decodeIfPresent(Cfg.self, forKey: .cfg), let g = cfg {
+            grafico = g.grafico; rango = g.rango; series = g.series; vista = g.vista
+        }
+    }
+    struct Cfg: Decodable {
+        var grafico = ""; var rango = 0; var series: [String] = []; var vista = ""
+        init(from d: Decoder) throws {
+            let c = try d.container(keyedBy: K.self)
+            grafico = (try? c.decodeIfPresent(String.self, forKey: .grafico)) ?? ""
+            rango = (try? c.decodeIfPresent(Int.self, forKey: .rango)) ?? 0
+            series = ((try? c.decodeIfPresent([String].self, forKey: .series)) ?? []) ?? []
+            vista = (try? c.decodeIfPresent(String.self, forKey: .vista)) ?? ""
+        }
+        enum K: String, CodingKey { case grafico, rango, series, vista }
+    }
+    enum K: String, CodingKey { case id, tipo, ancho, cfg }
+}
+
 struct CNLibreta: Decodable {
     /**
      * ¿Esta libreta no ha llegado todavía?
@@ -1175,6 +1213,8 @@ struct CNLibreta: Decodable {
     /// nadie», y entonces se usa la primera cuenta —que es lo que hacía siempre
     /// el teléfono, marcaras la que marcaras—.
     var medioPorDefecto: String = ""
+    /// Las tarjetas del Resumen, en su orden. Vacío = el de fábrica.
+    var panel: [CNEntradaPanel] = []
     init() {}
     /**
      * ¿HUBO ALGO QUE NO SE PUDO LEER?
@@ -1224,9 +1264,16 @@ struct CNLibreta: Decodable {
             if c.contains(.historia) { malas.append("historia") }
         }
         medioPorDefecto = (try? c.decodeIfPresent(String.self, forKey: .medioPorDefecto)) ?? ""
+        // EL PANEL: qué tarjetas tiene el Resumen y en qué orden.
+        //
+        // Venía en la libreta desde siempre y aquí no se leía: el esqueleto
+        // del Resumen se le pedía a la web entera. Una libreta puede no
+        // traerlo —las de antes, las del servidor, las compartidas—, y
+        // entonces manda el de fábrica, que es lo que hace la web.
+        panel = lista([CNEntradaPanel].self, .panel)
         dudoso = !malas.isEmpty
         if dudoso { NSLog("CNLIBRETA: no se pudo leer %@ — el teléfono no escribirá", malas.joined(separator: ", ")) } }
-    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx, presupuesto, historia, medioPorDefecto }
+    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx, presupuesto, historia, medioPorDefecto, panel }
 
     func categoria(_ nombre: String) -> CNCategoria? { categorias.first { $0.nombre == nombre } }
     func gastadoCategoria(_ nombre: String) -> Double {
@@ -1978,10 +2025,21 @@ final class CNDatos: ObservableObject {
      * movimiento, y tocarlo sería arriesgar el aspecto para arreglar un número.
      */
     func refrescarCifras() {
-        guard resumen != nil else { return }
         // Sin libreta no hay nada que añadir: escribir ceros encima machacaría
         // lo que la web ya dijo bien. (Ver `CNLibreta.sinLlegar`.)
         guard !libreta.sinLlegar else { return }
+        // SIN ESQUELETO SE ARMA UNO.
+        //
+        // Esto empezaba con `guard resumen != nil`: si la web no había mandado
+        // el suyo —porque estaba parada en otra pestaña— se iba sin hacer
+        // nada, y el Resumen se quedaba con la cabecera y ni una tarjeta,
+        // teniendo los números calculados aquí mismo.
+        if resumen == nil || resumen?.widgets.isEmpty == true {
+            var m = resumen ?? CNResumenModelo()
+            m.widgets = CNResumenPanel.widgets(
+                libreta, ocultas: CNResumenPanel.ocultas(libreta: libreta.nombre))
+            resumen = m
+        }
         let t = CNCalculo.totales(libreta, periodoCalculo)
         resumen?.cabecera.balanceFmt = cnDineroFirmado(t.bal)
         resumen?.cabecera.ingFmt = cnDinero(t.ing)
@@ -2234,7 +2292,18 @@ final class CNDatos: ObservableObject {
         // Solo se guarda el completo: el que llega desde otra pestaña trae la
         // cabecera pero no las tarjetas, y guardarlo dejaría la próxima
         // apertura con medio resumen.
-        if m.listo { guarda("resumen", json) }
+        if m.listo {
+            guarda("resumen", json)
+            // Y SE APUNTA QUÉ TARJETAS ESTÁN ESCONDIDAS. Esa lista no vive en
+            // la libreta —vive en el aparato, para que una tarjeta pueda estar
+            // oculta aquí y visible en la web—, así que la única manera de
+            // saberla sin preguntar es acordarse de la última vez que la web
+            // la dijo. Solo del modelo COMPLETO: el que viene a medias no
+            // trae tarjetas y las resucitaría todas.
+            CNResumenPanel.apunta(
+                ocultas: Set(m.widgets.filter { $0.oculta }.map { $0.wid }),
+                libreta: libreta.nombre)
+        }
         if m.listo || resumen == nil {
             resumen = m
             return
