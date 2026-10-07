@@ -566,6 +566,13 @@ struct CNMontoHoja: View {
 }
 
 // ── Nueva cuenta ────────────────────────────────────────────────────────────
+/// Un monto escrito como lo espera el campo: entero si lo es, y con dos
+/// decimales si no. La misma regla que usa el campo al fijarlo solo.
+func cnMontoTexto(_ n: Double) -> String {
+    let v = max(0, n)
+    return v == v.rounded() ? String(Int(v)) : String(format: "%.2f", v)
+}
+
 struct CNFormCuenta: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
@@ -578,6 +585,16 @@ struct CNFormCuenta: View {
     /// efectivo no se le pregunta dónde está: está en tu bolsillo.
     var rotuloDonde: String = "Banco (opcional)"
     var rotuloCuanto: String = "Saldo actual"
+    /**
+     * LA QUE SE ESTÁ EDITANDO, si se está editando alguna.
+     *
+     * Estos formularios solo sabían CREAR. Editar una cuenta, una tarjeta o un
+     * préstamo había que pedírselo a la web, y por eso lo que sale al deslizar
+     * una fila seguía siendo suyo entero. El que escribe ya sabía editar
+     * —`CNEscribir.hoja` coge el id de `extra`—; lo que faltaba era poder
+     * decírselo desde aquí.
+     */
+    var editar: CNCuenta? = nil
     @State private var nombre = ""
     @State private var banco = ""
     @State private var saldo = ""
@@ -586,7 +603,8 @@ struct CNFormCuenta: View {
     private var clases: [(String, String, String)] { [("banco", cnT("Banco"), "banco"), ("efectivo", cnT("Efectivo"), "billete"), ("billetera", cnT("Billetera"), "telefono"), ("inversion", cnT("Inversión"), "grafico"), ("ahorro", cnT("Ahorro"), "hucha")] }
 
     var body: some View {
-        CNHoja(titulo: cnT("Nueva cuenta"), guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+        CNHoja(titulo: editar == nil ? cnT("Nueva cuenta") : cnT("Editar cuenta"),
+               guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
             CNGrupoCampos(campos: [(cnT("Nombre (ej. Cuenta principal)"), $nombre, .default)]
                 + (rotuloDonde.isEmpty ? [] : [(cnT(rotuloDonde), $banco, UIKeyboardType.default)]))
@@ -602,6 +620,12 @@ struct CNFormCuenta: View {
         }
         // Lo que ya se dijo en el catálogo, puesto de partida.
         .onAppear {
+            if let c = editar {
+                nombre = c.nombre; banco = c.banco; saldo = cnMontoTexto(c.saldo)
+                clase = c.claseParaAgrupar
+                if !c.color.isEmpty { color = c.color }
+                return
+            }
             if !claseInicial.isEmpty, clases.contains(where: { $0.0 == claseInicial }) { clase = claseInicial }
             if nombre.isEmpty { nombre = cnT(nombreSugerido) }
         }
@@ -610,7 +634,8 @@ struct CNFormCuenta: View {
     private func guardar() {
         let nm = nombre.trimmingCharacters(in: .whitespaces); guard !nm.isEmpty else { return }
         let ic = clases.first { $0.0 == clase }?.2 ?? "banco"
-        datos.onGuardarHoja("cuenta", ["nombre": nm, "banco": banco, "saldo": cnMonto(saldo), "clase": clase, "icono": ic, "color": color], nil)
+        datos.onGuardarHoja("cuenta", ["nombre": nm, "banco": banco, "saldo": cnMonto(saldo), "clase": clase, "icono": ic, "color": color],
+                            editar.map { ["id": $0.id] })
         onClose()
     }
 }
@@ -620,6 +645,8 @@ struct CNFormTarjeta: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
     var nombreSugerido: String = ""
+    /// La que se está editando, si se está editando alguna. Ver `CNFormCuenta`.
+    var editar: CNTarjeta? = nil
     @State private var nombre = ""
     @State private var banco = ""
     @State private var limite = ""
@@ -629,7 +656,8 @@ struct CNFormTarjeta: View {
     @State private var color = CNPaleta.colores[3]
 
     var body: some View {
-        CNHoja(titulo: cnT("Nueva tarjeta"), guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+        CNHoja(titulo: editar == nil ? cnT("Nueva tarjeta") : cnT("Editar tarjeta"),
+               guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
             CNGrupoCampos(campos: [(cnT("Nombre (ej. Visa Popular)"), $nombre, .default),
                                    (cnT("Banco (opcional)"), $banco, .default)])
@@ -646,12 +674,22 @@ struct CNFormTarjeta: View {
             }
             CNColorFila(color: $color)
         }
-        .onAppear { if nombre.isEmpty { nombre = cnT(nombreSugerido) } }
+        .onAppear {
+            if let t = editar {
+                nombre = t.nombre; banco = t.banco
+                limite = cnMontoTexto(t.limite); saldo = cnMontoTexto(t.saldo)
+                corte = String(t.corte); pago = String(t.pago)
+                if !t.color.isEmpty { color = t.color }
+                return
+            }
+            if nombre.isEmpty { nombre = cnT(nombreSugerido) }
+        }
     }
 
     private func guardar() {
         let nm = nombre.trimmingCharacters(in: .whitespaces); guard !nm.isEmpty else { return }
-        datos.onGuardarHoja("tarjeta", ["nombre": nm, "banco": banco, "limite": cnMonto(limite), "saldo": cnMonto(saldo), "corte": Int(corte) ?? 20, "pago": Int(pago) ?? 5, "color": color], nil)
+        datos.onGuardarHoja("tarjeta", ["nombre": nm, "banco": banco, "limite": cnMonto(limite), "saldo": cnMonto(saldo), "corte": Int(corte) ?? 20, "pago": Int(pago) ?? 5, "color": color],
+                            editar.map { ["id": $0.id] })
         onClose()
     }
 }
@@ -662,6 +700,8 @@ struct CNFormPrestamo: View {
     var onClose: () -> Void
     var sentidoInicial: String = ""
     var nombreSugerido: String = ""
+    /// El que se está editando, si se está editando alguno. Ver `CNFormCuenta`.
+    var editar: CNPrestamo? = nil
     @State private var nombre = ""
     @State private var entidad = ""
     @State private var total = ""
@@ -670,7 +710,8 @@ struct CNFormPrestamo: View {
     @State private var color = CNPaleta.colores[2]
 
     var body: some View {
-        CNHoja(titulo: cnT("Nuevo préstamo"), guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+        CNHoja(titulo: editar == nil ? cnT("Nuevo préstamo") : cnT("Editar préstamo"),
+               guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
             // Igual que el tipo de cuenta: viniendo del catálogo ya dijiste si
             // lo debes tú o te lo deben, y volver a preguntarlo deja cambiarlo
@@ -690,6 +731,13 @@ struct CNFormPrestamo: View {
             CNColorFila(color: $color)
         }
         .onAppear {
+            if let p = editar {
+                nombre = p.nombre; entidad = p.entidad
+                total = cnMontoTexto(p.total); pagado = cnMontoTexto(p.pagado)
+                sentido = p.sentido.isEmpty ? "debo" : p.sentido
+                if !p.color.isEmpty { color = p.color }
+                return
+            }
             if !sentidoInicial.isEmpty { sentido = sentidoInicial }
             if nombre.isEmpty { nombre = cnT(nombreSugerido) }
         }
@@ -697,7 +745,8 @@ struct CNFormPrestamo: View {
 
     private func guardar() {
         let nm = nombre.trimmingCharacters(in: .whitespaces); guard !nm.isEmpty else { return }
-        datos.onGuardarHoja("prestamo", ["nombre": nm, "entidad": entidad, "total": cnMonto(total), "pagado": cnMonto(pagado), "sentido": sentido, "color": color], nil)
+        datos.onGuardarHoja("prestamo", ["nombre": nm, "entidad": entidad, "total": cnMonto(total), "pagado": cnMonto(pagado), "sentido": sentido, "color": color],
+                            editar.map { ["id": $0.id] })
         onClose()
     }
 }
