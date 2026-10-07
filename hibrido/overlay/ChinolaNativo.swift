@@ -271,6 +271,11 @@ struct CNFormato {
     var tarjetaCuentas = "clasica"
     /// A cuánto quiere llegar: lo usa la barra de meta de la tarjeta de Chino.
     var metaPatrimonio: Double = 0
+    /// De qué color va la tarjeta del patrimonio: «tema», «cabecera» o uno de
+    /// los catorce. Llegaba ya resuelto dentro del modelo de Cuentas, así que
+    /// el teléfono tenía el color pero no la elección, y sin ella no puede
+    /// armar esa tarjeta por su cuenta.
+    var colorPatrimonio = "tema"
     /// El presupuesto en aro en vez de en barra.
     var planAro = false
     /// Cómo se ven las pestañas del Plan: sistema, subrayado o pastillas.
@@ -289,6 +294,7 @@ struct CNFormato {
         if let t = o["letraId"] as? String, !t.isEmpty { f.letraId = t }
         if let t = o["cabecera"] as? String, !t.isEmpty { f.cabecera = t }
         if let t = o["cabeceraColor"] as? String { f.cabeceraColor = t }
+        if let t = o["colorPatrimonio"] as? String, !t.isEmpty { f.colorPatrimonio = t }
         f.cabeceraTarjeta = (o["cabeceraTarjeta"] as? Bool) ?? f.cabeceraTarjeta
         f.cabeceraIntegrada = (o["cabeceraIntegrada"] as? Bool) ?? f.cabeceraIntegrada
         if let t = o["temaId"] as? String, !t.isEmpty { f.temaId = t }
@@ -1930,6 +1936,23 @@ final class CNDatos: ObservableObject {
         m.patrimonio.valor = pat.valor
         m.patrimonio.activos = pat.activos
         m.patrimonio.pasivos = pat.pasivos
+        // Y su color, que hasta ahora llegaba resuelto de la web.
+        if m.patrimonio.fondo.isEmpty {
+            let c = CNCabecera.patrimonio(
+                eleccion: CNC.fmt.colorPatrimonio, diseno: CNC.fmt.cabecera,
+                colorCabecera: CNC.fmt.cabeceraColor, integrada: CNC.fmt.cabeceraIntegrada,
+                tema: CNCabecera.Tema(
+                    bg: CNC.hexScr, card: CNC.hexCard, suave: CNC.hexSoft,
+                    borde: cnHexDe(CNC.line), tinta: cnHexDe(CNC.ink),
+                    gris: cnHexDe(CNC.pmut), side: CNC.hexSide))
+            let f = CNCabecera.fondo(c.css)
+            m.patrimonio.fondo = f.tipo == "color" ? f.color : c.css
+            m.patrimonio.fondoObj = CNResumenModelo.Fondo(
+                tipo: f.tipo, color: f.color, angulo: f.angulo,
+                paradas: f.paradas.map { CNResumenModelo.Parada(color: $0.color, pos: $0.pos) })
+            m.patrimonio.tinta = c.tinta
+            m.patrimonio.gris = c.gris
+        }
         // Y los rótulos, por si el esqueleto nunca llegó: sin ellos los tres
         // grupos salen sin título.
         if m.rotuloCuentas.isEmpty { m.rotuloCuentas = cnT("Cuentas") }

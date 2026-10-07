@@ -246,4 +246,30 @@ enum CNCabecera {
         return f.string(from: fecha).replacingOccurrences(of: ".", with: "")
     }
 
+    /**
+     * EL COLOR DE LA TARJETA DEL PATRIMONIO.
+     *
+     * Tres caminos, y el orden importa:
+     *
+     *  1. «cabecera» → el MISMO que la cabecera, sea el que sea. Es la opción
+     *     que hace que las dos pantallas se vean de la misma familia.
+     *  2. uno de los catorce elegido a mano → su degradado y su tinta, con el
+     *     gris un poco más fuerte que en la cabecera (0,66 y 0,82 en vez de
+     *     0,72 y 0,86): aquí hay menos texto y más cifra, y el secundario
+     *     tiene que pesar menos.
+     *  3. nada elegido → el verde oscuro de la marca.
+     */
+    static func patrimonio(eleccion: String, diseno: String, colorCabecera: String,
+                           integrada: Bool, tema t: Tema) -> (css: String, tinta: String, gris: String) {
+        if eleccion == "cabecera" {
+            let p = paleta(diseno: diseno, color: colorCabecera, integrada: integrada, tema: t)
+            return (p.fondo, p.tinta, p.gris)
+        }
+        if let c = CNCatalogos.coloresDeCabecera.first(where: { $0.id == eleccion }) {
+            return (c.css, c.tinta,
+                    c.sobre == "oscuro" ? "rgb(0 0 0 / 0.66)" : "rgb(255 255 255 / 0.82)")
+        }
+        return (t.side, "oklch(0.96 0.03 95)", "oklch(0.86 0.04 110)")
+    }
+
 }
