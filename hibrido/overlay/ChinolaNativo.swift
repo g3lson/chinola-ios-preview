@@ -2128,6 +2128,13 @@ final class CNDatos: ObservableObject {
      * a dónde lleva siguen siendo de la web: eso no cambia porque anotes un
      * movimiento, y tocarlo sería arriesgar el aspecto para arreglar un número.
      */
+    /// Qué vista tiene puesta la tarjeta número `i`, según lo que diga el
+    /// panel de la libreta. Vacío = la de fábrica.
+    private func vistaDelWidget(_ i: Int) -> String {
+        guard let w = resumen?.widgets, i < w.count else { return "" }
+        return w[i].vistas.first { $0.puesta }?.id ?? ""
+    }
+
     func refrescarCifras() {
         // Sin libreta no hay nada que añadir: escribir ceros encima machacaría
         // lo que la web ya dijo bien. (Ver `CNLibreta.sinLlegar`.)
@@ -2188,8 +2195,41 @@ final class CNDatos: ObservableObject {
 
             // ── los tres gráficos ──────────────────────────────────────────
             case "barras-categorias":
-                resumen?.widgets[i].filas = CNTarjetasGrafico.porCategoria(libreta, periodoCalculo)
+                let filas = CNTarjetasGrafico.porCategoria(libreta, periodoCalculo)
                     .map { f in filaBarraDe(f) }
+                // Y CÓMO SE QUIERE VER. La misma cifra contada de otra manera:
+                // en barras (la de fábrica), en lista —cuando lo que quieres
+                // es el número, la barra solo quita sitio— o en dona.
+                switch vistaDelWidget(i) {
+                case "lista":
+                    resumen?.widgets[i].clase = "lista"
+                    resumen?.widgets[i].items = filas.map { f in
+                        CNResumenModelo.Item(
+                            tieneIcono: !f.iconoPath.isEmpty, iconoPath: f.iconoPath,
+                            color: f.color, fondo: f.iconoBg,
+                            sigla: String(f.label.prefix(1)).uppercased(), siglaColor: "#fff",
+                            titulo: f.label, detalle: String(Int(f.pct)) + "%",
+                            monto: f.valor, montoColor: f.color)
+                    }
+                case "dona":
+                    resumen?.widgets[i].clase = "dona"
+                    // Se reparte sobre el total de las categorías QUE SE
+                    // ENSEÑAN, no sobre el gasto del mes: si no, la dona no
+                    // cerraría nunca el círculo.
+                    let total = max(1, filas.reduce(0.0) { $0 + $1.pct })
+                    var acumulado = 0.0
+                    resumen?.widgets[i].tramos = filas.map { f in
+                        let desde = acumulado
+                        acumulado += f.pct / total * 100
+                        return CNResumenModelo.Tramo(color: f.color, desde: desde, hasta: acumulado)
+                    }
+                    resumen?.widgets[i].filasDona = filas.map {
+                        CNResumenModelo.FilaDona(label: $0.label, valor: $0.valor, color: $0.color)
+                    }
+                default:
+                    resumen?.widgets[i].clase = "barras"
+                    resumen?.widgets[i].filas = filas
+                }
 
             case "columnas-tendencia":
                 resumen?.widgets[i].columnas = CNTarjetasGrafico
@@ -2212,8 +2252,11 @@ final class CNDatos: ObservableObject {
 
             // ── las tres listas ────────────────────────────────────────────
             case "lista-recientes":
+                // Cinco o tres, según se haya pedido.
+                let cuantos = Int(vistaDelWidget(i)) ?? 5
                 resumen?.widgets[i].items = CNTarjetasLista
-                    .recientes(libreta, periodoCalculo, tinte: tinteL).map { itemDe($0) }
+                    .recientes(libreta, periodoCalculo, tinte: tinteL)
+                    .prefix(max(1, cuantos)).map { itemDe($0) }
 
             case "lista-recordatorios":
                 resumen?.widgets[i].items = CNTarjetasLista

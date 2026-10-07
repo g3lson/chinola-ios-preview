@@ -93,6 +93,7 @@ enum CNResumenPanel {
             // A media anchura solo las que caben: una gráfica con meses debajo
             // no. La web decide lo mismo con `puedeChica`.
             w.chica = w.puedeChica && e.ancho <= 1
+            w.vistas = vistas(e)
             if e.tipo == "serie-tiempo" {
                 w.cfgGrafico = e.grafico.isEmpty ? "linea" : e.grafico
                 w.cfgRango = String(e.rango > 0 ? e.rango : 12)
@@ -100,4 +101,34 @@ enum CNResumenPanel {
             return w
         }
     }
+    /**
+     * CÓMO SE PUEDE VER CADA TARJETA.
+     *
+     * La misma cifra contada de otra manera: los gastos por categoría en
+     * barras, en dona o en lista; los movimientos de cinco en cinco o de tres.
+     * La PRIMERA de cada lista es la de fábrica, así que una tarjeta que ya
+     * existe se queda exactamente como estaba.
+     *
+     * Son tres y dos, no diez: «Últimos movimientos» la calcula el teléfono
+     * con su propio tope de cinco, así que ofrecer más obligaría a tocar los
+     * dos lados y a cuadrarlos. Recortar vale con uno.
+     */
+    static let vistasDe: [String: [(id: String, label: String)]] = [
+        "barras-categorias": [("barras", "Barras"), ("dona", "Dona"), ("lista", "Lista")],
+        "lista-recientes": [("5", "5 movimientos"), ("3", "3 movimientos")]
+    ]
+
+    /// Cuál está puesta en esta tarjeta: la suya, o la primera de su lista.
+    static func vistaDe(_ e: CNEntradaPanel) -> String {
+        guard let v = vistasDe[e.tipo], let primera = v.first else { return "" }
+        return e.vista.isEmpty ? primera.id : e.vista
+    }
+
+    static func vistas(_ e: CNEntradaPanel) -> [CNResumenModelo.SerieCfg] {
+        guard let v = vistasDe[e.tipo] else { return [] }
+        let puesta = vistaDe(e)
+        return v.map { CNResumenModelo.SerieCfg(id: $0.id, label: cnT($0.label),
+                                                color: "", puesta: $0.id == puesta) }
+    }
+
 }
