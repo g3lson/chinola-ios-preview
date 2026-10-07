@@ -276,6 +276,9 @@ struct CNFormato {
     /// el teléfono tenía el color pero no la elección, y sin ella no puede
     /// armar esa tarjeta por su cuenta.
     var colorPatrimonio = "tema"
+    /// Qué grupos de Cuentas están plegados. Venía dentro del modelo de esa
+    /// pantalla; sin él, armándola aquí, lo que alguien plegó reaparecía.
+    var plegadoCuentas = false; var plegadoTarjetas = false; var plegadoPrestamos = false
     /// El presupuesto en aro en vez de en barra.
     var planAro = false
     /// Cómo se ven las pestañas del Plan: sistema, subrayado o pastillas.
@@ -295,6 +298,11 @@ struct CNFormato {
         if let t = o["cabecera"] as? String, !t.isEmpty { f.cabecera = t }
         if let t = o["cabeceraColor"] as? String { f.cabeceraColor = t }
         if let t = o["colorPatrimonio"] as? String, !t.isEmpty { f.colorPatrimonio = t }
+        if let p = o["plegados"] as? [String: Any] {
+            f.plegadoCuentas = (p["cuentas"] as? Bool) ?? false
+            f.plegadoTarjetas = (p["tarjetas"] as? Bool) ?? false
+            f.plegadoPrestamos = (p["prestamos"] as? Bool) ?? false
+        }
         f.cabeceraTarjeta = (o["cabeceraTarjeta"] as? Bool) ?? f.cabeceraTarjeta
         f.cabeceraIntegrada = (o["cabeceraIntegrada"] as? Bool) ?? f.cabeceraIntegrada
         if let t = o["temaId"] as? String, !t.isEmpty { f.temaId = t }
@@ -1952,6 +1960,15 @@ final class CNDatos: ObservableObject {
                 paradas: f.paradas.map { CNResumenModelo.Parada(color: $0.color, pos: $0.pos) })
             m.patrimonio.tinta = c.tinta
             m.patrimonio.gris = c.gris
+        }
+        // Y lo plegado, que también venía con el esqueleto. Mientras la web no
+        // haya mandado uno COMPLETO manda el ajuste guardado: con `cuentas ==
+        // nil` a secas, solo valía la primera vez y después se quedaba con lo
+        // que hubiera, aunque alguien plegara un grupo.
+        if !m.listo {
+            m.plegadoCuentas = CNC.fmt.plegadoCuentas
+            m.plegadoTarjetas = CNC.fmt.plegadoTarjetas
+            m.plegadoPrestamos = CNC.fmt.plegadoPrestamos
         }
         // Y los rótulos, por si el esqueleto nunca llegó: sin ellos los tres
         // grupos salen sin título.
