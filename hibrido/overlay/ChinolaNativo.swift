@@ -2056,7 +2056,10 @@ final class CNDatos: ObservableObject {
         let cab = resumen?.cabecera ?? CNResumenModelo.Cabecera()
         let tinte = CNTarjetasCifra.Tinte(
             tinta: cab.tinta, positivo: cab.positivo,
-            negativo: cab.negativo, ambar: cab.aviso)
+            negativo: cab.negativo, ambar: cab.aviso,
+            // El gris dice «ni bueno ni malo»: una racha de cero días no va en
+            // rojo. Sin él, esas tarjetas salían con el color vacío.
+            gris: cab.gris.isEmpty ? cnHexDe(CNC.pmut) : cab.gris)
         // La franja de la dona es el verde oscuro del tema —el mismo de la
         // cabecera—, y ese no viene en el modelo: viene en la paleta, que es la
         // que cambia cuando alguien cambia de tema.

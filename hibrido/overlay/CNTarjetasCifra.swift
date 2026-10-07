@@ -36,6 +36,9 @@ enum CNTarjetasCifra {
         var positivo: String
         var negativo: String
         var ambar: String
+        /// El gris del tema. Las seis nuevas lo usan para decir «esto no es ni
+        /// bueno ni malo»: una racha de cero días no va en rojo.
+        var gris: String = ""
     }
 
     /// Una tarjeta ya resuelta: el número, su nota y su color.
@@ -98,6 +101,79 @@ enum CNTarjetasCifra {
         }
     }
 
+    // MARK: - Las cuentas pequeñas de las seis
+
+    /// Redondeado y con tope en 999, como la web: un porcentaje de cuatro
+    /// cifras no cabe y no dice nada que no diga «999».
+    private static func porciento(_ a: Double, _ b: Double) -> Int {
+        b > 0 ? min(999, Int((a / b * 100).rounded())) : 0
+    }
+
+    private static var calendario: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = .current
+        return c
+    }
+
+    /// Cuántos días tiene el mes «2026-10».
+    static func diasDelMes(_ mes: String) -> Int {
+        let p = mes.split(separator: "-")
+        guard p.count >= 2, let y = Int(p[0]), let m = Int(p[1]) else { return 30 }
+        var c = DateComponents(); c.year = y; c.month = m; c.day = 1
+        guard let d = calendario.date(from: c),
+              let r = calendario.range(of: .day, in: .month, for: d) else { return 30 }
+        return r.count
+    }
+
+    /// El mes anterior a «2026-01» es «2025-12», no «2026-00».
+    static func mesAntesDe(_ mes: String) -> String {
+        let p = mes.split(separator: "-")
+        guard p.count >= 2, let y = Int(p[0]), let m = Int(p[1]) else { return mes }
+        let total = y * 12 + (m - 1) - 1
+        return String(format: "%04d-%02d", total / 12, total % 12 + 1)
+    }
+
+    static func esEsteMes(_ mes: String) -> Bool { mes == mesDeHoy() }
+
+    static func mesDeHoy(_ hoy: Date = Date()) -> String {
+        let c = calendario.dateComponents([.year, .month], from: hoy)
+        return String(format: "%04d-%02d", c.year ?? 0, c.month ?? 1)
+    }
+
+    static func diaDeHoy(_ hoy: Date = Date()) -> Int {
+        calendario.component(.day, from: hoy)
+    }
+
+    /**
+     * LOS DÍAS SEGUIDOS ANOTANDO.
+     *
+     * Se cuenta hacia atrás desde hoy. Y si hoy todavía no hay nada, se mira
+     * ayer: la racha no se rompe a las once de la mañana por no haber anotado
+     * aún. Es la misma concesión que hace la web, y sin ella la tarjeta dice
+     * «0 días» media mañana a quien lleva un mes seguido.
+     */
+    static func rachaDeDias(_ l: CNLibreta, hoy: Date = Date()) -> Int {
+        let dias = Set(l.tx.map { String($0.fecha.prefix(10)) })
+        if dias.isEmpty { return 0 }
+        let f = DateFormatter()
+        f.calendar = calendario; f.timeZone = calendario.timeZone
+        f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"
+        var d = hoy
+        var n = 0
+        if !dias.contains(f.string(from: d)) {
+            // Hoy no hay nada: se empieza por ayer, y si ayer tampoco, cero.
+            guard let ayer = calendario.date(byAdding: .day, value: -1, to: d),
+                  dias.contains(f.string(from: ayer)) else { return 0 }
+            d = ayer
+        }
+        while dias.contains(f.string(from: d)) {
+            n += 1
+            guard let antes = calendario.date(byAdding: .day, value: -1, to: d) else { break }
+            d = antes
+        }
+        return n
+    }
+
     static func de(_ tipo: String, libreta l: CNLibreta,
                    periodo p: CNCalculo.Periodo, tinte t: Tinte) -> Cifra? {
         let total = CNCalculo.totales(l, p)
@@ -140,6 +216,97 @@ enum CNTarjetasCifra {
             return Cifra(valor: cnDineroFirmado(pat), nota: cnT("cuentas − deudas"),
                          color: pat >= 0 ? t.tinta : t.negativo, icono: "patrimonio")
 
+        // ── LAS SEIS QUE CALCULABA LA WEB ───────────────────────────────
+        //
+        // Mismas reglas, copiadas una a una de `tarjetaExtra`. Las notas son
+        // las suyas, palabra por palabra: son textos traducidos y no me los
+        // invento.
+
+        case "kpi-ahorro":
+            // En porcentaje de los ingresos, como gastos. Sin ingresos no hay
+            // porcentaje que dar y se dice «del mes», no un cero.
+            let pc = porciento(total.aho, total.ing)
+            return Cifra(valor: cnDinero(total.aho),
+                         nota: total.ing > 0
+                            ? cnT("{n}% de tus ingresos").replacingOccurrences(of: "{n}", with: String(pc))
+                            : cnT("del mes"),
+                         color: total.aho > 0 ? t.positivo : t.gris, icono: "hucha")
+
+        case "kpi-diario":
+            // Lo que va del mes repartido entre los días CORRIDOS, no entre
+            // los del mes: a día 5 el promedio es de cinco días. En un mes
+            // pasado se reparte entre todos, que ya terminó.
+            let dm = diasDelMes(p.mes)
+            let hoyEs = esEsteMes(p.mes)
+            let dias = hoyEs ? max(1, diaDeHoy()) : dm
+            let porDia = dias > 0 ? total.gas / Double(dias) : 0
+            return Cifra(valor: cnDinero((porDia).rounded()),
+                         nota: hoyEs
+                            ? cnT("a este ritmo, {n} al cierre").replacingOccurrences(
+                                of: "{n}", with: cnDinero((porDia * Double(dm)).rounded()))
+                            : cnT("promedio del mes"),
+                         color: t.negativo, icono: "calendario")
+
+        case "kpi-vs-mes":
+            // Contra el mes anterior. El signo es «+» o «−» —el menos de
+            // verdad, no un guion— y el color se invierte: gastar MENOS es
+            // bueno, así que va en verde.
+            let antes = CNCalculo.totales(l, CNCalculo.Periodo(mes: mesAntesDe(p.mes)))
+            let dif = total.gas - antes.gas
+            let pc = antes.gas > 0 ? Int((dif / antes.gas * 100).rounded()) : 0
+            let signo = dif > 0 ? "+" : (dif < 0 ? "\u{2212}" : "")
+            return Cifra(valor: signo + cnDinero(abs(dif)),
+                         nota: antes.gas > 0
+                            ? (dif > 0 ? cnT("gastas {n}% más que el mes pasado")
+                                       : cnT("gastas {n}% menos que el mes pasado"))
+                                .replacingOccurrences(of: "{n}", with: String(abs(pc)))
+                            : cnT("el mes pasado no hubo gastos"),
+                         color: dif > 0 ? t.negativo : (dif < 0 ? t.positivo : t.gris),
+                         icono: "flechas")
+
+        case "kpi-presupuesto":
+            // Solo las categorías CON tope: las que no tienen no entran ni en
+            // el límite ni en lo usado, o el porcentaje sale pequeño siempre.
+            let conTope = l.presupuesto.filter { $0.value > 0 }
+            let limite = conTope.values.reduce(0, +)
+            let gastos = CNCalculo.porCategoria(l, p)
+            let usado = gastos.filter { conTope[$0.categoria] != nil }.reduce(0) { $0 + $1.gastado }
+            let pc = porciento(usado, limite)
+            return Cifra(valor: limite > 0 ? String(pc) + "%" : "—",
+                         nota: limite > 0
+                            ? cnDinero(usado) + " " + cnT("de") + " " + cnDinero(limite)
+                            : cnT("Ponle presupuesto a tus categorías"),
+                         color: pc > 100 ? t.negativo : (pc > 85 ? t.ambar : t.positivo),
+                         icono: "pastel")
+
+        case "kpi-cuotas":
+            // Lo que hay que pagar sí o sí: la cuota de cada préstamo que aún
+            // debe algo, y lo que se debe en cada tarjeta.
+            let dePrestamos = l.prestamos.reduce(0.0) { a, d in
+                a + ((d.total - d.pagado) > 0 ? d.cuota : 0)
+            }
+            let deTarjetas = l.tarjetas.reduce(0.0) { $0 + max(0, $1.saldo) }
+            let cuotas = dePrestamos + deTarjetas
+            return Cifra(valor: cnDinero(cuotas),
+                         nota: total.ing > 0
+                            ? cnT("{n}% de tus ingresos").replacingOccurrences(
+                                of: "{n}", with: String(porciento(cuotas, total.ing)))
+                            : cnT("préstamos y tarjetas"),
+                         color: t.ambar, icono: "factura")
+
+        case "kpi-racha":
+            // Días seguidos anotando algo. Si hoy no hay nada todavía, la
+            // racha de ayer sigue contando: castigar a las once de la mañana
+            // por no haber gastado aún no tiene sentido.
+            let n = rachaDeDias(l)
+            // Los dos `cnT` por separado, no uno con el ternario dentro: el
+            // que recoge los textos para traducirlos lee literales, y «día»
+            // escondido en un ternario no lo ve nadie.
+            return Cifra(valor: String(n) + " " + (n == 1 ? cnT("día") : cnT("días")),
+                         nota: n >= 7 ? cnT("¡Sigue así!")
+                             : (n > 0 ? cnT("anotando seguido") : cnT("Anota algo hoy y arranca la racha")),
+                         color: n >= 7 ? t.positivo : t.gris, icono: "estrella")
+
         default:
             return nil
         }
@@ -147,6 +314,9 @@ enum CNTarjetasCifra {
 
     /// Los tipos que esto sabe calcular. Lo demás sigue viniendo de la web.
     static let sabeHacer: Set<String> = [
-        "kpi-ingresos", "kpi-gastos", "kpi-balance", "kpi-deuda", "kpi-patrimonio"
+        "kpi-ingresos", "kpi-gastos", "kpi-balance", "kpi-deuda", "kpi-patrimonio",
+        // Las que la web calculaba en `tarjetaExtra` y el teléfono no sabía
+        // hacer: llegaban escritas por el puente y, sin web, salían en blanco.
+        "kpi-ahorro", "kpi-diario", "kpi-vs-mes", "kpi-presupuesto", "kpi-cuotas", "kpi-racha"
     ]
 }
