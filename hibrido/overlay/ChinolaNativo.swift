@@ -408,9 +408,11 @@ func cnPt(_ v: CGFloat) -> CGFloat { v * CNC.fmt.letra }
 /// Se escriben SIEMPRE en español en el código: así lo que se lee aquí es lo
 /// que se ve, y `sync` comprueba que cada uno tenga traducción.
 enum CNTextos {
-    /// Lo que manda la web por el puente. Manda por encima de lo generado: si
-    /// algún día la web sabe un texto que el teléfono no, gana el suyo.
-    static var mapa: [String: String] = [:]
+    // EL MAPA DE LA WEB YA NO ESTÁ. Mandaba por encima de lo generado «por si
+    // algún día la web sabe un texto que el teléfono no», y no puede pasar:
+    // `npm run sync` revienta si un `cnT("…")` de las pantallas nativas no
+    // tiene par en el diccionario. Lo que hacía era atar los textos —y con
+    // ellos el momento en que la app se ve bien— a que la web arrancara.
 
     /**
      * EN QUÉ IDIOMA ESTÁ LA APP, sabido por el teléfono solo.
@@ -484,10 +486,13 @@ func cnT(_ es: String) -> String {
     // que haya mandado la web: la web manda el suyo, y en el simulador ese es
     // el inglés. Comparar «This month» con «Este mes» culparía al Swift de un
     // fallo que no existe.
-    if !CNTextos.idiomaDePrueba.isEmpty {
-        return CNTextosGenerados.de(CNTextos.idiomaDePrueba)[es] ?? es
-    }
-    return CNTextos.mapa[es] ?? CNTextosGenerados.de(CNTextos.idioma)[es] ?? es
+    // SOLO LA TABLA GENERADA. La web mandaba además la suya y ganaba, pero
+    // `npm run sync` revienta si un `cnT("…")` de las pantallas nativas no
+    // tiene par en el diccionario: la generada está COMPLETA por construcción,
+    // así que la otra no añadía nada y ataba los colores de la app a que la web
+    // arrancara.
+    let cual = CNTextos.idiomaDePrueba.isEmpty ? CNTextos.idioma : CNTextos.idiomaDePrueba
+    return CNTextosGenerados.de(cual)[es] ?? es
 }
 /// Como `cnT`, pero con un hueco: cnT("Presupuesto de {n}", nombre).
 func cnT(_ es: String, _ hueco: String) -> String {
@@ -808,7 +813,6 @@ struct CNPaletaTema {
         // paquete: es lo que decide cómo se escribe, y cambia con los mismos
         // ajustes que el tema.
         CNC.fmt = CNFormato.desde(o)
-        if let t = o["textos"] as? [String: String] { CNTextos.mapa = t }
         // Los nombres del menú llegan también por aquí: la llamada suelta del
         // plugin se podía perder y el ajuste se quedaba sin efecto.
         if let mt = o["menuTitulos"] as? Bool { CNMenuEstado.shared.titulos = mt }
@@ -1926,7 +1930,6 @@ final class CNDatos: ObservableObject {
     /// controlador nada más arrancar.
     func pintaLoDeLaUltimaVez() {
         if let j = Self.guardado("libreta"), let l = CNLibreta.desde(json: j) { libreta = l; apuntaQueLlego() }
-        if let j = Self.guardado("tema") { cargarTema(json: j) }
         if let j = Self.guardado("resumen") { cargarResumen(json: j) }
         if let j = Self.guardado("cuentas") { cargarCuentas(json: j) }
         if let j = Self.guardado("ajustes") { cargarAjustes(json: j) }
@@ -2775,25 +2778,51 @@ final class CNDatos: ObservableObject {
         actual.catIconos = m.catIconos
         resumen = actual
     }
-    func cargarTema(json: String) {
-        guarda("tema", json)
-        // El mismo tema otra vez no se vuelve a poner: subir el sello repinta
-        // TODA la app, y de ahí el saltito al abrir una pantalla.
-        guard cambio("tema", json) else { return }
-        guard let p = CNPaletaTema.desde(json: json) else { return }
+    /**
+     * EL TEMA, LEÍDO DE LA COPIA.
+     *
+     * Era lo que ataba los colores de la app a la web: al abrirla, las
+     * pantallas nativas salían con los de fábrica hasta que ella arrancaba y
+     * contestaba. Qué tema está puesto está en la copia que ella deja, y de qué
+     * color es cada tema está en el catálogo que genera `npm run sync`.
+     *
+     * Y LOS TEXTOS TAMPOCO VIENEN YA DE ELLA: `npm run sync` revienta si un
+     * `cnT("…")` de las pantallas nativas no tiene par en el diccionario, así
+     * que la tabla generada está completa por construcción y la que mandaba la
+     * web no añadía nada.
+     */
+    func refrescarTema() {
+        let a = CNAlmacen.ajustes()
+        guard !a.isEmpty else { return }
+        let deNoche = UIScreen.main.traitCollection.userInterfaceStyle == .dark
+        let f = CNTemaArma.formato(a)
+        let cual = CNTemaArma.cual(a, deNoche: deNoche)
+        guard let p = CNTemaArma.paleta(cual, paletaId: f.paletaId) else { return }
+        // LA PAREJA, para que el cambio de claro a oscuro del teléfono se vea
+        // AL INSTANTE y sin preguntarle a nadie.
+        if f.temaAuto {
+            let claro = f.temaClaro.isEmpty ? cual : f.temaClaro
+            let oscuro = f.temaOscuro.isEmpty ? (CNCatalogos.oscuroDe[claro] ?? "noche") : f.temaOscuro
+            CNC.pareja = (CNTemaArma.paleta(claro, paletaId: f.paletaId),
+                          CNTemaArma.paleta(oscuro, paletaId: f.paletaId))
+        } else {
+            CNC.pareja = (nil, nil)
+        }
+        CNC.fmt = f
+        if let v = a["menuTitulos"] as? Bool, v != CNMenuEstado.shared.titulos {
+            CNMenuEstado.shared.titulos = v
+            // La barra de abajo lleva los nombres DIBUJADOS DENTRO de sus
+            // iconos: no se entera de otra manera.
+            CNMenuEstado.shared.sello += 1
+            CNMenuEstado.shared.alRepintar()
+        }
+        // Solo si de verdad cambió: subir el sello repinta TODA la app, y de
+        // ahí el saltito al abrir una pantalla.
+        guard p.oscuro != CNC.tema.oscuro || p.scr != CNC.tema.scr || p.acc != CNC.tema.acc else { return }
         CNC.tema = p
         selloTema += 1
-        // Los textos vienen en el mismo paquete que el tema, así que este es el
-        // momento en que puede haber cambiado el idioma. Se avisa a la barra de
-        // abajo, que lleva los nombres DIBUJADOS DENTRO de sus iconos y no se
-        // entera de otra manera.
-        CNMenuEstado.shared.sello += 1
-        CNMenuEstado.shared.alRepintar()
-        // Guardado para el próximo arranque: así la primera pantalla ya sale
-        // con el tema, la letra y la moneda del usuario, sin el parpadeo de
-        // empezar en crema y cambiar medio segundo después.
-        UserDefaults.standard.set(json, forKey: "cnTema")
     }
+
     /// El teléfono acaba de cambiar de claro a oscuro (o al revés): se pinta
     /// con la paleta que toca sin preguntarle a nadie. Devuelve `true` si de
     /// verdad cambió algo.
@@ -2816,11 +2845,19 @@ final class CNDatos: ObservableObject {
         return "v\(v) (\(b)) · sistema \(modo) · paleta \(CNC.tema.oscuro ? "oscura" : "clara") · pareja \(pareja)"
     }
 
-    /// Lo último que se supo del tema, para pintar desde el primer fotograma.
-    func temaGuardado() {
-        guard let j = UserDefaults.standard.string(forKey: "cnTema"), j.count > 2 else { return }
-        if let p = CNPaletaTema.desde(json: j) { CNC.tema = p }
-    }
+    /**
+     * EL TEMA DESDE EL PRIMER FOTOGRAMA.
+     *
+     * Primero el que sale de la COPIA, que es la verdad y está en disco: con
+     * eso la primera pantalla ya sale del color del usuario, sin esperar a que
+     * la web arranque.
+     *
+     * Y si no hay copia todavía —recién instalada—, lo último que se supo. Eso
+     * sigue siendo el paquete que mandaba la web, y vale para los textos; sin
+     * ninguna de las dos cosas se empieza con los de fábrica, que es lo que
+     * tiene que pasar la primera vez que alguien abre la app.
+     */
+    func temaGuardado() { refrescarTema() }
 }
 
 // ── Pantalla «Movimientos» NATIVA ──────────────────────────────────────────

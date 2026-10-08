@@ -196,7 +196,12 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
             // El primer tema es la señal de que la web arrancó: con él se apaga
             // el vigía que avisa cuando no llega nada.
             CNAvisoDeFallo.shared.laWebContesto()
-            CNDatos.shared.cargarTema(json: json)
+            // EL PAQUETE YA NO SE LEE: los colores y los ajustes los arma el
+            // teléfono con la copia que la web deja escrita. Lo que sigue
+            // valiendo de esta llamada es que la web AVISE de que acaba de
+            // cambiar algo —y el vigía de arriba, que es su señal de vida—.
+            _ = json
+            CNDatos.shared.refrescarTema()
             CNMenuEstado.shared.alRepintar()
             call.resolve()
         }

@@ -1705,17 +1705,18 @@ class ChinolaViewController: CAPBridgeViewController {
 
     /// El TEMA que tiene puesto el usuario, leído del webview. Al llegar, la
     /// barra y las pantallas nativas se repintan con esos colores.
+    /// El tema, armado aquí con los ajustes que la web deja escritos y el
+    /// catálogo de colores. Se le pedía, y por eso al abrir la app las
+    /// pantallas nativas salían con los colores de fábrica hasta que ella
+    /// arrancaba, calculaba y contestaba.
     private func traerTema() {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaTemaJSON && window.__chinolaTemaJSON()) || ''") { [weak self] res, _ in
-            guard let self = self, let json = res as? String, json.count > 2 else { return }
-            CNDatos.shared.cargarTema(json: json)
-            self.barra.pintar(activa: self.menuEstado.activa, titulos: self.menuEstado.titulos)
-            // Claro u oscuro de sistema según el tema: así el vidrio, las hojas
-            // y los menús del sistema acompañan a la paleta de la app.
-            self.ponerModoDeLaPaleta()
-            self.contenedorNativo?.backgroundColor = UIColor(CNC.scr)
-            self.setNeedsStatusBarAppearanceUpdate()
-        }
+        CNDatos.shared.refrescarTema()
+        barra.pintar(activa: menuEstado.activa, titulos: menuEstado.titulos)
+        // Claro u oscuro de sistema según el tema: así el vidrio, las hojas y
+        // los menús del sistema acompañan a la paleta de la app.
+        ponerModoDeLaPaleta()
+        contenedorNativo?.backgroundColor = UIColor(CNC.scr)
+        setNeedsStatusBarAppearanceUpdate()
     }
 
     /// El panel del Resumen, ya calculado por la web (títulos, cifras, puntos de

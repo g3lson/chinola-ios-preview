@@ -553,55 +553,63 @@ enum CNCatalogos {
     /// Los colores de las cifras: lo que entra, lo que sale y lo que
     /// apartas. Una de las cuatro se distingue con daltonismo.
     static let paletas: [(id: String, nombre: String, pista: String,
-                          positivo: String, negativo: String, ahorro: String)] = [
-        (id: "clasica", nombre: "Clásica", pista: "La de siempre", positivo: "oklch(0.52 0.13 152)", negativo: "oklch(0.62 0.16 30)", ahorro: "oklch(0.56 0.14 300)"),
-        (id: "semaforo", nombre: "Semáforo", pista: "Verde y rojo francos", positivo: "oklch(0.55 0.17 145)", negativo: "oklch(0.55 0.21 27)", ahorro: "oklch(0.55 0.16 285)"),
-        (id: "sobria", nombre: "Sobria", pista: "Los mismos, más callados", positivo: "oklch(0.48 0.07 152)", negativo: "oklch(0.52 0.09 30)", ahorro: "oklch(0.50 0.07 290)"),
-        (id: "daltonica", nombre: "Azul y naranja", pista: "Se distinguen con daltonismo", positivo: "oklch(0.52 0.14 245)", negativo: "oklch(0.63 0.16 55)", ahorro: "oklch(0.50 0.10 285)"),
-        (id: "fria", nombre: "Fría", pista: "Del azul al violeta", positivo: "oklch(0.55 0.13 195)", negativo: "oklch(0.52 0.16 315)", ahorro: "oklch(0.50 0.13 260)"),
-        (id: "calida", nombre: "Cálida", pista: "Oliva y terracota", positivo: "oklch(0.54 0.11 125)", negativo: "oklch(0.53 0.13 40)", ahorro: "oklch(0.55 0.10 60)"),
-        (id: "chinola", nombre: "Chinola", pista: "Los de la marca", positivo: "oklch(0.46 0.12 152)", negativo: "oklch(0.58 0.17 35)", ahorro: "oklch(0.52 0.14 300)"),
-        (id: "contraste", nombre: "Alto contraste", pista: "Lo más separado posible", positivo: "oklch(0.44 0.18 148)", negativo: "oklch(0.46 0.23 25)", ahorro: "oklch(0.42 0.20 295)"),
-        (id: "menta", nombre: "Menta y rosa", pista: "Suave, sin gritar", positivo: "oklch(0.56 0.12 175)", negativo: "oklch(0.58 0.15 5)", ahorro: "oklch(0.56 0.11 320)"),
-        (id: "sin_color", nombre: "Sin color", pista: "Para los temas sombríos", positivo: "oklch(0.42 0 0)", negativo: "oklch(0.62 0 0)", ahorro: "oklch(0.52 0 0)")
+                          positivo: String, negativo: String, ahorro: String,
+                          aviso: String)] = [
+        (id: "clasica", nombre: "Clásica", pista: "La de siempre", positivo: "oklch(0.52 0.13 152)", negativo: "oklch(0.62 0.16 30)", ahorro: "oklch(0.56 0.14 300)", aviso: "oklch(0.66 0.14 70)"),
+        (id: "semaforo", nombre: "Semáforo", pista: "Verde y rojo francos", positivo: "oklch(0.55 0.17 145)", negativo: "oklch(0.55 0.21 27)", ahorro: "oklch(0.55 0.16 285)", aviso: "oklch(0.72 0.16 80)"),
+        (id: "sobria", nombre: "Sobria", pista: "Los mismos, más callados", positivo: "oklch(0.48 0.07 152)", negativo: "oklch(0.52 0.09 30)", ahorro: "oklch(0.50 0.07 290)", aviso: "oklch(0.58 0.07 75)"),
+        (id: "daltonica", nombre: "Azul y naranja", pista: "Se distinguen con daltonismo", positivo: "oklch(0.52 0.14 245)", negativo: "oklch(0.63 0.16 55)", ahorro: "oklch(0.50 0.10 285)", aviso: "oklch(0.58 0.10 200)"),
+        (id: "fria", nombre: "Fría", pista: "Del azul al violeta", positivo: "oklch(0.55 0.13 195)", negativo: "oklch(0.52 0.16 315)", ahorro: "oklch(0.50 0.13 260)", aviso: "oklch(0.60 0.11 230)"),
+        (id: "calida", nombre: "Cálida", pista: "Oliva y terracota", positivo: "oklch(0.54 0.11 125)", negativo: "oklch(0.53 0.13 40)", ahorro: "oklch(0.55 0.10 60)", aviso: "oklch(0.63 0.12 85)"),
+        (id: "chinola", nombre: "Chinola", pista: "Los de la marca", positivo: "oklch(0.46 0.12 152)", negativo: "oklch(0.58 0.17 35)", ahorro: "oklch(0.52 0.14 300)", aviso: "oklch(0.70 0.15 88)"),
+        (id: "contraste", nombre: "Alto contraste", pista: "Lo más separado posible", positivo: "oklch(0.44 0.18 148)", negativo: "oklch(0.46 0.23 25)", ahorro: "oklch(0.42 0.20 295)", aviso: "oklch(0.62 0.18 75)"),
+        (id: "menta", nombre: "Menta y rosa", pista: "Suave, sin gritar", positivo: "oklch(0.56 0.12 175)", negativo: "oklch(0.58 0.15 5)", ahorro: "oklch(0.56 0.11 320)", aviso: "oklch(0.66 0.12 90)"),
+        (id: "sin_color", nombre: "Sin color", pista: "Para los temas sombríos", positivo: "oklch(0.42 0 0)", negativo: "oklch(0.62 0 0)", ahorro: "oklch(0.52 0 0)", aviso: "oklch(0.70 0 0)")
     ]
 
-    /// Cada tema con lo que hace falta para su miniatura.
+    /**
+     * CADA TEMA, ENTERO.
+     *
+     * Antes solo llevaba lo de su miniatura —fondo, tarjeta, suave,
+     * tinta y franja— y faltaban el BORDE, el GRIS y el patrón, que es
+     * justo lo que hace falta para pintar la app con él sin pedírselo a
+     * la web. Sin el borde, todas las rayas de la app salen del color de
+     * fábrica sobre un tema oscuro.
+     */
     static let temas: [String: (nombre: String, bg: String, card: String,
-                                suave: String, tinta: String, side: String)] = [
-        "oceano": (nombre: "Océano", bg: "oklch(0.97 0.02 240)", card: "#fff", suave: "oklch(0.96 0.03 240)", tinta: "oklch(0.24 0.04 250)", side: "oklch(0.32 0.09 250)"),
-        "menta": (nombre: "Menta", bg: "oklch(0.97 0.03 175)", card: "#fff", suave: "oklch(0.96 0.04 175)", tinta: "oklch(0.24 0.04 180)", side: "oklch(0.34 0.08 178)"),
-        "cacao": (nombre: "Cacao", bg: "oklch(0.96 0.02 60)", card: "#fff", suave: "oklch(0.96 0.03 60)", tinta: "oklch(0.26 0.04 50)", side: "oklch(0.33 0.06 50)"),
-        "uva": (nombre: "Uva", bg: "oklch(0.97 0.02 300)", card: "#fff", suave: "oklch(0.96 0.03 300)", tinta: "oklch(0.25 0.05 305)", side: "oklch(0.33 0.10 300)"),
-        "carbon": (nombre: "Carbón", bg: "oklch(0.21 0.005 250)", card: "oklch(0.26 0.006 250)", suave: "oklch(0.30 0.008 250)", tinta: "oklch(0.94 0.005 250)", side: "oklch(0.17 0.005 250)"),
-        "medianoche": (nombre: "Medianoche", bg: "oklch(0.20 0.03 260)", card: "oklch(0.25 0.035 260)", suave: "oklch(0.29 0.04 260)", tinta: "oklch(0.94 0.02 250)", side: "oklch(0.16 0.03 262)"),
-        "claro": (nombre: "Claro", bg: "oklch(0.995 0 0)", card: "#fff", suave: "oklch(0.975 0.002 95)", tinta: "oklch(0.22 0.01 155)", side: "oklch(0.34 0.01 155)"),
-        "chinola": (nombre: "Chinola", bg: "oklch(0.975 0.015 95)", card: "#fff", suave: "oklch(0.97 0.02 95)", tinta: "oklch(0.24 0.03 155)", side: "oklch(0.255 0.038 156)"),
-        "semillas": (nombre: "Semillas", bg: "oklch(0.97 0.03 95)", card: "#fff", suave: "oklch(0.97 0.03 95)", tinta: "oklch(0.24 0.04 130)", side: "oklch(0.30 0.08 140)"),
-        "jugo": (nombre: "Jugo", bg: "oklch(0.97 0.04 88)", card: "#fff", suave: "oklch(0.97 0.05 88)", tinta: "oklch(0.26 0.05 70)", side: "oklch(0.42 0.12 68)"),
-        "hoja": (nombre: "Hoja", bg: "oklch(0.96 0.03 150)", card: "#fff", suave: "oklch(0.96 0.03 150)", tinta: "oklch(0.22 0.05 155)", side: "oklch(0.34 0.09 152)"),
-        "noche": (nombre: "Noche", bg: "oklch(0.20 0.02 155)", card: "oklch(0.25 0.025 155)", suave: "oklch(0.29 0.03 155)", tinta: "oklch(0.94 0.02 95)", side: "oklch(0.16 0.02 155)"),
-        "noche_semillas": (nombre: "Noche + semillas", bg: "oklch(0.19 0.02 150)", card: "oklch(0.24 0.025 150)", suave: "oklch(0.28 0.03 150)", tinta: "oklch(0.94 0.03 95)", side: "oklch(0.15 0.02 150)"),
-        "sistema": (nombre: "Sistema claro", bg: "oklch(0.957 0.004 286)", card: "#fff", suave: "oklch(0.925 0.005 286)", tinta: "oklch(0.22 0.004 286)", side: "oklch(0.34 0.08 155)"),
-        "sistema_noche": (nombre: "Sistema oscuro", bg: "oklch(0 0 0)", card: "oklch(0.22 0.004 286)", suave: "oklch(0.29 0.004 286)", tinta: "oklch(0.957 0.004 286)", side: "oklch(0.20 0.05 155)"),
-        "sombrio": (nombre: "Sombrío", bg: "oklch(0.175 0 0)", card: "oklch(0.225 0 0)", suave: "oklch(0.275 0 0)", tinta: "oklch(0.94 0 0)", side: "oklch(0.125 0 0)"),
-        "tinta": (nombre: "Tinta", bg: "oklch(0.985 0 0)", card: "#fff", suave: "oklch(0.955 0 0)", tinta: "oklch(0.17 0 0)", side: "oklch(0.16 0 0)"),
-        "niebla": (nombre: "Niebla", bg: "oklch(0.955 0.004 250)", card: "#fff", suave: "oklch(0.945 0.005 250)", tinta: "oklch(0.22 0.008 250)", side: "oklch(0.30 0.012 250)"),
-        "flor": (nombre: "Flor de chinola", bg: "oklch(0.97 0.02 310)", card: "#fff", suave: "oklch(0.965 0.028 310)", tinta: "oklch(0.24 0.05 310)", side: "oklch(0.34 0.11 308)"),
-        "pulpa": (nombre: "Pulpa", bg: "oklch(0.975 0.03 78)", card: "#fff", suave: "oklch(0.965 0.04 78)", tinta: "oklch(0.27 0.05 55)", side: "oklch(0.44 0.13 55)"),
-        "cascara": (nombre: "Cáscara", bg: "oklch(0.965 0.035 118)", card: "#fff", suave: "oklch(0.958 0.045 118)", tinta: "oklch(0.24 0.05 135)", side: "oklch(0.36 0.10 125)"),
-        "arena": (nombre: "Arena", bg: "oklch(0.965 0.018 70)", card: "#fff", suave: "oklch(0.955 0.025 70)", tinta: "oklch(0.26 0.03 60)", side: "oklch(0.36 0.055 62)"),
-        "coral": (nombre: "Coral", bg: "oklch(0.97 0.025 20)", card: "#fff", suave: "oklch(0.962 0.033 20)", tinta: "oklch(0.26 0.05 20)", side: "oklch(0.42 0.13 22)"),
-        "indigo": (nombre: "Índigo", bg: "oklch(0.965 0.02 268)", card: "#fff", suave: "oklch(0.955 0.028 268)", tinta: "oklch(0.23 0.05 268)", side: "oklch(0.32 0.11 266)"),
-        "salvia": (nombre: "Salvia", bg: "oklch(0.962 0.015 145)", card: "#fff", suave: "oklch(0.952 0.02 145)", tinta: "oklch(0.24 0.028 150)", side: "oklch(0.38 0.055 148)"),
-        "pizarra": (nombre: "Pizarra", bg: "oklch(0.955 0.008 230)", card: "#fff", suave: "oklch(0.945 0.012 230)", tinta: "oklch(0.23 0.02 232)", side: "oklch(0.35 0.04 232)"),
-        "papel": (nombre: "Papel", bg: "oklch(0.972 0.012 88)", card: "oklch(0.995 0.004 88)", suave: "oklch(0.958 0.016 88)", tinta: "oklch(0.235 0.022 90)", side: "oklch(0.31 0.035 90)"),
-        "chinola_noche": (nombre: "Chinola de noche", bg: "oklch(0.185 0.022 155)", card: "oklch(0.235 0.026 155)", suave: "oklch(0.275 0.03 155)", tinta: "oklch(0.95 0.02 95)", side: "oklch(0.145 0.022 155)"),
-        "ciruela": (nombre: "Ciruela", bg: "oklch(0.195 0.035 315)", card: "oklch(0.245 0.04 315)", suave: "oklch(0.285 0.045 315)", tinta: "oklch(0.945 0.02 310)", side: "oklch(0.155 0.035 315)"),
-        "cafe_noche": (nombre: "Café", bg: "oklch(0.195 0.022 55)", card: "oklch(0.245 0.026 55)", suave: "oklch(0.285 0.03 55)", tinta: "oklch(0.945 0.018 78)", side: "oklch(0.155 0.022 55)"),
-        "bosque": (nombre: "Bosque", bg: "oklch(0.175 0.028 145)", card: "oklch(0.225 0.032 145)", suave: "oklch(0.265 0.036 145)", tinta: "oklch(0.945 0.025 130)", side: "oklch(0.135 0.028 145)"),
-        "tinta_azul": (nombre: "Tinta azul", bg: "oklch(0.185 0.035 258)", card: "oklch(0.235 0.04 258)", suave: "oklch(0.275 0.045 258)", tinta: "oklch(0.945 0.02 255)", side: "oklch(0.145 0.035 258)"),
-        "brasa": (nombre: "Brasa", bg: "oklch(0.19 0.03 30)", card: "oklch(0.24 0.035 30)", suave: "oklch(0.28 0.04 30)", tinta: "oklch(0.945 0.022 40)", side: "oklch(0.15 0.03 30)")
+                                suave: String, borde: String, tinta: String,
+                                gris: String, side: String, patron: String)] = [
+        "oceano": (nombre: "Océano", bg: "oklch(0.97 0.02 240)", card: "#fff", suave: "oklch(0.96 0.03 240)", borde: "oklch(0.90 0.03 240)", tinta: "oklch(0.24 0.04 250)", gris: "oklch(0.48 0.04 250)", side: "oklch(0.32 0.09 250)", patron: "none"),
+        "menta": (nombre: "Menta", bg: "oklch(0.97 0.03 175)", card: "#fff", suave: "oklch(0.96 0.04 175)", borde: "oklch(0.89 0.04 175)", tinta: "oklch(0.24 0.04 180)", gris: "oklch(0.46 0.04 180)", side: "oklch(0.34 0.08 178)", patron: "none"),
+        "cacao": (nombre: "Cacao", bg: "oklch(0.96 0.02 60)", card: "#fff", suave: "oklch(0.96 0.03 60)", borde: "oklch(0.89 0.03 60)", tinta: "oklch(0.26 0.04 50)", gris: "oklch(0.47 0.04 55)", side: "oklch(0.33 0.06 50)", patron: "none"),
+        "uva": (nombre: "Uva", bg: "oklch(0.97 0.02 300)", card: "#fff", suave: "oklch(0.96 0.03 300)", borde: "oklch(0.90 0.03 300)", tinta: "oklch(0.25 0.05 305)", gris: "oklch(0.47 0.05 305)", side: "oklch(0.33 0.10 300)", patron: "none"),
+        "carbon": (nombre: "Carbón", bg: "oklch(0.21 0.005 250)", card: "oklch(0.26 0.006 250)", suave: "oklch(0.30 0.008 250)", borde: "oklch(0.35 0.01 250)", tinta: "oklch(0.94 0.005 250)", gris: "oklch(0.72 0.01 250)", side: "oklch(0.17 0.005 250)", patron: "none"),
+        "medianoche": (nombre: "Medianoche", bg: "oklch(0.20 0.03 260)", card: "oklch(0.25 0.035 260)", suave: "oklch(0.29 0.04 260)", borde: "oklch(0.34 0.04 260)", tinta: "oklch(0.94 0.02 250)", gris: "oklch(0.74 0.03 250)", side: "oklch(0.16 0.03 262)", patron: "none"),
+        "claro": (nombre: "Claro", bg: "oklch(0.995 0 0)", card: "#fff", suave: "oklch(0.975 0.002 95)", borde: "oklch(0.925 0.003 95)", tinta: "oklch(0.22 0.01 155)", gris: "oklch(0.52 0.01 155)", side: "oklch(0.34 0.01 155)", patron: "none"),
+        "chinola": (nombre: "Chinola", bg: "oklch(0.975 0.015 95)", card: "#fff", suave: "oklch(0.97 0.02 95)", borde: "oklch(0.91 0.02 95)", tinta: "oklch(0.24 0.03 155)", gris: "oklch(0.48 0.03 155)", side: "oklch(0.255 0.038 156)", patron: "none"),
+        "jugo": (nombre: "Jugo", bg: "oklch(0.97 0.04 88)", card: "#fff", suave: "oklch(0.97 0.05 88)", borde: "oklch(0.90 0.05 88)", tinta: "oklch(0.26 0.05 70)", gris: "oklch(0.48 0.05 75)", side: "oklch(0.42 0.12 68)", patron: "none"),
+        "hoja": (nombre: "Hoja", bg: "oklch(0.96 0.03 150)", card: "#fff", suave: "oklch(0.96 0.03 150)", borde: "oklch(0.89 0.04 150)", tinta: "oklch(0.22 0.05 155)", gris: "oklch(0.44 0.05 155)", side: "oklch(0.34 0.09 152)", patron: "none"),
+        "noche": (nombre: "Noche", bg: "oklch(0.20 0.02 155)", card: "oklch(0.25 0.025 155)", suave: "oklch(0.29 0.03 155)", borde: "oklch(0.34 0.03 155)", tinta: "oklch(0.94 0.02 95)", gris: "oklch(0.72 0.02 110)", side: "oklch(0.16 0.02 155)", patron: "none"),
+        "sistema": (nombre: "Sistema claro", bg: "oklch(0.957 0.004 286)", card: "#fff", suave: "oklch(0.925 0.005 286)", borde: "oklch(0.87 0.004 286)", tinta: "oklch(0.22 0.004 286)", gris: "oklch(0.53 0.005 286)", side: "oklch(0.34 0.08 155)", patron: "none"),
+        "sistema_noche": (nombre: "Sistema oscuro", bg: "oklch(0 0 0)", card: "oklch(0.22 0.004 286)", suave: "oklch(0.29 0.004 286)", borde: "oklch(0.36 0.004 286)", tinta: "oklch(0.957 0.004 286)", gris: "oklch(0.68 0.008 286)", side: "oklch(0.20 0.05 155)", patron: "none"),
+        "sombrio": (nombre: "Sombrío", bg: "oklch(0.175 0 0)", card: "oklch(0.225 0 0)", suave: "oklch(0.275 0 0)", borde: "oklch(0.325 0 0)", tinta: "oklch(0.94 0 0)", gris: "oklch(0.68 0 0)", side: "oklch(0.125 0 0)", patron: "none"),
+        "tinta": (nombre: "Tinta", bg: "oklch(0.985 0 0)", card: "#fff", suave: "oklch(0.955 0 0)", borde: "oklch(0.885 0 0)", tinta: "oklch(0.17 0 0)", gris: "oklch(0.46 0 0)", side: "oklch(0.16 0 0)", patron: "none"),
+        "niebla": (nombre: "Niebla", bg: "oklch(0.955 0.004 250)", card: "#fff", suave: "oklch(0.945 0.005 250)", borde: "oklch(0.885 0.006 250)", tinta: "oklch(0.22 0.008 250)", gris: "oklch(0.50 0.008 250)", side: "oklch(0.30 0.012 250)", patron: "none"),
+        "flor": (nombre: "Flor de chinola", bg: "oklch(0.97 0.02 310)", card: "#fff", suave: "oklch(0.965 0.028 310)", borde: "oklch(0.90 0.03 310)", tinta: "oklch(0.24 0.05 310)", gris: "oklch(0.48 0.05 312)", side: "oklch(0.34 0.11 308)", patron: "none"),
+        "pulpa": (nombre: "Pulpa", bg: "oklch(0.975 0.03 78)", card: "#fff", suave: "oklch(0.965 0.04 78)", borde: "oklch(0.90 0.045 78)", tinta: "oklch(0.27 0.05 55)", gris: "oklch(0.49 0.05 60)", side: "oklch(0.44 0.13 55)", patron: "none"),
+        "cascara": (nombre: "Cáscara", bg: "oklch(0.965 0.035 118)", card: "#fff", suave: "oklch(0.958 0.045 118)", borde: "oklch(0.89 0.05 118)", tinta: "oklch(0.24 0.05 135)", gris: "oklch(0.46 0.05 132)", side: "oklch(0.36 0.10 125)", patron: "none"),
+        "arena": (nombre: "Arena", bg: "oklch(0.965 0.018 70)", card: "#fff", suave: "oklch(0.955 0.025 70)", borde: "oklch(0.89 0.028 70)", tinta: "oklch(0.26 0.03 60)", gris: "oklch(0.49 0.03 62)", side: "oklch(0.36 0.055 62)", patron: "none"),
+        "coral": (nombre: "Coral", bg: "oklch(0.97 0.025 20)", card: "#fff", suave: "oklch(0.962 0.033 20)", borde: "oklch(0.90 0.035 20)", tinta: "oklch(0.26 0.05 20)", gris: "oklch(0.49 0.05 22)", side: "oklch(0.42 0.13 22)", patron: "none"),
+        "indigo": (nombre: "Índigo", bg: "oklch(0.965 0.02 268)", card: "#fff", suave: "oklch(0.955 0.028 268)", borde: "oklch(0.89 0.03 268)", tinta: "oklch(0.23 0.05 268)", gris: "oklch(0.47 0.05 268)", side: "oklch(0.32 0.11 266)", patron: "none"),
+        "salvia": (nombre: "Salvia", bg: "oklch(0.962 0.015 145)", card: "#fff", suave: "oklch(0.952 0.02 145)", borde: "oklch(0.885 0.022 145)", tinta: "oklch(0.24 0.028 150)", gris: "oklch(0.47 0.028 150)", side: "oklch(0.38 0.055 148)", patron: "none"),
+        "pizarra": (nombre: "Pizarra", bg: "oklch(0.955 0.008 230)", card: "#fff", suave: "oklch(0.945 0.012 230)", borde: "oklch(0.88 0.014 230)", tinta: "oklch(0.23 0.02 232)", gris: "oklch(0.48 0.02 232)", side: "oklch(0.35 0.04 232)", patron: "none"),
+        "papel": (nombre: "Papel", bg: "oklch(0.972 0.012 88)", card: "oklch(0.995 0.004 88)", suave: "oklch(0.958 0.016 88)", borde: "oklch(0.895 0.018 88)", tinta: "oklch(0.235 0.022 90)", gris: "oklch(0.47 0.022 90)", side: "oklch(0.31 0.035 90)", patron: "none"),
+        "chinola_noche": (nombre: "Chinola de noche", bg: "oklch(0.185 0.022 155)", card: "oklch(0.235 0.026 155)", suave: "oklch(0.275 0.03 155)", borde: "oklch(0.325 0.032 155)", tinta: "oklch(0.95 0.02 95)", gris: "oklch(0.73 0.025 110)", side: "oklch(0.145 0.022 155)", patron: "none"),
+        "ciruela": (nombre: "Ciruela", bg: "oklch(0.195 0.035 315)", card: "oklch(0.245 0.04 315)", suave: "oklch(0.285 0.045 315)", borde: "oklch(0.335 0.048 315)", tinta: "oklch(0.945 0.02 310)", gris: "oklch(0.73 0.03 312)", side: "oklch(0.155 0.035 315)", patron: "none"),
+        "cafe_noche": (nombre: "Café", bg: "oklch(0.195 0.022 55)", card: "oklch(0.245 0.026 55)", suave: "oklch(0.285 0.03 55)", borde: "oklch(0.335 0.032 55)", tinta: "oklch(0.945 0.018 78)", gris: "oklch(0.73 0.022 70)", side: "oklch(0.155 0.022 55)", patron: "none"),
+        "bosque": (nombre: "Bosque", bg: "oklch(0.175 0.028 145)", card: "oklch(0.225 0.032 145)", suave: "oklch(0.265 0.036 145)", borde: "oklch(0.315 0.038 145)", tinta: "oklch(0.945 0.025 130)", gris: "oklch(0.72 0.03 135)", side: "oklch(0.135 0.028 145)", patron: "none"),
+        "tinta_azul": (nombre: "Tinta azul", bg: "oklch(0.185 0.035 258)", card: "oklch(0.235 0.04 258)", suave: "oklch(0.275 0.045 258)", borde: "oklch(0.325 0.048 258)", tinta: "oklch(0.945 0.02 255)", gris: "oklch(0.73 0.028 255)", side: "oklch(0.145 0.035 258)", patron: "none"),
+        "brasa": (nombre: "Brasa", bg: "oklch(0.19 0.03 30)", card: "oklch(0.24 0.035 30)", suave: "oklch(0.28 0.04 30)", borde: "oklch(0.33 0.042 30)", tinta: "oklch(0.945 0.022 40)", gris: "oklch(0.73 0.028 35)", side: "oklch(0.15 0.03 30)", patron: "none")
     ]
 
     /// El acento de cada tema, cuando no es el amarillo de la marca.
