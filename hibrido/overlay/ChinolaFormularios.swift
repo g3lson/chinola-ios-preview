@@ -2076,25 +2076,6 @@ struct CNLibretaNueva {
     var colores: [String] = []
     var coloresId: [String] = []
     var iconos: [Icono] = []
-
-    static func desde(json: String) -> CNLibretaNueva? {
-        guard let d = json.data(using: .utf8),
-              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
-        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
-        var m = CNLibretaNueva()
-        if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
-        m.nombre = s(r, "nombre"); m.tipo = s(r, "tipo"); m.icono = s(r, "icono")
-        m.color = ((r["color"] as? NSNumber)?.intValue) ?? -1
-        m.rotuloNombre = s(r, "rotuloNombre"); m.phNombre = s(r, "phNombre")
-        m.rotuloTipo = s(r, "rotuloTipo"); m.rotuloIcono = s(r, "rotuloIcono")
-        m.tipos = ((r["tipos"] as? [[String: Any]]) ?? []).map { Tipo(id: s($0, "id"), label: s($0, "label")) }
-        m.colores = (r["colores"] as? [String]) ?? []
-        m.coloresId = (r["coloresId"] as? [String]) ?? []
-        m.iconos = ((r["iconos"] as? [[String: Any]]) ?? []).map {
-            Icono(id: s($0, "id"), label: s($0, "label"), path: s($0, "path"))
-        }
-        return m
-    }
 }
 
 struct CNFormLibreta: View {

@@ -375,6 +375,40 @@ enum CNCatalogos {
         (["emergencia", "fondo", "ahorro"], "hucha")
     ]
 
+    /**
+     * LOS DOCE DIBUJOS Y LOS OCHO COLORES DE UNA LIBRETA.
+     *
+     * Son los suyos y no los del catálogo general: la casa de una
+     * libreta no es la misma casa que la de una categoría. Vivían solo
+     * en la web y el teléfono tenía que pedirle hasta la lista para
+     * poder enseñar «elige un dibujo».
+     */
+    static let iconosDeLibreta: [(id: String, nombre: String, path: String)] = [
+        (id: "casa", nombre: "Casa", path: "M3 10.5L12 3l9 7.5M5 9.5V21h14V9.5M10 21v-6h4v6"),
+        (id: "gente", nombre: "Familia", path: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M18 21a6.5 6.5 0 0 0-2-4.7"),
+        (id: "maletin", nombre: "Negocio", path: "M3 8h18v12H3zM9 8V5h6v3M3 13h18"),
+        (id: "carrito", nombre: "Compras", path: "M3 4h2l2.4 11h10.2L20 7H6M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2M17 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2"),
+        (id: "corazon", nombre: "Pareja", path: "M12 20s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 7.5 3.4C19.5 15.4 12 20 12 20z"),
+        (id: "avion", nombre: "Viaje", path: "M2 13l8-2 3-8 2 1-1.4 6.6L21 9l1 2-7.6 2.4L12 21l-2-1 .6-6.4L3 15z"),
+        (id: "carro", nombre: "Vehículo", path: "M3 15v-3l2-5h14l2 5v3M3 15h18v3H3zM7 18v2M17 18v2M6.5 12h11"),
+        (id: "libro", nombre: "Estudio", path: "M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3zM18 7h2v13H7"),
+        (id: "estrella", nombre: "Metas", path: "M12 3l2.7 5.6 6.3.9-4.5 4.4 1 6.1-5.5-2.9-5.5 2.9 1-6.1L3 9.5l6.3-.9z"),
+        (id: "cartera", nombre: "Ahorro", path: "M3 7h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l2.5-3H16M16 13h3"),
+        (id: "regalo", nombre: "Regalos", path: "M3 11h18v10H3zM3 7h18v4H3zM12 7v14M12 7S9.5 3 7.5 4.5 9 7 12 7M12 7s2.5-4 4.5-2.5S15 7 12 7"),
+        (id: "pata", nombre: "Mascota", path: "M6.5 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4M17.5 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4M10 7.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4M14 7.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4M12 12c3.5 0 5.5 2.4 5.5 4.6S15.4 20 12 20s-5.5-1.2-5.5-3.4S8.5 12 12 12z")
+    ]
+
+    static let coloresDeLibreta: [String] = [
+        "oklch(0.42 0.13 152)",
+        "oklch(0.50 0.16 258)",
+        "oklch(0.52 0.19 300)",
+        "oklch(0.58 0.19 28)",
+        "oklch(0.58 0.15 65)",
+        "oklch(0.48 0.12 200)",
+        "oklch(0.46 0.14 340)",
+        "oklch(0.38 0.06 155)"
+    ]
+
     /// Los de las filas de ajustes, que son otros y viven aparte.
     static let iconosDeAjuste: [String: String] = [
         "notis": "M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0",

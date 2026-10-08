@@ -1066,23 +1066,23 @@ class ChinolaViewController: CAPBridgeViewController {
             // formulario de «nueva» se abre con sus valores.
             if id.hasPrefix("hoja:libreta:") {
                 let lid = String(id.dropFirst("hoja:libreta:".count))
+                // LA HOJA SE ARMA AQUÍ. A la web solo se le dice CUÁL se está
+                // editando, porque guardar sigue siendo suyo: toca la lista de
+                // libretas, con su límite de plan y su aviso de nombre
+                // repetido. Antes se le pedía también la hoja, con su espera.
                 s.eval("window.__chinolaEditarLibreta && window.__chinolaEditarLibreta(\(s.comillas(lid)))")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                    s.bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretaNuevaJSON && window.__chinolaLibretaNuevaJSON()) || ''") { res, _ in
-                        if let json = res as? String, json.count > 2 { CNDatos.shared.cargarLibretaNueva(json: json) }
-                        s.presentar(AnyView(CNFormLibreta(datos: s.datos, onClose: { s.cerrar() })),
-                                    alCerrar: { [weak s] in
-                            // Al cerrar (guardado o no) la web suelta la edición y
-                            // la pantalla de la libreta se repinta con lo nuevo.
-                            guard let s = s else { return }
-                            s.eval("window.__chinolaEditarLibreta && window.__chinolaEditarLibreta('')")
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                if let sid = CNDatos.shared.seccion?.id { s.traerSeccion(sid) }
-                                s.traerDatos(intentos: 2)
-                            }
-                        })
+                CNDatos.shared.libretaNueva = CNLibretasArma.hoja(editando: lid)
+                s.presentar(AnyView(CNFormLibreta(datos: s.datos, onClose: { s.cerrar() })),
+                            alCerrar: { [weak s] in
+                    // Al cerrar (guardado o no) la web suelta la edición y la
+                    // pantalla de la libreta se repinta con lo nuevo.
+                    guard let s = s else { return }
+                    s.eval("window.__chinolaEditarLibreta && window.__chinolaEditarLibreta('')")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        if let sid = CNDatos.shared.seccion?.id { s.traerSeccion(sid) }
+                        s.traerDatos(intentos: 2)
                     }
-                }
+                })
                 return
             }
             // CUALQUIER OTRA HOJA, POR SU NOMBRE: «hoja:clave», «hoja:perfil».
@@ -1363,11 +1363,11 @@ class ChinolaViewController: CAPBridgeViewController {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { s.mirarPuerta(intentos: 3) }
                         return
                     }
-                    s.bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretaNuevaJSON && window.__chinolaLibretaNuevaJSON()) || ''") { res, _ in
-                        if let json = res as? String, json.count > 2 { CNDatos.shared.cargarLibretaNueva(json: json) }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                            s.presentar(AnyView(CNFormLibreta(datos: s.datos, onClose: { s.cerrar() })))
-                        }
+                    // La hoja se arma aquí; lo que se le pregunta a la web es
+                    // si el plan da para otra libreta, que es cosa suya.
+                    CNDatos.shared.libretaNueva = CNLibretasArma.hoja(editando: "")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        s.presentar(AnyView(CNFormLibreta(datos: s.datos, onClose: { s.cerrar() })))
                     }
                 }
                 return

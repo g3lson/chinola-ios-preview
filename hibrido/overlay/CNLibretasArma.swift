@@ -104,6 +104,53 @@ enum CNLibretasArma {
         return f
     }
 
+    // MARK: - La hoja de crear o editar una
+
+    /// Los cuatro tipos que ofrece la app, en su orden.
+    static let tipos = ["Personal", "Familiar", "Negocio", "Proyecto"]
+
+    /**
+     * LA HOJA DE UNA LIBRETA: crear una o cambiarle el nombre, el tipo, el
+     * dibujo y el color.
+     *
+     * Se le pedía a la web entera —hasta la lista de los doce dibujos—, y los
+     * doce y los ocho colores los genera ahora `npm run sync` del mismo sitio
+     * que los lee ella. Lo único que no se puede deducir es cuál se está
+     * editando, y eso se busca en la copia por su identificador.
+     *
+     * GUARDAR SIGUE SIENDO DE LA WEB: toca la LISTA de libretas, que es suya
+     * —con su límite de plan y su aviso de nombre repetido—. Esto es la hoja,
+     * no el guardado.
+     */
+    static func hoja(editando lid: String) -> CNLibretaNueva {
+        var m = CNLibretaNueva()
+        let suya = lid.isEmpty ? nil : CNAlmacen.libretas().first {
+            ((($0["id"] as? String) ?? (($0["id"] as? NSNumber)?.stringValue ?? "")) == lid)
+        }.flatMap { libretaDe($0) }
+        m.titulo = suya == nil ? cnT("Nueva libreta") : cnT("Editar libreta")
+        m.rotuloNombre = cnT("Nombre")
+        m.phNombre = cnT("Nombre (ej. La casa)")
+        m.rotuloTipo = cnT("Tipo")
+        m.rotuloIcono = cnT("Icono")
+        m.tipos = tipos.map { CNLibretaNueva.Tipo(id: $0, label: cnT($0)) }
+        m.coloresId = CNCatalogos.coloresDeLibreta
+        m.colores = CNCatalogos.coloresDeLibreta
+        m.iconos = CNCatalogos.iconosDeLibreta.map {
+            CNLibretaNueva.Icono(id: $0.id, label: cnT($0.nombre), path: $0.path)
+        }
+        guard let l = suya else { return m }
+        m.nombre = l.nombre
+        m.tipo = l.tipo
+        // Las de antes no traen dibujo: el de su tipo, que es lo que ya se les
+        // enseña en la lista.
+        m.icono = l.icono.isEmpty ? (CNCatalogos.iconoPorTipoDeLibreta[l.tipo] ?? "casa") : l.icono
+        // El color va por SU SITIO en la lista, no por su valor: así lo espera
+        // la hoja, y un color que no esté en los ocho se queda sin marcar en
+        // vez de marcar el primero.
+        m.color = CNCatalogos.coloresDeLibreta.firstIndex(of: l.color) ?? -1
+        return m
+    }
+
     /// El dibujo de una libreta: el que eligió quien la creó y, si no, el de su
     /// tipo. La tabla la genera `npm run sync` de la misma que usa la web.
     static func glifo(_ l: CNLibreta) -> String {

@@ -1970,7 +1970,6 @@ final class CNDatos: ObservableObject {
         sec.bloques[bi] = q
         seccion = sec
     }
-    func cargarLibretaNueva(json: String) { libretaNueva = CNLibretaNueva.desde(json: json) }
     func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
     func cargarTour(json: String) { tour = CNTour.desde(json: json) }
     /// Los dos PNG de Chino, que casi nunca cambian.
