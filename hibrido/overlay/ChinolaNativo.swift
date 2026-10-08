@@ -1603,7 +1603,6 @@ final class CNDatos: ObservableObject {
     /// Chino en grande (mantener pulsado su icono o la pestaña de Perfil).
     var onMascota: () -> Void = {}
     /// La hoja de la categoría: escribir, elegir icono o color, guardar.
-    var onCategoria: (String, String) -> Void = { _, _ in }
     /// Mandar una invitación desde el formulario nativo.
     var onInvitar: ([String: Any]) -> Void = { _ in }
     var onVerPresupuesto: () -> Void = {}
@@ -1704,7 +1703,6 @@ final class CNDatos: ObservableObject {
     var onCharlaLimpiar: () -> Void = {}
     @Published var mascota: CNMascota? = nil
     @Published var puerta: CNPuerta? = nil
-    @Published var categoria: CNHojaCategoria? = nil
     /// tipo: opcion · dia · antes · despues · aplicar · cerrar
     var onPeriodo: (String, Int) -> Void = { _, _ in }
     /// El detalle de un movimiento, armado por la web.
@@ -1852,7 +1850,7 @@ final class CNDatos: ObservableObject {
         resumen = nil; cuentas = nil; plan = nil; ajustes = nil
         mascota = nil; charla = nil; detalle = nil; movDetalle = nil
         seccion = nil; hojaWeb = nil; periodo = nil; libretas = nil
-        libretaNueva = nil; invitar = nil; categoria = nil; tour = nil
+        libretaNueva = nil; invitar = nil; tour = nil
     }
 
     /// La libreta que acaba de llegar, guardada para el próximo arranque.
@@ -1865,24 +1863,19 @@ final class CNDatos: ObservableObject {
         if let j = Self.guardado("tema") { cargarTema(json: j) }
         if let j = Self.guardado("resumen") { cargarResumen(json: j) }
         if let j = Self.guardado("cuentas") { cargarCuentas(json: j) }
-        if let j = Self.guardado("plan") { cargarPlan(json: j) }
         if let j = Self.guardado("ajustes") { cargarAjustes(json: j) }
         if let j = Self.guardado("perfil") { cargarPerfil(json: j) }
         if let j = Self.guardado("mascota") { cargarMascota(json: j) }
+        // Y el Plan, rehecho con la libreta que se acaba de leer.
+        refrescarPlan()
     }
 
-    /// Un modelo a medias (leído mientras la web repinta) NO pisa al bueno:
-    /// así la pantalla no se queda en blanco al cambiar de pestaña.
-    func cargarPlan(json: String) {
-        // El `defer` va PRIMERO: aunque el modelo sea el mismo, el refresco
-        // tiene que correr igual —depende también de la libreta, que cambia
-        // por su cuenta—. Lo que se evita es volver a aplicar lo idéntico.
-        defer { refrescarPlan() }
-        guard cambio("plan", json) else { return }
-        guard let m = CNPlanModelo.desde(json: json) else { return }
-        if m.listo { guarda("plan", json) }
-        if m.listo || plan == nil { plan = m }
-    }
+    // EL PLAN GUARDADO YA NO SE LEE: se rehace.
+    //
+    // Se guardaba el modelo entero de la última vez para tener qué pintar al
+    // arrancar, antes de que la web contestara. Ahora lo arma el teléfono con
+    // la libreta —que también se guarda—, así que guardar el modelo sería
+    // guardar dos veces lo mismo y arriesgarse a que no digan lo mismo.
     func cargarCuentas(json: String) {
         // El `defer` va PRIMERO: aunque el modelo sea el mismo, el refresco
         // tiene que correr igual —depende también de la libreta, que cambia
@@ -1939,7 +1932,6 @@ final class CNDatos: ObservableObject {
         puertaCruda = json
         puerta = CNPuerta.desde(json: json)
     }
-    func cargarCategoria(json: String) { categoria = CNHojaCategoria.desde(json: json) }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
@@ -2149,34 +2141,30 @@ final class CNDatos: ObservableObject {
      * Lo que NO se toca es el nombre, el icono, ni lo que sale al deslizar: eso
      * no cambia porque anotes un movimiento.
      */
+    /// Qué pestaña del Plan se está mirando. Vivía en la web (`state.planTab`)
+    /// porque era ella quien armaba la pantalla.
+    @Published var planTab = "presupuesto"
+
+    /**
+     * EL PLAN ENTERO, ARMADO AQUÍ.
+     *
+     * El contenido ya se calculaba en el teléfono, pero esto empezaba con
+     * `guard var m = plan`: el esqueleto —las dos pestañas, los títulos, qué
+     * categorías y qué metas— seguía viniendo de la web, y la web solo lo arma
+     * estando EN la pestaña del Plan. Desde cualquier otra no había dónde
+     * escribir los números ya calculados.
+     */
     func refrescarPlan() {
-        guard var m = plan, !libreta.sinLlegar else { return }
-        let pres = CNCalculo.presupuesto(libreta, periodoCalculo)
-        m.presGastado = cnDinero(pres.gastadoTotal)
-        m.presTotal = cnDinero(pres.limiteTotal)
-        m.presPct = Double(pres.pctTotal)
-        // El color y el texto de cada fila, por el módulo. Los colores del tema
-        // salen del modelo que mandó la web: cambian con la paleta que haya
-        // puesta, no con los números.
-        let t = CNPlanCuentas.Tinte(
-            positivo: resumen?.cabecera.positivo ?? "",
-            ambar: resumen?.cabecera.aviso ?? "",
-            negativo: resumen?.cabecera.negativo ?? "")
-        let filas = CNPlanCuentas.filas(libreta, periodoCalculo, tinte: t)
-        for i in m.filas.indices where i < filas.count {
-            m.filas[i].pct = Double(filas[i].pct)
-            m.filas[i].queda = filas[i].queda
-            // «RD$3,200 de RD$5,000»: los dos números, y el «de» tal como venga,
-            // que es una palabra traducida y no me la invento. Se quedaba viejo
-            // igual que el otro texto: la barra se llenaba y el pie seguía
-            // diciendo el gasto de antes.
-            m.filas[i].pie = [filas[i].gastado, m.presDe, filas[i].limite]
-                .filter { !$0.isEmpty }.joined(separator: " ")
-            // El color solo si de verdad hay uno: con la paleta sin llegar
-            // todavía, pintar de vacío deja la barra transparente.
-            if !filas[i].color.isEmpty { m.filas[i].color = filas[i].color }
-        }
-        plan = m
+        guard !libreta.sinLlegar else { return }
+        let cab = resumen?.cabecera
+        func oSi(_ a: String?, _ b: Color) -> String { (a?.isEmpty == false) ? a! : cnHexDe(b) }
+        let t = CNPlanArma.Tinte(
+            tinta: oSi(cab?.tinta, CNC.ink), gris: oSi(cab?.gris, CNC.pmut),
+            positivo: oSi(cab?.positivo, CNC.pos), aviso: oSi(cab?.aviso, CNC.acc),
+            negativo: oSi(cab?.negativo, CNC.neg),
+            side: CNC.hexSide, borde: cnHexDe(CNC.line), lila: oSi(cab?.ahorro, CNC.info))
+        plan = CNPlanArma.arma(libreta, periodoCalculo, tab: planTab,
+                               yo: CNPapeles.yo(perfil), tinte: t)
     }
 
     /**
@@ -5117,42 +5105,6 @@ struct CNPlanModelo {
     var tituloTusMetas = ""; var rotuloNuevaMeta = ""
     var filas: [Fila] = []; var metas: [Meta] = []
 
-    static func desde(json: String) -> CNPlanModelo? {
-        guard let d = json.data(using: .utf8),
-              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
-        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
-        func n(_ o: [String: Any]?, _ k: String) -> Double { ((o?[k] as? NSNumber)?.doubleValue) ?? 0 }
-        func b(_ o: [String: Any]?, _ k: String) -> Bool { (o?[k] as? Bool) ?? false }
-        func l(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
-        var m = CNPlanModelo()
-        m.listo = b(r, "listo")
-        m.titulo = s(r, "titulo").isEmpty ? "Plan" : s(r, "titulo")
-        m.tab = s(r, "tab"); m.puedeEditar = b(r, "puedeEditar"); m.puedeRegistrar = b(r, "puedeRegistrar")
-        m.tabs = l(r, "tabs").map { Tab(indice: Int(n($0, "indice")), label: s($0, "label"), puesta: b($0, "puesta")) }
-        m.presGastado = s(r, "presGastado"); m.presDe = s(r, "presDe"); m.presTotal = s(r, "presTotal")
-        m.presPct = n(r, "presPct"); m.presColor = s(r, "presColor")
-        m.presNota = s(r, "presNota"); m.presAvisoTinta = s(r, "presAvisoTinta")
-        m.tituloCategorias = s(r, "tituloCategorias"); m.rotuloNuevaCat = s(r, "rotuloNuevaCat")
-        m.tituloTusMetas = s(r, "tituloTusMetas"); m.rotuloNuevaMeta = s(r, "rotuloNuevaMeta")
-        m.filas = l(r, "filas").map {
-            Fila(indice: Int(n($0, "indice")), nombre: s($0, "nombre"), queda: s($0, "queda"),
-                 pie: s($0, "pie"), pct: n($0, "pct"), color: s($0, "color"),
-                 iconoPath: s($0, "iconoPath"), catColor: s($0, "catColor"), iconoBg: s($0, "iconoBg"),
-                 acciones: (($0["acciones"] as? [[String: Any]]) ?? []).map { a in
-                     CNAccionFila(label: (a["label"] as? String) ?? "",
-                                  icono: (a["icono"] as? String) ?? "",
-                                  peligro: (a["peligro"] as? Bool) ?? false,
-                                  accion: ((a["accion"] as? NSNumber)?.intValue) ?? -1)
-                 })
-        }
-        m.metas = l(r, "metas").map {
-            Meta(indice: Int(n($0, "indice")), idm: Int(n($0, "idm")), nombre: s($0, "nombre"), proyeccion: s($0, "proyeccion"),
-                 pctLabel: s($0, "pctLabel"), pct: n($0, "pct"), color: s($0, "color"),
-                 iconoPath: s($0, "iconoPath"), iconoBg: s($0, "iconoBg"),
-                 pie: s($0, "pie"), falta: s($0, "falta"), aportar: s($0, "aportar"))
-        }
-        return m
-    }
 }
 
 struct CNPlan: View {

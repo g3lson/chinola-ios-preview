@@ -366,6 +366,30 @@ jobs:
             xcrun simctl io "$UDID" screenshot "perfil-$P.png"
           done
 
+          # LAS CINCO FICHAS, que no se habían fotografiado NUNCA.
+          #
+          # Solo se abren tocando una fila, así que el banco —que entra, cambia
+          # de pestaña y fotografía— no pasaba por ninguna. Y son justo las que
+          # acaban de pasar a armarse en el teléfono: si una sale con su barra
+          # de arriba y nada debajo, o con un color que no es, no hay otra
+          # forma de enterarse.
+          #
+          # La categoría va por NOMBRE y las otras cuatro por número: así se
+          # abren de verdad en la app, y por eso se siembran con esos ids.
+          for F in cuenta:2 tarjeta:1 prestamo:1 meta:1 categoria:Alimentación; do
+            echo "=== ficha · $F ==="
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+            sleep 2
+            env SIMCTL_CHILD_CN_IR=detalle:$F SIMCTL_CHILD_CN_CON=sonda,flota \
+              SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
+            sleep 16
+            xcrun simctl io "$UDID" screenshot "ficha-$(echo "$F" | tr ':' '-').png"
+          done
+          # Y lo que dijo cada una: una ficha sin datos ni botones está vacía
+          # aunque la foto parezca normal.
+          xcrun simctl spawn "$UDID" log show --last 3m --style compact \
+            --predicate 'eventMessage CONTAINS "CNIR: la ficha"' 2>/dev/null | tail -10 || true
+
           # ¿QUIÉN ARMÓ CADA SUBPANTALLA: el teléfono o la web?
           #
           # «Libretas y permisos» estuvo armándose en la web mientras la nativa

@@ -108,6 +108,128 @@ enum CNCatalogos {
         "remesa": "M3 8h12v8H3zM9 12h.01M17 4h4v4M21 4l-5 5M6 20h10"
     ]
 
+    /**
+     * Y EN QUÉ ORDEN SE ENSEÑAN, que un diccionario no lo guarda.
+     *
+     * La rejilla de «elige un icono» los enseña en el orden del
+     * catálogo, que es el que los agrupa por familias —casa, comida,
+     * transporte—. Recorriendo el diccionario salen en un orden
+     * distinto cada vez que se abre la hoja.
+     */
+    static let ordenDeIconos: [String] = [
+        "banco",
+        "billete",
+        "casa",
+        "carrito",
+        "comida",
+        "cafe",
+        "rayo",
+        "wifi",
+        "auto",
+        "gasolina",
+        "birrete",
+        "libro",
+        "salud",
+        "iglesia",
+        "regalo",
+        "cine",
+        "musica",
+        "tarjeta",
+        "usuario",
+        "familia",
+        "hucha",
+        "grafico",
+        "maleta",
+        "avion",
+        "mascota",
+        "ropa",
+        "gym",
+        "herramienta",
+        "telefono",
+        "puntos",
+        "alquiler",
+        "llave",
+        "sofa",
+        "bombilla",
+        "agua",
+        "basura",
+        "bus",
+        "taxi",
+        "moto",
+        "bici",
+        "parking",
+        "taller",
+        "peaje",
+        "supermercado",
+        "panaderia",
+        "restaurante",
+        "pizza",
+        "bebida",
+        "farmacia",
+        "medico",
+        "dentista",
+        "gafas",
+        "peluqueria",
+        "cuna",
+        "colegio",
+        "laptop",
+        "suscripcion",
+        "juego",
+        "deporte",
+        "playa",
+        "hotel",
+        "concierto",
+        "iglesia2",
+        "mano",
+        "impuesto",
+        "seguro",
+        "nomina",
+        "propina",
+        "bolsa",
+        "camion",
+        "caja",
+        "factura",
+        "reloj",
+        "estrella",
+        "corazon",
+        "planta",
+        "limpieza",
+        "mudanza",
+        "perro",
+        "gato",
+        "libro2",
+        "premio",
+        "moneda",
+        "cripto",
+        "candado",
+        "paypal",
+        "billetera",
+        "transferencia",
+        "qr",
+        "contactless",
+        "cajero",
+        "cheque",
+        "remesa"
+    ]
+
+    /**
+     * LOS SIETE COLORES QUE SE OFRECEN PARA UNA CATEGORÍA.
+     *
+     * Son los de la web (`SWATCH`), en su orden. No son los mismos que
+     * los de las cuentas: estos van en oklch y los otros en hexadecimal,
+     * y mezclarlos deja la hoja de categoría con una paleta y la libreta
+     * guardada con otra.
+     */
+    static let coloresDeCategoria: [String] = [
+        "oklch(0.42 0.10 155)",
+        "oklch(0.46 0.11 255)",
+        "oklch(0.56 0.16 30)",
+        "oklch(0.50 0.14 300)",
+        "oklch(0.60 0.13 95)",
+        "oklch(0.46 0.11 200)",
+        "oklch(0.32 0.03 155)"
+    ]
+
     /// Cómo se llama cada uno cuando hay que enseñarlo para elegirlo.
     static let nombreDelIcono: [String: String] = [
         "banco": "Banco",

@@ -389,6 +389,40 @@ class ChinolaViewController: CAPBridgeViewController {
                 bancoALaPuerta(String(ir.dropFirst(7)), intentos: 14)
                 return
             }
+            /*
+             * Y «detalle:<tipo>:<cuál>», LAS CINCO FICHAS.
+             *
+             * El banco fotografía las cinco pestañas, las trece subpantallas de
+             * Perfil y sus cinco hojas. Las fichas —una cuenta, una tarjeta, un
+             * préstamo, una meta, una categoría— no las había fotografiado
+             * NUNCA, porque solo se abren tocando una fila.
+             *
+             * Y son justo las que acaban de pasar a armarse en el teléfono: si
+             * una sale con su barra de arriba y nada debajo, o con un color
+             * que no es, no hay otra forma de enterarse.
+             */
+            if ir.hasPrefix("detalle:") {
+                let t = ir.dropFirst(8).split(separator: ":", maxSplits: 1).map(String.init)
+                guard t.count == 2 else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
+                    guard let s = self else { return }
+                    // Desde la pestaña de donde se abre de verdad: las tres de
+                    // Cuentas desde Cuentas y las dos del Plan desde el Plan.
+                    let donde = ["meta", "categoria"].contains(t[0]) ? "plan" : "cuentas"
+                    s.menuEstado.alTocar(donde)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        NSLog("CNIR: ficha \(t[0]) · \(t[1])")
+                        s.mostrarDetalle(t[0], t[1])
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            let d = CNDatos.shared.detalle
+                            NSLog("CNIR: la ficha tiene titulo=«\(d?.titulo ?? "")»"
+                                  + " datos=\(d?.datos.count ?? -1) botones=\(d?.botones.count ?? -1)"
+                                  + " tramos=\(d?.tramos.count ?? -1)")
+                        }
+                    }
+                }
+                return
+            }
             if ir.contains("@") {
                 let t = ir.split(separator: "@", maxSplits: 1).map(String.init)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
@@ -696,10 +730,18 @@ class ChinolaViewController: CAPBridgeViewController {
                 s.mostrarDetalle("meta", "\(g.idm)")
                 return
             }
+            // LA PESTAÑA, AQUÍ MISMO. Iba a la web, esperaba un cuarto de
+            // segundo y volvía a pedir el Plan entero hasta seis veces.
+            if tipo == "tab" {
+                CNDatos.shared.planTab = i == 1 ? "metas" : "presupuesto"
+                s.datos.refrescarPlan()
+                s.eval("window.__chinolaPlanAccion && window.__chinolaPlanAccion(\"tab\",\(i))")
+                return
+            }
             s.eval("window.__chinolaPlanAccion && window.__chinolaPlanAccion(\(s.comillas(tipo)),\(i))")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                s.traerPlan(intentos: 6)
-                if tipo != "tab" { s.webTemporal() }
+                s.traerPlan()
+                s.webTemporal()
             }
         }
         datos.onAgregar = { [weak self] in guard let s = self else { return }
@@ -1239,7 +1281,13 @@ class ChinolaViewController: CAPBridgeViewController {
             }
         }
         // Lo que aún vive en la web.
-        datos.onNuevaCategoria = { [weak self] in self?.webTemporal(); self?.eval("window.__chinolaNuevaCategoria && window.__chinolaNuevaCategoria()") }
+        // Nueva categoría: su hoja es nativa y guarda por `CNEscribir`. Antes
+        // esto le pedía a la web que abriera la suya y se enseñaba la pantalla
+        // web mientras tanto.
+        datos.onNuevaCategoria = { [weak self] in
+            guard let s = self else { return }
+            s.presentar(AnyView(CNFormCategoria(datos: s.datos, onClose: { s.cerrar() })))
+        }
         datos.onPerfil = { [weak self] id in self?.webTemporal(); self?.eval("window.__chinolaPerfil && window.__chinolaPerfil('\(id)')") }
         // Las hojas de «Acerca de». Van por el mismo camino que las demás
         // hojas de la web, que es quien las sabe dibujar.
@@ -1948,14 +1996,9 @@ class ChinolaViewController: CAPBridgeViewController {
             let nombre = d.titulo
             guard !nombre.isEmpty else { return }
             if que == "editar" {
-                eval("window.__chinolaAbrirHojaDe && window.__chinolaAbrirHojaDe(\"categoria\"," + comillas(nombre) + ")")
-                // CON `s` FUERTE DENTRO. `{ self?.cerrarDetalle() }` es un
-                // `() -> ()?` y no encaja donde se pide un `() -> Void`. Aquí
-                // no hay Xcode: esto solo se ve en el banco, y cuesta una vuelta.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                    guard let s = self else { return }
-                    s.webTemporal(alIrALaWeb: { s.cerrarDetalle() })
-                }
+                guard let c = l.categorias.first(where: { $0.nombre == nombre }) else { return }
+                let cerrar: () -> Void = { [weak self] in self?.cerrar() }
+                presentar(AnyView(CNFormCategoria(datos: datos, onClose: cerrar, editar: c)))
                 return
             }
             guard que == "borrar" else { return }
@@ -2193,16 +2236,10 @@ class ChinolaViewController: CAPBridgeViewController {
         CNDatos.shared.refrescarCuentas()
     }
 
-    /// El Plan, armado por la web.
+    /// El Plan, armado aquí. Se le pedía a la web con hasta seis reintentos,
+    /// porque solo lo tiene armado estando en su pestaña.
     private func traerPlan(intentos: Int = 1) {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaPlanJSON && window.__chinolaPlanJSON()) || ''") { [weak self] res, _ in
-            guard let s = self else { return }
-            if let json = res as? String, json.count > 2 { CNDatos.shared.cargarPlan(json: json) }
-            if intentos > 1, CNDatos.shared.plan?.listo != true {
-                s.empujarALaWeb("plan")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { s.traerPlan(intentos: intentos - 1) }
-            }
-        }
+        datos.refrescarPlan()
     }
 
     /// El detalle de un movimiento, armado aquí. Se lo pedía a la web, y como
@@ -2404,47 +2441,38 @@ class ChinolaViewController: CAPBridgeViewController {
                     s.mostrarTour()
                     return
                 }
-                // ¿La categoría? También tiene su hoja nativa.
-                s.bridge?.webView?.evaluateJavaScript("(window.__chinolaCatJSON && window.__chinolaCatJSON()) || ''") { rc, _ in
-                    if let j = rc as? String, j.count > 2 {
-                        CNDatos.shared.cargarCategoria(json: j)
-                        s.presentar(AnyView(CNFormCategoria(datos: s.datos, onClose: { s.cerrar() })),
-                                    alCerrar: { [weak s] in
-                            guard let s = s else { return }
-                            s.eval("window.__chinolaCat && window.__chinolaCat('cerrar','')")
-                            s.traerPlan(intentos: 4); s.traerDatos(intentos: 3)
-                        })
+                // LA CATEGORÍA YA NO SE MIRA AQUÍ. Su hoja la abre el teléfono
+                // con su propio estado, así que no hay que preguntarle a la web
+                // si la abrió ella.
+                s.bridge?.webView?.evaluateJavaScript("(window.__chinolaHojaJSON && window.__chinolaHojaJSON()) || ''") { res, _ in
+                    if let json = res as? String, json.count > 2 {
+                        CNDatos.shared.cargarHojaWeb(json: json)
+                        s.presentarHojaWeb()
                         return
                     }
-            s.bridge?.webView?.evaluateJavaScript("(window.__chinolaHojaJSON && window.__chinolaHojaJSON()) || ''") { res, _ in
-                if let json = res as? String, json.count > 2 {
-                    CNDatos.shared.cargarHojaWeb(json: json)
-                    s.presentarHojaWeb()
-                    return
-                }
-                // ¿La puerta (cambiar de plan, poner el nombre, cerrar sesión)?
-                s.bridge?.webView?.evaluateJavaScript("(window.__chinolaPuertaJSON && window.__chinolaPuertaJSON()) || ''") { rp, _ in
-                    if let j = rp as? String, j.count > 2, let m = CNPuerta.desde(json: j), m.paso != "app" {
-                        CNDatos.shared.cargarPuerta(json: j)
-                        s.abrirPuerta()
-                        return
-                    }
-                    // Nada de eso. Solo si la web tiene de verdad algo abierto
-                    // que no sabemos dibujar se enseña la web; si la acción no
-                    // abrió nada (un interruptor, exportar, un aviso), nos
-                    // quedamos en nativo. Antes se enseñaba la web por defecto,
-                    // y eso era «todo es web» y los cuelgues.
-                    s.bridge?.webView?.evaluateJavaScript("!!(window.__chinolaHayHoja && window.__chinolaHayHoja())") { rh, _ in
-                        guard (rh as? Bool) == true else { return }
-                        alIrALaWeb?()
-                        s.mostrarWeb()
-                        guard !s.volviendo else { return }
-                        s.volviendo = true
-                        s.vigilarVuelta(200)
+                    // ¿La puerta (cambiar de plan, poner el nombre, cerrar sesión)?
+                    s.bridge?.webView?.evaluateJavaScript("(window.__chinolaPuertaJSON && window.__chinolaPuertaJSON()) || ''") { rp, _ in
+                        if let j = rp as? String, j.count > 2, let m = CNPuerta.desde(json: j), m.paso != "app" {
+                            CNDatos.shared.cargarPuerta(json: j)
+                            s.abrirPuerta()
+                            return
+                        }
+                        // Nada de eso. Solo si la web tiene de verdad algo
+                        // abierto que no sabemos dibujar se enseña la web; si
+                        // la acción no abrió nada (un interruptor, exportar, un
+                        // aviso), nos quedamos en nativo. Antes se enseñaba la
+                        // web por defecto, y eso era «todo es web» y los
+                        // cuelgues.
+                        s.bridge?.webView?.evaluateJavaScript("!!(window.__chinolaHayHoja && window.__chinolaHayHoja())") { rh, _ in
+                            guard (rh as? Bool) == true else { return }
+                            alIrALaWeb?()
+                            s.mostrarWeb()
+                            guard !s.volviendo else { return }
+                            s.volviendo = true
+                            s.vigilarVuelta(200)
+                        }
                     }
                 }
-            }
-            }
             }
         }
     }
@@ -3749,18 +3777,6 @@ class ChinolaViewController: CAPBridgeViewController {
         // Mantener pulsado un botón del menú: el atajo de esa pestaña, desde
         // donde sea. Anotar es el más usado, así que está en dos.
         datos.onMascota = { [weak self] in self?.abrirMascota() }
-        datos.onCategoria = { [weak self] que, valor in
-            guard let s = self else { return }
-            s.eval("window.__chinolaCat && window.__chinolaCat(\(s.comillas(que)),\(s.comillas(valor)))")
-            // Elegir icono, color o tipo cambia cómo se ve la hoja.
-            if que == "icono" || que == "color" || que == "tipo" {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                    s.bridge?.webView?.evaluateJavaScript("(window.__chinolaCatJSON && window.__chinolaCatJSON()) || ''") { r, _ in
-                        if let j = r as? String, j.count > 2 { CNDatos.shared.cargarCategoria(json: j) }
-                    }
-                }
-            }
-        }
         barra.alMantener = { [weak self] id in
             guard let s = self else { return }
             switch id {
