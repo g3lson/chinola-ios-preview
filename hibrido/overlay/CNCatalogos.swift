@@ -409,6 +409,45 @@ enum CNCatalogos {
         "oklch(0.38 0.06 155)"
     ]
 
+    /**
+     * CHINO: LO QUE DISTINGUE A CADA UNO DE SUS SEIS ÁNIMOS.
+     *
+     * El cuerpo es el mismo en los seis; lo que cambia es la CARA. Son
+     * treinta y seis números —cuánto gira cada ceja, cuánto se abre el
+     * ojo, cuánto rubor— y escritos dos veces se separan en cuanto
+     * alguien afine uno.
+     *
+     * `conCeja` en vez de una pareja opcional: el ánimo de todos los días
+     * va SIN cejas a propósito —es el de la portada y el de la barra, y
+     * ahí las cejas solo lo hacen mayor—, y un cero no es lo mismo que no
+     * tenerlas.
+     */
+    static let animosDeChino: [(id: String, conCeja: Bool, cejaIzq: Double, cejaDer: Double, cejaY: Double, ojo: Double, boca: String, rubor: Double, extras: [String])] = [
+        (id: "feliz", conCeja: false, cejaIzq: 0, cejaDer: 0, cejaY: 0, ojo: 1, boca: "sonrisa", rubor: 0.62, extras: []),
+        (id: "fiesta", conCeja: true, cejaIzq: -14, cejaDer: 14, cejaY: -2, ojo: 0.55, boca: "risa", rubor: 0.85, extras: ["chispas"]),
+        (id: "fuerte", conCeja: true, cejaIzq: -9, cejaDer: -9, cejaY: 0, ojo: 0.9, boca: "ladeada", rubor: 0.45, extras: ["subida"]),
+        (id: "estudiosa", conCeja: true, cejaIzq: 4, cejaDer: -4, cejaY: 1, ojo: 1, boca: "recta", rubor: 0.35, extras: ["gafas"]),
+        (id: "rota", conCeja: true, cejaIzq: 16, cejaDer: -16, cejaY: 3, ojo: 0.9, boca: "triste", rubor: 0.3, extras: ["sudor"]),
+        (id: "jugo", conCeja: true, cejaIzq: -6, cejaDer: 6, cejaY: 1, ojo: 0.28, boca: "sonrisa", rubor: 0.7, extras: ["burbujas"])
+    ]
+
+    /// Sus bocas: un trazo y su grosor. Una sonrisa es un arco y no un
+    /// rectángulo redondeado: el grosor constante y las puntas hacia
+    /// arriba es lo que la hace leerse como sonrisa.
+    static let bocasDeChino: [String: (d: String, color: String, grosor: Double)] = [
+        "sonrisa": (d: "M47 74q13 12 26 0", color: "#2a1f10", grosor: 4.5),
+        "firme": (d: "M49 76h22", color: "#2a1f10", grosor: 4.5),
+        "ladeada": (d: "M48 75q13 8 25 -5", color: "#2a1f10", grosor: 4.5),
+        "recta": (d: "M51 76h18", color: "#2a1f10", grosor: 4),
+        "triste": (d: "M47 79q13 -11 26 0", color: "#2a1f10", grosor: 4.5)
+    ]
+
+    /// Y la risa, que es la única RELLENA: la boca abierta y la lengua.
+    static let risaDeChino: [(d: String, color: String)] = [
+        (d: "M45 71q15 20 30 0z", color: "#2a1f10"),
+        (d: "M52 79q8 7 16 0z", color: "#e0736b")
+    ]
+
     /// Los de las filas de ajustes, que son otros y viven aparte.
     static let iconosDeAjuste: [String: String] = [
         "notis": "M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0",

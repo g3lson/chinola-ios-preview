@@ -7618,7 +7618,10 @@ struct CNLienzoSerie: View {
 // y se disparan por su sitio en la lista.
 
 struct CNAjustes: Equatable {
-    struct Opcion { var id = ""; var label = "" }
+    // Equatable TAMBIÉN aquí: una pieza de dentro que no lo sea deja sin él a
+    // la de fuera, y el error sale en la línea de la de fuera, que es donde no
+    // está el problema.
+    struct Opcion: Equatable { var id = ""; var label = "" }
     struct Fila: Equatable {
         var label = ""; var sub = ""; var valor = ""
         var icono = ""; var bg = ""; var fg = ""; var tinta = ""

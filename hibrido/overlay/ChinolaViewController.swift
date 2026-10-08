@@ -379,6 +379,21 @@ class ChinolaViewController: CAPBridgeViewController {
             // con una libreta sembrada, así que la puerta ya está pasada antes
             // de que haya nada que mirar. Y son las primeras que ve alguien
             // que abre la app por primera vez.
+            // Y «chino», LOS SEIS ÁNIMOS DEL PERSONAJE.
+            //
+            // El dibujo acaba de pasar de la web a Swift, y un dibujo no se
+            // comprueba con una expresión regular: los seis juntos en una foto
+            // es la única forma de ver si tienen cara.
+            if ir == "chino" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                    guard let s = self else { return }
+                    NSLog("CNIR: los seis ánimos de Chino")
+                    let host = UIHostingController(rootView: CNChinoMuestra())
+                    host.modalPresentationStyle = .fullScreen
+                    s.present(host, animated: false)
+                }
+                return
+            }
             if ir.hasPrefix("puerta:") {
                 // ESPERANDO A QUE LA WEB ESTÉ. El primer arranque después de
                 // instalar es el más lento, y la primera pantalla del bucle
