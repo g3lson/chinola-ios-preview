@@ -229,25 +229,30 @@ enum CNDetallePantalla {
         // aquí a fuego, una meta sin color salía morada en el teléfono
         // mientras en la web seguía el tema que tuvieras puesto.
         let color = g.color.isEmpty ? t.lila : g.color
+        let pieIzq: String = String(Int(pct)) + "% · " + cnT("Te falta") + " " + cnDinero(falta)
+        let cuantoAparta: String = cuota > 0 ? cnDinero(cuota) : cnT("Sin cuota")
+        let pieDer: String = cnT("Apartas cada mes") + " " + cuantoAparta
+        // «15 meses a este ritmo» solo cuando hay ritmo y queda algo.
+        var ritmo = ""
+        if cuota > 0, falta > 0 {
+            ritmo = cnT("{n} meses a este ritmo").replacingOccurrences(of: "{n}", with: String(meses))
+        }
         d.hero = CNDetalle.Hero(
             iconoPath: glifoDeMeta(g), iconoColor: color,
             iconoBg: CNCuentasFilas.tinte(color),
             rotulo: cnT("Llevas ahorrado"), valor: cnDinero(llevo), color: color,
             pct: pct, colorBarra: color,
-            pieIzq: String(Int(pct)) + "% · " + cnT("Te falta") + " " + cnDinero(falta),
-            pieDer: cnT("Apartas cada mes") + " "
-                + (cuota > 0 ? cnDinero(cuota) : cnT("Sin cuota")),
-            // «15 meses a este ritmo» solo cuando hay ritmo y queda algo.
-            nota: cuota > 0 && falta > 0
-                ? cnT("{n} meses a este ritmo").replacingOccurrences(of: "{n}", with: String(meses)) : "")
+            pieIzq: pieIzq, pieDer: pieDer, nota: ritmo)
         // La meta NO lleva filas de datos en el teléfono: la web las manda
         // vacías a propósito, porque el bloque de arriba ya las dice.
         d.datos = []
+        // El botón dice cuánto se va a aportar: así se toca sin tener que
+        // mirar antes la fila del aporte mensual.
+        let rotuloAportar: String = cuota > 0 ? cnT("Aportar") + " " + cnDinero(cuota) : cnT("Aportar")
         d.botones = [
             // El botón dice cuánto se va a aportar: así se toca sin tener que
             // mirar antes la fila del aporte mensual.
-            CNDetalle.Boton(id: 0,
-                            label: cuota > 0 ? cnT("Aportar") + " " + cnDinero(cuota) : cnT("Aportar"),
+            CNDetalle.Boton(id: 0, label: rotuloAportar,
                             estilo: "acento", abre: "aporte", cual: id, monto: cuota),
             CNDetalle.Boton(id: 1, label: cnT("Editar la meta"), estilo: "contorno")
         ]
@@ -336,26 +341,41 @@ enum CNDetallePantalla {
         let pct = limite > 0 ? Int((total / limite * 100).rounded()) : 0
         let queda = limite - total
 
+        // CADA TROZO EN SU VARIABLE, con el tipo escrito. Todo junto dentro del
+        // constructor son doce ternarios anidados y el compilador se rinde.
+        let glifo: String = cat != nil ? (CNCatalogos.iconos[CNCategorias.icono(nombre, en: l)] ?? "") : ""
+        let colorIcono: String = (cat?.color.isEmpty == false) ? cat!.color : color
+        let rotuloCifra: String = esMesActual ? cnT("Gastado este mes") : cnT("Gastado en el periodo")
+        let barra: Double = hayLimite ? Double(min(100, pct)) : -1
+        let colorBarra: String
+        if total > limite { colorBarra = t.negativo }
+        else if pct > 85 { colorBarra = t.aviso }
+        else { colorBarra = t.positivo }
+        var izq = "", der = ""
+        if hayLimite {
+            // El porcentaje SIN recortar: la barra no puede pasar de llena,
+            // pero el texto tiene que poder decir «300 %». Con el recortado en
+            // los dos sitios, pasarse por poco y pasarse por mucho se leen
+            // igual.
+            izq = cnT("{n}% del presupuesto").replacingOccurrences(of: "{n}", with: String(pct))
+            der = cnT("Presupuesto {p}").replacingOccurrences(of: "{p}", with: cnDinero(limite))
+        }
+        var resumen = cnT("Nada anotado en este periodo")
+        if !dentro.isEmpty {
+            resumen = cnT("{n} movimientos · {p} al mes de media")
+                .replacingOccurrences(of: "{n}", with: String(dentro.count))
+                .replacingOccurrences(of: "{p}", with: cnDinero(media.rounded()))
+        }
         d.hero = CNDetalle.Hero(
-            iconoPath: cat != nil ? (CNCatalogos.iconos[CNCategorias.icono(nombre, en: l)] ?? "") : "",
+            iconoPath: glifo,
             // EN GRIS, SIEMPRE. La web manda aquí un campo que no existe en su
             // propio modelo y cae en el gris del tema; con el color de la
             // categoría, la pantalla cambia de cara.
             iconoColor: t.gris,
-            iconoBg: CNCuentasFilas.tinte(cat?.color.isEmpty == false ? cat!.color : color),
-            rotulo: esMesActual ? cnT("Gastado este mes") : cnT("Gastado en el periodo"),
-            valor: cnDinero(total), color: t.tinta,
-            pct: hayLimite ? Double(min(100, pct)) : -1,
-            colorBarra: total > limite ? t.negativo : (pct > 85 ? t.aviso : t.positivo),
-            pieIzq: hayLimite
-                ? cnT("{n}% del presupuesto").replacingOccurrences(of: "{n}", with: String(pct)) : "",
-            pieDer: hayLimite
-                ? cnT("Presupuesto {p}").replacingOccurrences(of: "{p}", with: cnDinero(limite)) : "",
-            nota: dentro.isEmpty
-                ? cnT("Nada anotado en este periodo")
-                : cnT("{n} movimientos · {p} al mes de media")
-                    .replacingOccurrences(of: "{n}", with: String(dentro.count))
-                    .replacingOccurrences(of: "{p}", with: cnDinero(media.rounded())))
+            iconoBg: CNCuentasFilas.tinte(colorIcono),
+            rotulo: rotuloCifra, valor: cnDinero(total), color: t.tinta,
+            pct: barra, colorBarra: colorBarra,
+            pieIzq: izq, pieDer: der, nota: resumen)
 
         var filas: [CNDetalle.Dato] = [
             CNDetalle.Dato(id: 0, label: cnT("Movimientos"), valor: String(dentro.count), color: t.tinta),
@@ -377,12 +397,18 @@ enum CNDetallePantalla {
                             abre: "movCat", conQue: nombre),
             CNDetalle.Boton(id: 1, label: cnT("Cambiar presupuesto"), estilo: "contorno")
         ]
-        d.chips = [1, 3, 6, 12, 0].enumerated().map { i, n in
-            CNDetalle.Chip(indice: i,
-                           label: n == 1 ? cnT("Este mes")
-                               : n > 0 ? cnT("{n} meses").replacingOccurrences(of: "{n}", with: String(n))
-                               : cnT("Todo"),
-                           puesta: n == meses)
+        // EN DOS PASOS, con el tipo escrito. Con el ternario doble dentro del
+        // constructor, el compilador se rinde: «unable to type-check this
+        // expression in reasonable time». No falla la cuenta, falla la
+        // compilación entera, y aquí no hay Xcode para enterarse antes.
+        func rotuloDelChip(_ n: Int) -> String {
+            if n == 1 { return cnT("Este mes") }
+            if n <= 0 { return cnT("Todo") }
+            return cnT("{n} meses").replacingOccurrences(of: "{n}", with: String(n))
+        }
+        let rangos: [Int] = [1, 3, 6, 12, 0]
+        d.chips = rangos.enumerated().map { i, n -> CNDetalle.Chip in
+            CNDetalle.Chip(indice: i, label: rotuloDelChip(n), puesta: n == meses)
         }
         if !esMesActual, cubos.contains(where: { $0.monto > 0 }) {
             // El tope se dice UNA vez arriba y no bajo cada barra: con doce
