@@ -219,7 +219,7 @@ enum CNDetallePantalla {
                 sub: [m.categoria, cnFechaLargaDeDia(m.fecha)].filter { !$0.isEmpty }.joined(separator: " · "),
                 montoFmt: (esGasto ? "\u{2212}" : "") + cnDinero(m.monto),
                 color: esGasto ? t.negativo : t.positivo,
-                iconoPath: CNCategorias.icono(m.categoria, l),
+                iconoPath: CNCategorias.icono(m.categoria, en: l),
                 catColor: cat?.color ?? t.gris,
                 iconoBg: CNCuentasFilas.tinte(cat?.color ?? t.gris, 0.15)))
         }
