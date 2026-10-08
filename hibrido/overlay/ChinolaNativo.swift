@@ -448,11 +448,31 @@ enum CNTextos {
         return String((Locale.preferredLanguages.first ?? "es").prefix(2))
     }
 
-    /// Se recuerda para el próximo arranque, que es cuando hace falta.
+    /**
+     * Se recuerda para el próximo arranque, Y SE REPINTA LA BARRA SI CAMBIÓ.
+     *
+     * Los nombres de las pestañas van DIBUJADOS DENTRO de su imagen, así que
+     * cambiar de idioma no los cambia: la imagen ya está hecha. En un teléfono
+     * en inglés con la app en español, la primera pantalla salía entera en
+     * español con «Overview · Movs · Accounts» debajo, y así se quedaba.
+     *
+     * `pintar` ya sabe rehacerlas cuando los rótulos cambian; lo que faltaba
+     * era que alguien se lo dijera.
+     */
     static func recuerdaIdioma(_ loc: String) {
         let corto = String(loc.prefix(2))
         guard !corto.isEmpty else { return }
+        // El que se está usando AHORA, que con nada guardado es el del teléfono:
+        // comparando con lo guardado, el primer arranque no cambiaba nunca.
+        let antes = idioma
         UserDefaults.standard.set(corto, forKey: "cnIdioma")
+        guard antes != corto else { return }
+        DispatchQueue.main.async {
+            CNMenuEstado.shared.alRepintar()
+            // Y lo que ya estaba armado, otra vez: su modelo guarda los textos
+            // ya traducidos, así que nada de eso cambia solo.
+            CNMenuEstado.shared.alIdioma()
+        }
     }
 }
 
@@ -3254,6 +3274,15 @@ final class CNMenuEstado: ObservableObject {
     var alAviso: (String, String) -> Void = { _, _ in }
     /// La web avisa de que la subpantalla abierta cambió (llegó algo del servidor).
     var alSeccion: () -> Void = {}
+    /**
+     * Y CAMBIÓ EL IDIOMA: se rearma todo lo que ya estaba armado.
+     *
+     * Las pantallas nativas guardan su modelo con los textos YA TRADUCIDOS, así
+     * que cambiar de idioma no las cambia: hay que volver a armarlas. Se ve en
+     * el primer arranque de un teléfono en inglés con la app en español —la
+     * primera pantalla sale mezclada— y al cambiar de idioma a mano.
+     */
+    var alIdioma: () -> Void = {}
 }
 
 /// Las 5 pestañas, en un solo sitio (las usa la barra nativa UITabBar).
@@ -8539,7 +8568,11 @@ struct CNSeccionVista: View {
      */
     private func soloTexto(_ q: CNSeccion.Bloque) -> Bool {
         !q.opciones.isEmpty && q.opciones.allSatisfy {
-            $0.icono.isEmpty && $0.imagen.isEmpty && $0.color.isEmpty
+            // `chino` ENTRE ELLOS. Al dejarlo fuera, «Tu personaje» —que es la
+            // pantalla donde más claramente se elige MIRANDO— salía como una
+            // lista de nombres con palomita: «La chinola», «El orbe», «Orbe»,
+            // «Semilla que mira». Elegir una cara leyendo su nombre.
+            $0.icono.isEmpty && $0.imagen.isEmpty && $0.color.isEmpty && $0.chino.isEmpty
                 && $0.muestra.isEmpty && $0.vista.isEmpty
         }
     }

@@ -3907,6 +3907,14 @@ class ChinolaViewController: CAPBridgeViewController {
             guard let s = self, let id = CNDatos.shared.seccion?.id else { return }
             s.traerSeccion(id)
         }
+        // CUANDO CAMBIA EL IDIOMA, todo lo armado se vuelve a armar: su modelo
+        // guarda los textos ya traducidos. Va aparte de `alRepintar` porque ese
+        // salta en cada cambio de tema, y esto solo cuando el idioma cambia de
+        // verdad.
+        menuEstado.alIdioma = { [weak self] in
+            guard let s = self else { return }
+            s.refrescarPronto()
+        }
         menuEstado.alRepintar = { [weak self] in
             guard let s = self else { return }
             s.barra.pintar(activa: s.menuEstado.activa, titulos: s.menuEstado.titulos)
