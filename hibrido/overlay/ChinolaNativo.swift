@@ -276,6 +276,9 @@ struct CNFormato {
     /// el teléfono tenía el color pero no la elección, y sin ella no puede
     /// armar esa tarjeta por su cuenta.
     var colorPatrimonio = "tema"
+    /// El ojo cerrado: las cifras tapadas. Venía dentro del modelo de Cuentas
+    /// y sin él, armando esa pantalla aquí, se destapaban solas.
+    var dineroOculto = false
     /// Qué grupos de Cuentas están plegados. Venía dentro del modelo de esa
     /// pantalla; sin él, armándola aquí, lo que alguien plegó reaparecía.
     var plegadoCuentas = false; var plegadoTarjetas = false; var plegadoPrestamos = false
@@ -298,6 +301,7 @@ struct CNFormato {
         if let t = o["cabecera"] as? String, !t.isEmpty { f.cabecera = t }
         if let t = o["cabeceraColor"] as? String { f.cabeceraColor = t }
         if let t = o["colorPatrimonio"] as? String, !t.isEmpty { f.colorPatrimonio = t }
+        f.dineroOculto = (o["dineroOculto"] as? Bool) ?? f.dineroOculto
         if let p = o["plegados"] as? [String: Any] {
             f.plegadoCuentas = (p["cuentas"] as? Bool) ?? false
             f.plegadoTarjetas = (p["tarjetas"] as? Bool) ?? false
@@ -1961,6 +1965,19 @@ final class CNDatos: ObservableObject {
             m.patrimonio.tinta = c.tinta
             m.patrimonio.gris = c.gris
         }
+        if !m.listo {
+            m.oculto = CNC.fmt.dineroOculto
+            if m.titulo.isEmpty || m.titulo == "Cuentas" { m.titulo = cnT("Cuentas") }
+            // Los colores que se pueden poner a la tarjeta del patrimonio: los
+            // dos de siempre y los catorce del catálogo.
+            if m.coloresTarjeta.isEmpty {
+                m.coloresTarjeta = ([(id: "tema", nombre: cnT("Del tema")),
+                                     (id: "cabecera", nombre: cnT("Como la cabecera"))]
+                    + CNCatalogos.coloresDeCabecera.map { (id: $0.id, nombre: $0.nombre) })
+                    .map { CNCuentasModelo.ColorTarjeta(id: $0.id, nombre: $0.nombre,
+                                                        puesta: $0.id == CNC.fmt.colorPatrimonio) }
+            }
+        }
         // Y lo plegado, que también venía con el esqueleto. Mientras la web no
         // haya mandado uno COMPLETO manda el ajuste guardado: con `cuentas ==
         // nil` a secas, solo valía la primera vez y después se quedaba con lo
@@ -2092,6 +2109,23 @@ final class CNDatos: ObservableObject {
         c.ingFmt = cnDinero(t.ing); c.gasFmt = cnDinero(t.gas)
         c.entraFmt = cnDinero(t.ing); c.saleFmt = cnDinero(t.gas)
         c.nombre = c.nombre.isEmpty ? libreta.nombre : c.nombre
+        // LOS ICONOS DE CADA CATEGORÍA, que usan las listas del panel. Van las
+        // de la libreta y también las de fábrica: una lista puede nombrar una
+        // categoría que ya nadie tiene, y sin su icono sale un hueco.
+        if m.catIconos.isEmpty {
+            var cs: [String: CNResumenModelo.IconoCat] = [:]
+            for c in libreta.categorias {
+                cs[c.nombre] = CNResumenModelo.IconoCat(
+                    path: CNCategorias.icono(c.nombre, en: libreta),
+                    color: CNCategorias.color(c.nombre, en: libreta))
+            }
+            for n in CNCatalogos.iconoPorCategoria.keys where cs[n] == nil {
+                cs[n] = CNResumenModelo.IconoCat(
+                    path: CNCategorias.icono(n, en: libreta),
+                    color: CNCategorias.color(n, en: libreta))
+            }
+            m.catIconos = cs
+        }
         // Y la tira de meses, si el diseño la lleva. El acento y su tinta
         // salen del tema, que es de donde los saca la web.
         if piezas.conMeses, c.meses.isEmpty {
