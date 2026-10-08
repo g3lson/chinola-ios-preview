@@ -2144,8 +2144,15 @@ final class CNDatos: ObservableObject {
         // De la libreta misma, que es quien los trae. La lista de libretas
         // también los tiene, pero solo se carga al abrir su hoja: fiándome de
         // ella, la pastilla salía sin dibujo hasta que alguien entrara ahí.
-        if c.icono.isEmpty, !libreta.icono.isEmpty {
-            c.icono = CNCatalogos.iconos[libreta.icono] ?? ""
+        // El suyo si lo eligió alguien; si no, el que le toca POR SU TIPO:
+        // «Personal» lleva una casa, «Familiar» gente, «Negocio» un maletín.
+        // Ese campo casi siempre está vacío —solo se rellena si entras a
+        // cambiarlo— así que mirando únicamente el suyo la pastilla salía con
+        // la inicial en vez del dibujo.
+        if c.icono.isEmpty {
+            let clave = !libreta.icono.isEmpty ? libreta.icono
+                : (CNCatalogos.iconoPorTipoDeLibreta[libreta.tipo] ?? "")
+            c.icono = clave.isEmpty ? "" : (CNCatalogos.iconos[clave] ?? "")
         }
         if c.color.isEmpty { c.color = libreta.color }
         if c.detalle.isEmpty, !libreta.tipo.isEmpty { c.detalle = cnT(libreta.tipo) }

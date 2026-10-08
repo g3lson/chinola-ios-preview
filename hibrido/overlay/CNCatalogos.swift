@@ -571,4 +571,13 @@ enum CNCatalogos {
         EntradaDePanel(id: "w10", tipo: "dona-mezcla", ancho: 2),
         EntradaDePanel(id: "w11", tipo: "lista-suscripciones", ancho: 2)
     ]
+
+    /// Qué dibujo lleva una libreta según de qué es, cuando no trae uno
+    /// propio. Es lo que decide la pastilla de arriba del Resumen.
+    static let iconoPorTipoDeLibreta: [String: String] = [
+        "Personal": "casa",
+        "Familiar": "gente",
+        "Negocio": "maletin",
+        "Proyecto": "estrella"
+    ]
 }
