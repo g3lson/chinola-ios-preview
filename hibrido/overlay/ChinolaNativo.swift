@@ -1237,6 +1237,16 @@ struct CNLibreta: Decodable {
     var medioPorDefecto: String = ""
     /// Las tarjetas del Resumen, en su orden. Vacío = el de fábrica.
     var panel: [CNEntradaPanel] = []
+    /**
+     * LO QUE LA LIBRETA DICE DE SÍ MISMA: su color, su dibujo y de qué es.
+     *
+     * Venían en el paquete desde siempre y aquí no se leían, porque la
+     * pastilla de arriba la armaba la web. Al armarla el teléfono, «Personal»
+     * salía con un círculo liso en vez de su casa y sin su color.
+     */
+    var color: String = ""
+    var icono: String = ""
+    var tipo: String = ""
     init() {}
     /**
      * ¿HUBO ALGO QUE NO SE PUDO LEER?
@@ -1293,9 +1303,12 @@ struct CNLibreta: Decodable {
         // traerlo —las de antes, las del servidor, las compartidas—, y
         // entonces manda el de fábrica, que es lo que hace la web.
         panel = lista([CNEntradaPanel].self, .panel)
+        color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? ""
+        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? ""
+        tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? ""
         dudoso = !malas.isEmpty
         if dudoso { NSLog("CNLIBRETA: no se pudo leer %@ — el teléfono no escribirá", malas.joined(separator: ", ")) } }
-    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx, presupuesto, historia, medioPorDefecto, panel }
+    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx, presupuesto, historia, medioPorDefecto, panel, color, icono, tipo }
 
     func categoria(_ nombre: String) -> CNCategoria? { categorias.first { $0.nombre == nombre } }
     func gastadoCategoria(_ nombre: String) -> Double {
@@ -2106,6 +2119,10 @@ final class CNDatos: ObservableObject {
         if c.gasRotulo.isEmpty { c.gasRotulo = cnT("Gastos") }
         if piezas.conRotulo && c.rotulo.isEmpty { c.rotulo = cnT("te queda este mes") }
         c.balanceFmt = cnDineroFirmado(t.bal)
+        c.balColor = CNCabecera.colorDelBalance(
+            bien: t.bal >= 0, diseno: CNC.fmt.cabecera, color: CNC.fmt.cabeceraColor,
+            integrada: CNC.fmt.cabeceraIntegrada,
+            positivo: c.positivo, negativo: c.negativo)
         c.ingFmt = cnDinero(t.ing); c.gasFmt = cnDinero(t.gas)
         c.entraFmt = cnDinero(t.ing); c.saleFmt = cnDinero(t.gas)
         /*
@@ -2117,12 +2134,14 @@ final class CNDatos: ObservableObject {
          * salen de la lista de libretas, que es la que los trae.
          */
         if c.nombre.isEmpty { c.nombre = libreta.nombre }
-        if let f = libretas?.filas.first(where: { $0.enUso })
-            ?? libretas?.filas.first(where: { $0.nombre == libreta.nombre }) {
-            if c.icono.isEmpty { c.icono = f.iconoPath }
-            if c.color.isEmpty { c.color = f.color }
-            if c.detalle.isEmpty { c.detalle = f.detalle }
+        // De la libreta misma, que es quien los trae. La lista de libretas
+        // también los tiene, pero solo se carga al abrir su hoja: fiándome de
+        // ella, la pastilla salía sin dibujo hasta que alguien entrara ahí.
+        if c.icono.isEmpty, !libreta.icono.isEmpty {
+            c.icono = CNCatalogos.iconos[libreta.icono] ?? ""
         }
+        if c.color.isEmpty { c.color = libreta.color }
+        if c.detalle.isEmpty, !libreta.tipo.isEmpty { c.detalle = cnT(libreta.tipo) }
         // Y la inicial, que es la primera letra del nombre y nada más.
         if c.inicial.isEmpty {
             c.inicial = String(c.nombre.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased()

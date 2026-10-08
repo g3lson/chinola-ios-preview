@@ -272,4 +272,31 @@ enum CNCabecera {
         return (t.side, "oklch(0.96 0.03 95)", "oklch(0.86 0.04 110)")
     }
 
+    /**
+     * DE QUÉ COLOR VA EL BALANCE GRANDE.
+     *
+     * Tres casos, y el de en medio es el que se olvida:
+     *
+     *  1. Sobre el VERDE de la marca: un amarillo claro y un coral claro,
+     *     pensados para leerse ahí.
+     *  2. Con la cabecera **integrada** —que toma el fondo de la pantalla—
+     *     esos dos no se ven: se usan los colores de contenido de siempre, los
+     *     mismos con los que se lee una cifra en cualquier tarjeta.
+     *  3. Con un color de cabecera **claro** (letra oscura), las cifras claras
+     *     tampoco se leen: se pasan a un verde y un coral oscuros.
+     *
+     * Quitar la web me dejó esta cifra en negro: ni verde ni coral, el color
+     * del texto. La foto lo cazó; las pruebas no, porque un color es un color.
+     */
+    static func colorDelBalance(bien: Bool, diseno: String, color: String, integrada: Bool,
+                                positivo: String, negativo: String) -> String {
+        if integrada { return bien ? positivo : negativo }
+        if !color.isEmpty, !claras.contains(diseno),
+           let c = CNCatalogos.coloresDeCabecera.first(where: { $0.id == color }), c.sobre == "oscuro" {
+            return bien ? "oklch(0.34 0.13 150)" : "oklch(0.47 0.18 28)"
+        }
+        if claras.contains(diseno) { return bien ? positivo : negativo }
+        return bien ? "oklch(0.92 0.14 110)" : "oklch(0.82 0.13 35)"
+    }
+
 }
