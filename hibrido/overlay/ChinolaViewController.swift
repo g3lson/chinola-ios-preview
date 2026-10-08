@@ -1642,22 +1642,20 @@ class ChinolaViewController: CAPBridgeViewController {
         eval("window.__chinolaMenu && window.__chinolaMenu('\(id)')")
     }
 
+    /**
+     * EL RESUMEN YA NO SE PIDE: SE ARMA.
+     *
+     * Esta era una de las veintidós puertas, y es la primera que se cierra.
+     * El teléfono calcula el panel entero —el orden, los títulos, las treinta y
+     * dos tarjetas, la cabecera con su paleta y su tira de meses— así que
+     * preguntárselo a la web era preguntar por algo que ya se tiene.
+     *
+     * LA PUERTA SIGUE EXISTIENDO del otro lado, y a propósito: **Android
+     * todavía la usa**. Lo que se quita es que este teléfono la llame; borrarla
+     * de la web dejaría la app de Android con el Resumen en blanco.
+     */
     private func traerResumen(intentos: Int = 1) {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaResumenJSON && window.__chinolaResumenJSON()) || ''") { [weak self] res, _ in
-            guard let s = self else { return }
-            guard let json = res as? String, json.count > 2 else {
-                if intentos > 1 {
-                    s.empujarALaWeb("resumen")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { s.traerResumen(intentos: intentos - 1) }
-                }
-                return
-            }
-            CNDatos.shared.cargarResumen(json: json)
-            if intentos > 1, CNDatos.shared.resumen?.listo != true {
-                s.empujarALaWeb("resumen")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { s.traerResumen(intentos: intentos - 1) }
-            }
-        }
+        CNDatos.shared.refrescarCifras()
     }
 
     // MARK: el periodo (atajos + calendario), en hoja nativa
@@ -2093,18 +2091,11 @@ class ChinolaViewController: CAPBridgeViewController {
     /// Cuentas no reintentaba NADA: una sola pregunta, y si la web estaba en
     /// otra pestaña la pantalla se quedaba con la tarjeta del patrimonio y sin
     /// una sola cuenta debajo, para siempre.
+    /// Y Cuentas tampoco: las filas, los totales, los grupos y la tarjeta de
+    /// arriba salen de la libreta. Segunda puerta cerrada. La de la web sigue
+    /// ahí para Android, que todavía la usa.
     private func traerCuentas(intentos: Int = 4) {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaCuentasJSON && window.__chinolaCuentasJSON()) || ''") { [weak self] res, _ in
-            guard let s = self else { return }
-            if let json = res as? String, json.count > 2 { CNDatos.shared.cargarCuentas(json: json) }
-            // Y solo se insiste si Cuentas es lo que se está mirando: desde
-            // otra pestaña la respuesta a medias es la correcta y no hay nada
-            // que arreglar.
-            if intentos > 1, s.menuEstado.activa == "cuentas", CNDatos.shared.cuentas?.listo != true {
-                s.empujarALaWeb("cuentas")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { s.traerCuentas(intentos: intentos - 1) }
-            }
-        }
+        CNDatos.shared.refrescarCuentas()
     }
 
     /// El Plan, armado por la web.
