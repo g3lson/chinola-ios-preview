@@ -143,6 +143,13 @@ jobs:
         run: |
           set -o pipefail
           cd app
+          # LA CACHÉ DE SWIFTPM, DE CERO.
+          #
+          # El runner viene a veces con un `Cordova.xcframework.zip` a medio
+          # bajar en la caché, y entonces xcodebuild no compila NADA: «failed
+          # downloading … already exists in file system». No es un fallo del
+          # código ni se arregla reintentando siempre: se arregla borrándola.
+          rm -rf ~/Library/Caches/org.swift.swiftpm ~/Library/org.swift.swiftpm 2>/dev/null || true
           xcodebuild -project ios/App/App.xcodeproj -scheme App \
             -configuration Debug -sdk iphonesimulator \
             -derivedDataPath build CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xcode.log | tail -25 || true
