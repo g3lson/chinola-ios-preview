@@ -410,7 +410,7 @@ func cnPt(_ v: CGFloat) -> CGFloat { v * CNC.fmt.letra }
 enum CNTextos {
     // EL MAPA DE LA WEB YA NO ESTÁ. Mandaba por encima de lo generado «por si
     // algún día la web sabe un texto que el teléfono no», y no puede pasar:
-    // `npm run sync` revienta si un `cnT("…")` de las pantallas nativas no
+    // `npm run sync` revienta si un `cnT` con un texto de las pantallas nativas no
     // tiene par en el diccionario. Lo que hacía era atar los textos —y con
     // ellos el momento en que la app se ve bien— a que la web arrancara.
 
@@ -487,14 +487,15 @@ func cnT(_ es: String) -> String {
     // el inglés. Comparar «This month» con «Este mes» culparía al Swift de un
     // fallo que no existe.
     // SOLO LA TABLA GENERADA. La web mandaba además la suya y ganaba, pero
-    // `npm run sync` revienta si un `cnT("…")` de las pantallas nativas no
+    // `npm run sync` revienta si un `cnT` con un texto de las pantallas nativas no
     // tiene par en el diccionario: la generada está COMPLETA por construcción,
     // así que la otra no añadía nada y ataba los colores de la app a que la web
     // arrancara.
     let cual = CNTextos.idiomaDePrueba.isEmpty ? CNTextos.idioma : CNTextos.idiomaDePrueba
     return CNTextosGenerados.de(cual)[es] ?? es
 }
-/// Como `cnT`, pero con un hueco: cnT("Presupuesto de {n}", nombre).
+/// Como `cnT`, pero con un hueco. Se llama con el texto y lo que va dentro:
+/// el primero lleva «{n}» y el segundo lo sustituye.
 func cnT(_ es: String, _ hueco: String) -> String {
     cnT(es).replacingOccurrences(of: "{n}", with: hueco)
 }
@@ -1932,7 +1933,7 @@ final class CNDatos: ObservableObject {
         if let j = Self.guardado("libreta"), let l = CNLibreta.desde(json: j) { libreta = l; apuntaQueLlego() }
         if let j = Self.guardado("resumen") { cargarResumen(json: j) }
         if let j = Self.guardado("cuentas") { cargarCuentas(json: j) }
-        if let j = Self.guardado("ajustes") { cargarAjustes(json: j) }
+        refrescarAjustes()
         refrescarPerfil()
         if let j = Self.guardado("mascota") { cargarMascota(json: j) }
         // Y el Plan, rehecho con la libreta que se acaba de leer.
@@ -1973,7 +1974,6 @@ final class CNDatos: ObservableObject {
         sec.bloques[bi] = q
         seccion = sec
     }
-    func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
     func cargarTour(json: String) { tour = CNTour.desde(json: json) }
     /// Los dos PNG de Chino, que casi nunca cambian.
     ///
@@ -2745,9 +2745,15 @@ final class CNDatos: ObservableObject {
         seccionesVistas[x.id] = x
         seccion = x
     }
-    func cargarAjustes(json: String) {
-        guard cambio("ajustes", json) else { return }
-        if let a = CNAjustes.desde(json: json) { ajustes = a; guarda("ajustes", json) }
+    /**
+     * LA LISTA DE PERFIL, ARMADA AQUÍ.
+     *
+     * Se le pedía a la web y todo sale de lo que el teléfono ya tiene: la
+     * copia con la sesión y los ajustes, y los catálogos generados.
+     */
+    func refrescarAjustes() {
+        let a = CNAjustesArma.arma(perfil: perfil, formato: CNC.fmt)
+        if ajustes != a { ajustes = a }
     }
     func cargarResumen(json: String) {
         guard let m = CNResumenModelo.desde(json: json) else { return }
@@ -2787,7 +2793,7 @@ final class CNDatos: ObservableObject {
      * color es cada tema está en el catálogo que genera `npm run sync`.
      *
      * Y LOS TEXTOS TAMPOCO VIENEN YA DE ELLA: `npm run sync` revienta si un
-     * `cnT("…")` de las pantallas nativas no tiene par en el diccionario, así
+     * `cnT` con un texto de las pantallas nativas no tiene par en el diccionario, así
      * que la tabla generada está completa por construcción y la que mandaba la
      * web no añadía nada.
      */
@@ -5999,7 +6005,7 @@ struct CNResumenModelo {
         var sigla = ""; var siglaColor = ""; var titulo = ""; var detalle = ""
         var monto = ""; var montoColor = ""
     }
-    struct Opcion { var id = ""; var label = "" }
+    struct Opcion: Equatable { var id = ""; var label = "" }
     struct SerieCfg { var id = ""; var label = ""; var color = ""; var puesta = false }
     struct Widget: Identifiable {
         var id: Int { indice }
@@ -7611,9 +7617,9 @@ struct CNLienzoSerie: View {
 // y sus filas los arma la web (los mismos que ve la PWA); aquí solo se dibujan
 // y se disparan por su sitio en la lista.
 
-struct CNAjustes {
+struct CNAjustes: Equatable {
     struct Opcion { var id = ""; var label = "" }
-    struct Fila {
+    struct Fila: Equatable {
         var label = ""; var sub = ""; var valor = ""
         var icono = ""; var bg = ""; var fg = ""; var tinta = ""
         var entra = false
@@ -7621,8 +7627,8 @@ struct CNAjustes {
         var sec = ""
         var lista: [Opcion] = []; var listaValor = ""
     }
-    struct Grupo { var titulo = ""; var pie = ""; var filas: [Fila] = [] }
-    struct Usuario {
+    struct Grupo: Equatable { var titulo = ""; var pie = ""; var filas: [Fila] = [] }
+    struct Usuario: Equatable {
         var inicial = ""; var nombre = ""; var correo = ""
         var plan = ""; var planColor = ""
         var modoLabel = ""; var modoBg = ""; var modoFg = ""; var modoPie = ""
@@ -7631,30 +7637,6 @@ struct CNAjustes {
     var usuario = Usuario()
     var grupos: [Grupo] = []
 
-    static func desde(json: String) -> CNAjustes? {
-        guard let d = json.data(using: .utf8),
-              let raiz = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
-        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
-        func b(_ o: [String: Any]?, _ k: String) -> Bool { (o?[k] as? Bool) ?? false }
-        func lista(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
-        var a = CNAjustes()
-        let u = raiz["usuario"] as? [String: Any]
-        a.usuario = Usuario(inicial: s(u, "inicial"), nombre: s(u, "nombre"), correo: s(u, "correo"),
-                            plan: s(u, "plan"), planColor: s(u, "planColor"),
-                            modoLabel: s(u, "modoLabel"), modoBg: s(u, "modoBg"), modoFg: s(u, "modoFg"),
-                            modoPie: s(u, "modoPie"), acento: s(u, "acento"), sobreAcento: s(u, "sobreAcento"))
-        a.grupos = lista(raiz, "grupos").map { g in
-            Grupo(titulo: s(g, "titulo"), pie: s(g, "pie"),
-                  filas: lista(g, "filas").map { f in
-                      Fila(label: s(f, "label"), sub: s(f, "sub"), valor: s(f, "valor"),
-                           icono: s(f, "icono"), bg: s(f, "bg"), fg: s(f, "fg"), tinta: s(f, "tinta"),
-                           entra: b(f, "entra"), sec: s(f, "sec"),
-                           lista: lista(f, "lista").map { Opcion(id: s($0, "id"), label: s($0, "label")) },
-                           listaValor: s(f, "listaValor"))
-                  })
-        }
-        return a
-    }
 }
 
 struct CNPerfil: View {

@@ -151,6 +151,33 @@ enum CNLibretasArma {
         return m
     }
 
+    /**
+     * LA HOJA DE INVITAR A ALGUIEN.
+     *
+     * Era texto fijo de punta a punta y se le pedía a la web igual. Lo único
+     * que cambia son los tres papeles y lo que puede hacer cada uno, y esa
+     * tabla la genera `npm run sync` de la misma que lee ella: escrita dos
+     * veces, un día dirían cosas distintas de lo que puede hacer un
+     * Registrador, que no es un detalle.
+     *
+     * MANDAR LA INVITACIÓN SIGUE SIENDO DE LA WEB: habla con el servidor.
+     */
+    static func invitar() -> CNInvitar {
+        var m = CNInvitar()
+        m.titulo = cnT("Invitar a alguien")
+        m.phEmail = cnT("Su correo")
+        m.phNombre = cnT("Su nombre (opcional)")
+        m.rotuloRol = cnT("Permisos")
+        m.pie = cnT("Le llega un correo con la invitación. Hasta que la acepte, no ve nada.")
+        m.boton = cnT("Invitar")
+        // Sin el DUEÑO: ese no se regala, y ofrecerlo en la lista de invitar
+        // es ofrecer quedarse fuera de la propia libreta.
+        m.roles = [CNPapeles.editor, CNPapeles.registrador, CNPapeles.lector].map {
+            CNInvitar.Rol(id: $0, label: cnT($0), sub: cnT(CNCatalogos.pistaDelRol[$0] ?? ""))
+        }
+        return m
+    }
+
     /// El dibujo de una libreta: el que eligió quien la creó y, si no, el de su
     /// tipo. La tabla la genera `npm run sync` de la misma que usa la web.
     static func glifo(_ l: CNLibreta) -> String {

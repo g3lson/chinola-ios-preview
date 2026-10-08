@@ -23,7 +23,10 @@ on:
 jobs:
   correr:
     runs-on: macos-15
-    timeout-minutes: 45
+    # 55 Y NO 45: con las seis fichas y la reinstalación, la vuelta pasa de los
+    # cuarenta y cinco y la cancelan A MITAD. Cancelada no dice nada —ni que
+    # pasó ni que falló—, que es el peor resultado posible de un banco.
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

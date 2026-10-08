@@ -661,6 +661,14 @@ enum CNCatalogos {
         (id: "3h", nombre: "Pila de monedas", nota: "Tres monedas en relieve: ahorro que crece. Muy premium.")
     ]
 
+    /// Qué puede hacer cada papel de una libreta compartida. Es lo que
+    /// se lee debajo de cada opción al invitar a alguien.
+    static let pistaDelRol: [String: String] = [
+        "Editor": "Puede anotar y cambiarlo todo",
+        "Registrador": "Solo puede anotar movimientos",
+        "Lector": "Solo mira, no toca nada"
+    ]
+
     /// Qué oscuro le toca a cada claro. Sirve para las dos direcciones:
     /// al pasar a noche y al volver.
     static let oscuroDe: [String: String] = [

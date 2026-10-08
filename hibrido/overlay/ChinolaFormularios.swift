@@ -2175,21 +2175,6 @@ struct CNInvitar {
     var titulo = "Invitar a alguien"
     var phEmail = ""; var phNombre = ""; var rotuloRol = ""; var pie = ""; var boton = "Invitar"
     var roles: [Rol] = []
-
-    static func desde(json: String) -> CNInvitar? {
-        guard let d = json.data(using: .utf8),
-              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
-        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
-        var m = CNInvitar()
-        if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
-        m.phEmail = s(r, "phEmail"); m.phNombre = s(r, "phNombre")
-        m.rotuloRol = s(r, "rotuloRol"); m.pie = s(r, "pie")
-        if !s(r, "boton").isEmpty { m.boton = s(r, "boton") }
-        m.roles = ((r["roles"] as? [[String: Any]]) ?? []).map {
-            Rol(id: s($0, "id"), label: s($0, "label"), sub: s($0, "sub"))
-        }
-        return m
-    }
 }
 
 struct CNFormInvitar: View {

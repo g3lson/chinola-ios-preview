@@ -923,15 +923,27 @@ class ChinolaViewController: CAPBridgeViewController {
         // no dejó nada, no se enseña la web. El comentario que había aquí decía
         // que abrir una sección enseñaba la web; dejó de ser verdad cuando se
         // mudaron, y un comentario viejo manda buscar el fallo donde no está.
+        /**
+         * UNA FILA DE PERFIL, POR LO QUE ES.
+         *
+         * Iba por su POSICIÓN —grupo 2, fila 3— y eso solo vale si la lista la
+         * hizo la web: con sesión hay filas que con cuenta local no existen, y
+         * al revés, así que un número apuntaba a otra cosa. Ahora cada fila
+         * lleva su llave y se atiende por ella.
+         *
+         * Las tres que siguen siendo de la web llevan «web:» delante y se
+         * dicen por su nombre, no por dónde estaban.
+         */
         datos.onAjuste = { [weak self] g, f, valor in
-            guard let s = self else { return }
+            guard let s = self, let a = CNDatos.shared.ajustes,
+                  g < a.grupos.count, f < a.grupos[g].filas.count else { return }
+            let fila = a.grupos[g].filas[f]
             if let v = valor {
-                s.eval("window.__chinolaAjuste && window.__chinolaAjuste(\(g),\(f),\(s.comillas(v)))")
-            } else {
-                s.webTemporal()
-                s.eval("window.__chinolaAjuste && window.__chinolaAjuste(\(g),\(f))")
+                // Una lista: el idioma. Se pone por su nombre.
+                s.datos.onAbrirSeccion(fila.sec + "=" + v)
+                return
             }
-            s.refrescarPronto()
+            s.datos.onAbrirSeccion(fila.sec)
         }
         // Subpantallas del perfil: se le pide el modelo a la web y se dibuja
         // aquí. La web no cambia de pantalla; solo entrega los datos.
@@ -940,6 +952,36 @@ class ChinolaViewController: CAPBridgeViewController {
             // Una «sección» que empieza por «hoja:» no es una pantalla de
             // ajustes: es un formulario nativo. Hoy solo invitar.
             if id == "importar" { s.pedirCsv(); return }
+
+            /*
+             * LAS QUE SIGUEN SIENDO DE LA WEB, DICHAS POR SU NOMBRE.
+             *
+             * Exportar arma el CSV, el paseo sabe dónde pararse y entrar o
+             * salir tiene la sesión: las tres son suyas. Lo que cambia es que
+             * ya no se disparan por el número de una fila —que depende de si
+             * hay sesión y de si la lista la hizo ella—, sino por lo que son.
+             */
+            if id.hasPrefix("web:") {
+                let que = String(id.dropFirst(4))
+                s.webTemporal()
+                s.eval("window.__chinolaAjustePor && window.__chinolaAjustePor(" + s.comillas(que) + ")")
+                s.refrescarPronto()
+                return
+            }
+            // «Ayuda y guía» y «Privacidad»: una página, abierta por el
+            // sistema. No hace falta ni la web ni una pantalla propia.
+            if id.hasPrefix("abrir:") {
+                let ruta = String(id.dropFirst(6))
+                s.eval("window.__chinolaAbrir && window.__chinolaAbrir(" + s.comillas(ruta) + ")")
+                return
+            }
+            // El nombre de quien usa la app sin cuenta: lo pregunta la web en
+            // su pantalla, que es donde se puso la primera vez.
+            if id == "nombre" {
+                s.webTemporal()
+                s.eval("window.__chinolaAjustePor && window.__chinolaAjustePor(\"nombre\")")
+                return
+            }
 
             // LO QUE PIDEN LAS SUBPANTALLAS ARMADAS AQUÍ.
             //
@@ -1107,10 +1149,10 @@ class ChinolaViewController: CAPBridgeViewController {
             }
             if id.hasPrefix("hoja:invitar:") {
                 let lid = String(id.dropFirst("hoja:invitar:".count))
-                s.bridge?.webView?.evaluateJavaScript("(window.__chinolaInvitarJSON && window.__chinolaInvitarJSON()) || ''") { res, _ in
-                    if let json = res as? String, json.count > 2 { CNDatos.shared.cargarInvitar(json: json) }
-                    s.presentar(AnyView(CNFormInvitar(datos: s.datos, libreta: lid, onClose: { s.cerrar() })))
-                }
+                // La hoja es texto fijo y tres papeles: se arma aquí. Mandar la
+                // invitación sigue siendo de la web, que habla con el servidor.
+                CNDatos.shared.invitar = CNLibretasArma.invitar()
+                s.presentar(AnyView(CNFormInvitar(datos: s.datos, libreta: lid, onClose: { s.cerrar() })))
                 return
             }
             // LO DE LA VEZ PASADA, MIENTRAS LLEGA LO DE AHORA.
@@ -2331,11 +2373,9 @@ class ChinolaViewController: CAPBridgeViewController {
     }
 
     /// Los ajustes del Perfil, armados por la web (los mismos que ve la PWA).
+    /// La lista de Perfil, armada aquí con la copia y los catálogos.
     private func traerAjustes() {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaAjustesJSON && window.__chinolaAjustesJSON()) || ''") { res, _ in
-            guard let json = res as? String, json.count > 2 else { return }
-            CNDatos.shared.cargarAjustes(json: json)
-        }
+        datos.refrescarAjustes()
     }
 
     // MARK: pantalla nativa (Movimientos) encima del webview
@@ -3217,13 +3257,12 @@ class ChinolaViewController: CAPBridgeViewController {
             luego(); return
         }
         let g = donde.0, f = donde.1
-        let suyo = a.grupos[g].filas[f].label
-        bridge?.webView?.evaluateJavaScript(
-            "(function(){try{var gs=JSON.parse(window.__chinolaAjustesJSON()||'{}').grupos||[];"
-            + "var fs=(gs[\(g)]||{}).filas||[];return 'grupos='+gs.length+' fila='+((fs[\(f)]||{}).label||'NO HAY');}"
-            + "catch(x){return 'se rompio: '+x}})()") { [weak self] r, _ in
-                guard let s = self else { return }
-                NSLog("CNBOTONES: \(que) · toco \(g),\(f) · el telefono dice «\(suyo)» · la web \((r as? String) ?? "?")")
+        let fila = a.grupos[g].filas[f]
+        // La sonda ya no pregunta a la web qué fila es esa: la lista la arma el
+        // teléfono, así que lo que importa es QUÉ LLAVE lleva.
+        let s = self
+        do {
+                NSLog("CNBOTONES: \(que) · toco \(g),\(f) · «\(fila.label)» · llave=«\(fila.sec)»")
                 CNDatos.shared.onAjuste(g, f, nil)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                     s.bridge?.webView?.evaluateJavaScript(
