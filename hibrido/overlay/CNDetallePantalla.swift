@@ -97,8 +97,12 @@ enum CNDetallePantalla {
             CNDetalle.Boton(id: 1, label: cnT("Transferir"), estilo: "contorno")
         ]
         d.rotuloLista = cnT("Movimientos de esta cuenta")
-        d.vacioTexto = cnT("Aquí saldrá todo lo que anotes con esta cuenta.")
         d.tramos = porMeses(l.tx.filter { medioDe($0) == id }, l, t)
+        // SOLO SI NO HAY NADA. Puesto siempre, la ficha enseñaba «Todavía
+        // nada · aquí saldrá todo lo que anotes» Y DEBAJO los quince
+        // movimientos de la cuenta. Lo cazó la foto del banco; el fichero de
+        // oro lo decía desde el principio y la prueba no miraba ese campo.
+        d.vacioTexto = d.tramos.isEmpty ? cnT("Aquí saldrá todo lo que anotes con esta cuenta.") : ""
         return d
     }
 
@@ -147,8 +151,8 @@ enum CNDetallePantalla {
                             abre: "movMedio", conQue: "tarjeta:" + String(id))
         ]
         d.rotuloLista = cnT("Consumos con esta tarjeta")
-        d.vacioTexto = cnT("Aquí saldrá todo lo que pagues con esta tarjeta.")
         d.tramos = deCorrido(l.tx.filter { CNCalculo.idDe($0.medio, "tarjeta:") == id }, l, t)
+        d.vacioTexto = d.tramos.isEmpty ? cnT("Aquí saldrá todo lo que pagues con esta tarjeta.") : ""
         return d
     }
 
@@ -199,8 +203,8 @@ enum CNDetallePantalla {
                             abre: "abono", cual: id)
         ]
         d.rotuloLista = cnT("Pagos registrados")
-        d.vacioTexto = cnT("Aquí saldrán los pagos que vayas anotando.")
         d.tramos = deCorrido(l.tx.filter { $0.prestamo == id }, l, t)
+        d.vacioTexto = d.tramos.isEmpty ? cnT("Aquí saldrán los pagos que vayas anotando.") : ""
         return d
     }
 
