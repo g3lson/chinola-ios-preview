@@ -1905,16 +1905,18 @@ class ChinolaViewController: CAPBridgeViewController {
         // de dejar de existir es lo que hace pensar que no se borró.
         cerrarDetalle()
         // Y si la web rechaza la adopción porque tiene algo más nuevo, que
-        // borre ella: se dispara SU acción, la que viene marcada como
-        // peligrosa. Por ahí y no por el rótulo —«Delete» no encaja con
-        // `/elimin|borrar/i`— ni por la posición, que cambia según la fila.
-        let suya = d.accionesWeb.first { $0.peligro }
+        // borre ella. Se le pide por su nombre —la lista y el id— y no
+        // disparando una acción suya por número: desde que el detalle lo arma
+        // el teléfono, ese menú ya no se le pide, así que no hay número que
+        // disparar. Sin esta salida, un borrado rechazado no hacía NADA: ni
+        // error ni aviso, y la cuenta seguía ahí.
+        let lista = ["cuenta": "cuentas", "tarjeta": "tarjetas", "prestamo": "prestamos"][tipo] ?? ""
         adopta(nueva) { [weak self] in
-            guard let s = self, let a = suya else {
-                NSLog("CNBORRAR: la web no adoptó y no tiene su propia acción · no se borró")
+            guard let s = self, !lista.isEmpty else {
+                NSLog("CNBORRAR: la web no adoptó y no sé de qué lista era · no se borró")
                 return
             }
-            s.eval("window.__chinolaDetalleAccion && window.__chinolaDetalleAccion('menu',\(a.id))")
+            s.eval("window.__chinolaBorrar && window.__chinolaBorrar(\(s.comillas(lista)),\(id))")
             s.refrescarPronto()
         }
     }
@@ -2045,6 +2047,27 @@ class ChinolaViewController: CAPBridgeViewController {
         // misma pregunta, que es de donde venía el lío.
         let (tipo, id) = detalleQue
         guard !tipo.isEmpty else { return }
+        // LOS TRES DE CUENTAS, ARMADOS AQUÍ. La meta y la categoría se abren
+        // desde el Plan y siguen siendo de la web.
+        if CNDetallePantalla.sabeArmar(tipo), let n = Int(id), !CNDatos.shared.libreta.sinLlegar {
+            let cab = CNDatos.shared.resumen?.cabecera
+            let t = CNDetallePantalla.Tinte(
+                tinta: cab?.tinta.isEmpty == false ? cab!.tinta : cnHexDe(CNC.ink),
+                positivo: cab?.positivo.isEmpty == false ? cab!.positivo : cnHexDe(CNC.pos),
+                negativo: cab?.negativo.isEmpty == false ? cab!.negativo : cnHexDe(CNC.neg),
+                gris: cab?.gris.isEmpty == false ? cab!.gris : cnHexDe(CNC.pmut))
+            if var d = CNDetallePantalla.arma(tipo, id: n, libreta: CNDatos.shared.libreta,
+                                              periodo: CNDatos.shared.periodoCalculo, tinte: t) {
+                d.deQue = tipo; d.deCual = n
+                d.acciones = [
+                    CNDetalle.Accion(id: -1, label: cnT("Editar"), peligro: false, que: "editar"),
+                    CNDetalle.Accion(id: -2, label: cnT("Eliminar"), peligro: true, que: "borrar")
+                ]
+                d.accionesWeb = CNDatos.shared.detalle?.accionesWeb ?? []
+                CNDatos.shared.detalle = d
+                return
+            }
+        }
         bridge?.webView?.evaluateJavaScript("(window.__chinolaDetalleJSON && window.__chinolaDetalleJSON(\(comillas(tipo)),\(comillas(id)))) || ''") { res, _ in
             guard let json = res as? String, json.count > 2 else { return }
             CNDatos.shared.cargarDetalle(json: json)
