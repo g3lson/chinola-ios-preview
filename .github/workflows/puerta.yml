@@ -12,11 +12,17 @@ name: "LA PUERTA: las pantallas de bienvenida, una por una"
 # dejaban el trabajo rozando su tiempo máximo, y estas hay que mirarlas muchas
 # veces seguidas mientras se arreglan.
 
+# EL EMPUJÓN YA NO LO DESPIERTA, A PROPÓSITO.
+#
+# Los cuatro bancos miran los mismos archivos, así que cada empujón lanzaba los
+# cuatro y los cuatro se peleaban por el único runner de macOS: tres se
+# quedaban en cola y había que cancelarlos a mano para que el que hacía falta
+# cogiera sitio. Treinta minutos de espera por una comprobación que nadie iba a
+# mirar.
+#
+# Se lanza cuando se pide (`gh workflow run`), que es como se usa de verdad.
 on:
   workflow_dispatch:
-  push:
-    paths: ['hibrido/app-clasico/**', 'hibrido/overlay/**',
-            'hibrido/siembra.js', '.github/workflows/puerta.yml']
 
 jobs:
   correr:

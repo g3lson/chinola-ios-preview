@@ -4,12 +4,17 @@ name: Híbrido simulador (captura)
 # storyboard + manifest de escena) en un simulador y saca capturas. Repo público
 # = Actions gratis. Solo boilerplate: NADA de código propietario.
 
+# EL EMPUJÓN YA NO LO DESPIERTA, A PROPÓSITO.
+#
+# Los cuatro bancos miran los mismos archivos, así que cada empujón lanzaba los
+# cuatro y los cuatro se peleaban por el único runner de macOS: tres se
+# quedaban en cola y había que cancelarlos a mano para que el que hacía falta
+# cogiera sitio. Treinta minutos de espera por una comprobación que nadie iba a
+# mirar.
+#
+# Se lanza cuando se pide (`gh workflow run`), que es como se usa de verdad.
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'hibrido/**'
-      - '.github/workflows/hibrido-sim.yml'
 
 jobs:
   sim:
