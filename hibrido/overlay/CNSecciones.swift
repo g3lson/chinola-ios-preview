@@ -112,6 +112,7 @@ enum CNSecciones {
         case "cabecera": return cabecera()
         case "colores": return colores()
         case "icono-app": return iconoDeLaApp()
+        case "personaje": return personaje()
         // «libreta:3» es una libreta por dentro: sus miembros y sus permisos.
         case let x where x.hasPrefix("libreta:"): return unaLibreta(String(x.dropFirst(8)))
         default: return nil
@@ -131,7 +132,8 @@ enum CNSecciones {
         // el teléfono. Se dibujan enteras antes de que la web despierte.
         // Los miembros vienen DENTRO de la libreta, no de la API: la web los
         // cambia en local y la sincronización los sube. Ver `CNLibretas.Fila`.
-        case "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores", "icono-app": return []
+        case "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores", "icono-app",
+             "personaje": return []
         default: return []
         }
     }
@@ -660,6 +662,91 @@ enum CNSecciones {
      * **Las tipografías llevan su pista** —«La del aparato», «Neutra»—, porque
      * once nombres propios seguidos no se distinguen entre sí.
      */
+    /**
+     * «TU PERSONAJE», ARMADA AQUÍ.
+     *
+     * Dos familias, tres pieles —solo con el orbe—, los seis ánimos y cómo se
+     * ve el botón que flota. Se le pedía a la web, y para enseñarla ella
+     * rasterizaba doce PNG: uno por muestra. Ahora las dibuja el teléfono, que
+     * ya sabe hacer las dos familias.
+     *
+     * LAS PIELES SOLO CON EL ORBE: la chinola no tiene pieles, y enseñarlas
+     * apagadas sería ofrecer algo que no existe.
+     *
+     * Y LA CARA DE CADA MUESTRA ES LA QUE DE VERDAD SALDRÍA HOY, no siempre la
+     * contenta: si no, el selector miente sobre lo que vas a ver.
+     */
+    @MainActor private static func personaje() -> CNSeccion? {
+        let f = CNC.fmt
+        let familia = f.familia.isEmpty ? "chinola" : f.familia
+        let piel = f.pielChino.isEmpty ? "clara" : f.pielChino
+        let hoy = CNAnimo.puesto("auto", libreta: CNDatos.shared.libreta,
+                                 mes: CNDatos.shared.mesActivo)
+        var s = CNSeccion()
+        s.id = "personaje"
+        s.titulo = cnT("Tu personaje")
+
+        var cual = CNSeccion.Bloque(); cual.tipo = "opciones"
+        cual.titulo = cnT("Con qué cara aparece")
+        cual.columnas = 2
+        cual.opciones = [
+            CNSeccion.Opcion(label: cnT("La chinola"),
+                             sub: cnT("La fruta de siempre, con cuerpo y mejillas"),
+                             puesta: familia == "chinola",
+                             chino: "chinola|" + hoy + "|",
+                             abre: "pon:familiaChino=chinola"),
+            CNSeccion.Opcion(label: cnT("El orbe"),
+                             sub: cnT("Una esfera de luz; solo mirada"),
+                             puesta: familia == "orbe",
+                             chino: "orbe|" + hoy + "|" + piel,
+                             abre: "pon:familiaChino=orbe")
+        ]
+        s.bloques = [cual]
+
+        if familia == "orbe" {
+            var pieles = CNSeccion.Bloque(); pieles.tipo = "opciones"
+            pieles.titulo = cnT("De qué está hecho")
+            pieles.columnas = 3
+            pieles.opciones = CNCatalogos.ordenDePieles.map { k in
+                CNSeccion.Opcion(label: cnT(CNCatalogos.pielesDelOrbe[k]?.nombre ?? k),
+                                 puesta: piel == k,
+                                 chino: "orbe|" + hoy + "|" + k,
+                                 abre: "pon:pielChino=" + k)
+            }
+            s.bloques.append(pieles)
+        }
+
+        var quien = CNSeccion.Bloque(); quien.tipo = "opciones"
+        quien.titulo = cnT("Quién te acompaña")
+        quien.columnas = 3
+        quien.opciones = CNCatalogos.personajesQueSeEligen.map { p in
+            // Por la CLAVE del propio personaje y no por su sitio en la lista:
+            // «Automático» enseña la de hoy, y cada uno de los otros la suya.
+            let suyo = p.id == "auto" ? hoy : p.id
+            return CNSeccion.Opcion(label: cnT(p.nombre), puesta: f.personaje == p.id,
+                                    chino: familia + "|" + suyo + "|" + piel,
+                                    abre: "pon:personaje=" + p.id)
+        }
+        s.bloques.append(quien)
+
+        // CÓMO SE VE EL BOTÓN QUE FLOTA. Aquí, con el personaje, que es de lo
+        // que trata: la cara de Chino o el aro de la marca.
+        var boton = CNSeccion.Bloque(); boton.tipo = "opciones"
+        boton.titulo = cnT("Cómo se ve el botón que flota")
+        boton.columnas = 1
+        let comoEsta = CNFlotante.shared.como == "aro" ? "aro" : "cara"
+        boton.opciones = [
+            CNSeccion.Opcion(label: cnT("La cara de Chino"),
+                             sub: cnT("Te acompaña mientras usas la app"),
+                             puesta: comoEsta == "cara", abre: "pon:chinoBoton=cara"),
+            CNSeccion.Opcion(label: cnT("El aro de la marca"),
+                             sub: cnT("Discreto, del color del tema"),
+                             puesta: comoEsta == "aro", abre: "pon:chinoBoton=aro")
+        ]
+        s.bloques.append(boton)
+        return s
+    }
+
     @MainActor private static func letra() -> CNSeccion? {
         var s = CNSeccion()
         s.id = "letra"

@@ -151,6 +151,10 @@ struct CNOrbe: View {
             // centro y lo de fuera —el resplandor, las chispas— cabe.
             .padding(aire)
             .frame(width: lado, height: lado)
+            // Recortado como lo recorta el SVG: las chispas se salen de la
+            // esfera —una llega a x=106— y con poco aire asoman por fuera del
+            // cuadro, que en una fila de iconos se ve como un borrón.
+            .clipped()
             .scaleEffect(tam / lado)
             .frame(width: tam, height: tam)
     }
@@ -196,7 +200,7 @@ struct CNOrbe: View {
     @ViewBuilder private func una(_ f: CNOrbePieza) -> some View {
         let caja = CGRect(x: f.x, y: f.y, width: f.w, height: f.h)
         let centro = CGPoint(x: caja.midX, y: caja.midY)
-        let anclaGiro = UnitPoint(x: f.giraX / 100, y: f.giraY / 100)
+        let anclaGiro = UnitPoint(x: CGFloat(f.giraX / 100), y: CGFloat(f.giraY / 100))
         Group {
             if f.forma == "trazo" {
                 let forma = CNSVGShape(d: f.d, viewBox: Self.lienzo)
@@ -262,10 +266,12 @@ struct CNOrbe: View {
         // Un punto en % de la CAJA de la figura, puesto en el sitio que le toca
         // de lo que se vaya a dibujar.
         func punto(_ px: Double, _ py: Double) -> UnitPoint {
-            guard enLienzo else { return UnitPoint(x: px / 100, y: py / 100) }
-            let ancho = Double(Self.lienzo), alto = Double(Self.lienzo)
-            return UnitPoint(x: (f.x + f.w * px / 100) / ancho,
-                             y: (f.y + f.h * py / 100) / alto)
+            guard enLienzo else { return UnitPoint(x: CGFloat(px / 100), y: CGFloat(py / 100)) }
+            let ancho = Double(Self.lienzo)
+            let alto = Double(Self.lienzo)
+            let ux = (f.x + f.w * px / 100) / ancho
+            let uy = (f.y + f.h * py / 100) / alto
+            return UnitPoint(x: CGFloat(ux), y: CGFloat(uy))
         }
         if g.tipo == "lineal" {
             return AnyShapeStyle(LinearGradient(stops: paradas,

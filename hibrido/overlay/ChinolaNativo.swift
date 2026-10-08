@@ -7918,6 +7918,10 @@ struct CNSeccion {
     struct Opcion {
         var label = ""; var sub = ""; var puesta = false
         var color = ""; var fondo = ""; var muestra = ""; var imagen = ""
+        /// QUÉ CHINO DIBUJAR, cuando la opción es uno: «familia|ánimo|piel».
+        /// Antes llegaba una imagen hecha, y para enseñar el selector la web se
+        /// pasaba un rato rasterizando doce PNG.
+        var chino = ""
         /// Un trazo (SVG) para enseñar en vez de una imagen o una muestra.
         var icono = ""
         var accion = -1
@@ -8022,7 +8026,8 @@ struct CNSeccion {
                 let noche = mini?["noche"] as? [String: Any]
                 var op = Opcion(label: s(o, "label"), sub: s(o, "sub"), puesta: b(o, "puesta"),
                        color: s(o, "color"), fondo: s(o, "fondo"), muestra: s(o, "muestra"),
-                       imagen: s(o, "imagen"), icono: s(o, "icono"), accion: n(o, "accion"),
+                       imagen: s(o, "imagen"), chino: s(o, "chino"),
+                       icono: s(o, "icono"), accion: n(o, "accion"),
                        vista: s(mini, "tipo"), franja: s(mini, "franja"),
                        alto: CGFloat(((mini?["alto"] as? NSNumber)?.doubleValue) ?? 0),
                        bulto: b(mini, "bulto"), papel: s(mini, "papel"))
@@ -8345,6 +8350,24 @@ struct CNSeccionVista: View {
     /// La miniatura de una cabecera: la franja de arriba con su alto, el bulto
     /// del saldo si lo lleva, y dos rayas de contenido debajo. Sin letras: lo
     /// que se elige es la FORMA.
+    /**
+     * EL CHINO DE UNA OPCIÓN: «familia|ánimo|piel».
+     *
+     * Va por la FAMILIA QUE DIGA LA OPCIÓN y no por la que esté puesta: aquí se
+     * está eligiendo precisamente eso, y con la puesta las dos muestras
+     * —«La chinola» y «El orbe»— saldrían iguales y no habría nada que elegir.
+     */
+    @ViewBuilder private func chinoDeOpcion(_ t: String) -> some View {
+        let p = t.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        let animo = p.count > 1 && !p[1].isEmpty ? p[1] : "feliz"
+        if p.first == "orbe" {
+            CNOrbe(animo: animo, piel: p.count > 2 && !p[2].isEmpty ? p[2] : "clara",
+                   tam: 66, ajustado: true)
+        } else {
+            CNChino(animo: animo, tam: 66, conSombra: false, ajustado: true)
+        }
+    }
+
     private func miniCabecera(_ o: CNSeccion.Opcion) -> some View {
         let papel = o.papel.isEmpty ? CNC.scr : cnColor(hexString: o.papel)
         let alto = max(6, min(30, o.alto))
@@ -8577,6 +8600,12 @@ struct CNSeccionVista: View {
                     VStack(spacing: 7) {
                         if o.vista == "cabecera" {
                             miniCabecera(o)
+                        } else if !o.chino.isEmpty {
+                            // DIBUJADO AQUÍ. Las dos familias y las tres pieles
+                            // se enseñan para elegirlas, así que la muestra
+                            // tiene que ser el dibujo de verdad y no una foto
+                            // suya hecha en otro sitio.
+                            chinoDeOpcion(o.chino).frame(height: 66)
                         } else if !o.imagen.isEmpty, let img = cnImagenDeOpcion(o.imagen) {
                             Image(uiImage: img).resizable().scaledToFit().frame(height: 66)
                                 .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))

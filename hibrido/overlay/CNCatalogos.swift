@@ -460,6 +460,17 @@ enum CNCatalogos {
         holgado: 0.25
     )
 
+    /// Los seis que se pueden elegir, en su orden. «Automático» es el
+    /// primero y es lo de fábrica: la cara la decide el mes.
+    static let personajesQueSeEligen: [(id: String, nombre: String)] = [
+        (id: "auto", nombre: "Automático"),
+        (id: "fuerte", nombre: "Chino fuerte"),
+        (id: "estudiosa", nombre: "Chino estudioso"),
+        (id: "rota", nombre: "Chino roto"),
+        (id: "jugo", nombre: "Chino jugo"),
+        (id: "fiesta", nombre: "Chino fiesta")
+    ]
+
     /**
      * EL ORBE: LA SEGUNDA FAMILIA DE CHINO, en figuras.
      *

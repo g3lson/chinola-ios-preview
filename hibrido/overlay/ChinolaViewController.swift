@@ -384,6 +384,23 @@ class ChinolaViewController: CAPBridgeViewController {
             // El dibujo acaba de pasar de la web a Swift, y un dibujo no se
             // comprueba con una expresión regular: los seis juntos en una foto
             // es la única forma de ver si tienen cara.
+            // Y «mascota», LA HOJA QUE SE ABRE AL TOCAR A CHINO.
+            //
+            // Solo se abre tocándolo, así que el banco no pasaba nunca por
+            // ella. Y es la que acaba de pasar a armarse aquí: su cara, y
+            // debajo los pagos que vienen.
+            if ir == "mascota" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
+                    guard let s = self else { return }
+                    s.abrirMascota()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        let m = CNDatos.shared.mascota
+                        NSLog("CNIR: la hoja de Chino tiene avisos=\(m?.avisos.count ?? -1)"
+                              + " titulo=«\(m?.tituloAvisos ?? "")»")
+                    }
+                }
+                return
+            }
             // Y «orbe», LA OTRA FAMILIA: seis ánimos por tres pieles.
             if ir == "orbe" {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in

@@ -160,15 +160,19 @@ struct CNChino: View {
         let cy = 47 + cara.cejaY
         let tinta = cnColor(hexString: "#2f2718")
         let grosor = StrokeStyle(lineWidth: 4, lineCap: .round)
+        // Los dos puntos de giro, con su tipo escrito: dentro de la expresión
+        // entera, una cuenta que mezcla Double y CGFloat es de las que hacen
+        // que Swift se rinda sin compilar nada.
+        let alto = CGFloat(cy) / Self.lienzo
+        let porIzq = UnitPoint(x: 39.5 / Self.lienzo, y: alto)
+        let porDer = UnitPoint(x: 80.5 / Self.lienzo, y: alto)
         return ZStack {
             trazo("M33 \(numero(cy))q6 -4 13 -1")
                 .stroke(tinta, style: grosor)
-                .rotationEffect(.degrees(cara.cejaIzq),
-                                anchor: UnitPoint(x: 39.5 / 120, y: cy / 120))
+                .rotationEffect(.degrees(cara.cejaIzq), anchor: porIzq)
             trazo("M74 \(numero(cy))q6 -3 13 1")
                 .stroke(tinta, style: grosor)
-                .rotationEffect(.degrees(cara.cejaDer),
-                                anchor: UnitPoint(x: 80.5 / 120, y: cy / 120))
+                .rotationEffect(.degrees(cara.cejaDer), anchor: porDer)
         }
         .frame(width: Self.lienzo, height: Self.lienzo)
     }
