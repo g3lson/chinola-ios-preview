@@ -131,19 +131,36 @@ enum CNPeriodoArma {
 
     // MARK: - El calendario
 
-    /// Las iniciales de los días, en el idioma de la app. Se sacan formateando
-    /// una semana de verdad —del domingo 1 de septiembre de 2024 en adelante—,
-    /// que es exactamente lo que hace `Intl` en la web.
+    /**
+     * LAS INICIALES DE LOS DÍAS, EN EL IDIOMA DE LA APP.
+     *
+     * De la PRIMERA LETRA DEL NOMBRE CORTO, no del formato «estrecho» de Apple.
+     * Parece lo mismo y no lo es: en español, el estrecho de iOS da «X» para el
+     * miércoles —a propósito, para distinguirlo del martes— y la web, que usa
+     * `Intl`, da «M». El banco lo cazó comparando las dos: la cabecera del
+     * calendario decía D L M X J V S en el teléfono y D L M M J V S en la web,
+     * en la misma app.
+     *
+     * Con la inicial del corto («mié» → M) salen iguales en los tres idiomas:
+     * D L M M J V S en español y en francés, S M T W T F S en inglés.
+     *
+     * Y se sacan formateando una semana de verdad —del domingo 1 de septiembre
+     * de 2024 en adelante—, que es lo que hace `Intl`.
+     */
     static func diasSemana() -> [String] {
         var cal = Calendar(identifier: .gregorian); cal.timeZone = .current
         let f = DateFormatter()
         f.calendar = cal
         f.locale = Locale(identifier: CNTextos.idioma)
-        f.dateFormat = "EEEEE"
+        f.dateFormat = "EEE"
         var c = DateComponents(); c.year = 2024; c.month = 9; c.day = 1
         guard let domingo = cal.date(from: c) else { return ["D", "L", "M", "M", "J", "V", "S"] }
-        return (0..<7).compactMap { i in
-            cal.date(byAdding: .day, value: i, to: domingo).map { f.string(from: $0) }
+        return (0..<7).compactMap { i -> String? in
+            guard let d = cal.date(byAdding: .day, value: i, to: domingo) else { return nil }
+            // Sin tilde: el miércoles es «mié» y su inicial no lleva ninguna.
+            let corto = f.string(from: d)
+                .folding(options: .diacriticInsensitive, locale: Locale(identifier: "es"))
+            return corto.prefix(1).uppercased()
         }
     }
 

@@ -569,9 +569,13 @@ class ChinolaViewController: CAPBridgeViewController {
             s.traerMov(id)
             s.presentar(AnyView(CNDetalleMov(datos: s.datos, movId: id, onClose: { s.cerrar() })))
         }
-        datos.onMovAccion = { [weak self] tipo in
+        datos.onMovAccion = { [weak self] tipo, id in
             guard let s = self else { return }
-            s.eval("window.__chinolaMovAccion && window.__chinolaMovAccion(\(s.comillas(tipo)))")
+            // CON EL ID. La web sabía cuál se estaba mirando porque ella armaba
+            // el detalle; ahora lo arma el teléfono y esa puerta está cerrada,
+            // así que si no se lo dice nadie, duplicar no duplicaba nada.
+            s.eval("window.__chinolaMovAccion && window.__chinolaMovAccion("
+                   + s.comillas(tipo) + "," + s.comillas(id) + ")")
             s.refrescarPronto()
             if tipo == "duplicar" { s.cerrar() }
         }
@@ -640,25 +644,42 @@ class ChinolaViewController: CAPBridgeViewController {
                 s.accionDelDetalle(a.que)
                 return
             }
-            // El chip se marca AQUÍ, sin esperar a la web: tocar un periodo y
-            // que no pase nada durante medio segundo es lo que hace que la
-            // pantalla se sienta lenta.
+            // EL CHIP, AQUÍ MISMO. Tocar un periodo y que no pase nada durante
+            // medio segundo es lo que hace que una pantalla se sienta lenta, y
+            // esto esperaba a la web dos veces, a 120 y a 450 ms.
             if tipo == "chip" {
-                CNDatos.shared.marcarChip(i)
-                s.eval("window.__chinolaDetalleAccion && window.__chinolaDetalleAccion(\(s.comillas(tipo)),\(i))")
-                for t in [0.12, 0.45] {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + t) { s.refrescarDetalle() }
-                }
+                let meses = [1, 3, 6, 12, 0]
+                guard i >= 0, i < meses.count else { return }
+                CNDatos.shared.catMeses = meses[i]
+                s.refrescarDetalle()
+                // Y a la web, que su propia pantalla de categoría sigue por
+                // detrás y tiene que decir lo mismo.
+                s.eval("window.__chinolaCatMeses && window.__chinolaCatMeses(\(meses[i]))")
                 return
+            }
+            // LOS BOTONES QUE ABREN UNA HOJA DE LA WEB.
+            //
+            // «Editar la meta» y «Cambiar presupuesto» no tienen hoja nativa
+            // todavía. La web las abría por el NÚMERO del botón, con la lista
+            // que dejó puesta al armar el detalle; ahora lo arma el teléfono y
+            // esa lista no existe, así que se le dice qué abrir y sobre qué.
+            if tipo == "boton", let d = CNDatos.shared.detalle {
+                let que = d.deQue == "meta" ? "meta" : d.deQue == "categoria" ? "limite" : ""
+                if !que.isEmpty, i == 1 {
+                    s.eval("window.__chinolaAbrirHojaDe && window.__chinolaAbrirHojaDe("
+                           + s.comillas(que) + "," + s.comillas(d.deQue == "categoria" ? d.titulo : String(d.deCual)) + ")")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        s.webTemporal(alIrALaWeb: { s.cerrarDetalle() })
+                    }
+                    return
+                }
             }
             s.eval("window.__chinolaDetalleAccion && window.__chinolaDetalleAccion(\(s.comillas(tipo)),\(i))")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                // Cambiar de periodo repinta la misma pantalla. Un botón abre
-                // una hoja: se dibuja NATIVA y encima del detalle, que se queda
-                // donde estaba. Antes se cerraba el detalle y se enseñaba la
-                // web de debajo: la pantalla cambiaba de cara y volvía sola al
-                // cerrar la hoja.
-                if tipo == "chip" { s.refrescarDetalle(); return }
+                // Un botón abre una hoja: se dibuja NATIVA y encima del
+                // detalle, que se queda donde estaba. Antes se cerraba el
+                // detalle y se enseñaba la web de debajo: la pantalla cambiaba
+                // de cara y volvía sola al cerrar la hoja.
                 s.webTemporal(alIrALaWeb: { s.cerrarDetalle() })
             }
         }
@@ -1919,8 +1940,42 @@ class ChinolaViewController: CAPBridgeViewController {
     private func accionDelDetalle(_ que: String) {
         guard let d = CNDatos.shared.detalle else { return }
         let tipo = d.deQue, id = d.deCual
-        guard id != 0 else { return }
         let l = CNDatos.shared.libreta
+        // LA CATEGORÍA NO VA POR NÚMERO: va por NOMBRE, y es el título. Se
+        // atiende aparte y ANTES del `guard id != 0`, que la dejaría fuera
+        // siempre —su id es cero porque no tiene—.
+        if tipo == "categoria" {
+            let nombre = d.titulo
+            guard !nombre.isEmpty else { return }
+            if que == "editar" {
+                eval("window.__chinolaAbrirHojaDe && window.__chinolaAbrirHojaDe(\"categoria\"," + comillas(nombre) + ")")
+                // CON `s` FUERTE DENTRO. `{ self?.cerrarDetalle() }` es un
+                // `() -> ()?` y no encaja donde se pide un `() -> Void`. Aquí
+                // no hay Xcode: esto solo se ve en el banco, y cuesta una vuelta.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    guard let s = self else { return }
+                    s.webTemporal(alIrALaWeb: { s.cerrarDetalle() })
+                }
+                return
+            }
+            guard que == "borrar" else { return }
+            var nueva = l
+            nueva.categorias.removeAll { $0.nombre == nombre }
+            // Y SUS MOVIMIENTOS A «Otros». No es evidente y es lo que hace que
+            // borrar una categoría no borre el dinero que pasó por ella: sin
+            // esto, quince gastos se quedan apuntando a algo que ya no existe.
+            nueva.tx = nueva.tx.map { m in
+                var x = m; if x.categoria == nombre { x.categoria = "Otros" }; return x
+            }
+            cerrarDetalle()
+            adopta(nueva) { [weak self] in
+                guard let s = self else { return }
+                s.eval("window.__chinolaBorrarCategoria && window.__chinolaBorrarCategoria(" + s.comillas(nombre) + ")")
+                s.refrescarPronto()
+            }
+            return
+        }
+        guard id != 0 else { return }
         if que == "editar" {
             // CON EL TIPO ESCRITO. `self?.cerrar()` devuelve `()?`, así que sin
             // anotarlo el cierre es un `() -> ()?` y no encaja donde se pide un
@@ -1933,9 +1988,17 @@ class ChinolaViewController: CAPBridgeViewController {
             case "tarjeta":
                 guard let t = l.tarjetas.first(where: { $0.id == id }) else { return }
                 presentar(AnyView(CNFormTarjeta(datos: datos, onClose: cerrar, editar: t)))
-            default:
+            case "meta":
+                guard let g = l.metas.first(where: { $0.id == id }) else { return }
+                presentar(AnyView(CNFormMeta(datos: datos, onClose: cerrar, editar: g)))
+            // CADA TIPO CON SU NOMBRE, sin rama de relleno. Con `default` en el
+            // préstamo, el día que esto atendiera a un quinto tipo —y ahora
+            // atiende a la meta— editar una meta abriría el formulario de un
+            // préstamo, y borrarla borraría el préstamo con ese mismo número.
+            case "prestamo":
                 guard let p = l.prestamos.first(where: { $0.id == id }) else { return }
                 presentar(AnyView(CNFormPrestamo(datos: datos, onClose: cerrar, editar: p)))
+            default: return
             }
             return
         }
@@ -1944,7 +2007,9 @@ class ChinolaViewController: CAPBridgeViewController {
         switch tipo {
         case "cuenta": nueva.cuentas.removeAll { $0.id == id }
         case "tarjeta": nueva.tarjetas.removeAll { $0.id == id }
-        default: nueva.prestamos.removeAll { $0.id == id }
+        case "prestamo": nueva.prestamos.removeAll { $0.id == id }
+        case "meta": nueva.metas.removeAll { $0.id == id }
+        default: return
         }
         // Y se cierra el detalle: quedarse mirando la ficha de algo que acaba
         // de dejar de existir es lo que hace pensar que no se borró.
@@ -1955,7 +2020,8 @@ class ChinolaViewController: CAPBridgeViewController {
         // el teléfono, ese menú ya no se le pide, así que no hay número que
         // disparar. Sin esta salida, un borrado rechazado no hacía NADA: ni
         // error ni aviso, y la cuenta seguía ahí.
-        let lista = ["cuenta": "cuentas", "tarjeta": "tarjetas", "prestamo": "prestamos"][tipo] ?? ""
+        let lista = ["cuenta": "cuentas", "tarjeta": "tarjetas",
+                     "prestamo": "prestamos", "meta": "metas"][tipo] ?? ""
         adopta(nueva) { [weak self] in
             guard let s = self, !lista.isEmpty else {
                 NSLog("CNBORRAR: la web no adoptó y no sé de qué lista era · no se borró")
@@ -2092,46 +2158,28 @@ class ChinolaViewController: CAPBridgeViewController {
         // misma pregunta, que es de donde venía el lío.
         let (tipo, id) = detalleQue
         guard !tipo.isEmpty else { return }
-        // LOS TRES DE CUENTAS, ARMADOS AQUÍ. La meta y la categoría se abren
-        // desde el Plan y siguen siendo de la web.
-        if CNDetallePantalla.sabeArmar(tipo), let n = Int(id), !CNDatos.shared.libreta.sinLlegar {
-            let cab = CNDatos.shared.resumen?.cabecera
-            let t = CNDetallePantalla.Tinte(
-                tinta: cab?.tinta.isEmpty == false ? cab!.tinta : cnHexDe(CNC.ink),
-                positivo: cab?.positivo.isEmpty == false ? cab!.positivo : cnHexDe(CNC.pos),
-                negativo: cab?.negativo.isEmpty == false ? cab!.negativo : cnHexDe(CNC.neg),
-                gris: cab?.gris.isEmpty == false ? cab!.gris : cnHexDe(CNC.pmut))
-            if var d = CNDetallePantalla.arma(tipo, id: n, libreta: CNDatos.shared.libreta,
-                                              periodo: CNDatos.shared.periodoCalculo, tinte: t) {
-                d.deQue = tipo; d.deCual = n
-                d.acciones = [
-                    CNDetalle.Accion(id: -1, label: cnT("Editar"), peligro: false, que: "editar"),
-                    CNDetalle.Accion(id: -2, label: cnT("Eliminar"), peligro: true, que: "borrar")
-                ]
-                d.accionesWeb = CNDatos.shared.detalle?.accionesWeb ?? []
-                CNDatos.shared.detalle = d
-                return
-            }
-        }
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaDetalleJSON && window.__chinolaDetalleJSON(\(comillas(tipo)),\(comillas(id)))) || ''") { res, _ in
-            guard let json = res as? String, json.count > 2 else { return }
-            CNDatos.shared.cargarDetalle(json: json)
-            // EDITAR Y ELIMINAR, PUESTAS POR EL TELÉFONO.
-            //
-            // Venían de la web y se disparaban por su número. Ahora las dos
-            // las hace este lado: el formulario ya sabe editar y quitar de la
-            // libreta es quitar de una lista. Se marcan con `que` para no
-            // depender de la posición — la lista no siempre trae las mismas.
-            CNDatos.shared.detalle?.deQue = tipo
-            CNDatos.shared.detalle?.deCual = Int(id) ?? 0
-            if ["cuenta", "tarjeta", "prestamo"].contains(tipo), Int(id) != nil {
-                CNDatos.shared.detalle?.accionesWeb = CNDatos.shared.detalle?.acciones ?? []
-                CNDatos.shared.detalle?.acciones = [
-                    CNDetalle.Accion(id: -1, label: cnT("Editar"), peligro: false, que: "editar"),
-                    CNDetalle.Accion(id: -2, label: cnT("Eliminar"), peligro: true, que: "borrar")
-                ]
-            }
-        }
+        // LOS CINCO, ARMADOS AQUÍ. Los tres de Cuentas y los dos que se abren
+        // desde el Plan: la meta y la categoría. Ya no se le pide ninguno a la
+        // web, que solo los tiene armados estando en esa pantalla.
+        guard CNDetallePantalla.sabeArmar(tipo), !CNDatos.shared.libreta.sinLlegar else { return }
+        let cab = CNDatos.shared.resumen?.cabecera
+        func oSi(_ a: String?, _ b: Color) -> String { (a?.isEmpty == false) ? a! : cnHexDe(b) }
+        let t = CNDetallePantalla.Tinte(
+            tinta: oSi(cab?.tinta, CNC.ink), positivo: oSi(cab?.positivo, CNC.pos),
+            negativo: oSi(cab?.negativo, CNC.neg), gris: oSi(cab?.gris, CNC.pmut),
+            aviso: oSi(cab?.aviso, CNC.acc), lila: oSi(cab?.ahorro, CNC.info))
+        guard var d = CNDetallePantalla.arma(tipo, id: id, libreta: CNDatos.shared.libreta,
+                                             periodo: CNDatos.shared.periodoCalculo,
+                                             meses: CNDatos.shared.catMeses, tinte: t) else { return }
+        d.deQue = tipo; d.deCual = Int(id) ?? 0
+        // EDITAR Y ELIMINAR, PUESTAS POR EL TELÉFONO. Se marcan con `que` y no
+        // por su número: la lista no siempre trae las mismas.
+        d.acciones = [
+            CNDetalle.Accion(id: -1, label: cnT("Editar"), peligro: false, que: "editar"),
+            CNDetalle.Accion(id: -2, label: cnT("Eliminar"), peligro: true, que: "borrar")
+        ]
+        d.accionesWeb = CNDatos.shared.detalle?.accionesWeb ?? []
+        CNDatos.shared.detalle = d
     }
 
     /// La pantalla de Cuentas, armada por la web.
@@ -2157,12 +2205,12 @@ class ChinolaViewController: CAPBridgeViewController {
         }
     }
 
-    /// El detalle de un movimiento, armado por la web.
+    /// El detalle de un movimiento, armado aquí. Se lo pedía a la web, y como
+    /// todo lo que pasa por `valsNativo` solo estaba armado si la web estaba en
+    /// esa pantalla: desde cualquier otra, el detalle salía con su barra de
+    /// navegación y nada debajo.
     private func traerMov(_ id: String) {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaMovJSON && window.__chinolaMovJSON(\(comillas(id)))) || ''") { res, _ in
-            guard let json = res as? String, json.count > 2 else { return }
-            CNDatos.shared.cargarMovDetalle(json: json)
-        }
+        datos.refrescarMovDetalle(id)
     }
 
     /// El modelo de una subpantalla del perfil.

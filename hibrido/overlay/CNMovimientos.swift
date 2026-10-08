@@ -138,3 +138,114 @@ enum CNMovimientos {
         }
     }
 }
+
+/**
+ * EL DETALLE DE UN MOVIMIENTO, ARMADO AQUÍ.
+ *
+ * Era de la web: tocabas una fila y el modelo entero se le pedía a ella. Y
+ * como todo lo que pasa por `valsNativo`, solo está armado si la web está EN
+ * la pantalla que lo arma; en cualquier otra contestaba vacío y el detalle se
+ * quedaba con su barra de navegación y nada debajo.
+ *
+ * Cada campo se sacó del `detalleMovimiento` de la web, no de memoria. Lo que
+ * más fácil se pierde rehaciéndolo:
+ *
+ *  · **un traspaso no es un gasto.** Ni el icono, ni el color, ni los rótulos:
+ *    lleva su flecha doble, la tinta normal —no roja— y dice de dónde sale y a
+ *    dónde va en vez de una categoría. Tratarlo como gasto pinta en rojo un
+ *    dinero que no se ha ido a ningún sitio;
+ *  · **el gris de la categoría sin color es el del TEMA, no el de la paleta.**
+ *    La web tiene dos funciones para lo mismo y no dan igual: la lista usa el
+ *    verde apagado de la paleta y esta pantalla el gris del tema. Con el otro,
+ *    el icono sale verde oscuro sobre una pantalla donde todo lo demás es gris;
+ *  · **el tipo se dice corto.** «Gasto Variable» se escribe «Variable»: el
+ *    rótulo de al lado ya dice si entró o salió.
+ */
+extension CNMovimientos {
+
+    /// Los colores que cambian con el tema. Se pasan de fuera para poder armar
+    /// el detalle en una prueba sin tema puesto.
+    struct TinteDetalle {
+        var tinta = ""; var gris = ""; var suave = ""
+        var positivo = ""; var negativo = ""
+    }
+
+    /// Cómo se llama cada tipo en la ficha. Corto: el rótulo de al lado ya dice
+    /// si entró o salió.
+    static func nombreDelTipo(_ t: String) -> String {
+        switch t {
+        case "Ingreso": return cnT("Ingreso")
+        case "Gasto Fijo": return cnT("Fijo")
+        case "Gasto Variable": return cnT("Variable")
+        case "Ahorro": return cnT("Ahorro")
+        case "Transferencia": return cnT("Traspaso")
+        default: return t
+        }
+    }
+
+    /// «cuenta:3» → «Banco Popular». Lo que no sea una cuenta o una tarjeta de
+    /// la libreta es efectivo, que es de donde sale el dinero cuando no se dice.
+    static func nombreDeMedio(_ medio: String, _ l: CNLibreta) -> String {
+        if medio.hasPrefix("cuenta:"), let n = Int(medio.dropFirst("cuenta:".count)),
+           let c = l.cuentas.first(where: { $0.id == n }) { return c.nombre }
+        if medio.hasPrefix("tarjeta:"), let n = Int(medio.dropFirst("tarjeta:".count)),
+           let c = l.tarjetas.first(where: { $0.id == n }) { return c.nombre }
+        return cnT("Efectivo")
+    }
+
+    /// «5 de octubre», en el idioma de la app y con mayúscula inicial.
+    static func cuando(_ fecha: String) -> String {
+        guard let d = CNFormateadores.iso.date(from: fecha) else { return fecha }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: CNTextos.idioma)
+        f.setLocalizedDateFormatFromTemplate("dMMMM")
+        let s = f.string(from: d)
+        return s.prefix(1).uppercased() + s.dropFirst()
+    }
+
+    /// La flecha doble del traspaso. No es de ninguna categoría: un traspaso no
+    /// tiene, y ponerle la de «otros» lo disfraza de gasto.
+    static let glifoTraspaso = "M4 9h11a4 4 0 0 1 4 4M20 15H9a4 4 0 0 1-4-4M7 6L4 9l3 3M17 18l3-3-3-3"
+
+    static func detalle(_ id: String, _ l: CNLibreta, puedeRegistrar: Bool,
+                        tinte t: TinteDetalle) -> CNMovDetalle? {
+        guard let x = l.tx.first(where: { $0.id == id }) else { return nil }
+        let traspaso = x.tipo == "Transferencia"
+        let entra = x.tipo == "Ingreso"
+        var m = CNMovDetalle()
+        m.nombre = x.concepto
+        m.rotulo = traspaso ? cnT("Traspaso") : entra ? cnT("Entró") : cnT("Salió")
+        m.montoFmt = cnDinero(abs(x.monto))
+        m.color = traspaso ? t.tinta : entra ? t.positivo : t.negativo
+        if traspaso {
+            m.iconoPath = glifoTraspaso
+            m.iconoColor = t.gris
+            m.iconoBg = t.suave
+        } else {
+            let clave = CNCategorias.icono(x.categoria, en: l)
+            m.iconoPath = CNCatalogos.iconos[clave] ?? ""
+            // El gris del TEMA, no el de la paleta: son dos funciones distintas
+            // en la web y esta pantalla usa esta.
+            let cat = l.categorias.first { $0.nombre == x.categoria }
+            let color = (cat?.color.isEmpty == false) ? cat!.color : t.gris
+            m.iconoColor = color
+            m.iconoBg = CNCuentasFilas.tinte(color, 0.15)
+        }
+        m.puedeEditar = puedeRegistrar
+        m.textoEditar = cnT("Editar")
+        m.textoDuplicar = cnT("Duplicar")
+        var filas: [(String, String)] = []
+        if traspaso {
+            filas.append((cnT("De dónde sale"), nombreDeMedio(x.medio, l)))
+            filas.append((cnT("A dónde va"), nombreDeMedio(x.destino, l)))
+        } else {
+            filas.append((cnT("Categoría"), x.categoria))
+        }
+        filas.append((cnT("Tipo"), nombreDelTipo(x.tipo)))
+        filas.append((cnT("Fecha"), cuando(x.fecha)))
+        if !traspaso { filas.append((cnT("Pagado con"), nombreDeMedio(x.medio, l))) }
+        filas.append((cnT("Se repite"), x.recurrente ? cnT("Cada mes") : cnT("No")))
+        m.datos = filas.enumerated().map { CNMovDetalle.Dato(id: $0.offset, label: $0.element.0, valor: $0.element.1) }
+        return m
+    }
+}

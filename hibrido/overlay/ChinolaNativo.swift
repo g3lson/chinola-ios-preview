@@ -1201,6 +1201,23 @@ struct CNEntradaPanel: Decodable, Identifiable {
     enum K: String, CodingKey { case id, tipo, ancho, cfg }
 }
 
+/**
+ * QUIÉN ESTÁ DENTRO DE UNA LIBRETA Y CON QUÉ PAPEL.
+ *
+ * Viaja dentro de la libreta desde siempre y aquí no se leía, porque todo lo
+ * que dependía del papel —si puedes anotar, si puedes editar— lo decidía la
+ * web y lo mandaba ya resuelto.
+ */
+struct CNMiembro: Decodable {
+    var nombre = ""; var email = ""; var rol = ""
+    init() {}
+    init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
+        nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? ""
+        email = (try? c.decodeIfPresent(String.self, forKey: .email)) ?? ""
+        rol = (try? c.decodeIfPresent(String.self, forKey: .rol)) ?? "" }
+    enum K: String, CodingKey { case nombre, email, rol }
+}
+
 struct CNLibreta: Decodable {
     /**
      * ¿Esta libreta no ha llegado todavía?
@@ -1261,6 +1278,17 @@ struct CNLibreta: Decodable {
     var color: String = ""
     var icono: String = ""
     var tipo: String = ""
+    /// Quién está dentro, y qué papel tiene cada uno.
+    var miembros: [CNMiembro] = []
+    /**
+     * EL PAPEL QUE TE DA EL SERVIDOR, QUE MANDA SOBRE LA LISTA.
+     *
+     * Es el mismo con el que decide si te deja escribir. La lista de miembros
+     * que viaja dentro es para ENSEÑARLA: se queda vieja, o le cambia una
+     * mayúscula al correo, y mirarla a ella era decirle «solo lectura» a quien
+     * sí podía escribir.
+     */
+    var rolServidor: String = ""
     init() {}
     /**
      * ¿HUBO ALGO QUE NO SE PUDO LEER?
@@ -1320,9 +1348,16 @@ struct CNLibreta: Decodable {
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? ""
         icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? ""
         tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? ""
+        miembros = lista([CNMiembro].self, .miembros)
+        rolServidor = (try? c.decodeIfPresent(String.self, forKey: .rolServidor)) ?? ""
         dudoso = !malas.isEmpty
         if dudoso { NSLog("CNLIBRETA: no se pudo leer %@ — el teléfono no escribirá", malas.joined(separator: ", ")) } }
-    enum K: String, CodingKey { case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx, presupuesto, historia, medioPorDefecto, panel, color, icono, tipo }
+    enum K: String, CodingKey {
+        case nombre, cuentas, tarjetas, prestamos, categorias, metas, tx
+        case presupuesto, historia, medioPorDefecto, panel, color, icono, tipo, miembros
+        // En la libreta se llama `__rol`, que en Swift no es un nombre.
+        case rolServidor = "__rol"
+    }
 
     func categoria(_ nombre: String) -> CNCategoria? { categorias.first { $0.nombre == nombre } }
     func gastadoCategoria(_ nombre: String) -> Double {
@@ -1674,7 +1709,10 @@ final class CNDatos: ObservableObject {
     var onPeriodo: (String, Int) -> Void = { _, _ in }
     /// El detalle de un movimiento, armado por la web.
     @Published var movDetalle: CNMovDetalle? = nil
-    var onMovAccion: (String) -> Void = { _ in }
+    /// Duplicar un movimiento. Lleva el id porque la web ya no sabe cuál se
+    /// está mirando: eso lo sabía por la misma puerta que armaba el detalle, y
+    /// esa puerta la cerró el teléfono.
+    var onMovAccion: (String, String) -> Void = { _, _ in }
     /// La pantalla de Cuentas, armada por la web.
     @Published var cuentas: CNCuentasModelo? = nil
     var onCuentasAccion: (String, Int) -> Void = { _, _ in }
@@ -1722,7 +1760,16 @@ final class CNDatos: ObservableObject {
         d.chips = d.chips.map { c in var x = c; x.puesta = (c.indice == i); return x }
         detalle = d
     }
-    func cargarDetalle(json: String) { detalle = CNDetalle.desde(json: json) }
+    /**
+     * CUÁNTOS MESES SE MIRAN EN EL DETALLE DE UNA CATEGORÍA.
+     *
+     * Son los chips de arriba: este mes, 3, 6, 12 y todo. Vivía en la web
+     * (`state.catMeses`) porque era ella quien armaba esa pantalla. Empieza en
+     * 1 porque lo que se viene a mirar es cuánto llevas gastado ESTE mes y
+     * cuánto queda del límite; con el límite solo cuenta ahí, que es el único
+     * rango contra el que un presupuesto mensual significa algo.
+     */
+    @Published var catMeses = 1
     /// LO ÚLTIMO QUE SE PINTÓ, GUARDADO EN EL TELÉFONO.
     ///
     /// Las pantallas nativas dibujan modelos que calcula la web, y hasta ahora
@@ -1846,7 +1893,6 @@ final class CNDatos: ObservableObject {
         if m.listo { guarda("cuentas", json) }
         if m.listo || cuentas == nil { cuentas = m }
     }
-    func cargarMovDetalle(json: String) { movDetalle = CNMovDetalle.desde(json: json) }
     /// Marca una opción, una muestra o un interruptor de una subpantalla EN EL
     /// ACTO, sin esperar a que la web conteste. Es lo que hace que tocar se
     /// sienta como tocar y no como pedir: la web confirma un instante después.
@@ -2555,6 +2601,20 @@ final class CNDatos: ObservableObject {
             CNResumenModelo.Barra(x: $0.x, y: $0.y, w: $0.w, h: $0.h, color: colorDe($0.serie))
         }
     }
+    /// El detalle de un movimiento, armado con la libreta que ya está aquí.
+    func refrescarMovDetalle(_ id: String) {
+        let cab = resumen?.cabecera
+        func oSi(_ a: String?, _ b: Color) -> String { (a?.isEmpty == false) ? a! : cnHexDe(b) }
+        let t = CNMovimientos.TinteDetalle(
+            tinta: oSi(cab?.tinta, CNC.ink), gris: oSi(cab?.gris, CNC.pmut),
+            suave: CNC.hexSoft,
+            positivo: oSi(cab?.positivo, CNC.pos), negativo: oSi(cab?.negativo, CNC.neg))
+        movDetalle = CNMovimientos.detalle(
+            id, libreta,
+            puedeRegistrar: CNPapeles.puedeRegistrar(libreta, yo: CNPapeles.yo(perfil)),
+            tinte: t)
+    }
+
     func cargarPerfil(json: String) {
         guard cambio("perfil", json) else { return }
         if let p = CNPerfilInfo.desde(json: json) { perfil = p; guarda("perfil", json) }
@@ -4318,23 +4378,6 @@ struct CNMovDetalle {
     var iconoPath = ""; var iconoColor = ""; var iconoBg = ""
     var puedeEditar = false; var textoEditar = "Editar"; var textoDuplicar = "Duplicar"
     var datos: [Dato] = []
-
-    static func desde(json: String) -> CNMovDetalle? {
-        guard let d = json.data(using: .utf8),
-              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
-        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
-        var m = CNMovDetalle()
-        m.nombre = s(r, "nombre"); m.rotulo = s(r, "rotulo"); m.montoFmt = s(r, "montoFmt")
-        m.color = s(r, "color"); m.iconoPath = s(r, "iconoPath")
-        m.iconoColor = s(r, "iconoColor"); m.iconoBg = s(r, "iconoBg")
-        m.puedeEditar = (r["puedeEditar"] as? Bool) ?? false
-        m.textoEditar = s(r, "textoEditar").isEmpty ? "Editar" : s(r, "textoEditar")
-        m.textoDuplicar = s(r, "textoDuplicar").isEmpty ? "Duplicar" : s(r, "textoDuplicar")
-        m.datos = ((r["datos"] as? [[String: Any]]) ?? []).enumerated().map {
-            Dato(id: $0.offset, label: s($0.element, "label"), valor: s($0.element, "valor"))
-        }
-        return m
-    }
 }
 
 /// EL DETALLE DE UN MOVIMIENTO.
@@ -4359,7 +4402,7 @@ struct CNDetalleMov: View {
                         Button { datos.onAccion("editarMov", movId) } label: {
                             Label(m.textoEditar, systemImage: "pencil")
                         }
-                        Button { datos.onMovAccion("duplicar") } label: {
+                        Button { datos.onMovAccion("duplicar", movId) } label: {
                             Label(m.textoDuplicar, systemImage: "plus.square.on.square")
                         }
                     }
@@ -4400,7 +4443,7 @@ struct CNDetalleMov: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button { datos.onAccion("editarMov", movId) } label: { Label(m.textoEditar, systemImage: "pencil") }
-                        Button { datos.onMovAccion("duplicar") } label: { Label(m.textoDuplicar, systemImage: "plus.square.on.square") }
+                        Button { datos.onMovAccion("duplicar", movId) } label: { Label(m.textoDuplicar, systemImage: "plus.square.on.square") }
                         Button(role: .destructive) { confirmarBorrar = true } label: { Label(cnT("Eliminar"), systemImage: "trash") }
                     } label: { Image(systemName: "ellipsis") }
                 }

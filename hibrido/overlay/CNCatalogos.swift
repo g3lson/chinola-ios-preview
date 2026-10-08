@@ -225,6 +225,34 @@ enum CNCatalogos {
         "Otros": "puntos"
     ]
 
+    /**
+     * EL ICONO QUE LE TOCA A UNA META POR SU NOMBRE, en orden.
+     *
+     * «Viaje a Punta Cana» lleva maleta y «Casa nueva» lleva casa. Gana el
+     * PRIMERO que casa, así que el orden es parte de la respuesta: «ahorro»
+     * casaría con media lista si no fuera el último.
+     *
+     * Los trozos van sueltos y se comparan con `contains`, no con una
+     * expresión regular: son las mismas alternativas de la web partidas por
+     * la barra, y así no hay dos motores de patrones que entiendan distinto
+     * el mismo texto.
+     */
+    static let iconoDeMeta: [(trozos: [String], icono: String)] = [
+        (["viaj", "vacacion", "turism", "playa"], "maleta"),
+        (["avion", "avión", "vuelo", "pasaje"], "avion"),
+        (["casa", "hogar", "cocina", "apartament", "mudan", "remodel", "reforma", "mueble"], "casa"),
+        (["carro", "auto", "vehiculo", "vehículo", "guagua", "moto"], "auto"),
+        (["estudi", "universi", "curso", "colegio", "maestr", "beca", "carrera"], "birrete"),
+        (["boda", "anillo", "matrimoni", "regalo"], "regalo"),
+        (["salud", "medic", "médic", "dentist", "cirug"], "salud"),
+        (["negocio", "empresa", "emprend", "local"], "grafico"),
+        (["telefono", "teléfono", "celular", "laptop", "computad"], "telefono"),
+        (["ropa", "vestid", "zapat"], "ropa"),
+        (["gym", "gimnasio", "bici", "deport"], "gym"),
+        (["mascota", "perr", "gat"], "mascota"),
+        (["emergencia", "fondo", "ahorro"], "hucha")
+    ]
+
     /// Los de las filas de ajustes, que son otros y viven aparte.
     static let iconosDeAjuste: [String: String] = [
         "notis": "M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0",

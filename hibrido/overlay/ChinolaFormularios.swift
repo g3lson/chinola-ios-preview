@@ -755,6 +755,11 @@ struct CNFormPrestamo: View {
 struct CNFormMeta: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
+    /// La que se está editando, si se está editando alguna. Igual que en las
+    /// otras tres hojas: el que escribe ya sabía editar —`guardarMeta` coge el
+    /// id de `extra` y NO toca lo ahorrado—, lo que faltaba era poder decírselo
+    /// desde aquí.
+    var editar: CNMeta? = nil
     @State private var nombre = ""
     @State private var objetivo = ""
     @State private var mensual = ""
@@ -763,7 +768,8 @@ struct CNFormMeta: View {
     private let iconos = ["hucha", "premio", "casa", "auto", "avion", "maleta", "birrete", "regalo", "corazon", "estrella"]
 
     var body: some View {
-        CNHoja(titulo: cnT("Nueva meta"), guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
+        CNHoja(titulo: editar == nil ? cnT("Nueva meta") : cnT("Editar meta"),
+               guardarActivo: !nombre.trimmingCharacters(in: .whitespaces).isEmpty,
                onClose: onClose, onGuardar: guardar) {
             CNCampoTexto(placeholder: "Nombre (ej. Fondo de emergencia)", texto: $nombre)
             VStack(alignment: .leading, spacing: 6) { cnHojaTitulo(cnT("Objetivo")); CNMontoCampo(monto: $objetivo, paso: 5000, rotulo: nil) }
@@ -785,11 +791,20 @@ struct CNFormMeta: View {
             }
             CNColorFila(color: $color)
         }
+        .onAppear {
+            guard let g = editar else { return }
+            nombre = g.nombre
+            objetivo = cnMontoTexto(g.meta)
+            mensual = cnMontoTexto(g.mensual)
+            if !g.icono.isEmpty { icono = g.icono }
+            if !g.color.isEmpty { color = g.color }
+        }
     }
 
     private func guardar() {
         let nm = nombre.trimmingCharacters(in: .whitespaces); guard !nm.isEmpty else { return }
-        datos.onGuardarHoja("meta", ["nombre": nm, "objetivo": cnMonto(objetivo), "mensual": cnMonto(mensual), "icono": icono, "color": color], nil)
+        datos.onGuardarHoja("meta", ["nombre": nm, "objetivo": cnMonto(objetivo), "mensual": cnMonto(mensual), "icono": icono, "color": color],
+                            editar.map { ["id": $0.id] })
         onClose()
     }
 }

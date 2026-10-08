@@ -634,7 +634,12 @@ enum CNOro {
          * rótulos de los rangos y a dónde lleva cada atajo.
          */
         if let bruto = leer("periodo-oro"),
-           let raizP = (try? JSONSerialization.jsonObject(with: bruto)) as? [String: Any] {
+           let fichero = (try? JSONSerialization.jsonObject(with: bruto)) as? [String: Any],
+           // DENTRO DE «periodo», que es como lo escribe el generador y como lo
+           // escupe esto. Leyendo la raíz, `raizP["titulos"]` era nil y cinco
+           // de los siete apartados no se calculaban: el banco decía «el Swift
+           // no lo calculó» en vez de compararlos.
+           let raizP = fichero["periodo"] as? [String: Any] {
             // El oro está en español y el simulador arranca en inglés.
             CNTextos.idiomaDePrueba = "es"
             defer { CNTextos.idiomaDePrueba = "" }

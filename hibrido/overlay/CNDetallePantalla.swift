@@ -28,20 +28,36 @@ enum CNDetallePantalla {
     /// Los colores que cambian con la paleta.
     struct Tinte {
         var tinta = ""; var positivo = ""; var negativo = ""; var gris = ""
+        /// El ámbar del «ya casi»: lo usa la barra del presupuesto de una
+        /// categoría, que tiene tres estados y no dos.
+        var aviso = ""
+        /// El lila del ahorro, que es el color de fábrica de las metas. Viene
+        /// de la paleta y no escrito aquí: el lila de un tema no es el de otro,
+        /// y una meta sin color propio salía morada en el teléfono mientras en
+        /// la web seguía la paleta puesta.
+        var lila = ""
     }
 
-    /// Los tres que salen de la pantalla de Cuentas. La meta y la categoría se
-    /// abren desde el Plan y siguen viniendo de la web.
+    /// Los cinco: los tres de Cuentas y los dos que se abren desde el Plan.
+    ///
+    /// La categoría no va por número —se abre por su NOMBRE—, así que `arma`
+    /// recibe el identificador como texto y cada uno lo lee como le toca.
     static func sabeArmar(_ tipo: String) -> Bool {
-        ["cuenta", "tarjeta", "prestamo"].contains(tipo)
+        ["cuenta", "tarjeta", "prestamo", "meta", "categoria"].contains(tipo)
     }
 
-    static func arma(_ tipo: String, id: Int, libreta l: CNLibreta,
-                     periodo p: CNCalculo.Periodo, tinte t: Tinte) -> CNDetalle? {
+    /// Los que se abren por número. La categoría no.
+    static func porNumero(_ tipo: String) -> Bool { tipo != "categoria" }
+
+    static func arma(_ tipo: String, id: String, libreta l: CNLibreta,
+                     periodo p: CNCalculo.Periodo, meses: Int, tinte t: Tinte) -> CNDetalle? {
+        if tipo == "categoria" { return deCategoria(id, l, meses, t) }
+        guard let n = Int(id) else { return nil }
         switch tipo {
-        case "cuenta":   return deCuenta(id, l, p, t)
-        case "tarjeta":  return deTarjeta(id, l, t)
-        case "prestamo": return dePrestamo(id, l, t)
+        case "cuenta":   return deCuenta(n, l, p, t)
+        case "tarjeta":  return deTarjeta(n, l, t)
+        case "prestamo": return dePrestamo(n, l, t)
+        case "meta":     return deMeta(n, l, t)
         default: return nil
         }
     }
@@ -185,6 +201,218 @@ enum CNDetallePantalla {
         d.rotuloLista = cnT("Pagos registrados")
         d.vacioTexto = cnT("Aquí saldrán los pagos que vayas anotando.")
         d.tramos = deCorrido(l.tx.filter { $0.prestamo == id }, l, t)
+        return d
+    }
+
+    // MARK: - Meta
+
+    /**
+     * UNA META POR DENTRO.
+     *
+     * Lo que más fácil se pierde: **el dinero que ya estaba apartado**. Una
+     * meta puede llevar ahorrado sin un solo aporte anotado —porque venía así
+     * de la libreta, porque se editó a mano, o porque se aportó antes de que
+     * los aportes quedaran ligados a su meta—. Decir «todavía no has anotado
+     * ningún aporte» encima de RD$32,000 parece un fallo, así que se dice lo
+     * que es: eso venía de antes, y va como una fila más al final.
+     */
+    private static func deMeta(_ id: Int, _ l: CNLibreta, _ t: Tinte) -> CNDetalle? {
+        guard let g = l.metas.first(where: { $0.id == id }) else { return nil }
+        var d = CNDetalle()
+        d.titulo = g.nombre
+        let objetivo = g.meta, llevo = g.ahorrado
+        let falta = max(0, objetivo - llevo)
+        let cuota = g.mensual
+        let meses = cuota > 0 ? Int((falta / cuota).rounded(.up)) : 0
+        let pct = objetivo > 0 ? Double(min(100, Int((llevo / objetivo * 100).rounded()))) : 0
+        // El lila de la PALETA, y solo si la meta no trae color suyo. Escrito
+        // aquí a fuego, una meta sin color salía morada en el teléfono
+        // mientras en la web seguía el tema que tuvieras puesto.
+        let color = g.color.isEmpty ? t.lila : g.color
+        d.hero = CNDetalle.Hero(
+            iconoPath: glifoDeMeta(g), iconoColor: color,
+            iconoBg: CNCuentasFilas.tinte(color),
+            rotulo: cnT("Llevas ahorrado"), valor: cnDinero(llevo), color: color,
+            pct: pct, colorBarra: color,
+            pieIzq: String(Int(pct)) + "% · " + cnT("Te falta") + " " + cnDinero(falta),
+            pieDer: cnT("Apartas cada mes") + " "
+                + (cuota > 0 ? cnDinero(cuota) : cnT("Sin cuota")),
+            // «15 meses a este ritmo» solo cuando hay ritmo y queda algo.
+            nota: cuota > 0 && falta > 0
+                ? cnT("{n} meses a este ritmo").replacingOccurrences(of: "{n}", with: String(meses)) : "")
+        // La meta NO lleva filas de datos en el teléfono: la web las manda
+        // vacías a propósito, porque el bloque de arriba ya las dice.
+        d.datos = []
+        d.botones = [
+            // El botón dice cuánto se va a aportar: así se toca sin tener que
+            // mirar antes la fila del aporte mensual.
+            CNDetalle.Boton(id: 0,
+                            label: cuota > 0 ? cnT("Aportar") + " " + cnDinero(cuota) : cnT("Aportar"),
+                            estilo: "acento", abre: "aporte", cual: id, monto: cuota),
+            CNDetalle.Boton(id: 1, label: cnT("Editar la meta"), estilo: "contorno")
+        ]
+        d.rotuloLista = cnT("Aportes")
+        let aportes = l.tx.filter { $0.meta == id }
+            .sorted { $0.fecha != $1.fecha ? $0.fecha > $1.fecha : $0.id > $1.id }
+        let sumado = aportes.reduce(0.0) { $0 + abs($1.monto) }
+        let previo = max(0, llevo - sumado)
+        d.vacioTexto = aportes.isEmpty && previo == 0
+            ? cnT("Todavía no has anotado ningún aporte a esta meta.") : ""
+        var items: [CNDetalle.Item] = aportes.enumerated().map { i, x in
+            CNDetalle.Item(id: i, concepto: cnFechaLargaDeDia(x.fecha), sub: "",
+                           montoFmt: cnDinero(abs(x.monto)), color: "")
+        }
+        if previo > 0 {
+            items.append(CNDetalle.Item(id: items.count, concepto: cnT("Ya lo tenías apartado"),
+                                        sub: "", montoFmt: cnDinero(previo), color: t.gris))
+        }
+        d.tramos = items.isEmpty ? [] : [CNDetalle.Tramo(id: 0, label: "", total: "", items: items)]
+        return d
+    }
+
+    /// El glifo de una meta: el que eligió quien la creó y, si no, el que se
+    /// adivina por el nombre —un viaje lleva maleta, una casa lleva casa—. La
+    /// lista de nombres la genera `npm run sync` de la misma que usa la web,
+    /// para que la misma meta no salga con dos iconos distintos.
+    static func glifoDeMeta(_ g: CNMeta) -> String {
+        if !g.icono.isEmpty, let p = CNCatalogos.iconos[g.icono] { return p }
+        let n = g.nombre.lowercased()
+        for caso in CNCatalogos.iconoDeMeta where caso.trozos.contains(where: { n.contains($0) }) {
+            return CNCatalogos.iconos[caso.icono] ?? CNCatalogos.iconos["hucha"] ?? ""
+        }
+        return CNCatalogos.iconos["hucha"] ?? ""
+    }
+
+    // MARK: - Categoría
+
+    /**
+     * UNA CATEGORÍA POR DENTRO: cuánto llevas, contra qué, y mes a mes.
+     *
+     * Tres cosas que de memoria salen mal:
+     *
+     *  · **el límite solo cuenta mirando ESTE mes.** El presupuesto es
+     *    mensual: comparar lo de seis meses contra el tope de uno daría un
+     *    400 % que no significa nada. Con cualquier otro rango, la barra
+     *    desaparece —`pct: -1`— y en su sitio va «al mes de media»;
+     *  · **con un solo mes no hay gráfica.** Una barra sola no compara nada;
+     *    vuelve en cuanto se eligen tres o más;
+     *  · **el icono de arriba va en GRIS, siempre.** No en el color de la
+     *    categoría: es lo que hace la web, y ponerle el suyo cambiaría la cara
+     *    de la pantalla.
+     */
+    private static func deCategoria(_ nombre: String, _ l: CNLibreta,
+                                    _ meses: Int, _ t: Tinte) -> CNDetalle? {
+        var d = CNDetalle()
+        d.titulo = nombre
+        let hoy = String(cnHoy().prefix(7))
+        // `meses == 0` es «Todo»: desde antes de que existiera nada.
+        let desde = meses > 0 ? CNCabecera.mesVecino(hoy, -(meses - 1)) + "-01" : "0000-00-00"
+        let dentro = l.tx.filter { $0.categoria == nombre && $0.fecha >= desde }
+            .sorted { $0.fecha != $1.fecha ? $0.fecha > $1.fecha : $0.id > $1.id }
+        let total = dentro.reduce(0.0) { $0 + abs($1.monto) }
+
+        // Un cubo por mes, del más viejo al más nuevo. Con «Todo» son doce,
+        // que es lo que cabe en la gráfica.
+        let cuantos = meses > 0 ? meses : 12
+        // Con las etiquetas puestas y el cero en coma flotante: sin ellas, Swift
+        // lee `(String, Int)` y no encaja con lo declarado.
+        var cubos: [(ym: String, monto: Double)] = (0..<cuantos).reversed().map {
+            (ym: CNCabecera.mesVecino(hoy, -$0), monto: 0.0)
+        }
+        for x in dentro {
+            let ym = String(x.fecha.prefix(7))
+            if let i = cubos.firstIndex(where: { $0.ym == ym }) { cubos[i].monto += abs(x.monto) }
+        }
+        let tope = max(1, cubos.map { $0.monto }.max() ?? 0)
+        let media = cubos.isEmpty ? 0 : total / Double(cubos.count)
+
+        // La fila del presupuesto: solo la tienen las categorías de gasto que
+        // no sean «Ahorro». Sin ella no hay icono ni color propios.
+        let cat = l.categorias.first { $0.nombre == nombre && !$0.ingreso && $0.nombre != "Ahorro" }
+        let color = (cat?.color.isEmpty == false) ? cat!.color : t.tinta
+        let esMesActual = meses == 1
+        let limite = l.presupuesto[nombre] ?? 0
+        let hayLimite = esMesActual && limite > 0
+        let pct = limite > 0 ? Int((total / limite * 100).rounded()) : 0
+        let queda = limite - total
+
+        d.hero = CNDetalle.Hero(
+            iconoPath: cat != nil ? (CNCatalogos.iconos[CNCategorias.icono(nombre, en: l)] ?? "") : "",
+            // EN GRIS, SIEMPRE. La web manda aquí un campo que no existe en su
+            // propio modelo y cae en el gris del tema; con el color de la
+            // categoría, la pantalla cambia de cara.
+            iconoColor: t.gris,
+            iconoBg: CNCuentasFilas.tinte(cat?.color.isEmpty == false ? cat!.color : color),
+            rotulo: esMesActual ? cnT("Gastado este mes") : cnT("Gastado en el periodo"),
+            valor: cnDinero(total), color: t.tinta,
+            pct: hayLimite ? Double(min(100, pct)) : -1,
+            colorBarra: total > limite ? t.negativo : (pct > 85 ? t.aviso : t.positivo),
+            pieIzq: hayLimite
+                ? cnT("{n}% del presupuesto").replacingOccurrences(of: "{n}", with: String(pct)) : "",
+            pieDer: hayLimite
+                ? cnT("Presupuesto {p}").replacingOccurrences(of: "{p}", with: cnDinero(limite)) : "",
+            nota: dentro.isEmpty
+                ? cnT("Nada anotado en este periodo")
+                : cnT("{n} movimientos · {p} al mes de media")
+                    .replacingOccurrences(of: "{n}", with: String(dentro.count))
+                    .replacingOccurrences(of: "{p}", with: cnDinero(media.rounded())))
+
+        var filas: [CNDetalle.Dato] = [
+            CNDetalle.Dato(id: 0, label: cnT("Movimientos"), valor: String(dentro.count), color: t.tinta),
+            CNDetalle.Dato(id: 1, label: cnT("Promedio por movimiento"),
+                           valor: cnDinero(dentro.isEmpty ? 0 : (total / Double(dentro.count)).rounded()),
+                           color: t.tinta)
+        ]
+        if hayLimite {
+            filas.append(CNDetalle.Dato(id: 2, label: cnT("Te queda"),
+                                        valor: queda < 0 ? "\u{2212}" + cnDinero(-queda) : cnDinero(queda),
+                                        color: queda < 0 ? t.negativo : t.positivo))
+        } else {
+            filas.append(CNDetalle.Dato(id: 2, label: cnT("Al mes de media"),
+                                        valor: cnDinero(media.rounded()), color: t.tinta))
+        }
+        d.datos = filas
+        d.botones = [
+            CNDetalle.Boton(id: 0, label: cnT("Nuevo gasto aquí"), estilo: "acento",
+                            abre: "movCat", conQue: nombre),
+            CNDetalle.Boton(id: 1, label: cnT("Cambiar presupuesto"), estilo: "contorno")
+        ]
+        d.chips = [1, 3, 6, 12, 0].enumerated().map { i, n in
+            CNDetalle.Chip(indice: i,
+                           label: n == 1 ? cnT("Este mes")
+                               : n > 0 ? cnT("{n} meses").replacingOccurrences(of: "{n}", with: String(n))
+                               : cnT("Todo"),
+                           puesta: n == meses)
+        }
+        if !esMesActual, cubos.contains(where: { $0.monto > 0 }) {
+            // El tope se dice UNA vez arriba y no bajo cada barra: con doce
+            // meses las cifras no caben, se empujan y sacan la gráfica de la
+            // tarjeta.
+            var b = CNDetalle.Barras(
+                titulo: cnT("Mes a mes"),
+                tope: cnT("máx {p}").replacingOccurrences(of: "{p}", with: cnDinero(tope)))
+            // Con más de ocho meses el nombre no cabe bajo cada barra, así que
+            // se rotula uno sí y uno no, CONTANDO DESDE EL FINAL para que el
+            // mes en curso lleve siempre el suyo.
+            let paso = cubos.count > 8 ? 2 : 1
+            b.columnas = cubos.enumerated().map { i, c in
+                let rotula = (cubos.count - 1 - i) % paso == 0
+                let esHoy = c.ym == hoy
+                return CNDetalle.Columna(
+                    id: i,
+                    // Espacio duro en los meses sin rótulo: un hueco vacío mide
+                    // cero y dejaría esas barras más largas que las demás.
+                    label: rotula ? String(CNCabecera.nombreDeMes(c.ym, largo: false).prefix(3)) : "\u{00A0}",
+                    pct: (c.monto / tope * 100).rounded(),
+                    fuerte: esHoy,
+                    color: esHoy ? color : CNCuentasFilas.tinte(color, 0.40),
+                    colorMes: esHoy ? t.tinta : t.gris)
+            }
+            d.barras = b
+        }
+        d.rotuloLista = cnT("Movimientos de la categoría")
+        d.vacioTexto = dentro.isEmpty ? cnT("Aquí saldrá todo lo que anotes en esta categoría.") : ""
+        d.tramos = porMeses(dentro, l, t)
         return d
     }
 
