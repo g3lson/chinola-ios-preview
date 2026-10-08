@@ -459,6 +459,23 @@ jobs:
             SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
           sleep 14
           xcrun simctl io "$UDID" screenshot "mascota.png"
+
+          # Y DOS GLOBOS DEL RECORRIDO: el primero y uno del medio.
+          #
+          # Solo salen en el primer arranque, así que el banco —que entra con
+          # la libreta ya sembrada— no pasaba nunca por ellos. Y es lo que
+          # acaba de pasar a contarse desde el teléfono.
+          for N in 0 4; do
+            echo "=== el recorrido · globo $N ==="
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+            sleep 2
+            env SIMCTL_CHILD_CN_IR=tour:$N SIMCTL_CHILD_CN_CON=sonda,flota \
+              SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
+            sleep 18
+            xcrun simctl io "$UDID" screenshot "tour-$N.png"
+          done
+          xcrun simctl spawn "$UDID" log show --last 2m --style compact \
+            --predicate 'eventMessage CONTAINS "CNIR: el globo"' 2>/dev/null | tail -4 || true
           xcrun simctl spawn "$UDID" log show --last 1m --style compact \
             --predicate 'eventMessage CONTAINS "CNIR: la hoja"' 2>/dev/null | tail -3 || true
 

@@ -7313,7 +7313,7 @@ struct CNTarjetaWidget: View {
                     ForEach(modelo.tiposGrafico, id: \.id) { g in Text(g.label).tag(g.id) }
                 }
             }
-            Menu("Cuánto tiempo") {
+            Menu(cnT("Cuánto tiempo")) {
                 Picker("", selection: Binding(get: { w.cfgRango },
                                               set: { datos.onPanel("rango", w.wid, $0) })) {
                     ForEach(modelo.rangosGrafico, id: \.id) { r in Text(r.label).tag(r.id) }

@@ -384,6 +384,34 @@ class ChinolaViewController: CAPBridgeViewController {
             // El dibujo acaba de pasar de la web a Swift, y un dibujo no se
             // comprueba con una expresión regular: los seis juntos en una foto
             // es la única forma de ver si tienen cara.
+            // Y «tour», LOS DIEZ GLOBOS DE LA PRIMERA VEZ.
+            //
+            // Solo salen en el primer arranque, así que el banco entra con la
+            // libreta ya sembrada y no pasaba nunca por ellos. Y es lo que
+            // acaba de pasar a contarse desde aquí: el título, el párrafo, la
+            // cara y qué señala el aro.
+            if ir.hasPrefix("tour") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
+                    guard let s = self else { return }
+                    s.eval("window.__chinolaAjustePor && window.__chinolaAjustePor('tour')")
+                    // Y el paso que se pida, para ver uno del medio: «tour:4».
+                    let cuantos = Int(ir.split(separator: ":").last.map(String.init) ?? "") ?? 0
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                        s.webTemporal()
+                        for n in 0..<max(0, cuantos) {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0 + Double(n) * 0.8) {
+                                s.pasoDelTour("siguiente")
+                            }
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0 + Double(max(0, cuantos)) * 0.8) {
+                            let t = CNDatos.shared.tour
+                            NSLog("CNIR: el globo \(t?.paso ?? -1) de \(t?.total ?? -1)"
+                                  + " dice «\(t?.titulo ?? "")» y señala «\(t?.ancla ?? "")»")
+                        }
+                    }
+                }
+                return
+            }
             // Y «mascota», LA HOJA QUE SE ABRE AL TOCAR A CHINO.
             //
             // Solo se abre tocándolo, así que el banco no pasaba nunca por
