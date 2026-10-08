@@ -415,9 +415,17 @@ class ChinolaViewController: CAPBridgeViewController {
                         s.mostrarDetalle(t[0], t[1])
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                             let d = CNDatos.shared.detalle
+                            let l = CNDatos.shared.libreta
                             NSLog("CNIR: la ficha tiene titulo=«\(d?.titulo ?? "")»"
                                   + " datos=\(d?.datos.count ?? -1) botones=\(d?.botones.count ?? -1)"
                                   + " tramos=\(d?.tramos.count ?? -1)")
+                            // Y QUÉ HABÍA EN LA LIBRETA en ese momento: una
+                            // ficha vacía puede ser que no se arme o que no
+                            // haya de qué armarla, y no es lo mismo.
+                            NSLog("CNIR: la libreta tiene cuentas=\(l.cuentas.count)"
+                                  + " tarjetas=\(l.tarjetas.count) prestamos=\(l.prestamos.count)"
+                                  + " metas=\(l.metas.count) tx=\(l.tx.count)"
+                                  + " sinLlegar=\(l.sinLlegar) dudoso=\(l.dudoso) llegoAlgo=\(CNDatos.shared.llegoAlgo)")
                         }
                     }
                 }
@@ -697,14 +705,24 @@ class ChinolaViewController: CAPBridgeViewController {
             // todavía. La web las abría por el NÚMERO del botón, con la lista
             // que dejó puesta al armar el detalle; ahora lo arma el teléfono y
             // esa lista no existe, así que se le dice qué abrir y sobre qué.
-            if tipo == "boton", let d = CNDatos.shared.detalle {
-                let que = d.deQue == "meta" ? "meta" : d.deQue == "categoria" ? "limite" : ""
-                if !que.isEmpty, i == 1 {
-                    s.eval("window.__chinolaAbrirHojaDe && window.__chinolaAbrirHojaDe("
-                           + s.comillas(que) + "," + s.comillas(d.deQue == "categoria" ? d.titulo : String(d.deCual)) + ")")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        s.webTemporal(alIrALaWeb: { s.cerrarDetalle() })
-                    }
+            // LOS DOS BOTONES DE ABAJO DE LA META Y DE LA CATEGORÍA.
+            //
+            // La web los disparaba por el NÚMERO del botón, contra la lista que
+            // dejaba puesta al armar el detalle. Esa puerta está cerrada, y
+            // además los dos tienen ya su hoja nativa: antes se enseñaba la
+            // pantalla web de debajo para abrirlas.
+            if tipo == "boton", i == 1, let d = CNDatos.shared.detalle {
+                // `{ [weak s] in s?.cerrar() }` sería un `() -> ()?` y no
+                // encaja donde se pide `() -> Void`. Aquí no hay Xcode.
+                let cerrar: () -> Void = { s.cerrar() }
+                if d.deQue == "meta",
+                   let g = s.datos.libreta.metas.first(where: { $0.id == d.deCual }) {
+                    s.presentar(AnyView(CNFormMeta(datos: s.datos, onClose: cerrar, editar: g)))
+                    return
+                }
+                if d.deQue == "categoria", !d.titulo.isEmpty {
+                    s.presentar(AnyView(CNFormLimite(datos: s.datos, onClose: cerrar,
+                                                     categoria: d.titulo)))
                     return
                 }
             }
@@ -1249,9 +1267,6 @@ class ChinolaViewController: CAPBridgeViewController {
             s.menuEstado.activa = "plan"; s.barra.pintar(activa: "plan", titulos: s.menuEstado.titulos)
             s.mostrarNativo("plan")
         }
-        datos.onLimiteCategoria = { [weak self] nombre, limite in
-            self?.aWeb("window.__chinolaLimiteCategoria", ["nombre": nombre, "limite": limite])
-        }
         // Editar uno: por aquí el teléfono lo hace MEJOR que la web, no solo
         // igual. `guardarTx` rehace el movimiento entero, así que un aporte o
         // un abono editado pierde su marca —`meta`, `prestamo`— y borrarlo
@@ -1284,6 +1299,9 @@ class ChinolaViewController: CAPBridgeViewController {
         // Nueva categoría: su hoja es nativa y guarda por `CNEscribir`. Antes
         // esto le pedía a la web que abriera la suya y se enseñaba la pantalla
         // web mientras tanto.
+        // La libreta acaba de llegar: la ficha que esté abierta se rehace. Sin
+        // esto, abrirla antes de que llegue la dejaba en blanco para siempre.
+        datos.alLlegarLaLibreta = { [weak self] in self?.refrescarDetalle() }
         datos.onNuevaCategoria = { [weak self] in
             guard let s = self else { return }
             s.presentar(AnyView(CNFormCategoria(datos: s.datos, onClose: { s.cerrar() })))

@@ -1606,7 +1606,6 @@ final class CNDatos: ObservableObject {
     /// Mandar una invitación desde el formulario nativo.
     var onInvitar: ([String: Any]) -> Void = { _ in }
     var onVerPresupuesto: () -> Void = {}
-    var onLimiteCategoria: (String, Double) -> Void = { _, _ in }   // (categoría, presupuesto) → web
     var onMes: (Int) -> Void = { _ in }         // −1 / +1 desde la cabecera
     var onEmpezar: () -> Void = {}              // el «empieza aquí» del resumen vacío
     var onEditarPanel: () -> Void = {}          // organizar el panel (en la web)
@@ -1935,8 +1934,27 @@ final class CNDatos: ObservableObject {
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
     @Published var resumen: CNResumenModelo? = nil
+    /**
+     * Y LA FICHA ABIERTA, QUE ES LO QUE TIENES DELANTE.
+     *
+     * Al llegar la libreta se rehacían las tres pantallas de siempre y NO el
+     * detalle. Mientras lo armaba la web daba igual —ella contestaba cuando
+     * tenía—, pero armándolo aquí, abrir una ficha ANTES de que la libreta
+     * llegue la deja en blanco PARA SIEMPRE: `refrescarDetalle` se va sin
+     * hacer nada y nadie vuelve a llamarlo.
+     *
+     * El banco lo cazó: cuatro de las cinco fichas salieron con su flecha de
+     * volver y una tarjeta blanca vacía. La quinta —la de una categoría— salió
+     * bien, y por eso no se veía leyendo: es la única que no busca nada en la
+     * libreta, así que se arma igual aunque esté vacía.
+     */
+    var alLlegarLaLibreta: () -> Void = {}
+
     func cargar(json: String) {
-        if let l = CNLibreta.desde(json: json) { libreta = l; refrescarCifras(); refrescarCuentas(); refrescarPlan() }
+        guard let l = CNLibreta.desde(json: json) else { return }
+        libreta = l
+        refrescarCifras(); refrescarCuentas(); refrescarPlan()
+        alLlegarLaLibreta()
     }
 
     /// EL PERÍODO, que hasta ahora solo sabía la web.

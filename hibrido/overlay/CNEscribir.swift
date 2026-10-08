@@ -640,6 +640,26 @@ extension CNEscribir {
         case "meta":       return guardarMeta(l, f, antes: antes)
         case "categoria":  return guardarCategoria(l, f, antes: antes)
 
+        /*
+         * EL PRESUPUESTO DE UNA CATEGORÍA.
+         *
+         * En `libreta.presupuesto[nombre]`, que es donde vive, y NO en
+         * `categoria.limite`: ese campo existe, parece el sitio y no lo lee
+         * nadie. La puerta que había para esto escribía ahí, así que cambiar
+         * el presupuesto por ella no hacía nada.
+         *
+         * Cero quiere decir «sin presupuesto», y entonces se quita la entrada
+         * en vez de dejarla en cero: una categoría con tope cero sale como
+         * «agotada» desde el primer peso.
+         */
+        case "limite":
+            guard let nombre = extra?["nombre"] as? String, !nombre.isEmpty else { return nil }
+            var nueva = l
+            let tope = max(0, monto)
+            if tope > 0 { nueva.presupuesto[nombre] = tope }
+            else { nueva.presupuesto.removeValue(forKey: nombre) }
+            return nueva
+
         case "transferencia":
             let hasta = (f["destino"] as? String) ?? ""
             let texto = ((f["concepto"] as? String) ?? "").trimmingCharacters(in: .whitespaces)

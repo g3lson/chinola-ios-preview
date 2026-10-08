@@ -3541,6 +3541,57 @@ struct CNCampoClave: View {
 }
 
 /**
+ * EL PRESUPUESTO DE UNA CATEGORÍA: UN SOLO CAMPO.
+ *
+ * Es la hoja que sale al tocar «Cambiar presupuesto» en la ficha de una
+ * categoría, o su acción en el Plan. Era de la web —se dibujaba con
+ * `CNHojaWeb`, que lee los campos que ella manda— y por eso tocar ese botón
+ * sacaba la pantalla web de debajo mientras se abría.
+ *
+ * Una hoja de un campo y la pantalla cambiando de cara para enseñarlo.
+ *
+ * OJO CON DÓNDE SE GUARDA: el tope vive en `libreta.presupuesto[nombre]`, NO
+ * en `categoria.limite`. La puerta que había para esto —`__chinolaLimiteCategoria`—
+ * escribía en `categoria.limite`, que no lo lee nadie: cambiar el presupuesto
+ * por ahí no hacía nada. Nunca se notó porque tampoco la llamaba nadie.
+ */
+struct CNFormLimite: View {
+    @ObservedObject var datos: CNDatos
+    var onClose: () -> Void
+    /// La categoría cuyo tope se cambia.
+    var categoria: String
+    @State private var monto = ""
+    @State private var puesto = false
+
+    var body: some View {
+        CNHoja(titulo: cnT("Presupuesto del mes"), onClose: onClose, onGuardar: guardar) {
+            Text(cnT("Cuánto quieres gastar como mucho en esta categoría."))
+                .font(cnLetra(13.5)).foregroundColor(CNC.pmut)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
+            VStack(alignment: .leading, spacing: 6) {
+                cnHojaTitulo(cnT(categoria))
+                CNMontoCampo(monto: $monto, paso: 500, rotulo: nil)
+                Text(cnT("Vacío = sin presupuesto")).font(cnLetra(12))
+                    .foregroundColor(CNC.pmut).padding(.leading, 4)
+            }
+        }
+        .onAppear {
+            guard !puesto else { return }
+            puesto = true
+            let tope = datos.libreta.presupuesto[categoria] ?? 0
+            // Vacío cuando no hay ninguno: un «0» se lee como un tope de cero.
+            monto = tope > 0 ? cnMontoTexto(tope) : ""
+        }
+    }
+
+    private func guardar() {
+        datos.onGuardarHoja("limite", ["monto": cnMonto(monto)], ["nombre": categoria])
+        onClose()
+    }
+}
+
+/**
  * LA HOJA DE UNA CATEGORÍA, NATIVA DE VERDAD.
  *
  * Se dibujaba aquí pero PENSABA en la web: cada letra del nombre cruzaba el
