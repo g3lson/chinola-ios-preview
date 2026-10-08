@@ -1957,6 +1957,13 @@ final class CNDatos: ObservableObject {
         m.totalCuentas.rotulo = tc.rotulo; m.totalCuentas.valor = tc.valor
         m.totalTarjetas.rotulo = tt.rotulo; m.totalTarjetas.valor = tt.valor
         m.totalPrestamos.rotulo = tp.rotulo; m.totalPrestamos.valor = tp.valor
+        // Y SU COLOR. «Tienes RD$178,700» va en verde y «Debes» en rojo: el
+        // módulo ya dice cuál de los dos es cada uno —los préstamos cambian
+        // según el sentido— y aquí solo faltaba pintarlo. Sin esto salían los
+        // tres del color del texto, que no dice nada.
+        m.totalCuentas.tinta = tc.positivo ? t.positivo : t.negativo
+        m.totalTarjetas.tinta = tt.positivo ? t.positivo : t.negativo
+        m.totalPrestamos.tinta = tp.positivo ? t.positivo : t.negativo
         let pat = CNCuentasTotales.patrimonio(l)
         m.patrimonio.valor = pat.valor
         m.patrimonio.activos = pat.activos
@@ -2151,16 +2158,18 @@ final class CNDatos: ObservableObject {
         // categoría que ya nadie tiene, y sin su icono sale un hueco.
         if m.catIconos.isEmpty {
             var cs: [String: CNResumenModelo.IconoCat] = [:]
-            for c in libreta.categorias {
-                cs[c.nombre] = CNResumenModelo.IconoCat(
-                    path: CNCategorias.icono(c.nombre, en: libreta),
-                    color: CNCategorias.color(c.nombre, en: libreta))
+            // EL TRAZO, NO LA CLAVE. `CNCategorias.icono` devuelve el nombre
+            // del glifo —«salud», «casa»—, no su dibujo. Metido tal cual, el
+            // cuadro de color salía y dentro no había nada: las filas de
+            // Movimientos se quedaron con el recuadro vacío.
+            func trazo(_ nombre: String) -> CNResumenModelo.IconoCat {
+                let clave = CNCategorias.icono(nombre, en: libreta)
+                return CNResumenModelo.IconoCat(
+                    path: CNCatalogos.iconos[clave] ?? CNCatalogos.iconos["puntos"] ?? "",
+                    color: CNCategorias.color(nombre, en: libreta))
             }
-            for n in CNCatalogos.iconoPorCategoria.keys where cs[n] == nil {
-                cs[n] = CNResumenModelo.IconoCat(
-                    path: CNCategorias.icono(n, en: libreta),
-                    color: CNCategorias.color(n, en: libreta))
-            }
+            for c in libreta.categorias { cs[c.nombre] = trazo(c.nombre) }
+            for n in CNCatalogos.iconoPorCategoria.keys where cs[n] == nil { cs[n] = trazo(n) }
             m.catIconos = cs
         }
         // Y la tira de meses, si el diseño la lleva. El acento y su tinta
