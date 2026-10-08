@@ -1843,8 +1843,8 @@ struct CNHojaAbajo<C: View>: View {
 // cara por un momento y volvía al cerrar. Ahora la lista la calcula la web
 // —los nombres, el tipo, cuánta gente y cuál está en uso— y aquí solo se
 // dibuja, encima de la pantalla nativa que ya estaba.
-struct CNLibretas {
-    struct Fila: Identifiable {
+struct CNLibretas: Equatable {
+    struct Fila: Identifiable, Equatable {
         var id: Int { indice }
         var indice = 0; var nombre = ""; var detalle = ""; var iconoPath = ""
         var color = ""; var enUso = false; var rotuloEnUso = ""
@@ -1861,7 +1861,7 @@ struct CNLibretas {
         var esDueno = false; var compartida = false
         var miembros: [Miembro] = []
     }
-    struct Miembro: Identifiable {
+    struct Miembro: Identifiable, Equatable {
         var id: String { email.isEmpty ? nombre : email }
         var nombre = ""; var email = ""; var rol = ""; var rolId = ""
         /// Al dueño no se le cambia el papel ni se le quita, y a uno mismo

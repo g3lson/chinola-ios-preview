@@ -1805,7 +1805,9 @@ class ChinolaViewController: CAPBridgeViewController {
             }
             return
         }
-        CNDatos.shared.libretas = m
+        // SOLO SI CAMBIARON, por lo mismo: `libretas` es `@Published` y esto
+        // corre en cada refresco. Reasignar lo idéntico repinta de balde.
+        if CNDatos.shared.libretas != m { CNDatos.shared.libretas = m }
         // Y si se está mirando —o se acaba de PEDIR— una subpantalla que se
         // arma con esto, se rehace: acaba de llegar lo que le faltaba.
         //

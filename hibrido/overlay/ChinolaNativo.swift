@@ -1576,7 +1576,7 @@ func cnDiaLargo(_ iso: String) -> String {
 // la web (abrir "nuevo movimiento", abrir el detalle).
 /// YA NO SE DECODIFICA DE NINGÚN JSON: se lee de la copia que la web deja
 /// escrita en el teléfono, así que no hace falta `Decodable` ni sus claves.
-struct CNPerfilInfo {
+struct CNPerfilInfo: Equatable {
     var nombre: String = "Tú"; var email: String = ""; var plan: String = "Gratis"; var libretas: Int = 1; var local: Bool = true
     init() {}
     /**
@@ -2690,7 +2690,12 @@ final class CNDatos: ObservableObject {
     /// instalada— se queda el último que dijo la web, que es lo que ya se
     /// guardaba: fallar hacia el camino que funciona.
     func refrescarPerfil() {
-        if let p = CNPerfilInfo.delAlmacen() { perfil = p }
+        // SOLO SI CAMBIÓ. `perfil` es `@Published`: reasignarlo lo mismo avisa
+        // igual, y ese aviso repinta la app entera. Esto corre en cada refresco
+        // —y hay varios por segundo al arrancar— con el mismo contenido casi
+        // siempre. Es la misma regla que ya tenían el tema y los ajustes.
+        guard let p = CNPerfilInfo.delAlmacen(), p != perfil else { return }
+        perfil = p
     }
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
     /// con los colores nuevos (los de CNC son calculados).
