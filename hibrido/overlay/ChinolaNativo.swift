@@ -1574,19 +1574,44 @@ func cnDiaLargo(_ iso: String) -> String {
 
 // Estado compartido: la libreta que la web empuja + las acciones que rebotan a
 // la web (abrir "nuevo movimiento", abrir el detalle).
-struct CNPerfilInfo: Decodable {
+/// YA NO SE DECODIFICA DE NINGÚN JSON: se lee de la copia que la web deja
+/// escrita en el teléfono, así que no hace falta `Decodable` ni sus claves.
+struct CNPerfilInfo {
     var nombre: String = "Tú"; var email: String = ""; var plan: String = "Gratis"; var libretas: Int = 1; var local: Bool = true
     init() {}
-    init(from d: Decoder) throws { let c = try d.container(keyedBy: K.self)
-        nombre = (try? c.decodeIfPresent(String.self, forKey: .nombre)) ?? "Tú"
-        email = (try? c.decodeIfPresent(String.self, forKey: .email)) ?? ""
-        plan = (try? c.decodeIfPresent(String.self, forKey: .plan)) ?? "Gratis"
-        libretas = (try? c.decodeIfPresent(Int.self, forKey: .libretas)) ?? 1
-        local = (try? c.decodeIfPresent(Bool.self, forKey: .local)) ?? true }
-    enum K: String, CodingKey { case nombre, email, plan, libretas, local }
-    static func desde(json: String) -> CNPerfilInfo? {
-        guard let d = json.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode(CNPerfilInfo.self, from: d)
+    /**
+     * QUIÉN ERES, LEÍDO POR EL TELÉFONO.
+     *
+     * Se le preguntaba a la web hasta el propio nombre, y todo esto ya estaba
+     * en la copia que ella deja escrita: la cuenta en `chinola-usuario` y la
+     * sesión con los ajustes en `chinola-sesion-v3`.
+     *
+     * SIN SESIÓN NO ES UN HUECO. Quien empezó sin cuenta tiene nombre —el que
+     * puso— y no tiene correo, y eso no es un perfil a medias: es el suyo. Por
+     * eso `local` va aparte y no se deduce de que falte el correo.
+     *
+     * Devuelve `nil` si no hay copia todavía —recién instalada—, y entonces
+     * manda lo último que dijo la web, que es lo que ya se guardaba.
+     */
+    static func delAlmacen() -> CNPerfilInfo? {
+        let u = CNAlmacen.usuario()
+        let a = CNAlmacen.ajustes()
+        guard !u.isEmpty || !a.isEmpty else { return nil }
+        var p = CNPerfilInfo()
+        let hay = CNAlmacen.haySesion()
+        p.local = !hay
+        p.email = (u["email"] as? String) ?? ""
+        let suyo = (u["nombre"] as? String) ?? ""
+        let local = (a["nombreLocal"] as? String) ?? ""
+        p.nombre = hay ? (suyo.isEmpty ? cnT("Tú") : suyo)
+                       : (local.isEmpty ? cnT("Tú") : local)
+        // El nombre del plan por el catálogo, que lo genera `sync` del mismo
+        // sitio que lo lee la web: escrito aquí, un plan nuevo saldría con su
+        // clave en crudo —«negocio»— en la tarjeta del perfil.
+        let clave = (u["plan"] as? String) ?? "gratis"
+        p.plan = CNCatalogos.nombreDelPlan[clave] ?? CNCatalogos.nombreDelPlan["gratis"] ?? "Gratis"
+        p.libretas = max(1, CNAlmacen.libretas().count)
+        return p
     }
 }
 
@@ -1905,7 +1930,7 @@ final class CNDatos: ObservableObject {
         if let j = Self.guardado("resumen") { cargarResumen(json: j) }
         if let j = Self.guardado("cuentas") { cargarCuentas(json: j) }
         if let j = Self.guardado("ajustes") { cargarAjustes(json: j) }
-        if let j = Self.guardado("perfil") { cargarPerfil(json: j) }
+        refrescarPerfil()
         if let j = Self.guardado("mascota") { cargarMascota(json: j) }
         // Y el Plan, rehecho con la libreta que se acaba de leer.
         refrescarPlan()
@@ -1945,7 +1970,6 @@ final class CNDatos: ObservableObject {
         sec.bloques[bi] = q
         seccion = sec
     }
-    func cargarLibretas(json: String) { libretas = CNLibretas.desde(json: json) }
     func cargarLibretaNueva(json: String) { libretaNueva = CNLibretaNueva.desde(json: json) }
     func cargarInvitar(json: String) { invitar = CNInvitar.desde(json: json) }
     func cargarTour(json: String) { tour = CNTour.desde(json: json) }
@@ -2662,9 +2686,11 @@ final class CNDatos: ObservableObject {
             tinte: t)
     }
 
-    func cargarPerfil(json: String) {
-        guard cambio("perfil", json) else { return }
-        if let p = CNPerfilInfo.desde(json: json) { perfil = p; guarda("perfil", json) }
+    /// El perfil, leído de la copia. Si todavía no hay copia —recién
+    /// instalada— se queda el último que dijo la web, que es lo que ya se
+    /// guardaba: fallar hacia el camino que funciona.
+    func refrescarPerfil() {
+        if let p = CNPerfilInfo.delAlmacen() { perfil = p }
     }
     /// El tema de la web. Al cambiar, se avisa para que TODO se vuelva a dibujar
     /// con los colores nuevos (los de CNC son calculados).

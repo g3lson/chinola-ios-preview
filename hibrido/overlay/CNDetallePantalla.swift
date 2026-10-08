@@ -69,11 +69,15 @@ enum CNDetallePantalla {
         guard let c = l.cuentas.first(where: { $0.id == id }) else { return nil }
         var d = CNDetalle()
         d.titulo = c.nombre
+        let suTipo = CNTipoAgregar.deLaCuenta(c)
+        // CÓMO SE LLAMA ESA CIFRA EN SU FICHA. Decía «Saldo disponible» sobre
+        // el dinero de un certificado, que es justamente el que no está
+        // disponible, y sobre el valor de un apartamento.
         d.hero = CNDetalle.Hero(
             iconoPath: CNCuentasFilas.glifoDeCuenta(c), iconoColor: c.color,
             iconoBg: CNCuentasFilas.tinte(c.color),
-            rotulo: cnT("Saldo disponible"), valor: cnDineroFirmado(c.saldo),
-            color: t.tinta)
+            rotulo: cnT(suTipo?.rotuloSaldo ?? "Saldo disponible"),
+            valor: cnDineroFirmado(c.saldo), color: t.tinta)
         // Lo que entró y lo que salió POR ESTA CUENTA en el periodo que se
         // esté mirando, no en el mes natural: si arriba hay un rango puesto,
         // las dos cifras tienen que hablar de ese rango.
@@ -98,7 +102,6 @@ enum CNDetallePantalla {
          * hay algo que poner: un hueco con «Sin banco» dentro parece un dato
          * que falta, y lo que pasa es que no lo hay.
          */
-        let suTipo = CNTipoAgregar.deLaCuenta(c)
         var filas: [CNDetalle.Dato] = []
         if let donde = suTipo?.donde, !donde.isEmpty, !c.banco.isEmpty {
             filas.append(CNDetalle.Dato(id: filas.count, label: cnT(sinElParentesis(donde)), valor: c.banco))

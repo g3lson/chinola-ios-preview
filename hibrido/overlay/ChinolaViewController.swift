@@ -1664,9 +1664,10 @@ class ChinolaViewController: CAPBridgeViewController {
                 CNDatos.shared.refrescarCuentas()
                 CNDatos.shared.refrescarPlan()
                 if !huella.isEmpty { self.huellaLibreta = huella }
-                self.bridge?.webView?.evaluateJavaScript("(window.__chinolaPerfilJSON && window.__chinolaPerfilJSON()) || ''") { p, _ in
-                    if let ps = p as? String, ps.count > 2 { CNDatos.shared.cargarPerfil(json: ps) }
-                }
+                // Y QUIÉN ERES, leído de la copia. Se le preguntaba a la web
+                // hasta el propio nombre, y todo estaba ya escrito en el
+                // teléfono: la cuenta y los ajustes que ella misma guarda.
+                CNDatos.shared.refrescarPerfil()
                 self.quitarCortina()
                 self.refrescarLoDeLaPantalla()
                 // El dibujo de Chino tarda un poco en estar en PNG: se pide
@@ -1782,66 +1783,54 @@ class ChinolaViewController: CAPBridgeViewController {
             present(host, animated: false)
         }
     }
+    /**
+     * LAS LIBRETAS, ARMADAS AQUÍ.
+     *
+     * Se le pedían a la web con cuatro reintentos —porque podía estar a medio
+     * pintar— y todo estaba ya escrito en el teléfono: la copia que ella deja
+     * lleva las libretas ENTERAS, con sus movimientos y sus miembros, y las
+     * cuentas las sabe hacer `CNCalculo`.
+     */
     private func refrescarLibretas(intentos: Int = 4) {
-        let sonda = ProcessInfo.processInfo.environment["CN_CON"]?.contains("sonda") == true
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaLibretasJSON && window.__chinolaLibretasJSON()) || ''") { [weak self] res, _ in
-            let crudo = (res as? String) ?? ""
-            if crudo.count > 2 {
-                CNDatos.shared.cargarLibretas(json: crudo)
-                // Y si se está mirando —o se acaba de PEDIR— una subpantalla
-                // que se arma con esto, se rehace: acaba de llegar lo que le
-                // faltaba.
-                //
-                // Lo de «o se acaba de pedir» es el arreglo. Este guardián
-                // miraba solo `seccion`, que es la que YA está puesta, y al
-                // entrar en «Libretas y permisos» todavía no lo está: se pide la
-                // lista y, en lo que la web contesta, la sección aún no existe.
-                // `ponSeccion` ya miraba las dos; este, no.
-                if let s = self {
-                    let pedida = s.datos.seccionPedida
-                    let cual = pedida.isEmpty || pedida == "-" ? (s.datos.seccion?.id ?? "") : pedida
-                    var armo = "no tocaba"
-                    if cual == "libretas" || cual.hasPrefix("libreta:") {
-                        if let hecha = CNSecciones.arma(cual) {
-                            s.ponSeccion(hecha, si: cual)
-                            armo = "sí"
-                        } else {
-                            armo = "NO (sin datos)"
-                        }
-                    }
-                    if sonda, let f = CNDatos.shared.libretas?.filas.first {
-                        // QUÉ TRAE UNA FILA, campo por campo. En la foto salen
-                        // los nombres sueltos —sin icono, sin color y sin
-                        // segunda línea— y el código que los pone está puesto,
-                        // así que lo que falta son los datos. Decir «llegaron 2
-                        // filas» no distingue dos filas llenas de dos vacías.
-                        NSLog("CNFILA: nombre=«%@» detalle=«%@» tipo=«%@» rol=«%@» color=«%@» icono=%d enUso=%@",
-                              f.nombre, f.detalle, f.tipo, f.rol, f.color,
-                              f.iconoPath.count, f.enUso ? "sí" : "no")
-                    }
-                    if sonda {
-                        // CADA ESLABÓN, DICHO. Esto se arregló una vez, se le
-                        // puso prueba, y siguió roto: la prueba miraba el
-                        // intento y no el resultado. Así que ahora se dice qué
-                        // llegó, para quién y si sirvió.
-                        NSLog("CNLIBRETAS: llegaron %d filas · pedida=«%@» seccion=«%@» → armó %@",
-                              CNDatos.shared.libretas?.filas.count ?? -1,
-                              s.datos.seccionPedida, s.datos.seccion?.id ?? "",
-                              armo)
-                    }
-                }
-                return
+        let cab = datos.resumen?.cabecera
+        func oSi(_ a: String?, _ b: Color) -> String { (a?.isEmpty == false) ? a! : cnHexDe(b) }
+        let t = CNLibretasArma.Tinte(positivo: oSi(cab?.positivo, CNC.pos),
+                                     negativo: oSi(cab?.negativo, CNC.neg))
+        guard let m = CNLibretasArma.arma(periodo: datos.periodoCalculo,
+                                          yo: CNPapeles.yo(datos.perfil), tinte: t) else {
+            // Sin copia todavía —recién instalada— se queda lo que hubiera.
+            // Enseñar una lista vacía sería decir que no tienes libretas.
+            if ProcessInfo.processInfo.environment["CN_CON"]?.contains("sonda") == true {
+                NSLog("CNLIBRETAS: la copia del teléfono no trae ninguna todavía")
             }
-            // La web puede estar a medio pintar: se vuelve a pedir en vez de
-            // dejar la hoja vacía.
-            if sonda {
-                NSLog("CNLIBRETAS: la web devolvió %d caracteres · quedan %d intentos",
-                      crudo.count, intentos - 1)
-            }
-            guard intentos > 1 else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { self?.refrescarLibretas(intentos: intentos - 1) }
+            return
+        }
+        CNDatos.shared.libretas = m
+        // Y si se está mirando —o se acaba de PEDIR— una subpantalla que se
+        // arma con esto, se rehace: acaba de llegar lo que le faltaba.
+        //
+        // Lo de «o se acaba de pedir» es el arreglo. Esto miraba solo
+        // `seccion`, que es la que YA está puesta, y al entrar en «Libretas y
+        // permisos» todavía no lo está.
+        let pedida = datos.seccionPedida
+        let cual = pedida.isEmpty || pedida == "-" ? (datos.seccion?.id ?? "") : pedida
+        if cual == "libretas" || cual.hasPrefix("libreta:"), let hecha = CNSecciones.arma(cual) {
+            ponSeccion(hecha, si: cual)
+        }
+        if ProcessInfo.processInfo.environment["CN_CON"]?.contains("sonda") == true,
+           let f = m.filas.first {
+            // QUÉ TRAE UNA FILA, campo por campo. En la foto salen los nombres
+            // sueltos —sin icono, sin color y sin segunda línea— y el código
+            // que los pone está puesto, así que lo que falta son los datos.
+            // Decir «llegaron 2 filas» no distingue dos llenas de dos vacías.
+            NSLog("CNFILA: nombre=«%@» detalle=«%@» tipo=«%@» rol=«%@» color=«%@» icono=%d enUso=%@",
+                  f.nombre, f.detalle, f.tipo, f.rol, f.color,
+                  f.iconoPath.count, f.enUso ? "sí" : "no")
+            NSLog("CNLIBRETAS: armadas %d filas · pedida=«%@» seccion=«%@»",
+                  m.filas.count, datos.seccionPedida, datos.seccion?.id ?? "")
         }
     }
+
     private func cerrarLibretas() {
         // La hoja ya se ha ido animando sola; aquí solo se retira.
         libretasVC?.dismiss(animated: false)

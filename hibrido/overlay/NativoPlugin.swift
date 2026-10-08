@@ -49,11 +49,14 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     // La web empuja el JSON de la libreta activa (y el perfil) cada vez que cambia.
     @objc func datos(_ call: CAPPluginCall) {
         let json = call.getString("json") ?? "{}"
-        let perfil = call.getString("perfil")
         DispatchQueue.main.async {
             // Al store COMPARTIDO (esta instancia puede no ser la del VC).
             CNDatos.shared.cargar(json: json)
-            if let p = perfil { CNDatos.shared.cargarPerfil(json: p) }
+            // EL PERFIL YA NO VIENE EN EL PAQUETE: se lee de la copia que la
+            // web deja escrita en el teléfono. Lo sigue mandando y aquí se
+            // ignora —quitar el parámetro del otro lado es tocar la web por
+            // gusto—, pero el que manda es el leído.
+            CNDatos.shared.refrescarPerfil()
             call.resolve()
         }
     }

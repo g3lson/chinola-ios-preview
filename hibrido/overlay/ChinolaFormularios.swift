@@ -1103,6 +1103,15 @@ struct CNTipoAgregar: Identifiable {
     var donde: String = "Banco (opcional)"
     var cuanto: String = "Saldo actual"
     /**
+     * Y CÓMO SE LLAMA ESA CIFRA EN SU FICHA.
+     *
+     * `cuanto` es la PREGUNTA —«Cuánto vale hoy»— y esto es la respuesta
+     * —«Vale hoy»—. No es lo mismo dicho de otra forma: la ficha de un
+     * certificado decía «Saldo disponible» sobre un dinero que justamente no
+     * está disponible, y la de un apartamento también.
+     */
+    var rotuloSaldo: String = "Saldo disponible"
+    /**
      * LO QUE SOLO SE LE PREGUNTA A ESTE.
      *
      * El catálogo ofrece diecinueve cosas y detrás se preguntaba lo mismo a
@@ -1146,6 +1155,7 @@ struct CNTipoAgregar: Identifiable {
         .init(id: "efectivo", titulo: "Efectivo", sub: "Lo que cargas en la cartera",
               icono: "banknote.fill", grupo: "gastar", forma: "cuenta", clase: "efectivo",
               busca: "cash dinero cartera bolsillo", donde: "", cuanto: "Cuánto cargas",
+              rotuloSaldo: "Lo que cargas",
               // Al efectivo no se le pregunta el banco —no tiene—, pero sí
               // dónde está: la cartera, la caja fuerte, el sobre del mercado.
               campos: [.init(clave: "donde", label: "Dónde lo guardas", ph: "La cartera, la casa…")]),
@@ -1157,12 +1167,14 @@ struct CNTipoAgregar: Identifiable {
         .init(id: "ahorro", titulo: "Ahorro o certificado", sub: "Dinero guardado que no tocas",
               icono: "lock.fill", grupo: "invertir", forma: "cuenta", clase: "ahorro",
               busca: "certificado plazo fijo cdt ahorros", cuanto: "Cuánto tienes guardado",
+              rotuloSaldo: "Tienes guardado",
               campos: [.init(clave: "tasa", label: "Tasa anual", tipo: "porciento", ph: "0"),
                        .init(clave: "vence", label: "Vence el", tipo: "fecha")]),
         .init(id: "emergencia", titulo: "Fondo de emergencia", sub: "El colchón para los sustos",
               icono: "shield.fill", grupo: "invertir", forma: "cuenta", clase: "ahorro",
               busca: "emergencia colchon imprevistos fondo reserva",
               donde: "Dónde lo tienes (opcional)", cuanto: "Cuánto llevas",
+              rotuloSaldo: "Llevas juntado",
               // A cuánto quieres llegar, para poder ver cuánto falta. Es lo
               // único que distingue un fondo de emergencia de un ahorro
               // cualquiera: tiene un tamaño al que apuntar.
@@ -1170,25 +1182,30 @@ struct CNTipoAgregar: Identifiable {
         .init(id: "acciones", titulo: "Acciones", sub: "En una casa de bolsa o app",
               icono: "chart.line.uptrend.xyaxis", grupo: "invertir", forma: "cuenta", clase: "inversion",
               busca: "bolsa broker etf stocks acciones", donde: "Casa de bolsa o app", cuanto: "Cuánto vale hoy",
+              rotuloSaldo: "Vale hoy",
               campos: [.init(clave: "simbolo", label: "Símbolo", ph: "AAPL, VOO…"),
                        .init(clave: "cuantas", label: "Cuántas acciones", tipo: "numero", ph: "0")]),
         .init(id: "fondo", titulo: "Fondo de inversión", sub: "Fondos mutuos o de pensión voluntaria",
               icono: "chart.bar.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
               busca: "mutuo pension afp fondo", donde: "Administradora (opcional)", cuanto: "Cuánto vale hoy",
+              rotuloSaldo: "Vale hoy",
               campos: [.init(clave: "aporte", label: "Aporte mensual", tipo: "dinero")]),
         .init(id: "cripto", titulo: "Criptomonedas", sub: "Bitcoin, USDT y otras",
               icono: "bitcoinsign.circle", grupo: "invertir", forma: "cuenta", clase: "inversion",
               busca: "bitcoin btc usdt ethereum binance cripto crypto", donde: "Dónde la tienes (ej. Binance)", cuanto: "Cuánto vale hoy",
+              rotuloSaldo: "Vale hoy",
               campos: [.init(clave: "moneda", label: "Cuál", ph: "BTC, USDT…"),
                        .init(clave: "cuantas", label: "Cuántas tienes", tipo: "numero", ph: "0")]),
         .init(id: "inmueble", titulo: "Bienes raíces", sub: "Casa, solar o apartamento",
               icono: "house.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
               busca: "casa apartamento solar terreno inmueble propiedad", donde: "Dónde está (opcional)", cuanto: "Cuánto vale hoy",
+              rotuloSaldo: "Vale hoy",
               // En cuánto lo compraste: es lo único que deja ver si ha subido.
               campos: [.init(clave: "compra", label: "Lo compré en", tipo: "dinero")]),
         .init(id: "metales", titulo: "Metales", sub: "Oro o plata",
               icono: "circle.hexagongrid.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
               busca: "oro plata metal lingote", donde: "Dónde lo guardas (opcional)", cuanto: "Cuánto vale hoy",
+              rotuloSaldo: "Vale hoy",
               campos: [.init(clave: "metal", label: "Qué es", ph: "Oro, plata…"),
                        .init(clave: "onzas", label: "Cuántas onzas", tipo: "numero", ph: "0")]),
 
@@ -1209,18 +1226,22 @@ struct CNTipoAgregar: Identifiable {
         .init(id: "membresia", titulo: "Membresía", sub: "Gimnasio, club, supermercado",
               icono: "star.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
               busca: "gimnasio gym club socio supermercado puntos", donde: "Dónde es (ej. el gimnasio)", cuanto: "Saldo o puntos",
+              rotuloSaldo: "Saldo o puntos",
               campos: [.init(clave: "vence", label: "Vence el", tipo: "fecha")]),
         .init(id: "transporte", titulo: "Tarjeta de transporte", sub: "Metro, OMSA, peaje",
               icono: "tram.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
               busca: "metro omsa peaje paso rapido transporte", donde: "Operador (ej. Metro)", cuanto: "Saldo de la tarjeta",
+              rotuloSaldo: "Saldo de la tarjeta",
               campos: [.init(clave: "numero", label: "Número de la tarjeta")]),
         .init(id: "escolar", titulo: "Tarjeta escolar", sub: "Comedor o cafetería",
               icono: "graduationcap.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
               busca: "colegio escuela comedor cafeteria", donde: "Centro (opcional)", cuanto: "Saldo de la tarjeta",
+              rotuloSaldo: "Saldo de la tarjeta",
               campos: [.init(clave: "dequien", label: "De quién es")]),
         .init(id: "otra", titulo: "Otra con saldo", sub: "Cualquier tarjeta que recargas",
               icono: "tag.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
-              busca: "regalo gift recarga saldo prepago", donde: "Dónde se usa (opcional)", cuanto: "Saldo de la tarjeta")
+              busca: "regalo gift recarga saldo prepago", donde: "Dónde se usa (opcional)", cuanto: "Saldo de la tarjeta",
+              rotuloSaldo: "Saldo de la tarjeta")
     ]
 
     /// El del catálogo que le toca a una cuenta ya guardada. Las de antes no
@@ -1853,34 +1874,6 @@ struct CNLibretas {
     var textoNueva = ""
     var rotuloOtras = ""
     var filas: [Fila] = []
-
-    static func desde(json: String) -> CNLibretas? {
-        guard let d = json.data(using: .utf8),
-              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
-        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
-        var m = CNLibretas()
-        if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
-        m.textoGestionar = s(r, "textoGestionar")
-        m.textoNueva = s(r, "textoNueva")
-        m.rotuloOtras = s(r, "rotuloOtras")
-        m.filas = ((r["filas"] as? [[String: Any]]) ?? []).map { f in
-            Fila(indice: (f["indice"] as? NSNumber)?.intValue ?? 0,
-                 nombre: s(f, "nombre"), detalle: s(f, "detalle"), iconoPath: s(f, "iconoPath"),
-                 color: s(f, "color"), enUso: (f["enUso"] as? Bool) ?? false,
-                 rotuloEnUso: s(f, "rotuloEnUso"),
-                 cifra: s(f, "cifra"), cifraTinta: s(f, "cifraTinta"), pie: s(f, "pie"),
-                 lid: s(f, "id"), tipo: s(f, "tipo"), rol: s(f, "rol"),
-                 esDueno: (f["esDueno"] as? Bool) ?? false,
-                 compartida: (f["compartida"] as? Bool) ?? false,
-                 miembros: ((f["miembros"] as? [[String: Any]]) ?? []).map { m in
-                     Miembro(nombre: s(m, "nombre"), email: s(m, "email"),
-                             rol: s(m, "rol"), rolId: s(m, "rolId"),
-                             editable: (m["editable"] as? Bool) ?? false,
-                             yo: (m["yo"] as? Bool) ?? false)
-                 })
-        }
-        return m
-    }
 }
 
 struct CNLibretasHoja: View {

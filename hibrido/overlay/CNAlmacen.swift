@@ -57,10 +57,37 @@ enum CNAlmacen {
     static func vale() -> String { copia()?[VALE] ?? "" }
 
     /// El correo de quien está dentro, para saber si una libreta es suya.
-    static func correo() -> String {
+    static func correo() -> String { (usuario()["email"] as? String) ?? "" }
+
+    /**
+     * QUIÉN ESTÁ DENTRO Y QUÉ TIENE PUESTO.
+     *
+     * Todo esto ya estaba en la copia y no lo leía nadie de este lado: el
+     * teléfono le preguntaba a la web hasta su propio nombre. `chinola-usuario`
+     * trae la cuenta —correo, nombre, plan— y `chinola-sesion-v3` trae la
+     * sesión y TODOS los ajustes, que es donde vive `nombreLocal`, el nombre
+     * de quien usa la app sin cuenta.
+     *
+     * Siguen siendo de la WEB: ella los escribe y esto solo los lee. Lo que
+     * cambia es que ya no hay que preguntárselos.
+     */
+    static func usuario() -> [String: Any] {
         guard let t = copia()?[USUARIO], let d = t.data(using: .utf8),
-              let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return "" }
-        return (j["email"] as? String) ?? ""
+              let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return [:] }
+        return j
+    }
+
+    /// La sesión y los ajustes, que viajan en el mismo paquete.
+    static func ajustes() -> [String: Any] {
+        guard let t = copia()?[SESION], let d = t.data(using: .utf8),
+              let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return [:] }
+        return j
+    }
+
+    /// ¿Hay sesión de verdad? Quien empezó sin cuenta tiene datos y NO tiene
+    /// sesión: no es un resto de una vieja, son los únicos que tiene.
+    static func haySesion() -> Bool {
+        (ajustes()["sesion"] as? [String: Any])?["email"] is String
     }
 
     /**
