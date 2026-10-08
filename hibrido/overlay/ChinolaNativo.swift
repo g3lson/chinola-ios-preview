@@ -2108,7 +2108,25 @@ final class CNDatos: ObservableObject {
         c.balanceFmt = cnDineroFirmado(t.bal)
         c.ingFmt = cnDinero(t.ing); c.gasFmt = cnDinero(t.gas)
         c.entraFmt = cnDinero(t.ing); c.saleFmt = cnDinero(t.gas)
-        c.nombre = c.nombre.isEmpty ? libreta.nombre : c.nombre
+        /*
+         * LA PASTILLA DE LA LIBRETA, con su inicial, su color y su dibujo.
+         *
+         * Sin esto salía el nombre con un círculo liso al lado: la casa de
+         * «Personal» desaparecía y el color se iba. Son datos de la LIBRETA
+         * —no de su contenido— así que no están en lo que se decodifica aquí:
+         * salen de la lista de libretas, que es la que los trae.
+         */
+        if c.nombre.isEmpty { c.nombre = libreta.nombre }
+        if let f = libretas?.filas.first(where: { $0.enUso })
+            ?? libretas?.filas.first(where: { $0.nombre == libreta.nombre }) {
+            if c.icono.isEmpty { c.icono = f.iconoPath }
+            if c.color.isEmpty { c.color = f.color }
+            if c.detalle.isEmpty { c.detalle = f.detalle }
+        }
+        // Y la inicial, que es la primera letra del nombre y nada más.
+        if c.inicial.isEmpty {
+            c.inicial = String(c.nombre.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased()
+        }
         // LOS ICONOS DE CADA CATEGORÍA, que usan las listas del panel. Van las
         // de la libreta y también las de fábrica: una lista puede nombrar una
         // categoría que ya nadie tiene, y sin su icono sale un hueco.
@@ -2181,8 +2199,11 @@ final class CNDatos: ObservableObject {
         // teniendo los números calculados aquí mismo.
         if resumen == nil || resumen?.widgets.isEmpty == true {
             var m = resumen ?? CNResumenModelo()
+            let cab0 = resumen?.cabecera
             m.widgets = CNResumenPanel.widgets(
-                libreta, ocultas: CNResumenPanel.ocultas(libreta: libreta.nombre))
+                libreta, ocultas: CNResumenPanel.ocultas(libreta: libreta.nombre),
+                positivo: cab0?.positivo.isEmpty == false ? cab0!.positivo : cnHexDe(CNC.pos),
+                negativo: cab0?.negativo.isEmpty == false ? cab0!.negativo : cnHexDe(CNC.neg))
             resumen = m
         }
         // Y LA CABECERA, si tampoco llegó. Es lo que da el color a todo lo de

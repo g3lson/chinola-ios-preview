@@ -72,7 +72,8 @@ enum CNResumenPanel {
      * números. De cada tarjeta se deja puesto lo que no depende de los datos:
      * dónde va, cómo se titula y de qué forma es.
      */
-    static func widgets(_ l: CNLibreta, ocultas escondidas: Set<String>) -> [CNResumenModelo.Widget] {
+    static func widgets(_ l: CNLibreta, ocultas escondidas: Set<String>,
+                        positivo: String = "", negativo: String = "") -> [CNResumenModelo.Widget] {
         entradas(l).enumerated().map { i, e in
             var w = CNResumenModelo.Widget()
             w.indice = i
@@ -80,7 +81,8 @@ enum CNResumenPanel {
             w.tipoPanel = e.tipo
             w.ancho = e.ancho
             w.oculta = escondidas.contains(e.id)
-            if let t = CNCatalogos.tarjetasDePanel[e.tipo] {
+            let t = CNCatalogos.tarjetasDePanel[e.tipo]
+            if let t = t {
                 w.titulo = cnT(t.titulo)
                 w.periodo = t.periodo.isEmpty ? "" : cnT(t.periodo)
                 w.clase = t.clase
@@ -94,6 +96,22 @@ enum CNResumenPanel {
             // no. La web decide lo mismo con `puedeChica`.
             w.chica = w.puedeChica && e.ancho <= 1
             w.vistas = vistas(e)
+            // LO QUE CADA FORMA NECESITA ADEMÁS DEL CONTENIDO.
+            //
+            // La de columnas lleva su leyenda y los colores de las dos barras:
+            // sin ellos la tarjeta sale con su título y el recuadro VACÍO, que
+            // es lo que pasó la primera vez que se quitó la puerta. Y la de
+            // barras, el rótulo del botón que lleva al presupuesto.
+            if t?.clase == "columnas" {
+                w.rotuloEntra = cnT("Ingresos")
+                w.rotuloSale = cnT("Gastos")
+                w.entraColor = positivo
+                w.saleColor = negativo
+            }
+            if e.tipo == "barras-categorias" {
+                w.rotuloPresupuesto = cnT("Ver el presupuesto")
+                w.vaAlPresupuesto = true
+            }
             if e.tipo == "serie-tiempo" {
                 w.cfgGrafico = e.grafico.isEmpty ? "linea" : e.grafico
                 w.cfgRango = String(e.rango > 0 ? e.rango : 12)
