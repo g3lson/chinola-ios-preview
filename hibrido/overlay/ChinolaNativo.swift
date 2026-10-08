@@ -2051,7 +2051,9 @@ final class CNDatos: ObservableObject {
      * va ESE mes, y en uno pasado se juzga cerrado.
      */
     var animoDeChino: String {
-        CNAnimo.puesto(formato.personaje, libreta: libreta, mes: mesActivo)
+        // Los ajustes viven en `CNC.fmt` y no aquí: es donde los deja
+        // `CNTemaArma.formato` y donde los leen las pantallas.
+        CNAnimo.puesto(CNC.fmt.personaje, libreta: libreta, mes: mesActivo)
     }
     var periodoCalculo: CNCalculo.Periodo {
         CNCalculo.Periodo(mes: mesActivo,
