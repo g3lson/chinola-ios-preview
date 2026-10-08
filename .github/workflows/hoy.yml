@@ -421,63 +421,6 @@ jobs:
             sleep 16
             xcrun simctl io "$UDID" screenshot "ficha-$T.png"
           done
-          # Y CHINO, LOS SEIS ÁNIMOS.
-          #
-          # El personaje lo escribía la web en SVG y el teléfono lo recibía ya
-          # convertido en PNG. Ahora lo dibuja Swift, y las pruebas de `npm
-          # test` solo pueden decir que los trazos y los números son los
-          # mismos. Que la cara se vea como una cara lo dice esta foto.
-          echo "=== Chino, los seis ánimos ==="
-          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
-          sleep 2
-          env SIMCTL_CHILD_CN_IR=chino SIMCTL_CHILD_CN_CON=sonda,flota \
-            SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
-          sleep 10
-          xcrun simctl io "$UDID" screenshot "chino.png"
-
-          # Y EL ORBE, la otra familia: seis ánimos por tres pieles.
-          #
-          # Mientras el teléfono solo supo dibujar la fruta, quien tuviera el
-          # orbe elegido veía otra cosa. Y no falla nada: simplemente le
-          # cambian el personaje.
-          echo "=== el orbe, con sus tres pieles ==="
-          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
-          sleep 2
-          env SIMCTL_CHILD_CN_IR=orbe SIMCTL_CHILD_CN_CON=sonda,flota \
-            SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
-          sleep 10
-          xcrun simctl io "$UDID" screenshot "orbe.png"
-
-          # Y LA HOJA QUE SE ABRE AL TOCAR A CHINO: su cara y, debajo, los
-          # pagos que vienen. Solo se abre tocándolo, así que el banco no pasó
-          # nunca por ella — y es la que acaba de pasar a armarse en el
-          # teléfono.
-          echo "=== la hoja de Chino ==="
-          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
-          sleep 2
-          env SIMCTL_CHILD_CN_IR=mascota SIMCTL_CHILD_CN_CON=sonda,flota \
-            SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
-          sleep 14
-          xcrun simctl io "$UDID" screenshot "mascota.png"
-
-          # Y DOS GLOBOS DEL RECORRIDO: el primero y uno del medio.
-          #
-          # Solo salen en el primer arranque, así que el banco —que entra con
-          # la libreta ya sembrada— no pasaba nunca por ellos. Y es lo que
-          # acaba de pasar a contarse desde el teléfono.
-          for N in 0 4; do
-            echo "=== el recorrido · globo $N ==="
-            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
-            sleep 2
-            env SIMCTL_CHILD_CN_IR=tour:$N SIMCTL_CHILD_CN_CON=sonda,flota \
-              SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
-            sleep 18
-            xcrun simctl io "$UDID" screenshot "tour-$N.png"
-          done
-          xcrun simctl spawn "$UDID" log show --last 2m --style compact \
-            --predicate 'eventMessage CONTAINS "CNIR: el globo"' 2>/dev/null | tail -4 || true
-          xcrun simctl spawn "$UDID" log show --last 1m --style compact \
-            --predicate 'eventMessage CONTAINS "CNIR: la hoja"' 2>/dev/null | tail -3 || true
 
           # Y lo que dijo cada una: una ficha sin datos ni botones está vacía
           # aunque la foto parezca normal.
@@ -634,6 +577,72 @@ jobs:
           xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i "$ID" || echo "(NO está vivo → crasheó)"
           echo "=== crash ==="
           find ~/Library/Logs/DiagnosticReports -name "App-*.ips" 2>/dev/null | sort | tail -1 | while read f; do sed -n '1,40p' "$f"; done
+
+          # ── LOS DIBUJOS Y LAS PANTALLAS QUE SOLO SE ABREN TOCANDO ──
+          #
+          # AL FINAL Y NO EN MEDIO: las sondas de arriba leen el log de los
+          # ÚLTIMOS MINUTOS, y estos cuatro arranques empujaron el último de
+          # las subpantallas fuera de su ventana. La sonda dijo «el nativo no
+          # dijo nada» y tumbó la vuelta entera, con todas las fotos ya hechas.
+
+          # CHINO, LOS SEIS ÁNIMOS.
+          #
+          # El personaje lo escribía la web en SVG y el teléfono lo recibía ya
+          # convertido en PNG. Ahora lo dibuja Swift, y las pruebas de `npm
+          # test` solo pueden decir que los trazos y los números son los
+          # mismos. Que la cara se vea como una cara lo dice esta foto.
+          echo "=== Chino, los seis ánimos ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          env SIMCTL_CHILD_CN_IR=chino SIMCTL_CHILD_CN_CON=sonda,flota \
+            SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
+          sleep 10
+          xcrun simctl io "$UDID" screenshot "chino.png"
+
+          # Y EL ORBE, la otra familia: seis ánimos por tres pieles.
+          #
+          # Mientras el teléfono solo supo dibujar la fruta, quien tuviera el
+          # orbe elegido veía otra cosa. Y no falla nada: simplemente le
+          # cambian el personaje.
+          echo "=== el orbe, con sus tres pieles ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          env SIMCTL_CHILD_CN_IR=orbe SIMCTL_CHILD_CN_CON=sonda,flota \
+            SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
+          sleep 10
+          xcrun simctl io "$UDID" screenshot "orbe.png"
+
+          # Y LA HOJA QUE SE ABRE AL TOCAR A CHINO: su cara y, debajo, los
+          # pagos que vienen. Solo se abre tocándolo, así que el banco no pasó
+          # nunca por ella — y es la que acaba de pasar a armarse en el
+          # teléfono.
+          echo "=== la hoja de Chino ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          env SIMCTL_CHILD_CN_IR=mascota SIMCTL_CHILD_CN_CON=sonda,flota \
+            SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
+          sleep 14
+          xcrun simctl io "$UDID" screenshot "mascota.png"
+
+          # Y DOS GLOBOS DEL RECORRIDO: el primero y uno del medio.
+          #
+          # Solo salen en el primer arranque, así que el banco —que entra con
+          # la libreta ya sembrada— no pasaba nunca por ellos. Y es lo que
+          # acaba de pasar a contarse desde el teléfono.
+          for N in 0 4; do
+            echo "=== el recorrido · globo $N ==="
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+            sleep 2
+            env SIMCTL_CHILD_CN_IR=tour:$N SIMCTL_CHILD_CN_CON=sonda,flota \
+              SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
+            sleep 18
+            xcrun simctl io "$UDID" screenshot "tour-$N.png"
+          done
+          xcrun simctl spawn "$UDID" log show --last 2m --style compact \
+            --predicate 'eventMessage CONTAINS "CNIR: el globo"' 2>/dev/null | tail -4 || true
+          xcrun simctl spawn "$UDID" log show --last 1m --style compact \
+            --predicate 'eventMessage CONTAINS "CNIR: la hoja"' 2>/dev/null | tail -3 || true
+
 
       - name: Subir
         if: always()
