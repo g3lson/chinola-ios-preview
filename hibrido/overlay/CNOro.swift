@@ -724,6 +724,94 @@ enum CNOro {
             salida["periodo"] = out
         }
 
+        /**
+         * QUÉ CARA PONE CHINO, EJECUTADO CONTRA LA DE LA WEB.
+         *
+         * La regla son seis ramas en un orden que ES la regla, y es justo la
+         * clase de cuenta que se tuerce sin que nadie lo note: una rama en otro
+         * orden saca igual de creíble una cara, la que sea, y lo único que
+         * falla es que no es la que toca. Una expresión regular sobre el Swift
+         * no lo ve, y en una captura tampoco se ve: ¿cómo sabes que la cara que
+         * salió no era la correcta?
+         */
+        if let bruto = leer("animo-oro"),
+           let fichero = (try? JSONSerialization.jsonObject(with: bruto)) as? [String: Any],
+           let raizA = fichero["animo"] as? [String: Any],
+           let ejes = raizA["ejes"] as? [String] {
+            var out: [String: Any] = [:]
+            // LOS EJES, DEVUELTOS: el comparador se queja de todo apartado del
+            // oro que el Swift no calcule, y además así queda dicho que se
+            // leyeron en el mismo orden. Leerlos en otro orden pondría el
+            // balance en el día del mes y saldría una cara creíble y falsa.
+            out["ejes"] = ejes
+            // LA MALLA. La clave trae los ocho valores en el orden de `ejes`,
+            // así que se arma el caso leyéndola: así el oro puede crecer sin
+            // tocar esto, y sobre todo sin que los valores se desordenen al
+            // pasar de un lado al otro.
+            if let casos = raizA["casos"] as? [String: Any] {
+                var m: [String: Any] = [:]
+                for k in casos.keys {
+                    let v = k.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+                    guard v.count == ejes.count else { continue }
+                    var d = CNAnimo.Datos()
+                    for (i, eje) in ejes.enumerated() {
+                        let t = v[i]
+                        switch eje {
+                        case "ing": d.ing = Double(t) ?? 0
+                        case "gas": d.gas = Double(t) ?? 0
+                        case "aho": d.aho = Double(t) ?? 0
+                        case "movimientos": d.movimientos = Int(t) ?? 0
+                        // «nulo» y cero NO son lo mismo: cero es que vence HOY.
+                        case "diasParaPago": d.diasParaPago = t == "nulo" ? nil : Int(t)
+                        case "diaDelMes": d.diaDelMes = Int(t) ?? 1
+                        case "diasDelMes": d.diasDelMes = Int(t) ?? 30
+                        case "metaCumplida": d.metaCumplida = t == "true"
+                        default: break
+                        }
+                    }
+                    // El balance lo calcula la regla cuando no viene, que es
+                    // como lo usa la app.
+                    d.bal = d.ing - d.gas - d.aho
+                    m[k] = CNAnimo.delMes(d)
+                }
+                out["casos"] = m
+            }
+            // Y los dos cálculos que le dan de comer, con una libreta de verdad:
+            // de dónde salen sus números es lo que de verdad se tuerce al pasarlo.
+            let l = libretaDelOro()
+            var cumplida = l
+            if !cumplida.metas.isEmpty { cumplida.metas[0].ahorrado = cumplida.metas[0].meta }
+            if let pagos = raizA["pagos"] as? [String: Any] {
+                var m: [String: Any] = [:]
+                for dia in pagos.keys {
+                    guard let hoy = CNAnimo.medianoche(dia) else { continue }
+                    // NSNull y no cero: «no hay ningún pago» no es «vence hoy».
+                    let cuantos: Any = CNAnimo.diasParaElProximoPago(l, hoy: hoy) ?? NSNull()
+                    m[dia] = cuantos
+                }
+                out["pagos"] = m
+            }
+            if let dl = raizA["deLaLibreta"] as? [String: Any] {
+                var caras: [String: Any] = [:]
+                var numeros: [String: Any] = [:]
+                for k in dl.keys {
+                    let p = k.split(separator: "|").map(String.init)
+                    guard p.count == 3, let hoy = CNAnimo.medianoche(p[0]) else { continue }
+                    let cual = p[2] == "cumplida" ? cumplida : l
+                    let d = CNAnimo.datos(cual, mes: p[1], hoy: hoy)
+                    caras[k] = CNAnimo.delMes(d)
+                    let pago: Any = d.diasParaPago ?? NSNull()
+                    numeros[k] = ["ing": d.ing, "gas": d.gas, "aho": d.aho, "bal": d.bal,
+                                  "movimientos": d.movimientos, "diasParaPago": pago,
+                                  "diaDelMes": d.diaDelMes, "diasDelMes": d.diasDelMes,
+                                  "metaCumplida": d.metaCumplida]
+                }
+                out["deLaLibreta"] = caras
+                out["datos"] = numeros
+            }
+            salida["animo"] = out
+        }
+
         if let j = try? JSONSerialization.data(withJSONObject: salida),
            let texto = String(data: j, encoding: .utf8) {
             escupe(texto)
@@ -765,6 +853,39 @@ enum CNOro {
         for (i, parte) in partes.enumerated() {
             NSLog("CNORO %d/%d %@", i + 1, partes.count, parte)
         }
+    }
+
+    /**
+     * LA LIBRETA DEL ORO DEL ÁNIMO, armada aquí.
+     *
+     * Escrita a mano y no leída del fichero: lo que se compara es la CUENTA, y
+     * si la libreta viniera del mismo fichero que las respuestas, un día
+     * alguien cambiaría una y el banco seguiría diciendo que cuadra. Tiene que
+     * ser la misma que `scripts/animo-oro.mjs` escribe allí.
+     */
+    private static func libretaDelOro() -> CNLibreta {
+        var l = CNLibreta()
+        var t1 = CNTarjeta(); t1.id = 1; t1.nombre = "Azul"; t1.pago = 31
+        var t2 = CNTarjeta(); t2.id = 2; t2.nombre = "Oro"; t2.pago = 9
+        l.tarjetas = [t1, t2]
+        // El primero está pagado del todo: no cuenta, y es lo que separa
+        // «tengo un préstamo» de «debo algo este mes».
+        var p1 = CNPrestamo(); p1.id = 1; p1.nombre = "Carro"; p1.total = 5000; p1.pagado = 5000; p1.dia = 3
+        var p2 = CNPrestamo(); p2.id = 2; p2.nombre = "Casa"; p2.total = 9000; p2.pagado = 100; p2.dia = 14
+        l.prestamos = [p1, p2]
+        var g = CNMeta(); g.id = 1; g.nombre = "Viaje"; g.meta = 1000; g.ahorrado = 400
+        l.metas = [g]
+        func mov(_ id: String, _ tipo: String, _ monto: Double, _ fecha: String) -> CNMov {
+            var x = CNMov(); x.id = id; x.tipo = tipo; x.monto = monto; x.fecha = fecha
+            return x
+        }
+        l.tx = [mov("m1", "Ingreso", 40000, "2026-10-01"),
+                mov("m2", "Gasto Fijo", 9000, "2026-10-02"),
+                mov("m3", "Gasto Variable", 1200, "2026-10-15"),
+                mov("m4", "Ahorro", 3000, "2026-10-20"),
+                mov("m5", "Ingreso", 500, "2026-09-30"),
+                mov("m6", "Gasto Variable", 80, "2026-11-02")]
+        return l
     }
 
     private static func leer(_ nombre: String = "calculo-oro") -> Data? {

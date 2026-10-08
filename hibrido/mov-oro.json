@@ -1,0 +1,189 @@
+{
+ "nota": "Medido con la app EN MARCHA, no deducido. Cada movimiento de abajo se sembró en la libreta y se le pidió su ficha a la web. Para rehacerlo, ver la cabecera de test/el-detalle-del-movimiento-se-arma-solo.test.js.",
+ "movs": {
+  "1700000000001": {
+   "nombre": "Super",
+   "rotulo": "Salió",
+   "montoFmt": "RD$1,200",
+   "color": "oklch(0.62 0.16 30)",
+   "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+   "iconoColor": "oklch(0.6 0.13 95)",
+   "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)",
+   "puedeEditar": true,
+   "textoEditar": "Editar",
+   "textoDuplicar": "Duplicar",
+   "datos": [
+    {
+     "label": "Categoría",
+     "valor": "Alimentación"
+    },
+    {
+     "label": "Tipo",
+     "valor": "Variable"
+    },
+    {
+     "label": "Fecha",
+     "valor": "5 de octubre"
+    },
+    {
+     "label": "Pagado con",
+     "valor": "Banco Popular"
+    },
+    {
+     "label": "Se repite",
+     "valor": "No"
+    }
+   ]
+  },
+  "1700000000002": {
+   "nombre": "Sueldo",
+   "rotulo": "Entró",
+   "montoFmt": "RD$50,000",
+   "color": "oklch(0.52 0.13 152)",
+   "iconoPath": "M4 20V10M10 20V4M16 20v-7M22 20H2",
+   "iconoColor": "oklch(0.42 0.1 155)",
+   "iconoBg": "oklab(0.42 -0.0906308 0.0422618 / 0.15)",
+   "puedeEditar": true,
+   "textoEditar": "Editar",
+   "textoDuplicar": "Duplicar",
+   "datos": [
+    {
+     "label": "Categoría",
+     "valor": "Ingresos"
+    },
+    {
+     "label": "Tipo",
+     "valor": "Ingreso"
+    },
+    {
+     "label": "Fecha",
+     "valor": "1 de octubre"
+    },
+    {
+     "label": "Pagado con",
+     "valor": "Banco Popular"
+    },
+    {
+     "label": "Se repite",
+     "valor": "Cada mes"
+    }
+   ]
+  },
+  "1700000000003": {
+   "nombre": "Paso a ahorros",
+   "rotulo": "Traspaso",
+   "montoFmt": "RD$2,000",
+   "color": "oklch(0.22 0.004 286)",
+   "iconoPath": "M4 9h11a4 4 0 0 1 4 4M20 15H9a4 4 0 0 1-4-4M7 6L4 9l3 3M17 18l3-3-3-3",
+   "iconoColor": "oklch(0.53 0.005 286)",
+   "iconoBg": "oklch(0.925 0.005 286)",
+   "puedeEditar": true,
+   "textoEditar": "Editar",
+   "textoDuplicar": "Duplicar",
+   "datos": [
+    {
+     "label": "De dónde sale",
+     "valor": "Banco Popular"
+    },
+    {
+     "label": "A dónde va",
+     "valor": "Ahorros"
+    },
+    {
+     "label": "Tipo",
+     "valor": "Traspaso"
+    },
+    {
+     "label": "Fecha",
+     "valor": "3 de octubre"
+    },
+    {
+     "label": "Se repite",
+     "valor": "No"
+    }
+   ]
+  },
+  "1700000000004": {
+   "nombre": "Netflix",
+   "rotulo": "Salió",
+   "montoFmt": "RD$600",
+   "color": "oklch(0.62 0.16 30)",
+   "iconoPath": "M6 12h.01M12 12h.01M18 12h.01",
+   "iconoColor": "oklch(0.53 0.005 286)",
+   "iconoBg": "oklab(0.53 0.00137819 -0.00480631 / 0.15)",
+   "puedeEditar": true,
+   "textoEditar": "Editar",
+   "textoDuplicar": "Duplicar",
+   "datos": [
+    {
+     "label": "Categoría",
+     "valor": "Inventada"
+    },
+    {
+     "label": "Tipo",
+     "valor": "Fijo"
+    },
+    {
+     "label": "Fecha",
+     "valor": "2 de octubre"
+    },
+    {
+     "label": "Pagado con",
+     "valor": "Visa"
+    },
+    {
+     "label": "Se repite",
+     "valor": "No"
+    }
+   ]
+  },
+  "1700000000005": {
+   "nombre": "Al colchón",
+   "rotulo": "Salió",
+   "montoFmt": "RD$3,000",
+   "color": "oklch(0.62 0.16 30)",
+   "iconoPath": "M4 13a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v3H4zM7 18v2M17 18v2M16 11h1",
+   "iconoColor": "oklch(0.56 0.14 300)",
+   "iconoBg": "oklab(0.56 0.0700001 -0.121244 / 0.15)",
+   "puedeEditar": true,
+   "textoEditar": "Editar",
+   "textoDuplicar": "Duplicar",
+   "datos": [
+    {
+     "label": "Categoría",
+     "valor": "Ahorro"
+    },
+    {
+     "label": "Tipo",
+     "valor": "Ahorro"
+    },
+    {
+     "label": "Fecha",
+     "valor": "4 de octubre"
+    },
+    {
+     "label": "Pagado con",
+     "valor": "Efectivo"
+    },
+    {
+     "label": "Se repite",
+     "valor": "No"
+    }
+   ]
+  }
+ },
+ "tema": {
+  "tinta": "oklch(0.22 0.004 286)",
+  "gris": "oklch(0.53 0.005 286)",
+  "suave": "oklch(0.925 0.005 286)",
+  "pos": "oklch(0.52 0.13 152)",
+  "neg": "oklch(0.62 0.16 30)"
+ },
+ "casos": {
+  "1700000000001": "un gasto variable con categoría de la libreta, pagado con una cuenta",
+  "1700000000002": "un ingreso que se repite cada mes",
+  "1700000000003": "un traspaso entre dos cuentas tuyas",
+  "1700000000004": "un gasto fijo con una categoría que NO está en la libreta, con tarjeta",
+  "1700000000005": "un ahorro, pagado con un medio que no existe"
+ }
+}

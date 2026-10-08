@@ -2245,7 +2245,10 @@ struct CNFormInvitar: View {
 // la pantalla de verdad y encima del menú, para que se vea de qué se habla.
 struct CNTour {
     var paso = 0; var total = 1; var vista = "resumen"
-    var titulo = ""; var texto = ""; var chinolo = ""
+    var titulo = ""; var texto = ""
+    /// Qué cara pone en este paso, o vacío si el paso no lleva personaje.
+    /// Antes llegaba el dibujo hecho; ahora lo dibuja el teléfono.
+    var animo = ""
     /// Qué señala el paso («tab-perfil», «libreta», «meses»…); vacío = nada.
     var ancla = ""
     var textoSiguiente = "Siguiente"; var textoSaltar = "Saltar"
@@ -2257,7 +2260,7 @@ struct CNTour {
         func n(_ o: [String: Any], _ k: String) -> Int { ((o[k] as? NSNumber)?.intValue) ?? 0 }
         var m = CNTour()
         m.paso = n(r, "paso"); m.total = max(1, n(r, "total")); m.vista = s(r, "vista")
-        m.titulo = s(r, "titulo"); m.texto = s(r, "texto"); m.chinolo = s(r, "chinolo")
+        m.titulo = s(r, "titulo"); m.texto = s(r, "texto"); m.animo = s(r, "animo")
         m.ancla = s(r, "ancla")
         if !s(r, "textoSiguiente").isEmpty { m.textoSiguiente = s(r, "textoSiguiente") }
         if !s(r, "textoSaltar").isEmpty { m.textoSaltar = s(r, "textoSaltar") }
@@ -2359,8 +2362,8 @@ struct CNTourVista: View {
             if picoArriba { pico(x: picoX).rotationEffect(.degrees(180)) }
             VStack(spacing: 0) {
                 HStack(alignment: .top, spacing: 12) {
-                    if let img = cnImagenBase64(m.chinolo) {
-                        Image(uiImage: img).resizable().scaledToFit().frame(width: 58, height: 58)
+                    if !m.animo.isEmpty {
+                        CNChino(animo: m.animo, tam: 58, conSombra: false, ajustado: true)
                             .offset(y: flota ? -4 : 3)
                             .rotationEffect(.degrees(flota ? -3 : 3))
                     }
@@ -2483,7 +2486,9 @@ struct CNLatido: View {
 
 struct CNMascota {
     struct Aviso: Identifiable { var id: Int; var titulo = ""; var detalle = ""; var color = "" }
-    var chinolo = ""
+    /// SIN EL DIBUJO: el teléfono lo hace con la clave del ánimo. El PNG sigue
+    /// viajando en el modelo porque Android todavía lo lee; leerlo aquí era
+    /// quedarse con una copia que nadie enseña.
     var tituloAvisos = ""; var verAvisos = ""; var volver = ""; var nadaTexto = ""
     var avisos: [Aviso] = []
 
@@ -2492,7 +2497,7 @@ struct CNMascota {
               let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
         func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
         var m = CNMascota()
-        m.chinolo = s(r, "chinolo"); m.tituloAvisos = s(r, "tituloAvisos")
+        m.tituloAvisos = s(r, "tituloAvisos")
         m.verAvisos = s(r, "verAvisos"); m.volver = s(r, "volver"); m.nadaTexto = s(r, "nadaTexto")
         m.avisos = ((r["avisos"] as? [[String: Any]]) ?? []).enumerated().map { i, a in
             Aviso(id: i, titulo: s(a, "titulo"), detalle: s(a, "detalle"), color: s(a, "color"))
@@ -2531,13 +2536,15 @@ struct CNMascotaVista: View {
 
     private func delante(_ m: CNMascota) -> some View {
         VStack(spacing: 14) {
-            if let img = cnImagenBase64(m.chinolo) {
-                Image(uiImage: img).resizable().scaledToFit().frame(width: 150, height: 150)
-                    // Vivo, como en la web: respira despacio.
-                    .scaleEffect(salto ? 1.045 : 0.985)
-                    .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: salto)
-                    .onAppear { salto = true }
-            }
+            // DIBUJADO AQUÍ, no recibido hecho: era una imagen que mandaba la
+            // web, y hasta que ella arrancaba la hoja se abría SIN personaje
+            // —con el hueco y los avisos debajo—, que es justo lo que se abre
+            // tocando a Chino.
+            CNChino(animo: datos.animoDeChino, tam: 150)
+                // Vivo, como en la web: respira despacio.
+                .scaleEffect(salto ? 1.045 : 0.985)
+                .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: salto)
+                .onAppear { salto = true }
             // Lo que viene, a la vista, como en la PWA: no hay que voltear
             // nada para saber qué toca pagar.
             VStack(alignment: .leading, spacing: 8) {
@@ -2616,7 +2623,10 @@ struct CNPuerta {
     }
     var paso = ""
     var rotulo = ""; var titulo = ""; var texto = ""; var boton = ""; var segundo = ""; var atras = ""
-    var chinolo = ""; var error = ""; var cargando = false; var pie = ""
+    var error = ""; var cargando = false; var pie = ""
+    /// Qué cara pone este paso, o vacío si no lleva personaje —hay láminas que
+    /// no—. Antes llegaba el dibujo hecho; ahora lo dibuja el teléfono.
+    var animo = ""
     var indice = 0; var total = 1
     /// La acción de «atrás» de este paso (vacía si no hay): la flecha de arriba
     /// y el deslizar desde la orilla hacen las dos lo mismo.
@@ -2655,7 +2665,8 @@ struct CNPuerta {
         m.paso = s(r, "paso")
         m.rotulo = s(r, "rotulo"); m.titulo = s(r, "titulo"); m.texto = s(r, "texto")
         m.boton = s(r, "boton"); m.segundo = s(r, "segundo"); m.atras = s(r, "atras")
-        m.chinolo = s(r, "chinolo"); m.error = s(r, "error"); m.cargando = b(r, "cargando"); m.pie = s(r, "pie")
+        m.error = s(r, "error"); m.cargando = b(r, "cargando"); m.pie = s(r, "pie")
+        m.animo = s(r, "animo")
         m.indice = n(r, "indice"); m.total = max(1, n(r, "total"))
         m.volver = s(r, "volver")
         m.lista = ((r["lista"] as? [[String: Any]]) ?? []).enumerated().map { i, x in
@@ -2905,13 +2916,13 @@ struct CNPuertaVista: View {
 
     private func laCara(_ m: CNPuerta, alto: CGFloat) -> some View {
         VStack(spacing: 12) {
-            if let img = cnImagenBase64(m.chinolo) {
+            if !m.animo.isEmpty {
                 let lado = ladoDeChino(alto, base: m.paso == "portada" ? 212 : 168)
                 // RESPIRANDO. Quieta, una ilustración grande en medio de la
                 // pantalla se ve pegada; subiendo y bajando dos puntos cada dos
                 // segundos y medio parece que está ahí contigo. Es el mismo
                 // gesto que ya hace en la charla.
-                Image(uiImage: img).resizable().scaledToFit().frame(width: lado, height: lado)
+                CNChino(animo: m.animo, tam: lado, conSombra: false, ajustado: true)
                     .offset(y: flota ? -5 : 5)
                     .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: flota)
                     .onAppear { flota = true }
@@ -2950,10 +2961,10 @@ struct CNPuertaVista: View {
 
     private func contarUna(_ m: CNPuerta, alto: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: m.lista.isEmpty ? 13 : 11) {
-            if let img = cnImagenBase64(m.chinolo) {
+            if !m.animo.isEmpty {
                 let lado = ladoDeChino(alto, base: m.paso == "lamina" ? 148 : 132,
                                        conLista: !m.lista.isEmpty)
-                Image(uiImage: img).resizable().scaledToFit().frame(width: lado, height: lado)
+                CNChino(animo: m.animo, tam: lado, conSombra: false, ajustado: true)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.bottom, 4)
                     .cnEntra(entro, 0)
@@ -3898,7 +3909,10 @@ struct CNCharla {
         var ficha: Ficha? = nil
     }
     var titulo = "Chino"; var ph = ""; var iaOn = false; var pensando = false
-    var chinolo = ""; var vacioTexto = ""
+    var vacioTexto = ""
+    /// Qué cara pone. En la charla sale siempre, elijas lo que elijas: ahí es
+    /// quien te está hablando.
+    var animo = ""
     var mensajes: [Mensaje] = []
     var sugerencias: [Sugerencia] = []
     /// «Te quedan 3 de 20 conversaciones este mes». Vacío mientras sobren.
@@ -3913,7 +3927,8 @@ struct CNCharla {
         var m = CNCharla()
         if !s(r, "titulo").isEmpty { m.titulo = s(r, "titulo") }
         m.ph = s(r, "ph"); m.iaOn = b(r, "iaOn"); m.pensando = b(r, "pensando")
-        m.chinolo = s(r, "chinolo"); m.vacioTexto = s(r, "vacioTexto")
+        m.vacioTexto = s(r, "vacioTexto")
+        m.animo = s(r, "animo")
         // `num` y no `d`: arriba, `d` es ya el Data del JSON.
         func num(_ o: [String: Any], _ k: String) -> Double { ((o[k] as? NSNumber)?.doubleValue) ?? 0 }
         func ficha(_ o: Any?) -> Ficha? {
@@ -4306,7 +4321,9 @@ struct CNLoQueSeOye {
  */
 struct CNExitoPlan {
     struct Primero: Identifiable { var id: Int; var texto = ""; var iconoPath = ""; var ir = "" }
-    var titulo = ""; var texto = ""; var boton = ""; var chinolo = ""; var plan = ""
+    var titulo = ""; var texto = ""; var boton = ""; var plan = ""
+    /// Qué cara pone: la de celebrar. El dibujo lo hace el teléfono.
+    var animo = "fiesta"
     var primeros: [Primero] = []
     static func desde(json: String) -> CNExitoPlan? {
         guard let d = json.data(using: .utf8),
@@ -4314,7 +4331,7 @@ struct CNExitoPlan {
         func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
         var x = CNExitoPlan()
         x.titulo = s(r, "titulo"); x.texto = s(r, "texto"); x.boton = s(r, "boton")
-        x.chinolo = s(r, "chinolo"); x.plan = s(r, "plan")
+        x.plan = s(r, "plan"); x.animo = s(r, "animo")
         x.primeros = ((r["primeros"] as? [[String: Any]]) ?? []).enumerated().map { i, o in
             Primero(id: i, texto: s(o, "texto"), iconoPath: s(o, "iconoPath"), ir: s(o, "ir"))
         }
@@ -4336,9 +4353,8 @@ struct CNExitoPlanVista: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let img = cnImagenBase64(x.chinolo) {
-                Image(uiImage: img).resizable().scaledToFit()
-                    .frame(width: 132, height: 132)
+            if !x.animo.isEmpty {
+                CNChino(animo: x.animo, tam: 132, conSombra: false, ajustado: true)
                     // Brinca, y poco: una celebración que no para cansa a los
                     // tres segundos, y esta pantalla se queda hasta que la
                     // cierren.
@@ -4550,8 +4566,8 @@ struct CNCharlaVista: View {
                     VStack(spacing: 8) {
                         if m.mensajes.isEmpty {
                             VStack(spacing: 12) {
-                                if let img = cnImagenBase64(m.chinolo) {
-                                    Image(uiImage: img).resizable().scaledToFit().frame(width: 120, height: 120)
+                                if !m.animo.isEmpty {
+                                    CNChino(animo: m.animo, tam: 120, conSombra: false, ajustado: true)
                                         .offset(y: flota ? -4 : 3)
                                         .animation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true), value: flota)
                                         .onAppear { flota = true }
@@ -4617,9 +4633,9 @@ struct CNCharlaVista: View {
                                     // cada burbuja de la misma respuesta llena
                                     // la columna de caras y cansa.
                                     if x.de != "yo" {
-                                        if x.primeroDeChino, let img = cnImagenBase64(m.chinolo) {
-                                            Image(uiImage: img).resizable().scaledToFit()
-                                                .frame(width: 28, height: 28)
+                                        if x.primeroDeChino, !m.animo.isEmpty {
+                                            CNChino(animo: m.animo, tam: 28,
+                                                    conSombra: false, ajustado: true)
                                         } else {
                                             // El hueco se respeta igual, o las
                                             // burbujas de abajo se desalinean.
@@ -5072,7 +5088,7 @@ struct CNAviso {
     var fondo = "crema"
     var acento = ""
     var rotulo = ""; var titulo = ""; var texto = ""; var cifra = ""
-    var imagen = ""; var chinolo = ""
+    var imagen = ""
     var boton = ""; var ir = ""; var segundo = ""
     var esperaSegundos: Double = 2.5
 
@@ -5083,10 +5099,13 @@ struct CNAviso {
         guard !s("id").isEmpty else { return nil }
         var a = CNAviso()
         a.id = s("id"); a.plantilla = s("plantilla").isEmpty ? "personaje" : s("plantilla")
-        a.animo = s("animo"); a.fondo = s("fondo").isEmpty ? "crema" : s("fondo")
+        // CON SU RESPALDO: vacío, el personaje no se dibujaba. Antes llegaba
+        // el PNG y el servidor siempre manda uno; la clave puede no venir.
+        a.animo = s("animo").isEmpty ? "feliz" : s("animo")
+        a.fondo = s("fondo").isEmpty ? "crema" : s("fondo")
         a.acento = s("acento")
         a.rotulo = s("rotulo"); a.titulo = s("titulo"); a.texto = s("texto"); a.cifra = s("cifra")
-        a.imagen = s("imagen"); a.chinolo = s("chinolo")
+        a.imagen = s("imagen")
         a.boton = s("boton"); a.ir = s("ir"); a.segundo = s("segundo")
         a.esperaSegundos = ((r["esperaSegundos"] as? NSNumber)?.doubleValue) ?? 2.5
         return a
@@ -5161,9 +5180,9 @@ struct CNAvisoVista: View {
                     .frame(maxWidth: .infinity).frame(maxHeight: 260)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .cnEntra(entro, 0)
-            } else if let img = cnImagenBase64(aviso.chinolo) {
+            } else if !aviso.animo.isEmpty {
                 let lado: CGFloat = aviso.plantilla == "lamina" ? 168 : 124
-                Image(uiImage: img).resizable().scaledToFit().frame(width: lado, height: lado)
+                CNChino(animo: aviso.animo, tam: lado, conSombra: false, ajustado: true)
                     .offset(y: flota ? -4 : 4)
                     .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: flota)
                     .cnEntra(entro, 0)

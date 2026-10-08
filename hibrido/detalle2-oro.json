@@ -1,0 +1,1818 @@
+{
+ "nota": "Medido con la app EN MARCHA, no deducido: se siembran dos metas y cuatro categorías y se le pide a la web la ficha de cada una, con cada rango. Para rehacerlo, ver la cabecera de test/la-meta-y-la-categoria-se-arman-solas.test.js.",
+ "meta": {
+  "93": {
+   "datos": [],
+   "rotuloLista": "Aportes",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Viaje familiar",
+   "hero": {
+    "iconoPath": "M4 8h16v12H4zM9 8V5h6v3M4 14h16",
+    "iconoColor": "oklch(0.52 0.14 300)",
+    "iconoBg": "oklab(0.52 0.0700001 -0.121244 / 0.14)",
+    "rotulo": "Llevas ahorrado",
+    "valor": "RD$25,000",
+    "color": "oklch(0.52 0.14 300)",
+    "pct": 25,
+    "colorBarra": "oklch(0.52 0.14 300)",
+    "pieIzq": "25% · Te falta RD$75,000",
+    "pieDer": "Apartas cada mes RD$5,000",
+    "nota": "15 meses a este ritmo"
+   },
+   "botones": [
+    {
+     "label": "Aportar RD$5,000",
+     "estilo": "acento",
+     "abre": "aporte",
+     "cual": 93,
+     "monto": 5000,
+     "conQue": ""
+    },
+    {
+     "label": "Editar la meta",
+     "estilo": "contorno"
+    }
+   ],
+   "tramos": [
+    {
+     "label": "",
+     "total": "",
+     "items": [
+      {
+       "concepto": "1 oct de 2026",
+       "sub": "",
+       "montoFmt": "RD$5,000",
+       "color": "",
+       "iconoPath": "",
+       "catColor": "",
+       "iconoBg": ""
+      },
+      {
+       "concepto": "1 sept de 2026",
+       "sub": "",
+       "montoFmt": "RD$5,000",
+       "color": "",
+       "iconoPath": "",
+       "catColor": "",
+       "iconoBg": ""
+      },
+      {
+       "concepto": "Ya lo tenías apartado",
+       "sub": "",
+       "montoFmt": "RD$15,000",
+       "color": "oklch(0.53 0.005 286)",
+       "iconoPath": "",
+       "catColor": "",
+       "iconoBg": ""
+      }
+     ]
+    }
+   ]
+  },
+  "94": {
+   "datos": [],
+   "rotuloLista": "Aportes",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Casa nueva",
+   "hero": {
+    "iconoPath": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+    "iconoColor": "oklch(0.56 0.14 300)",
+    "iconoBg": "oklab(0.56 0.0700001 -0.121244 / 0.14)",
+    "rotulo": "Llevas ahorrado",
+    "valor": "RD$50,000",
+    "color": "oklch(0.56 0.14 300)",
+    "pct": 100,
+    "colorBarra": "oklch(0.56 0.14 300)",
+    "pieIzq": "100% · Te falta RD$0",
+    "pieDer": "Apartas cada mes Sin cuota",
+    "nota": ""
+   },
+   "botones": [
+    {
+     "label": "Aportar",
+     "estilo": "acento",
+     "abre": "aporte",
+     "cual": 94,
+     "monto": 0,
+     "conQue": ""
+    },
+    {
+     "label": "Editar la meta",
+     "estilo": "contorno"
+    }
+   ],
+   "tramos": [
+    {
+     "label": "",
+     "total": "",
+     "items": [
+      {
+       "concepto": "Ya lo tenías apartado",
+       "sub": "",
+       "montoFmt": "RD$50,000",
+       "color": "oklch(0.53 0.005 286)",
+       "iconoPath": "",
+       "catColor": "",
+       "iconoBg": ""
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "categoria": {
+  "1|Alimentación": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "2",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$1,000",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Te queda",
+     "valor": "RD$6,000",
+     "color": "oklch(0.52 0.13 152)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Alimentación",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": true
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": false
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": false
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": false
+    }
+   ],
+   "hero": {
+    "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.14)",
+    "rotulo": "Gastado este mes",
+    "valor": "RD$2,000",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": 25,
+    "colorBarra": "oklch(0.52 0.13 152)",
+    "pieIzq": "25% del presupuesto",
+    "pieDer": "Presupuesto RD$8,000",
+    "nota": "2 movimientos · RD$2,000 al mes de media"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Alimentación"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": null,
+   "tramos": [
+    {
+     "label": "Octubre de 2026",
+     "total": "RD$2,000",
+     "items": [
+      {
+       "concepto": "Super",
+       "sub": "Alimentación · 5 oct de 2026",
+       "montoFmt": "RD$1,200",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      },
+      {
+       "concepto": "Colmado",
+       "sub": "Alimentación · 2 oct de 2026",
+       "montoFmt": "RD$800",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      }
+     ]
+    }
+   ]
+  },
+  "1|Transporte": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "1",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$3,000",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Te queda",
+     "valor": "−RD$2,000",
+     "color": "oklch(0.62 0.16 30)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Transporte",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": true
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": false
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": false
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": false
+    }
+   ],
+   "hero": {
+    "iconoPath": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.56 0.138564 0.08 / 0.14)",
+    "rotulo": "Gastado este mes",
+    "valor": "RD$3,000",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": 100,
+    "colorBarra": "oklch(0.62 0.16 30)",
+    "pieIzq": "300% del presupuesto",
+    "pieDer": "Presupuesto RD$1,000",
+    "nota": "1 movimientos · RD$3,000 al mes de media"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Transporte"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": null,
+   "tramos": [
+    {
+     "label": "Octubre de 2026",
+     "total": "RD$3,000",
+     "items": [
+      {
+       "concepto": "Gasolina",
+       "sub": "Transporte · 3 oct de 2026",
+       "montoFmt": "RD$3,000",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+       "catColor": "oklch(0.56 0.16 30)",
+       "iconoBg": "oklab(0.56 0.138564 0.08 / 0.15)"
+      }
+     ]
+    }
+   ]
+  },
+  "1|Ingresos": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "0",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$0",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$0",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "Aquí saldrá todo lo que anotes en esta categoría.",
+   "acciones": [],
+   "titulo": "Ingresos",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": true
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": false
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": false
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": false
+    }
+   ],
+   "hero": {
+    "iconoPath": "",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.22 0.00110255 -0.00384505 / 0.14)",
+    "rotulo": "Gastado este mes",
+    "valor": "RD$0",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.52 0.13 152)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "Nada anotado en este periodo"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Ingresos"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": null,
+   "tramos": []
+  },
+  "3|Alimentación": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "3",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$1,500",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$1,500",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Alimentación",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": false
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": true
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": false
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": false
+    }
+   ],
+   "hero": {
+    "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.14)",
+    "rotulo": "Gastado en el periodo",
+    "valor": "RD$4,500",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.52 0.13 152)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "3 movimientos · RD$1,500 al mes de media"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Alimentación"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": {
+    "titulo": "Mes a mes",
+    "tope": "máx RD$2,500",
+    "columnas": [
+     {
+      "label": "ago",
+      "pct": 100,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "sep",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "oct",
+      "pct": 80,
+      "fuerte": true,
+      "color": "oklch(0.6 0.13 95)",
+      "colorMes": "oklch(0.22 0.004 286)"
+     }
+    ]
+   },
+   "tramos": [
+    {
+     "label": "Octubre de 2026",
+     "total": "RD$2,000",
+     "items": [
+      {
+       "concepto": "Super",
+       "sub": "Alimentación · 5 oct de 2026",
+       "montoFmt": "RD$1,200",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      },
+      {
+       "concepto": "Colmado",
+       "sub": "Alimentación · 2 oct de 2026",
+       "montoFmt": "RD$800",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      }
+     ]
+    },
+    {
+     "label": "Agosto de 2026",
+     "total": "RD$2,500",
+     "items": [
+      {
+       "concepto": "Mercado",
+       "sub": "Alimentación · 14 ago de 2026",
+       "montoFmt": "RD$2,500",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      }
+     ]
+    }
+   ]
+  },
+  "3|Transporte": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "1",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$3,000",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$1,000",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Transporte",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": false
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": true
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": false
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": false
+    }
+   ],
+   "hero": {
+    "iconoPath": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.56 0.138564 0.08 / 0.14)",
+    "rotulo": "Gastado en el periodo",
+    "valor": "RD$3,000",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.62 0.16 30)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "1 movimientos · RD$1,000 al mes de media"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Transporte"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": {
+    "titulo": "Mes a mes",
+    "tope": "máx RD$3,000",
+    "columnas": [
+     {
+      "label": "ago",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "sep",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "oct",
+      "pct": 100,
+      "fuerte": true,
+      "color": "oklch(0.56 0.16 30)",
+      "colorMes": "oklch(0.22 0.004 286)"
+     }
+    ]
+   },
+   "tramos": [
+    {
+     "label": "Octubre de 2026",
+     "total": "RD$3,000",
+     "items": [
+      {
+       "concepto": "Gasolina",
+       "sub": "Transporte · 3 oct de 2026",
+       "montoFmt": "RD$3,000",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+       "catColor": "oklch(0.56 0.16 30)",
+       "iconoBg": "oklab(0.56 0.138564 0.08 / 0.15)"
+      }
+     ]
+    }
+   ]
+  },
+  "3|Ingresos": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "0",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$0",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$0",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "Aquí saldrá todo lo que anotes en esta categoría.",
+   "acciones": [],
+   "titulo": "Ingresos",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": false
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": true
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": false
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": false
+    }
+   ],
+   "hero": {
+    "iconoPath": "",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.22 0.00110255 -0.00384505 / 0.14)",
+    "rotulo": "Gastado en el periodo",
+    "valor": "RD$0",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.52 0.13 152)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "Nada anotado en este periodo"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Ingresos"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": null,
+   "tramos": []
+  },
+  "12|Alimentación": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "3",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$1,500",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$375",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Alimentación",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": false
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": false
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": true
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": false
+    }
+   ],
+   "hero": {
+    "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.14)",
+    "rotulo": "Gastado en el periodo",
+    "valor": "RD$4,500",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.52 0.13 152)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "3 movimientos · RD$375 al mes de media"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Alimentación"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": {
+    "titulo": "Mes a mes",
+    "tope": "máx RD$2,500",
+    "columnas": [
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "dic",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "feb",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "abr",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "jun",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "ago",
+      "pct": 100,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "oct",
+      "pct": 80,
+      "fuerte": true,
+      "color": "oklch(0.6 0.13 95)",
+      "colorMes": "oklch(0.22 0.004 286)"
+     }
+    ]
+   },
+   "tramos": [
+    {
+     "label": "Octubre de 2026",
+     "total": "RD$2,000",
+     "items": [
+      {
+       "concepto": "Super",
+       "sub": "Alimentación · 5 oct de 2026",
+       "montoFmt": "RD$1,200",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      },
+      {
+       "concepto": "Colmado",
+       "sub": "Alimentación · 2 oct de 2026",
+       "montoFmt": "RD$800",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      }
+     ]
+    },
+    {
+     "label": "Agosto de 2026",
+     "total": "RD$2,500",
+     "items": [
+      {
+       "concepto": "Mercado",
+       "sub": "Alimentación · 14 ago de 2026",
+       "montoFmt": "RD$2,500",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      }
+     ]
+    }
+   ]
+  },
+  "12|Transporte": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "1",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$3,000",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$250",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Transporte",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": false
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": false
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": true
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": false
+    }
+   ],
+   "hero": {
+    "iconoPath": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.56 0.138564 0.08 / 0.14)",
+    "rotulo": "Gastado en el periodo",
+    "valor": "RD$3,000",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.62 0.16 30)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "1 movimientos · RD$250 al mes de media"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Transporte"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": {
+    "titulo": "Mes a mes",
+    "tope": "máx RD$3,000",
+    "columnas": [
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "dic",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "feb",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "abr",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "jun",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "ago",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "oct",
+      "pct": 100,
+      "fuerte": true,
+      "color": "oklch(0.56 0.16 30)",
+      "colorMes": "oklch(0.22 0.004 286)"
+     }
+    ]
+   },
+   "tramos": [
+    {
+     "label": "Octubre de 2026",
+     "total": "RD$3,000",
+     "items": [
+      {
+       "concepto": "Gasolina",
+       "sub": "Transporte · 3 oct de 2026",
+       "montoFmt": "RD$3,000",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+       "catColor": "oklch(0.56 0.16 30)",
+       "iconoBg": "oklab(0.56 0.138564 0.08 / 0.15)"
+      }
+     ]
+    }
+   ]
+  },
+  "12|Ingresos": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "0",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$0",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$0",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "Aquí saldrá todo lo que anotes en esta categoría.",
+   "acciones": [],
+   "titulo": "Ingresos",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": false
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": false
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": true
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": false
+    }
+   ],
+   "hero": {
+    "iconoPath": "",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.22 0.00110255 -0.00384505 / 0.14)",
+    "rotulo": "Gastado en el periodo",
+    "valor": "RD$0",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.52 0.13 152)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "Nada anotado en este periodo"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Ingresos"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": null,
+   "tramos": []
+  },
+  "0|Alimentación": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "3",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$1,500",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$375",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Alimentación",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": false
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": false
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": false
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": true
+    }
+   ],
+   "hero": {
+    "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.14)",
+    "rotulo": "Gastado en el periodo",
+    "valor": "RD$4,500",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.52 0.13 152)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "3 movimientos · RD$375 al mes de media"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Alimentación"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": {
+    "titulo": "Mes a mes",
+    "tope": "máx RD$2,500",
+    "columnas": [
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "dic",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "feb",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "abr",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "jun",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "ago",
+      "pct": 100,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.6 -0.0113303 0.129505 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "oct",
+      "pct": 80,
+      "fuerte": true,
+      "color": "oklch(0.6 0.13 95)",
+      "colorMes": "oklch(0.22 0.004 286)"
+     }
+    ]
+   },
+   "tramos": [
+    {
+     "label": "Octubre de 2026",
+     "total": "RD$2,000",
+     "items": [
+      {
+       "concepto": "Super",
+       "sub": "Alimentación · 5 oct de 2026",
+       "montoFmt": "RD$1,200",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      },
+      {
+       "concepto": "Colmado",
+       "sub": "Alimentación · 2 oct de 2026",
+       "montoFmt": "RD$800",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      }
+     ]
+    },
+    {
+     "label": "Agosto de 2026",
+     "total": "RD$2,500",
+     "items": [
+      {
+       "concepto": "Mercado",
+       "sub": "Alimentación · 14 ago de 2026",
+       "montoFmt": "RD$2,500",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      }
+     ]
+    }
+   ]
+  },
+  "0|Transporte": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "1",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$3,000",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$250",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Transporte",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": false
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": false
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": false
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": true
+    }
+   ],
+   "hero": {
+    "iconoPath": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.56 0.138564 0.08 / 0.14)",
+    "rotulo": "Gastado en el periodo",
+    "valor": "RD$3,000",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.62 0.16 30)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "1 movimientos · RD$250 al mes de media"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Transporte"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": {
+    "titulo": "Mes a mes",
+    "tope": "máx RD$3,000",
+    "columnas": [
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "dic",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "feb",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "abr",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "jun",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "ago",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "",
+      "pct": 0,
+      "fuerte": false,
+      "color": "oklab(0.56 0.138564 0.08 / 0.4)",
+      "colorMes": "oklch(0.53 0.005 286)"
+     },
+     {
+      "label": "oct",
+      "pct": 100,
+      "fuerte": true,
+      "color": "oklch(0.56 0.16 30)",
+      "colorMes": "oklch(0.22 0.004 286)"
+     }
+    ]
+   },
+   "tramos": [
+    {
+     "label": "Octubre de 2026",
+     "total": "RD$3,000",
+     "items": [
+      {
+       "concepto": "Gasolina",
+       "sub": "Transporte · 3 oct de 2026",
+       "montoFmt": "RD$3,000",
+       "color": "oklch(0.22 0.004 286)",
+       "iconoPath": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+       "catColor": "oklch(0.56 0.16 30)",
+       "iconoBg": "oklab(0.56 0.138564 0.08 / 0.15)"
+      }
+     ]
+    }
+   ]
+  },
+  "0|Ingresos": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "0",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$0",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$0",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "Aquí saldrá todo lo que anotes en esta categoría.",
+   "acciones": [],
+   "titulo": "Ingresos",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": false
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": false
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": false
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": true
+    }
+   ],
+   "hero": {
+    "iconoPath": "",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.22 0.00110255 -0.00384505 / 0.14)",
+    "rotulo": "Gastado en el periodo",
+    "valor": "RD$0",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.52 0.13 152)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "Nada anotado en este periodo"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Ingresos"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": null,
+   "tramos": []
+  }
+ },
+ "tema": {
+  "tinta": "oklch(0.22 0.004 286)",
+  "gris": "oklch(0.53 0.005 286)",
+  "suave": "oklch(0.925 0.005 286)",
+  "pos": "oklch(0.52 0.13 152)",
+  "neg": "oklch(0.62 0.16 30)",
+  "aviso": "var(--aviso)"
+ },
+ "casos": {
+  "meta.93": "con cuota, con dos aportes anotados y con dinero de antes",
+  "meta.94": "alcanzada, sin cuota y sin color propio",
+  "categoria.1|Alimentación": "este mes, con presupuesto y por debajo",
+  "categoria.3|Alimentación": "tres meses: sin barra de límite y con gráfica mes a mes",
+  "categoria.1|Transporte": "este mes, pasada del presupuesto",
+  "categoria.1|Ingresos": "una de ingresos: sin fila de presupuesto, sin icono y vacía"
+ }
+}

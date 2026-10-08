@@ -237,11 +237,15 @@ struct CNChino: View {
     @ViewBuilder private var extras: some View {
         ZStack {
             if cara.extras.contains("chispas") {
+                // Con el COLOR PUESTO y no con un `fill` al grupo: en el SVG el
+                // color va en el `<g>` y los trazos lo heredan, y en SwiftUI un
+                // apilado no se puede rellenar —no compila—. Una forma sin
+                // rellenar usa el color de delante, así que se pone ahí.
                 ZStack {
                     trazo("M18 26l2.1 5.4 5.4 2.1-5.4 2.1L18 41l-2.1-5.4L10.5 33.5l5.4-2.1z")
                     trazo("M101 34l1.7 4.3 4.3 1.7-4.3 1.7-1.7 4.3-1.7-4.3-4.3-1.7 4.3-1.7z")
                     trazo("M96 16l1.3 3.3 3.3 1.3-3.3 1.3-1.3 3.3-1.3-3.3-3.3-1.3 3.3-1.3z")
-                }.fill(cnColor(hexString: "#ffd84d"))
+                }.foregroundColor(cnColor(hexString: "#ffd84d"))
             }
             if cara.extras.contains("subida") {
                 // Dos galones subiendo por detrás: no hay que sostenerlos, son
@@ -249,10 +253,14 @@ struct CNChino: View {
                 // chinola no tiene brazos: nadie las sostenía y se leían como
                 // dos objetos pegados al dibujo. Verdes, que aquí el verde ya
                 // quiere decir que vas bien.
+                // Cada uno con SU trazo: a un apilado no se le puede poner un
+                // borde, y el `<g stroke=…>` del SVG no tiene equivalente.
+                let verde = cnColor(hexString: "#2f9a54")
+                let pluma = StrokeStyle(lineWidth: 5, lineCap: .round)
                 ZStack {
-                    trazo("M96 62l9-9 9 9")
-                    trazo("M98 78l7-7 7 7")
-                }.stroke(cnColor(hexString: "#2f9a54"), style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    trazo("M96 62l9-9 9 9").stroke(verde, style: pluma)
+                    trazo("M98 78l7-7 7 7").stroke(verde, style: pluma)
+                }
             }
             if cara.extras.contains("sudor") {
                 // La gota de la sien: punta arriba, panza abajo, con su brillo.
@@ -312,12 +320,19 @@ struct CNChinoMuestra: View {
             VStack(spacing: 10) {
                 Text("Chino, dibujado en el teléfono")
                     .font(cnLetra(15, .heavy)).foregroundColor(CNC.ink)
+                // Por su SITIO en la lista y no recorriendo tuplas: una tupla
+                // no es `Identifiable` y un `ForEach` sobre un trozo de lista
+                // de tuplas es justo la clase de expresión con la que Swift se
+                // rinde sin compilar nada.
                 ForEach(0..<2, id: \.self) { f in
                     HStack(spacing: 4) {
-                        ForEach(seis[(f * 3)..<min(seis.count, f * 3 + 3)], id: \.id) { a in
-                            VStack(spacing: 2) {
-                                CNChino(animo: a.id, tam: 108)
-                                Text(a.id).font(cnLetra(11)).foregroundColor(CNC.pmut)
+                        ForEach(0..<3, id: \.self) { c in
+                            let i = f * 3 + c
+                            if i < seis.count {
+                                VStack(spacing: 2) {
+                                    CNChino(animo: seis[i].id, tam: 108)
+                                    Text(seis[i].id).font(cnLetra(11)).foregroundColor(CNC.pmut)
+                                }
                             }
                         }
                     }

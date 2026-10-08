@@ -1,0 +1,402 @@
+{
+ "nota": "Generado leyendo lo que la web manda para el detalle de cada tipo, con la app en marcha y con movimientos sembrados. Es la referencia para armarlo en el telefono: que lleva el bloque de arriba, que cifras, que filas de datos, que botones y como se agrupan los movimientos.",
+ "tipos": {
+  "cuenta": {
+   "datos": [
+    {
+     "label": "Banco",
+     "valor": "Sin banco",
+     "color": ""
+    },
+    {
+     "label": "Movimientos",
+     "valor": "3",
+     "color": ""
+    }
+   ],
+   "rotuloLista": "Movimientos de esta cuenta",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Efectivo",
+   "hero": {
+    "iconoPath": "M2 6h20v12H2zM12 9.4a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2M5.5 9.5h0M18.5 14.5h0",
+    "iconoColor": "oklch(0.42 0.1 155)",
+    "iconoBg": "oklab(0.42 -0.0906308 0.0422618 / 0.14)",
+    "rotulo": "Saldo disponible",
+    "valor": "RD$0",
+    "color": "oklch(0.22 0.004 286)"
+   },
+   "cifras": [
+    {
+     "label": "Entró este mes",
+     "valor": "RD$50,000",
+     "color": "oklch(0.52 0.13 152)"
+    },
+    {
+     "label": "Salió este mes",
+     "valor": "RD$2,100",
+     "color": "oklch(0.62 0.16 30)"
+    }
+   ],
+   "botones": [
+    {
+     "label": "Nuevo movimiento",
+     "estilo": "acento",
+     "abre": "movMedio",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "cuenta:1"
+    },
+    {
+     "label": "Transferir",
+     "estilo": "contorno"
+    }
+   ],
+   "tramos": [
+    {
+     "label": "Octubre de 2026",
+     "total": "RD$47,900",
+     "items": [
+      {
+       "concepto": "Luz",
+       "sub": "Servicios · 5 oct de 2026",
+       "montoFmt": "−RD$900",
+       "color": "oklch(0.62 0.16 30)",
+       "iconoPath": "M13 2 4 14h6l-1 8 9-12h-6z",
+       "catColor": "oklch(0.46 0.11 200)",
+       "iconoBg": "oklab(0.46 -0.103366 -0.0376222 / 0.15)"
+      },
+      {
+       "concepto": "Super",
+       "sub": "Alimentación · 5 oct de 2026",
+       "montoFmt": "−RD$1,200",
+       "color": "oklch(0.62 0.16 30)",
+       "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+       "catColor": "oklch(0.6 0.13 95)",
+       "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.15)"
+      },
+      {
+       "concepto": "Sueldo",
+       "sub": "Ingresos · 1 oct de 2026",
+       "montoFmt": "RD$50,000",
+       "color": "oklch(0.52 0.13 152)",
+       "iconoPath": "M4 20V10M10 20V4M16 20v-7M22 20H2",
+       "catColor": "oklch(0.42 0.1 155)",
+       "iconoBg": "oklab(0.42 -0.0906308 0.0422618 / 0.15)"
+      }
+     ]
+    }
+   ]
+  },
+  "tarjeta": {
+   "datos": [
+    {
+     "label": "Banco",
+     "valor": "Popular",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Día de corte",
+     "valor": "día 15",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Día de pago",
+     "valor": "día 5 · en 29 d",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Disponible",
+     "valor": "RD$41,550",
+     "color": "oklch(0.52 0.13 152)"
+    }
+   ],
+   "rotuloLista": "Consumos con esta tarjeta",
+   "vacioTexto": "Aquí saldrá todo lo que anotes con esta tarjeta.",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Visa",
+   "hero": {
+    "iconoPath": "M2 6h20v12H2zM2 10h20M6 15h4",
+    "iconoColor": "oklch(0.5 0.14 20)",
+    "iconoBg": "oklab(0.5 0.131557 0.0478828 / 0.14)",
+    "rotulo": "Debes ahora",
+    "valor": "RD$18,450",
+    "color": "oklch(0.62 0.16 30)",
+    "pct": 31,
+    "colorBarra": "oklch(0.52 0.13 152)",
+    "pieIzq": "31% del límite",
+    "pieDer": "Límite RD$60,000"
+   },
+   "botones": [
+    {
+     "label": "Registrar pago",
+     "estilo": "acento",
+     "abre": "pagoTarjeta",
+     "cual": 91,
+     "monto": 0,
+     "conQue": ""
+    },
+    {
+     "label": "Gasto con ella",
+     "estilo": "contorno"
+    }
+   ],
+   "tramos": []
+  },
+  "prestamo": {
+   "datos": [
+    {
+     "label": "Cuota mensual",
+     "valor": "RD$12,500",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Día de pago",
+     "valor": "día 10 · en 3 d",
+     "color": "oklch(0.62 0.16 30)"
+    },
+    {
+     "label": "Cuotas restantes",
+     "valor": "20 de 32",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Pagos registrados",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Carro",
+   "hero": {
+    "iconoPath": "M12 3l9 5H3zM5 11v7M9.5 11v7M14.5 11v7M19 11v7M3 21h18",
+    "iconoColor": "oklch(0.48 0.14 300)",
+    "iconoBg": "oklab(0.48 0.0700001 -0.121244 / 0.14)",
+    "rotulo": "Te falta pagar",
+    "valor": "RD$250,000",
+    "color": "oklch(0.62 0.16 30)",
+    "pct": 38,
+    "colorBarra": "oklch(0.48 0.14 300)",
+    "pieIzq": "Pagado RD$150,000 (38%)",
+    "pieDer": "Total RD$400,000"
+   },
+   "botones": [
+    {
+     "label": "Registrar cuota",
+     "estilo": "acento",
+     "abre": "abono",
+     "cual": 92,
+     "monto": 12500,
+     "conQue": ""
+    },
+    {
+     "label": "Abonar otro monto",
+     "estilo": "contorno",
+     "abre": "abono",
+     "cual": 92,
+     "monto": 0,
+     "conQue": ""
+    }
+   ],
+   "tramos": [
+    {
+     "label": "",
+     "total": "",
+     "items": [
+      {
+       "concepto": "Ya lo tenías pagado",
+       "sub": "",
+       "montoFmt": "RD$150,000",
+       "color": "oklch(0.53 0.005 286)",
+       "iconoPath": "",
+       "catColor": "",
+       "iconoBg": ""
+      }
+     ]
+    }
+   ]
+  },
+  "meta": {
+   "datos": [],
+   "rotuloLista": "Aportes",
+   "vacioTexto": "",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Viaje",
+   "hero": {
+    "iconoPath": "M4 8h16v12H4zM9 8V5h6v3M4 14h16",
+    "iconoColor": "oklch(0.52 0.14 300)",
+    "iconoBg": "oklab(0.52 0.0700001 -0.121244 / 0.14)",
+    "rotulo": "Llevas ahorrado",
+    "valor": "RD$25,000",
+    "color": "oklch(0.52 0.14 300)",
+    "pct": 25,
+    "colorBarra": "oklch(0.52 0.14 300)",
+    "pieIzq": "25% · Te falta RD$75,000",
+    "pieDer": "Apartas cada mes RD$5,000",
+    "nota": "15 meses a este ritmo"
+   },
+   "botones": [
+    {
+     "label": "Aportar RD$5,000",
+     "estilo": "acento",
+     "abre": "aporte",
+     "cual": 93,
+     "monto": 5000,
+     "conQue": ""
+    },
+    {
+     "label": "Editar la meta",
+     "estilo": "contorno"
+    }
+   ],
+   "tramos": [
+    {
+     "label": "",
+     "total": "",
+     "items": [
+      {
+       "concepto": "Ya lo tenías apartado",
+       "sub": "",
+       "montoFmt": "RD$25,000",
+       "color": "oklch(0.53 0.005 286)",
+       "iconoPath": "",
+       "catColor": "",
+       "iconoBg": ""
+      }
+     ]
+    }
+   ]
+  },
+  "categoria": {
+   "datos": [
+    {
+     "label": "Movimientos",
+     "valor": "0",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Promedio por movimiento",
+     "valor": "RD$0",
+     "color": "oklch(0.22 0.004 286)"
+    },
+    {
+     "label": "Al mes de media",
+     "valor": "RD$0",
+     "color": "oklch(0.22 0.004 286)"
+    }
+   ],
+   "rotuloLista": "Movimientos de la categoría",
+   "vacioTexto": "Aquí saldrá todo lo que anotes en esta categoría.",
+   "acciones": [
+    {
+     "indice": 0,
+     "label": "Editar",
+     "peligro": false
+    },
+    {
+     "indice": 1,
+     "label": "Eliminar",
+     "peligro": true
+    }
+   ],
+   "titulo": "Vivienda",
+   "chips": [
+    {
+     "indice": 0,
+     "label": "Este mes",
+     "puesta": true
+    },
+    {
+     "indice": 1,
+     "label": "3 meses",
+     "puesta": false
+    },
+    {
+     "indice": 2,
+     "label": "6 meses",
+     "puesta": false
+    },
+    {
+     "indice": 3,
+     "label": "12 meses",
+     "puesta": false
+    },
+    {
+     "indice": 4,
+     "label": "Todo",
+     "puesta": false
+    }
+   ],
+   "hero": {
+    "iconoPath": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+    "iconoColor": "oklch(0.53 0.005 286)",
+    "iconoBg": "oklab(0.46 -0.0284701 -0.106252 / 0.14)",
+    "rotulo": "Gastado este mes",
+    "valor": "RD$0",
+    "color": "oklch(0.22 0.004 286)",
+    "pct": -1,
+    "colorBarra": "oklch(0.52 0.13 152)",
+    "pieIzq": "",
+    "pieDer": "",
+    "nota": "Nada anotado en este periodo"
+   },
+   "botones": [
+    {
+     "label": "Nuevo gasto aquí",
+     "estilo": "acento",
+     "abre": "movCat",
+     "cual": 0,
+     "monto": 0,
+     "conQue": "Vivienda"
+    },
+    {
+     "label": "Cambiar presupuesto",
+     "estilo": "contorno"
+    }
+   ],
+   "barras": null,
+   "tramos": []
+  }
+ }
+}

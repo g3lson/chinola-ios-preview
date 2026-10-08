@@ -1,0 +1,236 @@
+{
+ "nota": "Generado leyendo lo que la web dibuja para CADA tipo de tarjeta del panel, con la app en marcha. El Swift y el Kotlin se generan de aquí: si la web cambia un título, se regenera y los dos siguen.",
+ "tarjetas": {
+  "kpi-balance": {
+   "titulo": "Balance del mes",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-ingresos": {
+   "titulo": "Ingresos del mes",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-gastos": {
+   "titulo": "Gastos del mes",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-deuda": {
+   "titulo": "Deuda total",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-patrimonio": {
+   "titulo": "Patrimonio",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "texto-consejo": {
+   "titulo": "Consejo de Chino",
+   "periodo": "",
+   "clase": "texto",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "barras-categorias": {
+   "titulo": "Gastos por categoría",
+   "periodo": "",
+   "clase": "barras",
+   "puedeChica": false,
+   "vistas": [
+    "barras",
+    "dona",
+    "lista"
+   ]
+  },
+  "columnas-tendencia": {
+   "titulo": "Ingresos y gastos",
+   "periodo": "6 meses",
+   "clase": "columnas",
+   "puedeChica": false,
+   "vistas": []
+  },
+  "dona-mezcla": {
+   "titulo": "Mezcla de gastos",
+   "periodo": "",
+   "clase": "dona",
+   "puedeChica": false,
+   "vistas": []
+  },
+  "serie-tiempo": {
+   "titulo": "Evolución en el tiempo",
+   "periodo": "",
+   "clase": "serie",
+   "puedeChica": false,
+   "vistas": []
+  },
+  "lista-recientes": {
+   "titulo": "Últimos movimientos",
+   "periodo": "",
+   "clase": "lista",
+   "puedeChica": false,
+   "vistas": [
+    "5",
+    "3"
+   ]
+  },
+  "lista-recordatorios": {
+   "titulo": "Recordatorios de pago",
+   "periodo": "",
+   "clase": "lista",
+   "puedeChica": false,
+   "vistas": []
+  },
+  "lista-metas": {
+   "titulo": "Avance de metas",
+   "periodo": "",
+   "clase": "lista",
+   "puedeChica": false,
+   "vistas": []
+  },
+  "kpi-ahorro": {
+   "titulo": "Ahorro del mes",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-diario": {
+   "titulo": "Gasto por día",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-vs-mes": {
+   "titulo": "Frente al mes pasado",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-presupuesto": {
+   "titulo": "Presupuesto usado",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-cuotas": {
+   "titulo": "Cuotas fijas",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-racha": {
+   "titulo": "Racha anotando",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "barras-presupuesto": {
+   "titulo": "Presupuesto por categoría",
+   "periodo": "",
+   "clase": "barras",
+   "puedeChica": false,
+   "vistas": []
+  },
+  "barras-medios": {
+   "titulo": "Gastos por medio de pago",
+   "periodo": "",
+   "clase": "barras",
+   "puedeChica": false,
+   "vistas": []
+  },
+  "lista-top": {
+   "titulo": "Mayores gastos del mes",
+   "periodo": "",
+   "clase": "lista",
+   "puedeChica": false,
+   "vistas": []
+  },
+  "lista-cuentas": {
+   "titulo": "Saldo por cuenta",
+   "periodo": "",
+   "clase": "lista",
+   "puedeChica": false,
+   "vistas": []
+  },
+  "lista-tarjetas": {
+   "titulo": "Cupo de las tarjetas",
+   "periodo": "",
+   "clase": "lista",
+   "puedeChica": false,
+   "vistas": []
+  },
+  "kpi-queda-dia": {
+   "titulo": "Te queda por día",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-cierre": {
+   "titulo": "A este ritmo cierras en",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-proximo": {
+   "titulo": "Próximo pago",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-sin-gastar": {
+   "titulo": "Días sin gastar",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-comprometido": {
+   "titulo": "Fijo frente a variable",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-ahorro-ano": {
+   "titulo": "Ahorrado este año",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "kpi-ano-pasado": {
+   "titulo": "Frente al año pasado",
+   "periodo": "",
+   "clase": "cifra",
+   "puedeChica": true,
+   "vistas": []
+  },
+  "lista-suscripciones": {
+   "titulo": "Lo que se repite cada mes",
+   "periodo": "",
+   "clase": "lista",
+   "puedeChica": false,
+   "vistas": []
+  }
+ }
+}

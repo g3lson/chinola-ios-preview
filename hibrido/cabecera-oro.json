@@ -1,0 +1,242 @@
+{
+ "nota": "Generado leyendo lo que la web manda para CADA diseño de cabecera, con la app en marcha. Es la referencia para armarla en el teléfono: los rótulos, qué piezas lleva cada uno y de dónde sale su paleta.",
+ "disenos": {
+  "auto": {
+   "diseno": "auto",
+   "rotulo": "te queda este mes",
+   "balanceRotulo": "Balance del mes",
+   "ingRotulo": "Ingresos",
+   "gasRotulo": "Gastos",
+   "grande": false,
+   "tarjeta": false,
+   "frase": "",
+   "hayUso": false,
+   "usadoLabel": "",
+   "mesLargo": "oct 2026",
+   "periodoCorto": "Este mes",
+   "mesCorto": "oct 2026",
+   "fondo": {
+    "tipo": "grad",
+    "angulo": 150,
+    "paradas": [
+     {
+      "color": "rgb(247, 201, 72)",
+      "pos": 0
+     },
+     {
+      "color": "rgb(236, 154, 46)",
+      "pos": 0.55
+     },
+     {
+      "color": "rgb(63, 157, 84)",
+      "pos": 1
+     }
+    ]
+   },
+   "tinta": "rgb(43, 32, 16)",
+   "gris": "rgba(0, 0, 0, 0.72)",
+   "pastilla": "rgba(0, 0, 0, 0.13)",
+   "pastillaFuerte": "rgba(0, 0, 0, 0.22)",
+   "meses": [
+    "ago",
+    "sept",
+    "octubre*",
+    "nov",
+    "Rango"
+   ],
+   "fichas": []
+  },
+  "viva": {
+   "diseno": "viva",
+   "rotulo": "te queda este mes",
+   "balanceRotulo": "Balance del mes",
+   "ingRotulo": "Ingresos",
+   "gasRotulo": "Gastos",
+   "grande": false,
+   "tarjeta": false,
+   "frase": "Después de gastos y ahorro",
+   "hayUso": false,
+   "usadoLabel": "",
+   "mesLargo": "oct 2026",
+   "periodoCorto": "Este mes",
+   "mesCorto": "oct 2026",
+   "fondo": {
+    "tipo": "color",
+    "color": "oklch(0.957 0.004 286)"
+   },
+   "tinta": "oklch(0.22 0.004 286)",
+   "gris": "oklch(0.53 0.005 286)",
+   "pastilla": "oklch(0.925 0.005 286)",
+   "pastillaFuerte": "oklch(0.87 0.004 286)",
+   "meses": [],
+   "fichas": []
+  },
+  "detallada": {
+   "diseno": "detallada",
+   "rotulo": "te queda este mes",
+   "balanceRotulo": "Balance del mes",
+   "ingRotulo": "Ingresos",
+   "gasRotulo": "Gastos",
+   "grande": true,
+   "tarjeta": false,
+   "frase": "",
+   "hayUso": false,
+   "usadoLabel": "",
+   "mesLargo": "Octubre",
+   "periodoCorto": "Este mes",
+   "mesCorto": "oct 2026",
+   "fondo": {
+    "tipo": "grad",
+    "angulo": 150,
+    "paradas": [
+     {
+      "color": "rgb(247, 201, 72)",
+      "pos": 0
+     },
+     {
+      "color": "rgb(236, 154, 46)",
+      "pos": 0.55
+     },
+     {
+      "color": "rgb(63, 157, 84)",
+      "pos": 1
+     }
+    ]
+   },
+   "tinta": "rgb(43, 32, 16)",
+   "gris": "rgba(0, 0, 0, 0.72)",
+   "pastilla": "rgba(0, 0, 0, 0.13)",
+   "pastillaFuerte": "rgba(0, 0, 0, 0.22)",
+   "meses": [],
+   "fichas": []
+  },
+  "clasica": {
+   "diseno": "clasica",
+   "rotulo": "",
+   "balanceRotulo": "Balance del mes",
+   "ingRotulo": "Ingresos",
+   "gasRotulo": "Gastos",
+   "grande": false,
+   "tarjeta": false,
+   "frase": "",
+   "hayUso": false,
+   "usadoLabel": "",
+   "mesLargo": "oct 2026",
+   "periodoCorto": "Este mes",
+   "mesCorto": "oct 2026",
+   "fondo": {
+    "tipo": "grad",
+    "angulo": 150,
+    "paradas": [
+     {
+      "color": "rgb(247, 201, 72)",
+      "pos": 0
+     },
+     {
+      "color": "rgb(236, 154, 46)",
+      "pos": 0.55
+     },
+     {
+      "color": "rgb(63, 157, 84)",
+      "pos": 1
+     }
+    ]
+   },
+   "tinta": "rgb(43, 32, 16)",
+   "gris": "rgba(0, 0, 0, 0.72)",
+   "pastilla": "rgba(0, 0, 0, 0.13)",
+   "pastillaFuerte": "rgba(0, 0, 0, 0.22)",
+   "meses": [],
+   "fichas": []
+  },
+  "fina": {
+   "diseno": "fina",
+   "rotulo": "",
+   "balanceRotulo": "Balance del mes",
+   "ingRotulo": "Ingresos",
+   "gasRotulo": "Gastos",
+   "grande": false,
+   "tarjeta": false,
+   "frase": "",
+   "hayUso": false,
+   "usadoLabel": "",
+   "mesLargo": "oct 2026",
+   "periodoCorto": "Este mes",
+   "mesCorto": "oct 2026",
+   "fondo": {
+    "tipo": "grad",
+    "angulo": 150,
+    "paradas": [
+     {
+      "color": "rgb(247, 201, 72)",
+      "pos": 0
+     },
+     {
+      "color": "rgb(236, 154, 46)",
+      "pos": 0.55
+     },
+     {
+      "color": "rgb(63, 157, 84)",
+      "pos": 1
+     }
+    ]
+   },
+   "tinta": "rgb(43, 32, 16)",
+   "gris": "rgba(0, 0, 0, 0.72)",
+   "pastilla": "rgba(0, 0, 0, 0.13)",
+   "pastillaFuerte": "rgba(0, 0, 0, 0.22)",
+   "meses": [],
+   "fichas": []
+  },
+  "clara": {
+   "diseno": "clara",
+   "rotulo": "",
+   "balanceRotulo": "Balance del mes",
+   "ingRotulo": "Ingresos",
+   "gasRotulo": "Gastos",
+   "grande": false,
+   "tarjeta": false,
+   "frase": "",
+   "hayUso": false,
+   "usadoLabel": "",
+   "mesLargo": "oct 2026",
+   "periodoCorto": "Este mes",
+   "mesCorto": "oct 2026",
+   "fondo": {
+    "tipo": "color",
+    "color": "rgb(255, 255, 255)"
+   },
+   "tinta": "oklch(0.22 0.004 286)",
+   "gris": "oklch(0.53 0.005 286)",
+   "pastilla": "oklch(0.925 0.005 286)",
+   "pastillaFuerte": "oklch(0.87 0.004 286)",
+   "meses": [],
+   "fichas": []
+  },
+  "minima": {
+   "diseno": "minima",
+   "rotulo": "",
+   "balanceRotulo": "Balance del mes",
+   "ingRotulo": "Ingresos",
+   "gasRotulo": "Gastos",
+   "grande": false,
+   "tarjeta": false,
+   "frase": "",
+   "hayUso": false,
+   "usadoLabel": "",
+   "mesLargo": "oct 2026",
+   "periodoCorto": "Este mes",
+   "mesCorto": "oct 2026",
+   "fondo": {
+    "tipo": "color",
+    "color": "rgb(255, 255, 255)"
+   },
+   "tinta": "oklch(0.22 0.004 286)",
+   "gris": "oklch(0.53 0.005 286)",
+   "pastilla": "oklch(0.925 0.005 286)",
+   "pastillaFuerte": "oklch(0.87 0.004 286)",
+   "meses": [],
+   "fichas": []
+  }
+ }
+}

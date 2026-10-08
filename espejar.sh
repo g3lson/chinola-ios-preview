@@ -30,11 +30,15 @@ done
 
 # Y LOS FICHEROS DE ORO, que son la otra mitad: el Swift se ejecuta contra ellos
 # dentro del simulador y el banco compara los dos árboles.
-for n in calculo-oro fusion-oro periodo-oro; do
-  o="$APP/test/$n.json"
+#
+# TODOS los que haya, como el Swift: aquí había una LISTA escrita a mano —la
+# misma trampa que el comentario de arriba avisa para el Swift—, y el primer
+# fichero de oro nuevo se habría quedado fuera sin que nadie dijera nada.
+for o in "$APP"/test/*-oro.json; do
   [ -f "$o" ] || continue
-  if ! cmp -s "$o" "$AQUI/hibrido/$n.json"; then
-    cp "$o" "$AQUI/hibrido/$n.json"; echo "  oro   · $n.json"; copiados=$((copiados + 1))
+  n="$(basename "$o")"
+  if ! cmp -s "$o" "$AQUI/hibrido/$n"; then
+    cp "$o" "$AQUI/hibrido/$n"; echo "  oro   · $n"; copiados=$((copiados + 1))
   fi
 done
 

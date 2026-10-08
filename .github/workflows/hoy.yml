@@ -17,7 +17,7 @@ on:
     # comprueba es un cambio que nadie mira.
     paths: ['hibrido/app-clasico/**', 'hibrido/overlay/**',
             'hibrido/siembra.js', 'hibrido/calculo-oro.json', 'hibrido/fusion-oro.json',
-            'hibrido/periodo-oro.json',
+            'hibrido/periodo-oro.json', 'hibrido/animo-oro.json',
             'sondas/**', '.github/workflows/hoy.yml']
 
 jobs:
@@ -63,6 +63,10 @@ jobs:
           # fácil se tuerce sin que se note —una casilla corrida sale completa y
           # creíble— y una expresión regular sobre el Swift no lo ve.
           cp ../hibrido/periodo-oro.json www/periodo-oro.json
+          # Y EL DE QUÉ CARA PONE CHINO: seis ramas en un orden que es la regla.
+          # Una rama en otro orden saca igual de creíble una cara, la que sea, y
+          # ni una captura ni una expresión regular sobre el Swift lo ven.
+          cp ../hibrido/animo-oro.json www/animo-oro.json
           python3 - <<'PYX'
           import re, pathlib
           p = pathlib.Path('www/index.html')
@@ -526,7 +530,7 @@ jobs:
           xcrun simctl spawn "$UDID" log show --last 2m --style compact \
             --predicate 'eventMessage CONTAINS "CNORO"' 2>/dev/null > /tmp/oro.txt || true
           python3 ../sondas/oro-cuadra.py www/calculo-oro.json www/fusion-oro.json \
-            www/periodo-oro.json /tmp/oro.txt
+            www/periodo-oro.json www/animo-oro.json /tmp/oro.txt
 
           # EL CICLO DE SINCRONIZACIÓN, ENTERO, contra el servidor de mentira.
           #

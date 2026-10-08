@@ -117,6 +117,7 @@ enum CNTemaArma {
         f.tarjetaCuentas = s("tarjetaCuentas", "clasica")
         f.colorPatrimonio = s("colorPatrimonio", "tema")
         f.metaPatrimonio = ((a["metaPatrimonio"] as? NSNumber)?.doubleValue) ?? 0
+        f.personaje = s("personaje", "auto")
         f.planAro = b("planAro")
         f.planPestanas = s("planPestanas", "pastillas")
         return f

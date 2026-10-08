@@ -1,0 +1,769 @@
+{
+ "nota": "Medido con la app EN MARCHA, no deducido: se siembran tres presupuestos —uno por debajo, uno pasado y categorías sin tope— y una meta, y se le pide a la web el modelo del Plan en sus dos pestañas. Para rehacerlo, ver la cabecera de test/el-plan-se-arma-solo.test.js.",
+ "planes": {
+  "presupuesto": {
+   "listo": true,
+   "titulo": "Plan",
+   "tab": "presupuesto",
+   "tabs": [
+    {
+     "indice": 0,
+     "label": "Presupuesto",
+     "puesta": true
+    },
+    {
+     "indice": 1,
+     "label": "Metas",
+     "puesta": false
+    }
+   ],
+   "puedeEditar": true,
+   "puedeRegistrar": true,
+   "presGastado": "RD$4,200",
+   "presDe": "de",
+   "presTotal": "RD$29,000",
+   "presPct": 14,
+   "presColor": "oklch(0.52 0.13 152)",
+   "presNota": "Una categoría se pasó del presupuesto: Transporte",
+   "presAvisoTinta": "oklch(0.66 0.14 70)",
+   "presQueda": "RD$24,800",
+   "presExcedido": false,
+   "presLimiteHay": true,
+   "presDias": 23,
+   "tituloCategorias": "Categorías",
+   "rotuloNuevaCat": "Categoría",
+   "tituloTusMetas": "Tus metas",
+   "rotuloNuevaMeta": "Meta",
+   "filas": [
+    {
+     "indice": 0,
+     "nombre": "Vivienda",
+     "queda": "RD$20,000",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 0
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 1
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 2
+      }
+     ],
+     "pie": "RD$0 de RD$20,000",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+     "catColor": "oklch(0.46 0.11 255)",
+     "iconoBg": "oklab(0.46 -0.0284701 -0.106252 / 0.14)"
+    },
+    {
+     "indice": 1,
+     "nombre": "Alimentación",
+     "queda": "RD$6,800",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 3
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 4
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 5
+      }
+     ],
+     "pie": "RD$1,200 de RD$8,000",
+     "pct": 15,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+     "catColor": "oklch(0.6 0.13 95)",
+     "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.14)"
+    },
+    {
+     "indice": 2,
+     "nombre": "Servicios",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 6
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 7
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 8
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M13 2 4 14h6l-1 8 9-12h-6z",
+     "catColor": "oklch(0.46 0.11 200)",
+     "iconoBg": "oklab(0.46 -0.103366 -0.0376222 / 0.14)"
+    },
+    {
+     "indice": 3,
+     "nombre": "Transporte",
+     "queda": "−RD$2,000",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 9
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 10
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 11
+      }
+     ],
+     "pie": "RD$3,000 de RD$1,000",
+     "pct": 100,
+     "color": "oklch(0.62 0.16 30)",
+     "iconoPath": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+     "catColor": "oklch(0.56 0.16 30)",
+     "iconoBg": "oklab(0.56 0.138564 0.08 / 0.14)"
+    },
+    {
+     "indice": 4,
+     "nombre": "Educación",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 12
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 13
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 14
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M2 9l10-4 10 4-10 4zM6 11v5c0 2 3 3 6 3s6-1 6-3v-5",
+     "catColor": "oklch(0.5 0.14 300)",
+     "iconoBg": "oklab(0.5 0.0700001 -0.121244 / 0.14)"
+    },
+    {
+     "indice": 5,
+     "nombre": "Salud",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 15
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 16
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 17
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M12 7v10M7 12h10M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18",
+     "catColor": "oklch(0.5 0.12 175)",
+     "iconoBg": "oklab(0.5 -0.119543 0.0104587 / 0.14)"
+    },
+    {
+     "indice": 6,
+     "nombre": "Donaciones",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 18
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 19
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 20
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M12 3v6M9 6h6M6 21V11l6-4 6 4v10z",
+     "catColor": "oklch(0.46 0.12 290)",
+     "iconoBg": "oklab(0.46 0.0410424 -0.112763 / 0.14)"
+    },
+    {
+     "indice": 7,
+     "nombre": "Entretenimiento",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 21
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 22
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 23
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M3 6h18v10H3zM8 20h8M8 6v10M16 6v10",
+     "catColor": "oklch(0.58 0.14 60)",
+     "iconoBg": "oklab(0.58 0.07 0.121244 / 0.14)"
+    },
+    {
+     "indice": 8,
+     "nombre": "Deudas",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 24
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 25
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 26
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M2 6h20v12H2zM2 10h20M6 15h4",
+     "catColor": "oklch(0.5 0.15 10)",
+     "iconoBg": "oklab(0.5 0.147721 0.0260472 / 0.14)"
+    },
+    {
+     "indice": 9,
+     "nombre": "Personal",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 27
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 28
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 29
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0",
+     "catColor": "oklch(0.44 0.11 230)",
+     "iconoBg": "oklab(0.44 -0.0707066 -0.0842649 / 0.14)"
+    },
+    {
+     "indice": 10,
+     "nombre": "Otros",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 30
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 31
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 32
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M6 12h.01M12 12h.01M18 12h.01",
+     "catColor": "oklch(0.32 0.03 155)",
+     "iconoBg": "oklab(0.32 -0.0271892 0.0126785 / 0.14)"
+    }
+   ],
+   "metas": [
+    {
+     "indice": 0,
+     "idm": 93,
+     "nombre": "Viaje familiar",
+     "proyeccion": "Listo en ~15 meses",
+     "pctLabel": "25%",
+     "pct": 25,
+     "color": "oklch(0.52 0.14 300)",
+     "iconoPath": "M4 8h16v12H4zM9 8V5h6v3M4 14h16",
+     "iconoBg": "oklab(0.52 0.0700001 -0.121244 / 0.14)",
+     "pie": "RD$25,000 de RD$100,000",
+     "falta": "Falta RD$75,000",
+     "aportar": "Aportar RD$5,000"
+    }
+   ]
+  },
+  "metas": {
+   "listo": true,
+   "titulo": "Plan",
+   "tab": "metas",
+   "tabs": [
+    {
+     "indice": 0,
+     "label": "Presupuesto",
+     "puesta": false
+    },
+    {
+     "indice": 1,
+     "label": "Metas",
+     "puesta": true
+    }
+   ],
+   "puedeEditar": true,
+   "puedeRegistrar": true,
+   "presGastado": "RD$4,200",
+   "presDe": "de",
+   "presTotal": "RD$29,000",
+   "presPct": 14,
+   "presColor": "oklch(0.52 0.13 152)",
+   "presNota": "Una categoría se pasó del presupuesto: Transporte",
+   "presAvisoTinta": "oklch(0.66 0.14 70)",
+   "presQueda": "RD$24,800",
+   "presExcedido": false,
+   "presLimiteHay": true,
+   "presDias": 23,
+   "tituloCategorias": "Categorías",
+   "rotuloNuevaCat": "Categoría",
+   "tituloTusMetas": "Tus metas",
+   "rotuloNuevaMeta": "Meta",
+   "filas": [
+    {
+     "indice": 0,
+     "nombre": "Vivienda",
+     "queda": "RD$20,000",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 0
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 1
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 2
+      }
+     ],
+     "pie": "RD$0 de RD$20,000",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+     "catColor": "oklch(0.46 0.11 255)",
+     "iconoBg": "oklab(0.46 -0.0284701 -0.106252 / 0.14)"
+    },
+    {
+     "indice": 1,
+     "nombre": "Alimentación",
+     "queda": "RD$6,800",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 3
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 4
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 5
+      }
+     ],
+     "pie": "RD$1,200 de RD$8,000",
+     "pct": 15,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M6 3v8a3 3 0 0 0 6 0V3M9 11v10M17 3c-2 2-2 6 0 8v10",
+     "catColor": "oklch(0.6 0.13 95)",
+     "iconoBg": "oklab(0.6 -0.0113303 0.129505 / 0.14)"
+    },
+    {
+     "indice": 2,
+     "nombre": "Servicios",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 6
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 7
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 8
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M13 2 4 14h6l-1 8 9-12h-6z",
+     "catColor": "oklch(0.46 0.11 200)",
+     "iconoBg": "oklab(0.46 -0.103366 -0.0376222 / 0.14)"
+    },
+    {
+     "indice": 3,
+     "nombre": "Transporte",
+     "queda": "−RD$2,000",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 9
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 10
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 11
+      }
+     ],
+     "pie": "RD$3,000 de RD$1,000",
+     "pct": 100,
+     "color": "oklch(0.62 0.16 30)",
+     "iconoPath": "M4 16v-4l2-5h12l2 5v4M4 16h16M7 19a1 1 0 1 0 2 0M15 19a1 1 0 1 0 2 0",
+     "catColor": "oklch(0.56 0.16 30)",
+     "iconoBg": "oklab(0.56 0.138564 0.08 / 0.14)"
+    },
+    {
+     "indice": 4,
+     "nombre": "Educación",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 12
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 13
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 14
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M2 9l10-4 10 4-10 4zM6 11v5c0 2 3 3 6 3s6-1 6-3v-5",
+     "catColor": "oklch(0.5 0.14 300)",
+     "iconoBg": "oklab(0.5 0.0700001 -0.121244 / 0.14)"
+    },
+    {
+     "indice": 5,
+     "nombre": "Salud",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 15
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 16
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 17
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M12 7v10M7 12h10M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18",
+     "catColor": "oklch(0.5 0.12 175)",
+     "iconoBg": "oklab(0.5 -0.119543 0.0104587 / 0.14)"
+    },
+    {
+     "indice": 6,
+     "nombre": "Donaciones",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 18
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 19
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 20
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M12 3v6M9 6h6M6 21V11l6-4 6 4v10z",
+     "catColor": "oklch(0.46 0.12 290)",
+     "iconoBg": "oklab(0.46 0.0410424 -0.112763 / 0.14)"
+    },
+    {
+     "indice": 7,
+     "nombre": "Entretenimiento",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 21
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 22
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 23
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M3 6h18v10H3zM8 20h8M8 6v10M16 6v10",
+     "catColor": "oklch(0.58 0.14 60)",
+     "iconoBg": "oklab(0.58 0.07 0.121244 / 0.14)"
+    },
+    {
+     "indice": 8,
+     "nombre": "Deudas",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 24
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 25
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 26
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M2 6h20v12H2zM2 10h20M6 15h4",
+     "catColor": "oklch(0.5 0.15 10)",
+     "iconoBg": "oklab(0.5 0.147721 0.0260472 / 0.14)"
+    },
+    {
+     "indice": 9,
+     "nombre": "Personal",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 27
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 28
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 29
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0",
+     "catColor": "oklch(0.44 0.11 230)",
+     "iconoBg": "oklab(0.44 -0.0707066 -0.0842649 / 0.14)"
+    },
+    {
+     "indice": 10,
+     "nombre": "Otros",
+     "queda": "",
+     "acciones": [
+      {
+       "label": "Presupuesto",
+       "icono": "grafico",
+       "accion": 30
+      },
+      {
+       "label": "Editar",
+       "icono": "lapiz",
+       "peligro": false,
+       "accion": 31
+      },
+      {
+       "label": "Eliminar",
+       "icono": "papelera",
+       "peligro": true,
+       "accion": 32
+      }
+     ],
+     "pie": "RD$0 · sin presupuesto",
+     "pct": 0,
+     "color": "oklch(0.52 0.13 152)",
+     "iconoPath": "M6 12h.01M12 12h.01M18 12h.01",
+     "catColor": "oklch(0.32 0.03 155)",
+     "iconoBg": "oklab(0.32 -0.0271892 0.0126785 / 0.14)"
+    }
+   ],
+   "metas": [
+    {
+     "indice": 0,
+     "idm": 93,
+     "nombre": "Viaje familiar",
+     "proyeccion": "Listo en ~15 meses",
+     "pctLabel": "25%",
+     "pct": 25,
+     "color": "oklch(0.52 0.14 300)",
+     "iconoPath": "M4 8h16v12H4zM9 8V5h6v3M4 14h16",
+     "iconoBg": "oklab(0.52 0.0700001 -0.121244 / 0.14)",
+     "pie": "RD$25,000 de RD$100,000",
+     "falta": "Falta RD$75,000",
+     "aportar": "Aportar RD$5,000"
+    }
+   ]
+  }
+ }
+}

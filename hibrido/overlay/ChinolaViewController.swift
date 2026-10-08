@@ -1520,7 +1520,6 @@ class ChinolaViewController: CAPBridgeViewController {
     }
     /// El dibujo de Chino y los pagos que vienen, para el icono del perfil.
     /// EL SELLO DEL DIBUJO. Dice qué Chino toca sin mandar el dibujo.
-    private var selloMascota = ""
 
     /// Los avisos de Chino, y su dibujo SOLO si cambió.
     ///
@@ -1530,18 +1529,14 @@ class ChinolaViewController: CAPBridgeViewController {
     /// primero cuál toca (unos caracteres) y solo se pide el dibujo cuando de
     /// verdad es otro.
     fileprivate func traerMascota() {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaMascotaSello && window.__chinolaMascotaSello()) || ''") { [weak self] res, _ in
-            guard let s = self else { return }
-            let sello = (res as? String) ?? ""
-            // Sin sello (una web vieja) se pide con dibujo, como siempre.
-            let conDibujo = sello.isEmpty || sello != s.selloMascota || CNDatos.shared.mascota?.chinolo.isEmpty != false
-            if !sello.isEmpty { s.selloMascota = sello }
-            s.bridge?.webView?.evaluateJavaScript("(window.__chinolaMascotaJSON && window.__chinolaMascotaJSON(\(conDibujo))) || ''") { r2, _ in
-                guard let json = r2 as? String, json.count > 2 else { return }
-                CNDatos.shared.cargarMascota(json: json)
-                // Y al menú: el icono de Perfil es Chino.
-                s.barra.ponerChinolo(CNDatos.shared.mascota?.chinolo ?? "")
-            }
+        // SIEMPRE SIN DIBUJO. El `false` es lo único que queda de un baile de
+        // dos preguntas: antes se preguntaba primero un sello —unos caracteres—
+        // para no pedir el dibujo cuando no había cambiado, porque pedirlo eran
+        // 106 KB por el puente. Ahora el personaje lo dibuja el teléfono y lo
+        // único que hace falta del modelo es la clave del ánimo.
+        bridge?.webView?.evaluateJavaScript("(window.__chinolaMascotaJSON && window.__chinolaMascotaJSON(false)) || ''") { res, _ in
+            guard let json = res as? String, json.count > 2 else { return }
+            CNDatos.shared.cargarMascota(json: json)
         }
     }
 
@@ -3884,7 +3879,6 @@ class ChinolaViewController: CAPBridgeViewController {
             // El icono de Perfil (Chino o la silueta) se vuelve a poner con el
             // tema: es aquí donde llega el cambio de ajuste, y antes no se veía
             // hasta cambiar de pestaña.
-            s.barra.ponerChinolo(CNDatos.shared.mascota?.chinolo ?? "")
             // Y el modo claro/oscuro del sistema (vidrio, menús, barra de
             // estado) en la MISMA pasada que los colores: antes llegaba por
             // otro camino, un rato después, y el cambio de tema se veía en dos

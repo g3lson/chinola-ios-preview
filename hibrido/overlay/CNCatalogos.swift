@@ -442,6 +442,24 @@ enum CNCatalogos {
         "triste": (d: "M47 79q13 -11 26 0", color: "#2a1f10", grosor: 4.5)
     ]
 
+    /**
+     * Y LAS CINCO REGLAS QUE DECIDEN QUÉ CARA PONE.
+     *
+     * `pronto`: a cuántos días se considera que un pago está encima.
+     * `pocos`: por debajo de cuántos movimientos el mes está tranquilo.
+     * `activo`: a partir de cuántos ya no lo está —es lo que separa
+     * «tranquilo» de «vas bien», y sin él «vas bien» no salía NUNCA—.
+     * `yaCasi`: desde qué día del mes tiene sentido celebrar.
+     * `holgado`: cuánto de lo que entró tiene que quedar libre.
+     */
+    static let reglasDelAnimo: (pronto: Int, pocos: Int, activo: Int, yaCasi: Int, holgado: Double) = (
+        pronto: 5,
+        pocos: 3,
+        activo: 10,
+        yaCasi: 24,
+        holgado: 0.25
+    )
+
     /// Y la risa, que es la única RELLENA: la boca abierta y la lengua.
     static let risaDeChino: [(d: String, color: String)] = [
         (d: "M45 71q15 20 30 0z", color: "#2a1f10"),

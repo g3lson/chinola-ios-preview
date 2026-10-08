@@ -282,6 +282,12 @@ struct CNFormato {
     /// Qué grupos de Cuentas están plegados. Venía dentro del modelo de esa
     /// pantalla; sin él, armándola aquí, lo que alguien plegó reaparecía.
     var plegadoCuentas = false; var plegadoTarjetas = false; var plegadoPrestamos = false
+    /// QUÉ CARA PONE CHINO: «auto» —lo de fábrica— o una de las cinco a mano.
+    ///
+    /// La elección, no el ánimo: con el ánimo ya resuelto, la subpantalla del
+    /// personaje marcaría «Fiesta» a quien tiene puesto el automático y le ha
+    /// salido fiesta este mes, y al día siguiente marcaría otra.
+    var personaje = "auto"
     /// El presupuesto en aro en vez de en barra.
     var planAro = false
     /// Cómo se ven las pestañas del Plan: sistema, subrayado o pastillas.
@@ -1975,18 +1981,21 @@ final class CNDatos: ObservableObject {
         seccion = sec
     }
     func cargarTour(json: String) { tour = CNTour.desde(json: json) }
-    /// Los dos PNG de Chino, que casi nunca cambian.
-    ///
-    /// Pesan 106 KB entre los dos y viajaban por el puente en cada refresco. Se
-    /// guardan aquí y se vuelven a pegar cuando el modelo llega sin ellos.
-    private var dibujoChino = ""
+    /**
+     * SIN EL DIBUJO DENTRO.
+     *
+     * Aquí vivían los dos PNG de Chino —106 KB— con todo su aparato: se
+     * guardaban en memoria y se volvían a pegar cuando el modelo llegaba sin
+     * ellos, porque pedirlos en cada refresco era mandar 106 KB por el puente
+     * cada vez que alguien tocaba una pestaña.
+     *
+     * Ahora el personaje lo dibuja el teléfono y el modelo trae solo la clave
+     * del ánimo: cinco letras. No hay nada que guardar ni que volver a pegar, y
+     * de paso el modelo entero cabe en el almacén sin pensarlo.
+     */
     func cargarMascota(json: String) {
-        guard var m = CNMascota.desde(json: json) else { return }
-        // Con dibujo dentro: es lo que hace que al abrir se vea Chino y no un
-        // hueco. Sin dibujo llega cuando no cambió, y ese no vale para guardar.
-        if !m.chinolo.isEmpty { guarda("mascota", json) }
-        // Si viene sin dibujo es que no cambió: se le pega el que ya había.
-        if m.chinolo.isEmpty { m.chinolo = dibujoChino } else { dibujoChino = m.chinolo }
+        guard let m = CNMascota.desde(json: json) else { return }
+        guarda("mascota", json)
         mascota = m
     }
     /// La puerta se vuelve a pedir cada poco mientras está puesta; si la web
@@ -2031,6 +2040,19 @@ final class CNDatos: ObservableObject {
     @Published var mesActivo: String = String(cnHoy().prefix(7))
     @Published var desdeActivo: String = ""
     @Published var hastaActivo: String = ""
+    /**
+     * QUÉ CARA PONE CHINO, decidida aquí.
+     *
+     * La elegía la web y llegaba de dibujo hecho —un PNG por el puente—, así
+     * que la mascota, su cara en la charla y la tarjeta de Chino se quedaban en
+     * blanco hasta que la web arrancaba, calculaba y contestaba.
+     *
+     * Con el MES QUE SE ESTÁ MIRANDO y no con el de hoy: la cara cuenta cómo
+     * va ESE mes, y en uno pasado se juzga cerrado.
+     */
+    var animoDeChino: String {
+        CNAnimo.puesto(formato.personaje, libreta: libreta, mes: mesActivo)
+    }
     var periodoCalculo: CNCalculo.Periodo {
         CNCalculo.Periodo(mes: mesActivo,
                           desde: desdeActivo.isEmpty ? nil : desdeActivo,
@@ -3399,18 +3421,15 @@ final class CNBarraNativa: NSObject, UITabBarDelegate {
         return img.withRenderingMode(.alwaysOriginal)
     }
 
-    /// EL ICONO DE PERFIL: EL DE SIEMPRE, COMO LOS DEMÁS.
-    ///
-    /// Aquí se pisaba el icono de la pestaña con el dibujo de Chino. Con Chino
-    /// ya en su propio botón flotante —con su cara y su ánimo— tenerlo también
-    /// en la barra era tenerlo dos veces en pantalla, y además descuadraba la
-    /// fila: cuatro trazos finos y un dibujo a color en medio.
-    ///
-    /// La barra ya crea el icono de Perfil igual que los otros cuatro, con su
-    /// mismo trazo y su mismo color. Así que lo único que hay que hacer es no
-    /// tocarlo. Esto se queda como puerta —lo llaman dos sitios cuando llega un
-    /// dibujo nuevo— para que quede dicho que el dibujo ya no va ahí.
-    func ponerChinolo(_ b64: String) { }
+    // EL ICONO DE PERFIL ES EL DE SIEMPRE, COMO LOS OTROS CUATRO.
+    //
+    // Aquí había una puerta —`ponerChinolo`— con el cuerpo VACÍO: antes se
+    // pisaba el icono de la pestaña con el dibujo de Chino, y al quitarlo se
+    // dejó la función sin nada dentro para que los dos sitios que la llamaban
+    // no se enteraran. Ya no la llama nadie: Chino vive en su propio botón
+    // flotante, con su cara y su ánimo, y tenerlo también en la barra era
+    // tenerlo dos veces en pantalla y descuadrar la fila —cuatro trazos finos
+    // y un dibujo a color en medio—.
 
     /// El mismo truco que `conNombre`, pero partiendo de un dibujo ya hecho (el
     /// de Chino o el círculo con la inicial): se le pone el nombre debajo. Sin
@@ -5002,7 +5021,7 @@ struct CNCuentas: View {
             CNTarjetaSuma(r: retrato, oculto: m.oculto)
         case "chino":
             CNTarjetaChino(r: retrato, oculto: m.oculto,
-                           chinolo: datos.mascota?.chinolo ?? "", meta: metaPatrimonio)
+                           animo: datos.animoDeChino, meta: metaPatrimonio)
         case "bloques":
             CNTarjetaBloques(r: retrato, oculto: m.oculto)
         default:
@@ -9224,8 +9243,8 @@ struct CNLineaPatrimonio: View {
 struct CNTarjetaChino: View {
     let r: CNCalculo.Retrato
     var oculto = false
-    /// El dibujo de Chino, si la web ya lo mandó.
-    var chinolo: String = ""
+    /// Qué cara pone. El dibujo lo hace el teléfono.
+    var animo: String = "feliz"
     /// A cuánto quiere llegar. 0 = no ha puesto ninguna.
     var meta: Double = 0
 
@@ -9235,11 +9254,11 @@ struct CNTarjetaChino: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                if let img = cnImagenBase64(chinolo) {
-                    Image(uiImage: img).resizable().scaledToFit().frame(width: 54, height: 54)
-                } else {
-                    Text(subio ? "🙂" : "😕").font(.system(size: 42))
-                }
+                // SIN EL RESPALDO DE LOS DOS EMOJIS: estaban para cuando la
+                // web todavía no había mandado el dibujo, y ahora no hay nada
+                // que esperar. Y decían menos que el personaje: dos caras para
+                // seis ánimos.
+                CNChino(animo: animo, tam: 54, conSombra: false, ajustado: true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(frase).font(cnLetra(14, .semibold))
                         .foregroundColor(cnSobre(CNC.acc))
@@ -9652,20 +9671,20 @@ struct CNBotonFlotante: View {
                 // propia luz: ponerle otro círculo detrás le hace un halo que
                 // no pinta nada y le quita el aire.
                 //
-                // El círculo se queda SOLO para el icono de respaldo, que es un
+                // El círculo se queda SOLO para el aro de la marca, que es un
                 // trazo suelto y sin él no se vería sobre la pantalla.
                 if mando.como == "aro" {
                     // EL ARO DE LA MARCA. Es el que estaba arriba en Perfil, y
                     // no se perdió: se mudó aquí, que es donde se usa.
                     Circle().fill(CNC.side)
                     Circle().fill(CNC.acc).frame(width: lado * 0.38, height: lado * 0.38)
-                } else if let img = cnImagenBase64(datos.mascota?.chinolo ?? "") {
-                    Image(uiImage: img).resizable().scaledToFit()
                 } else {
-                    Circle().fill(CNC.acc)
-                    Image(systemName: "bubble.left.and.text.bubble.right.fill")
-                        .font(.system(size: 21, weight: .semibold))
-                        .foregroundColor(cnSobre(CNC.acc))
+                    // DIBUJADO AQUÍ. Antes era la imagen que mandaba la web, y
+                    // hasta que ella arrancaba había un TERCER caso: un icono
+                    // de bocadillo dentro de un círculo. O sea que lo primero
+                    // que veía quien abría la app no era el personaje. Ya no
+                    // hay nada que esperar, así que ese caso se va.
+                    CNChino(animo: datos.animoDeChino, tam: lado, conSombra: false, ajustado: true)
                 }
             }
             .frame(width: lado, height: lado)
