@@ -1565,7 +1565,18 @@ final class CNDatos: ObservableObject {
     // datos que empuja la web nunca llegan a la pantalla (salía "No hay
     // movimientos"). Con un singleton, plugin y vista usan el MISMO store.
     static let shared = CNDatos()
-    @Published var libreta = CNLibreta()
+    /**
+     * LA LIBRETA, Y LO QUE SE REHACE AL CAMBIARLA.
+     *
+     * El aviso va en un `didSet` y no en quien la escribe, a propósito: se
+     * escribe desde TRES sitios —el puente, la libreta guardada y el camino
+     * grande de `traerLibretaEntera`— y acordarse en los tres es cuestión de
+     * tiempo. Ya pasó: se puso el aviso en uno y la ficha siguió saliendo en
+     * blanco, porque la libreta de verdad entra por otro.
+     *
+     * Aquí no se puede olvidar: cambiar la libreta ES avisar.
+     */
+    @Published var libreta = CNLibreta() { didSet { alLlegarLaLibreta() } }
     @Published var perfil = CNPerfilInfo()
     /// ¿Llegó algo de la web alguna vez? Las pantallas nativas tapan el
     /// webview con un fondo opaco: si nunca llega nada que pintar, lo que ve
@@ -1954,7 +1965,6 @@ final class CNDatos: ObservableObject {
         guard let l = CNLibreta.desde(json: json) else { return }
         libreta = l
         refrescarCifras(); refrescarCuentas(); refrescarPlan()
-        alLlegarLaLibreta()
     }
 
     /// EL PERÍODO, que hasta ahora solo sabía la web.

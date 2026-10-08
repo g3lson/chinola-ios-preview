@@ -23,7 +23,7 @@ on:
 jobs:
   correr:
     runs-on: macos-15
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -388,7 +388,7 @@ jobs:
           # Y lo que dijo cada una: una ficha sin datos ni botones está vacía
           # aunque la foto parezca normal.
           xcrun simctl spawn "$UDID" log show --last 3m --style compact \
-            --predicate 'eventMessage CONTAINS "CNIR: la ficha"' 2>/dev/null | tail -10 || true
+            --predicate 'eventMessage CONTAINS "CNIR: la "' 2>/dev/null | tail -14 || true
 
           # ¿QUIÉN ARMÓ CADA SUBPANTALLA: el teléfono o la web?
           #
