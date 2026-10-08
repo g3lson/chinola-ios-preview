@@ -111,7 +111,15 @@
 
   var libreta = {
     id: 'lb-banco-de-pruebas', nombre: 'Personal', tipo: 'Personal', color: COLS[0],
-    miembros: [{ email: 'local', nombre: 'Gelson', rol: 'Dueño' }],
+    // CON EL CORREO DE LA SESIÓN, no «local».
+    //
+    // Con «local», el dueño de la libreta sembrada no era quien entraba
+    // (`gelson@banco`), así que la app lo veía de LECTOR en la única libreta
+    // que hay y `aseguraLibretaPropia` le creaba otra —vacía— y la ponía
+    // activa. El banco llevaba fotografiando esa: una cuenta y un movimiento,
+    // sin tarjeta, sin préstamo y sin meta. Por eso las fichas salían en
+    // blanco, y por eso lo que medía el banco no era lo que se sembraba.
+    miembros: [{ email: 'gelson@banco', nombre: 'Gelson', rol: 'Dueño' }],
     tx: tx, categorias: categorias,
     presupuesto: { 'Alimentación': 18000, 'Transporte': 9000, 'Servicios': 7000, 'Vivienda': 25000 },
     cuentas: [

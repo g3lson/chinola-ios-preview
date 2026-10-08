@@ -411,8 +411,30 @@ class ChinolaViewController: CAPBridgeViewController {
                     let donde = ["meta", "categoria"].contains(t[0]) ? "plan" : "cuentas"
                     s.menuEstado.alTocar(donde)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                        NSLog("CNIR: ficha \(t[0]) · \(t[1])")
-                        s.mostrarDetalle(t[0], t[1])
+                        // CON «primero», EL PRIMERO QUE HAYA DE ESE TIPO.
+                        //
+                        // Con el número escrito, el banco abría la ficha de
+                        // algo que no estaba en la libreta que la app tenía de
+                        // verdad —y salía en blanco, que es lo correcto—.
+                        // Fotografiaba un caso que no existía y lo contaba como
+                        // un fallo de la app.
+                        let l = CNDatos.shared.libreta
+                        var cual = t[1]
+                        if cual == "primero" {
+                            switch t[0] {
+                            case "cuenta": cual = l.cuentas.first.map { String($0.id) } ?? ""
+                            case "tarjeta": cual = l.tarjetas.first.map { String($0.id) } ?? ""
+                            case "prestamo": cual = l.prestamos.first.map { String($0.id) } ?? ""
+                            case "meta": cual = l.metas.first.map { String($0.id) } ?? ""
+                            default: cual = l.categorias.first?.nombre ?? ""
+                            }
+                        }
+                        NSLog("CNIR: ficha \(t[0]) · \(cual)")
+                        guard !cual.isEmpty else {
+                            NSLog("CNIR: la libreta no tiene ningún \(t[0])")
+                            return
+                        }
+                        s.mostrarDetalle(t[0], cual)
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                             let d = CNDatos.shared.detalle
                             let l = CNDatos.shared.libreta
