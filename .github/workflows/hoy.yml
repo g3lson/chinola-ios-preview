@@ -378,6 +378,21 @@ jobs:
           # app tenga de verdad. Con el número escrito, el banco abría la ficha
           # de algo que no estaba —y salía en blanco, que es lo correcto—, y lo
           # contaba como un fallo de la app.
+          # Y ANTES, LA APP DE CERO.
+          #
+          # Para entonces la libreta activa ya NO es la sembrada: las vueltas
+          # anteriores crean libretas, agregan tarjetas y el teléfono
+          # sincroniza con su propia copia —que vive en Documents y no la
+          # borra la siembra—. El banco acabó fotografiando una libreta con una
+          # cuenta y un movimiento, y yo persiguiendo un fallo que no existía.
+          #
+          # Reinstalar borra el contenedor entero: la copia del teléfono y lo
+          # que la web guardó. La siembra vuelve a poner la suya y las fichas se
+          # abren sobre lo que se sembró.
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          xcrun simctl uninstall "$UDID" "$ID" 2>/dev/null || true
+          xcrun simctl install "$UDID" "$APP"
+          sleep 2
           for T in cuenta tarjeta prestamo meta categoria; do
             F="$T:primero"
             echo "=== ficha · $T ==="
