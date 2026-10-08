@@ -85,12 +85,34 @@ enum CNDetallePantalla {
             CNDetalle.Cifra(id: 0, label: cnT("Entró este mes"), valor: cnDinero(entro), color: t.positivo),
             CNDetalle.Cifra(id: 1, label: cnT("Salió este mes"), valor: cnDinero(salio), color: t.negativo)
         ]
-        d.datos = [
-            CNDetalle.Dato(id: 0, label: cnT("Banco"),
-                           valor: c.banco.isEmpty ? cnT("Sin banco") : c.banco),
-            CNDetalle.Dato(id: 1, label: cnT("Movimientos"),
-                           valor: String(l.tx.filter { medioDe($0) == id }.count))
-        ]
+        /*
+         * LAS FILAS DE DATOS, LAS DE SU TIPO.
+         *
+         * Decía «Banco · Sin banco» en una cuenta de EFECTIVO, que no tiene
+         * banco ni puede tenerlo. Y a un certificado no le enseñaba su tasa, ni
+         * a unas acciones cuántas son, porque no se le preguntaban: los
+         * diecinueve del catálogo iban al mismo formulario de tres campos.
+         *
+         * Ahora cada tipo dice cómo se llama su «dónde» —«Servicio», «Casa de
+         * bolsa», «Dónde está»— y trae sus campos propios. La fila solo sale si
+         * hay algo que poner: un hueco con «Sin banco» dentro parece un dato
+         * que falta, y lo que pasa es que no lo hay.
+         */
+        let suTipo = CNTipoAgregar.deLaCuenta(c)
+        var filas: [CNDetalle.Dato] = []
+        if let donde = suTipo?.donde, !donde.isEmpty, !c.banco.isEmpty {
+            filas.append(CNDetalle.Dato(id: filas.count, label: cnT(sinElParentesis(donde)), valor: c.banco))
+        } else if suTipo == nil, !c.banco.isEmpty {
+            filas.append(CNDetalle.Dato(id: filas.count, label: cnT("Banco"), valor: c.banco))
+        }
+        for campo in suTipo?.campos ?? [] {
+            guard let v = c.extra[campo.clave], !v.isEmpty else { continue }
+            filas.append(CNDetalle.Dato(id: filas.count, label: cnT(campo.label),
+                                        valor: valorDelCampo(campo, v)))
+        }
+        filas.append(CNDetalle.Dato(id: filas.count, label: cnT("Movimientos"),
+                                    valor: String(l.tx.filter { medioDe($0) == id }.count)))
+        d.datos = filas
         d.botones = [
             CNDetalle.Boton(id: 0, label: cnT("Nuevo movimiento"), estilo: "acento",
                             abre: "movMedio", conQue: "cuenta:" + String(id)),
@@ -104,6 +126,25 @@ enum CNDetallePantalla {
         // oro lo decía desde el principio y la prueba no miraba ese campo.
         d.vacioTexto = d.tramos.isEmpty ? cnT("Aquí saldrá todo lo que anotes con esta cuenta.") : ""
         return d
+    }
+
+    /// «Banco (opcional)» es la pregunta; el dato se llama «Banco». El
+    /// paréntesis es para quien rellena, no para quien lee después.
+    static func sinElParentesis(_ t: String) -> String {
+        guard let i = t.firstIndex(of: "(") else { return t }
+        return String(t[t.startIndex..<i]).trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Cómo se escribe cada campo propio al enseñarlo: el dinero con su
+    /// moneda, un porcentaje con su signo, una fecha en largo, y lo demás tal
+    /// como se escribió.
+    static func valorDelCampo(_ c: CNTipoAgregar.Campo, _ v: String) -> String {
+        switch c.tipo {
+        case "dinero": return cnDinero(cnMonto(v))
+        case "porciento": return v + " %"
+        case "fecha": return cnFechaLargaDeDia(v)
+        default: return v
+        }
     }
 
     /// La cuenta que toca un movimiento: la suya o, en una transferencia, la de
@@ -366,9 +407,14 @@ enum CNDetallePantalla {
         }
         var resumen = cnT("Nada anotado en este periodo")
         if !dentro.isEmpty {
-            resumen = cnT("{n} movimientos · {p} al mes de media")
-                .replacingOccurrences(of: "{n}", with: String(dentro.count))
-                .replacingOccurrences(of: "{p}", with: cnDinero(media.rounded()))
+            // EN SINGULAR CUANDO ES UNO. «1 movimientos» canta, y esta frase
+            // sale en la ficha de cualquier categoría con un solo gasto
+            // apuntado, que es el caso más normal del mundo al empezar.
+            let plantilla = dentro.count == 1
+                ? cnT("1 movimiento · {p} al mes de media")
+                : cnT("{n} movimientos · {p} al mes de media")
+                    .replacingOccurrences(of: "{n}", with: String(dentro.count))
+            resumen = plantilla.replacingOccurrences(of: "{p}", with: cnDinero(media.rounded()))
         }
         d.hero = CNDetalle.Hero(
             iconoPath: glifo,

@@ -38,7 +38,16 @@ struct CNHoja<Content: View>: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(cnT("Cancelar")) { onClose() }
+                    // UNA EQUIS, no «Cancelar».
+                    //
+                    // «Cancelar» cambia de ancho con el idioma y empuja el
+                    // título fuera del centro, y al lado de un botón de
+                    // guardar son dos textos tirando de la misma barra. La
+                    // equis es lo que lleva cualquier hoja del sistema.
+                    Button { onClose() } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(cnT("Cancelar"))
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { onGuardar() } label: {
@@ -576,31 +585,40 @@ func cnMontoTexto(_ n: Double) -> String {
 struct CNFormCuenta: View {
     @ObservedObject var datos: CNDatos
     var onClose: () -> Void
-    /// Lo que ya se eligió en el catálogo: la clase y un nombre de partida.
-    /// Así no hay que volver a decirlo aquí.
-    var claseInicial: String = ""
-    var nombreSugerido: String = ""
-    /// Cómo se pregunta en ESTE tipo. Vienen del catálogo; vacío = no se
-    /// pregunta. A una membresía de gimnasio no se le pide el «Banco», y al
-    /// efectivo no se le pregunta dónde está: está en tu bolsillo.
-    var rotuloDonde: String = "Banco (opcional)"
-    var rotuloCuanto: String = "Saldo actual"
     /**
-     * LA QUE SE ESTÁ EDITANDO, si se está editando alguna.
+     * DE QUÉ ES, tal como se eligió en el catálogo.
      *
-     * Estos formularios solo sabían CREAR. Editar una cuenta, una tarjeta o un
-     * préstamo había que pedírselo a la web, y por eso lo que sale al deslizar
-     * una fila seguía siendo suyo entero. El que escribe ya sabía editar
-     * —`CNEscribir.hoja` coge el id de `extra`—; lo que faltaba era poder
-     * decírselo desde aquí.
+     * Antes solo llegaba la CLASE —cinco— y los rótulos sueltos, así que un
+     * certificado, unas acciones, unas criptomonedas y un apartamento eran los
+     * cuatro «inversión» y se les preguntaba lo mismo. Con el tipo entero
+     * llegan también sus campos propios, y se guarda dentro de la cuenta para
+     * que su ficha sepa después qué enseñar.
      */
+    var tipo: CNTipoAgregar? = nil
+    /// La que se está editando, si se está editando alguna.
+    ///
+    /// Estos formularios solo sabían CREAR. Editar una cuenta había que
+    /// pedírselo a la web; el que escribe ya sabía hacerlo —coge el id de
+    /// `extra`—, lo que faltaba era poder decírselo desde aquí.
     var editar: CNCuenta? = nil
     @State private var nombre = ""
     @State private var banco = ""
     @State private var saldo = ""
     @State private var clase = "banco"
     @State private var color = CNPaleta.colores[0]
+    /// Lo que ha escrito en los campos propios de su tipo, por su clave.
+    @State private var extra: [String: String] = [:]
+    @State private var puesto = false
     private var clases: [(String, String, String)] { [("banco", cnT("Banco"), "banco"), ("efectivo", cnT("Efectivo"), "billete"), ("billetera", cnT("Billetera"), "telefono"), ("inversion", cnT("Inversión"), "grafico"), ("ahorro", cnT("Ahorro"), "hucha")] }
+
+    /// El tipo con el que se dibuja: el que llegó del catálogo o, editando, el
+    /// que la cuenta guardó.
+    private var elTipo: CNTipoAgregar? {
+        if let t = tipo { return t }
+        return editar.flatMap { CNTipoAgregar.deLaCuenta($0) }
+    }
+    private var rotuloDonde: String { elTipo?.donde ?? "Banco (opcional)" }
+    private var rotuloCuanto: String { elTipo?.cuanto ?? "Saldo actual" }
 
     var body: some View {
         CNHoja(titulo: editar == nil ? cnT("Nueva cuenta") : cnT("Editar cuenta"),
@@ -609,34 +627,101 @@ struct CNFormCuenta: View {
             CNGrupoCampos(campos: [(cnT("Nombre (ej. Cuenta principal)"), $nombre, .default)]
                 + (rotuloDonde.isEmpty ? [] : [(cnT(rotuloDonde), $banco, UIKeyboardType.default)]))
             VStack(alignment: .leading, spacing: 6) { cnHojaTitulo(cnT(rotuloCuanto)); CNMontoCampo(monto: $saldo, rotulo: nil) }
+            // LO QUE SOLO SE LE PREGUNTA A ESTE. La tasa de un certificado,
+            // cuántas acciones, cuál cripto y cuántas, en cuánto compraste el
+            // apartamento. Ninguno entra en ninguna cuenta: el saldo sigue
+            // siendo lo que vale hoy y es lo único que suma el patrimonio.
+            ForEach(elTipo?.campos ?? []) { c in
+                campoPropio(c)
+            }
             // EL SELECTOR DE TIPO, SOLO SI NO LO DIJISTE YA. Viniendo del
             // catálogo ya elegiste qué es, y volver a enseñarlo no solo sobra:
             // deja cambiarlo, así que podías elegir «Membresía» y guardarla
             // como cuenta de banco sin enterarte.
-            if claseInicial.isEmpty {
+            if elTipo == nil {
                 VStack(alignment: .leading, spacing: 8) { cnHojaTitulo(cnT("Tipo")); CNFichas(opciones: clases, elegida: $clase) }
             }
             CNColorFila(color: $color)
         }
         // Lo que ya se dijo en el catálogo, puesto de partida.
         .onAppear {
+            guard !puesto else { return }
+            puesto = true
             if let c = editar {
                 nombre = c.nombre; banco = c.banco; saldo = cnMontoTexto(c.saldo)
                 clase = c.claseParaAgrupar
                 if !c.color.isEmpty { color = c.color }
+                extra = c.extra
                 return
             }
-            if !claseInicial.isEmpty, clases.contains(where: { $0.0 == claseInicial }) { clase = claseInicial }
-            if nombre.isEmpty { nombre = cnT(nombreSugerido) }
+            if let t = elTipo { clase = t.clase.isEmpty ? clase : t.clase }
+            if nombre.isEmpty { nombre = cnT(elTipo?.titulo ?? "") }
+        }
+    }
+
+    /// Un campo de los propios de su tipo. El dinero y los porcentajes llevan
+    /// su teclado, y una fecha se elige en el calendario del sistema en vez de
+    /// escribirse: tecleada, cada uno la escribe de una manera.
+    @ViewBuilder private func campoPropio(_ c: CNTipoAgregar.Campo) -> some View {
+        let puesto = Binding<String>(
+            get: { extra[c.clave] ?? "" },
+            set: { extra[c.clave] = $0 })
+        if c.tipo == "fecha" {
+            CNCampoFecha(label: cnT(c.label), iso: puesto)
+        } else if c.tipo == "dinero" {
+            VStack(alignment: .leading, spacing: 6) {
+                cnHojaTitulo(cnT(c.label))
+                CNMontoCampo(monto: puesto, rotulo: nil)
+            }
+        } else {
+            CNGrupoCampos(campos: [(cnT(c.label) + (c.ph.isEmpty ? "" : " (" + cnT(c.ph) + ")"),
+                                    puesto, tecladoDe(c.tipo))])
+        }
+    }
+
+    private func tecladoDe(_ t: String) -> UIKeyboardType {
+        switch t {
+        case "numero": return .decimalPad
+        case "porciento": return .decimalPad
+        default: return .default
         }
     }
 
     private func guardar() {
         let nm = nombre.trimmingCharacters(in: .whitespaces); guard !nm.isEmpty else { return }
         let ic = clases.first { $0.0 == clase }?.2 ?? "banco"
-        datos.onGuardarHoja("cuenta", ["nombre": nm, "banco": banco, "saldo": cnMonto(saldo), "clase": clase, "icono": ic, "color": color],
-                            editar.map { ["id": $0.id] })
+        var form: [String: Any] = ["nombre": nm, "banco": banco, "saldo": cnMonto(saldo),
+                                   "clase": clase, "icono": ic, "color": color]
+        if let t = elTipo { form["tipo"] = t.id }
+        form["extra"] = extra
+        datos.onGuardarHoja("cuenta", form, editar.map { ["id": $0.id] })
         onClose()
+    }
+}
+
+/**
+ * UNA FECHA, ELEGIDA EN EL CALENDARIO DEL SISTEMA.
+ *
+ * Tecleada, cada uno la escribe de una manera —«5/1/26», «01-05-2026», «5 de
+ * enero»— y después no hay forma de leerla. Se guarda siempre como
+ * «2026-01-05», que es como se guardan todas las de la libreta.
+ */
+struct CNCampoFecha: View {
+    let label: String
+    @Binding var iso: String
+    var body: some View {
+        let fecha = Binding<Date>(
+            get: { CNFormateadores.iso.date(from: iso) ?? Date() },
+            set: { iso = CNFormateadores.iso.string(from: $0) })
+        return HStack(spacing: 12) {
+            Text(label).font(cnLetra(16)).foregroundColor(CNC.ink)
+            Spacer(minLength: 8)
+            DatePicker("", selection: fecha, displayedComponents: .date)
+                .labelsHidden()
+        }
+        .padding(.horizontal, 14).padding(.vertical, 9)
+        .background(CNC.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(CNC.line, lineWidth: 1))
     }
 }
 
@@ -875,9 +960,7 @@ struct CNAgregar: View {
             case "tarjeta": CNFormTarjeta(datos: datos, onClose: onClose, nombreSugerido: t.titulo)
             case "prestamo": CNFormPrestamo(datos: datos, onClose: onClose,
                                             sentidoInicial: t.sentido, nombreSugerido: t.titulo)
-            default: CNFormCuenta(datos: datos, onClose: onClose,
-                                  claseInicial: t.clase, nombreSugerido: t.titulo,
-                                  rotuloDonde: t.donde, rotuloCuanto: t.cuanto)
+            default: CNFormCuenta(datos: datos, onClose: onClose, tipo: t)
             }
         } else {
             chooser
@@ -934,7 +1017,16 @@ struct CNAgregar: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(cnT("Cancelar")) { onClose() }
+                    // UNA EQUIS, no «Cancelar».
+                    //
+                    // «Cancelar» cambia de ancho con el idioma y empuja el
+                    // título fuera del centro, y al lado de un botón de
+                    // guardar son dos textos tirando de la misma barra. La
+                    // equis es lo que lleva cualquier hoja del sistema.
+                    Button { onClose() } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(cnT("Cancelar"))
                 }
             }
         }
@@ -1010,6 +1102,30 @@ struct CNTipoAgregar: Identifiable {
      */
     var donde: String = "Banco (opcional)"
     var cuanto: String = "Saldo actual"
+    /**
+     * LO QUE SOLO SE LE PREGUNTA A ESTE.
+     *
+     * El catálogo ofrece diecinueve cosas y detrás se preguntaba lo mismo a
+     * todas: nombre, «banco» y saldo. A un certificado no se le pregunta su
+     * tasa ni cuándo vence, a unas acciones cuántas son, a unas criptomonedas
+     * cuál ni cuántas, y a un apartamento en cuánto lo compraste —que es lo
+     * único que deja ver si ha subido—.
+     *
+     * NINGUNO ENTRA EN UNA CUENTA. El saldo sigue siendo lo que vale hoy y es
+     * lo único que suman el patrimonio y los totales; esto se guarda y se
+     * enseña en su ficha. Así cada tipo pregunta lo suyo y las cuentas siguen
+     * cuadrando.
+     */
+    struct Campo: Identifiable {
+        var id: String { clave }
+        /// Con qué nombre se guarda dentro de la cuenta.
+        var clave: String
+        var label: String
+        /// «texto», «numero», «dinero», «porciento» o «fecha».
+        var tipo: String = "texto"
+        var ph: String = ""
+    }
+    var campos: [Campo] = []
 
     static let grupos: [Grupo] = [
         .init(id: "gastar", titulo: "Para gastar", pista: "débito", color: cnColor(0x2f9e5c)),
@@ -1025,32 +1141,56 @@ struct CNTipoAgregar: Identifiable {
     static let todos: [CNTipoAgregar] = [
         .init(id: "banco", titulo: "Cuenta de banco", sub: "Corriente o nómina, con tarjeta de débito",
               icono: "building.columns.fill", grupo: "gastar", forma: "cuenta", clase: "banco",
-              busca: "nomina corriente debito banreservas popular bhd scotiabank"),
+              busca: "nomina corriente debito banreservas popular bhd scotiabank",
+              campos: [.init(clave: "last4", label: "Últimos 4 dígitos", tipo: "numero", ph: "0000")]),
         .init(id: "efectivo", titulo: "Efectivo", sub: "Lo que cargas en la cartera",
               icono: "banknote.fill", grupo: "gastar", forma: "cuenta", clase: "efectivo",
-              busca: "cash dinero cartera bolsillo", donde: "", cuanto: "Cuánto cargas"),
+              busca: "cash dinero cartera bolsillo", donde: "", cuanto: "Cuánto cargas",
+              // Al efectivo no se le pregunta el banco —no tiene—, pero sí
+              // dónde está: la cartera, la caja fuerte, el sobre del mercado.
+              campos: [.init(clave: "donde", label: "Dónde lo guardas", ph: "La cartera, la casa…")]),
         .init(id: "billetera", titulo: "Billetera digital", sub: "PayPal, tPago, Qik…",
               icono: "wallet.pass.fill", grupo: "gastar", forma: "cuenta", clase: "billetera",
-              busca: "paypal tpago qik wally azul app movil wallet", donde: "Servicio (ej. PayPal)"),
+              busca: "paypal tpago qik wally azul app movil wallet", donde: "Servicio (ej. PayPal)",
+              campos: [.init(clave: "usuario", label: "Correo o número de la cuenta")]),
 
         .init(id: "ahorro", titulo: "Ahorro o certificado", sub: "Dinero guardado que no tocas",
               icono: "lock.fill", grupo: "invertir", forma: "cuenta", clase: "ahorro",
-              busca: "certificado plazo fijo cdt ahorros", cuanto: "Cuánto tienes guardado"),
+              busca: "certificado plazo fijo cdt ahorros", cuanto: "Cuánto tienes guardado",
+              campos: [.init(clave: "tasa", label: "Tasa anual", tipo: "porciento", ph: "0"),
+                       .init(clave: "vence", label: "Vence el", tipo: "fecha")]),
+        .init(id: "emergencia", titulo: "Fondo de emergencia", sub: "El colchón para los sustos",
+              icono: "shield.fill", grupo: "invertir", forma: "cuenta", clase: "ahorro",
+              busca: "emergencia colchon imprevistos fondo reserva",
+              donde: "Dónde lo tienes (opcional)", cuanto: "Cuánto llevas",
+              // A cuánto quieres llegar, para poder ver cuánto falta. Es lo
+              // único que distingue un fondo de emergencia de un ahorro
+              // cualquiera: tiene un tamaño al que apuntar.
+              campos: [.init(clave: "objetivo", label: "Cuánto quieres tener", tipo: "dinero")]),
         .init(id: "acciones", titulo: "Acciones", sub: "En una casa de bolsa o app",
               icono: "chart.line.uptrend.xyaxis", grupo: "invertir", forma: "cuenta", clase: "inversion",
-              busca: "bolsa broker etf stocks acciones", donde: "Casa de bolsa o app", cuanto: "Cuánto vale hoy"),
+              busca: "bolsa broker etf stocks acciones", donde: "Casa de bolsa o app", cuanto: "Cuánto vale hoy",
+              campos: [.init(clave: "simbolo", label: "Símbolo", ph: "AAPL, VOO…"),
+                       .init(clave: "cuantas", label: "Cuántas acciones", tipo: "numero", ph: "0")]),
         .init(id: "fondo", titulo: "Fondo de inversión", sub: "Fondos mutuos o de pensión voluntaria",
               icono: "chart.bar.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
-              busca: "mutuo pension afp fondo", donde: "Administradora (opcional)", cuanto: "Cuánto vale hoy"),
+              busca: "mutuo pension afp fondo", donde: "Administradora (opcional)", cuanto: "Cuánto vale hoy",
+              campos: [.init(clave: "aporte", label: "Aporte mensual", tipo: "dinero")]),
         .init(id: "cripto", titulo: "Criptomonedas", sub: "Bitcoin, USDT y otras",
               icono: "bitcoinsign.circle", grupo: "invertir", forma: "cuenta", clase: "inversion",
-              busca: "bitcoin btc usdt ethereum binance cripto crypto", donde: "Dónde la tienes (ej. Binance)", cuanto: "Cuánto vale hoy"),
+              busca: "bitcoin btc usdt ethereum binance cripto crypto", donde: "Dónde la tienes (ej. Binance)", cuanto: "Cuánto vale hoy",
+              campos: [.init(clave: "moneda", label: "Cuál", ph: "BTC, USDT…"),
+                       .init(clave: "cuantas", label: "Cuántas tienes", tipo: "numero", ph: "0")]),
         .init(id: "inmueble", titulo: "Bienes raíces", sub: "Casa, solar o apartamento",
               icono: "house.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
-              busca: "casa apartamento solar terreno inmueble propiedad", donde: "Dónde está (opcional)", cuanto: "Cuánto vale hoy"),
+              busca: "casa apartamento solar terreno inmueble propiedad", donde: "Dónde está (opcional)", cuanto: "Cuánto vale hoy",
+              // En cuánto lo compraste: es lo único que deja ver si ha subido.
+              campos: [.init(clave: "compra", label: "Lo compré en", tipo: "dinero")]),
         .init(id: "metales", titulo: "Metales", sub: "Oro o plata",
               icono: "circle.hexagongrid.fill", grupo: "invertir", forma: "cuenta", clase: "inversion",
-              busca: "oro plata metal lingote", donde: "Dónde lo guardas (opcional)", cuanto: "Cuánto vale hoy"),
+              busca: "oro plata metal lingote", donde: "Dónde lo guardas (opcional)", cuanto: "Cuánto vale hoy",
+              campos: [.init(clave: "metal", label: "Qué es", ph: "Oro, plata…"),
+                       .init(clave: "onzas", label: "Cuántas onzas", tipo: "numero", ph: "0")]),
 
         .init(id: "tarjeta", titulo: "Tarjeta de crédito", sub: "Con límite, día de corte y día de pago",
               icono: "creditcard.fill", grupo: "credito", forma: "tarjeta",
@@ -1068,17 +1208,27 @@ struct CNTipoAgregar: Identifiable {
 
         .init(id: "membresia", titulo: "Membresía", sub: "Gimnasio, club, supermercado",
               icono: "star.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
-              busca: "gimnasio gym club socio supermercado puntos", donde: "Dónde es (ej. el gimnasio)", cuanto: "Saldo o puntos"),
+              busca: "gimnasio gym club socio supermercado puntos", donde: "Dónde es (ej. el gimnasio)", cuanto: "Saldo o puntos",
+              campos: [.init(clave: "vence", label: "Vence el", tipo: "fecha")]),
         .init(id: "transporte", titulo: "Tarjeta de transporte", sub: "Metro, OMSA, peaje",
               icono: "tram.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
-              busca: "metro omsa peaje paso rapido transporte", donde: "Operador (ej. Metro)", cuanto: "Saldo de la tarjeta"),
+              busca: "metro omsa peaje paso rapido transporte", donde: "Operador (ej. Metro)", cuanto: "Saldo de la tarjeta",
+              campos: [.init(clave: "numero", label: "Número de la tarjeta")]),
         .init(id: "escolar", titulo: "Tarjeta escolar", sub: "Comedor o cafetería",
               icono: "graduationcap.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
-              busca: "colegio escuela comedor cafeteria", donde: "Centro (opcional)", cuanto: "Saldo de la tarjeta"),
+              busca: "colegio escuela comedor cafeteria", donde: "Centro (opcional)", cuanto: "Saldo de la tarjeta",
+              campos: [.init(clave: "dequien", label: "De quién es")]),
         .init(id: "otra", titulo: "Otra con saldo", sub: "Cualquier tarjeta que recargas",
               icono: "tag.fill", grupo: "prepago", forma: "cuenta", clase: "billetera",
               busca: "regalo gift recarga saldo prepago", donde: "Dónde se usa (opcional)", cuanto: "Saldo de la tarjeta")
     ]
+
+    /// El del catálogo que le toca a una cuenta ya guardada. Las de antes no
+    /// traen tipo: entonces manda su clase, que es lo que se sabía de ellas.
+    static func deLaCuenta(_ c: CNCuenta) -> CNTipoAgregar? {
+        if !c.tipo.isEmpty, let t = todos.first(where: { $0.id == c.tipo }) { return t }
+        return todos.first { $0.forma == "cuenta" && $0.clase == c.claseParaAgrupar }
+    }
 }
 
 // ── Las hojas de la WEB, dibujadas en nativo ────────────────────────────────
@@ -1156,7 +1306,16 @@ struct CNHojaWeb: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(cnT("Cancelar")) { onClose() }
+                    // UNA EQUIS, no «Cancelar».
+                    //
+                    // «Cancelar» cambia de ancho con el idioma y empuja el
+                    // título fuera del centro, y al lado de un botón de
+                    // guardar son dos textos tirando de la misma barra. La
+                    // equis es lo que lleva cualquier hoja del sistema.
+                    Button { onClose() } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(cnT("Cancelar"))
                 }
                 // El botón de confirmar solo cuando la hoja es un «guardar sin
                 // más»; lo que borra o manda un correo lleva su botón con

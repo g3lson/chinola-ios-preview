@@ -977,6 +977,32 @@ struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String =
      * encaja. No falla; miente.
      */
     var claseParaAgrupar: String { clase.isEmpty ? "banco" : clase }
+    /**
+     * DE QUÉ ES ESTA CUENTA, en fino.
+     *
+     * `clase` solo distingue cinco cosas —banco, efectivo, billetera, ahorro,
+     * inversión— y con eso no se puede preguntar bien: un certificado, unas
+     * acciones, unas criptomonedas y un apartamento son los cuatro
+     * «inversión», y a los cuatro se les preguntaba lo mismo. `tipo` es cuál
+     * de los diecinueve del catálogo se eligió, y es lo que decide qué campos
+     * lleva y cómo se llaman.
+     *
+     * Vacío en las de antes, y entonces manda la clase: nada se rompe, solo se
+     * les pregunta lo genérico, que es lo que se les preguntaba ya.
+     */
+    var tipo: String = ""
+    /**
+     * LO QUE SOLO TIENE SU TIPO.
+     *
+     * La tasa de un certificado, el símbolo de unas acciones, cuántas onzas de
+     * oro, en cuánto compraste el apartamento. No son cinco campos más en la
+     * cuenta —serían veinte, y diecinueve vacíos en cada una—: es lo que haya
+     * pedido su tipo, con su clave.
+     *
+     * NO ENTRA EN NINGUNA CUENTA. El saldo sigue siendo lo que vale hoy, y es
+     * lo único que suman el patrimonio y los totales. Esto se enseña.
+     */
+    var extra: [String: String] = [:]
     /// Uno vacío, para armarlo a mano: con `init(from:)` escrito, Swift ya no
     /// regala el de por defecto.
     init() {}
@@ -987,8 +1013,13 @@ struct CNCuenta: Decodable, Identifiable { var id: Int = 0; var nombre: String =
         saldo = (try? c.decodeIfPresent(Double.self, forKey: .saldo)) ?? 0
         color = (try? c.decodeIfPresent(String.self, forKey: .color)) ?? "#137d41"
         clase = (try? c.decodeIfPresent(String.self, forKey: .clase)) ?? ""
-        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? "" }
-    enum K: String, CodingKey { case id, nombre, banco, saldo, color, clase, icono } }
+        icono = (try? c.decodeIfPresent(String.self, forKey: .icono)) ?? ""
+        tipo = (try? c.decodeIfPresent(String.self, forKey: .tipo)) ?? ""
+        // Los extras llegan como texto SIEMPRE, también los números: así una
+        // tasa escrita «7,5» se guarda tal cual y no se pierde al leerla con
+        // el separador del otro idioma.
+        extra = (try? c.decodeIfPresent([String: String].self, forKey: .extra)) ?? [:] }
+    enum K: String, CodingKey { case id, nombre, banco, saldo, color, clase, icono, tipo, extra } }
 
 /// Ojo con `tipo` y `limite`: la web NO los manda. Lo que manda es `ingreso`
 /// —si la categoría es de entradas— y el presupuesto va aparte, en
@@ -4609,7 +4640,16 @@ struct CNNuevoMov: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(cnT("Cancelar")) { onClose() }
+                    // UNA EQUIS, no «Cancelar».
+                    //
+                    // «Cancelar» cambia de ancho con el idioma y empuja el
+                    // título fuera del centro, y al lado de un botón de
+                    // guardar son dos textos tirando de la misma barra. La
+                    // equis es lo que lleva cualquier hoja del sistema.
+                    Button { onClose() } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(cnT("Cancelar"))
                 }
                 // El teclado numérico no trae tecla de retorno: sin esto no
                 // hay forma de cerrarlo y tapa media hoja.

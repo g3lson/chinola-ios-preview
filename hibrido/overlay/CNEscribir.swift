@@ -395,6 +395,15 @@ enum CNEscribir {
         c.clase = texto(f["clase"]).isEmpty ? "banco" : texto(f["clase"])
         c.icono = texto(f["icono"])
         c.color = texto(f["color"])
+        // DE QUÉ TIPO ES Y LO SUYO. El tipo solo se pisa si viene: editando
+        // desde una pantalla que no lo pregunta, perderlo convertiría unas
+        // criptomonedas en una cuenta de banco cualquiera.
+        if !texto(f["tipo"]).isEmpty { c.tipo = texto(f["tipo"]) }
+        if let e = f["extra"] as? [String: String] {
+            // Los vacíos se quitan en vez de guardarse en blanco: una ficha con
+            // «Tasa anual: » es peor que una ficha sin esa línea.
+            c.extra = e.filter { !$0.value.trimmingCharacters(in: .whitespaces).isEmpty }
+        }
         if let id = antes {
             nueva.cuentas = nueva.cuentas.map { $0.id == id ? c : $0 }
         } else {
@@ -569,7 +578,10 @@ extension CNLibreta {
         [
             "cuentas": cuentas.map { c -> [String: Any] in
                 ["id": c.id, "nombre": c.nombre, "banco": c.banco, "saldo": c.saldo,
-                 "color": c.color, "clase": c.clase, "icono": c.icono]
+                 "color": c.color, "clase": c.clase, "icono": c.icono,
+                 // De qué tipo es y lo que solo tiene su tipo. Lo que no va en
+                 // este diccionario desaparece de la libreta al escribirla.
+                 "tipo": c.tipo, "extra": c.extra]
             },
             "tarjetas": tarjetas.map { t -> [String: Any] in
                 ["id": t.id, "nombre": t.nombre, "banco": t.banco, "saldo": t.saldo,

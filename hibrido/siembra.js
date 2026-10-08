@@ -122,10 +122,17 @@
     miembros: [{ email: 'gelson@banco', nombre: 'Gelson', rol: 'Dueño' }],
     tx: tx, categorias: categorias,
     presupuesto: { 'Alimentación': 18000, 'Transporte': 9000, 'Servicios': 7000, 'Vivienda': 25000 },
+    // CON SU TIPO Y LO SUYO, que es lo que ahora distingue a una cuenta de
+    // otra: al efectivo no se le pregunta el banco —no tiene— y a un
+    // certificado sí su tasa y cuándo vence. Sin esto el banco fotografía tres
+    // cuentas iguales y no se ve la diferencia.
     cuentas: [
-      { id: 1, nombre: 'Efectivo', banco: 'Sin banco', saldo: 8400, color: COLS[0] },
-      { id: 2, nombre: 'Nómina', banco: 'Banreservas', saldo: 52300, color: COLS[1] },
-      { id: 3, nombre: 'Ahorros', banco: 'Popular', saldo: 118000, color: COLS[4] }
+      { id: 1, nombre: 'Efectivo', banco: '', saldo: 8400, color: COLS[0],
+        clase: 'efectivo', tipo: 'efectivo', extra: { donde: 'La cartera' } },
+      { id: 2, nombre: 'Nómina', banco: 'Banreservas', saldo: 52300, color: COLS[1],
+        clase: 'banco', tipo: 'banco', extra: { last4: '4417' } },
+      { id: 3, nombre: 'Certificado', banco: 'Popular', saldo: 118000, color: COLS[4],
+        clase: 'ahorro', tipo: 'ahorro', extra: { tasa: '7.5', vence: '2027-03-15' } }
     ],
     tarjetas: [{ id: 1, nombre: 'Visa Popular', banco: 'Popular', limite: 80000, saldo: 23400, corte: 20, pago: 10, color: COLS[3] }],
     // OJO CON LOS NOMBRES DE LOS CAMPOS.

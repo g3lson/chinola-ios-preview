@@ -393,8 +393,12 @@ jobs:
           xcrun simctl uninstall "$UDID" "$ID" 2>/dev/null || true
           xcrun simctl install "$UDID" "$APP"
           sleep 2
-          for T in cuenta tarjeta prestamo meta categoria; do
+          # «cuenta2» es la tercera cuenta sembrada —el certificado—: la primera
+          # es efectivo y lo que enseña es que YA NO dice «Banco · Sin banco».
+          # Para ver los campos propios hace falta una que los tenga.
+          for T in cuenta cuenta2 tarjeta prestamo meta categoria; do
             F="$T:primero"
+            [ "$T" = "cuenta2" ] && F="cuenta:3"
             echo "=== ficha · $T ==="
             xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
             sleep 2
