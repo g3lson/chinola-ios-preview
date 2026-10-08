@@ -1,0 +1,1044 @@
+{
+ "nota": "Generado por scripts/periodo-oro.mjs desde src/periodo.js. No editar a mano.",
+ "periodo": {
+  "claves": [
+   "esteMes",
+   "mesPasado",
+   "ultimos3",
+   "ultimos6",
+   "esteAnio",
+   "anioPasado",
+   "personalizado"
+  ],
+  "rotulos": [
+   "Este mes",
+   "Mes pasado",
+   "3 meses",
+   "6 meses",
+   "Este año",
+   "Año pasado",
+   "Personalizado"
+  ],
+  "seleccion": {
+   "inicio": "Elige la fecha de inicio",
+   "fin": "Ahora elige la fecha final",
+   "aplicar": "Aplicar"
+  },
+  "diasSemana": [
+   "D",
+   "L",
+   "M",
+   "M",
+   "J",
+   "V",
+   "S"
+  ],
+  "titulos": {
+   "2026-10": "Octubre de 2026",
+   "2026-02": "Febrero de 2026",
+   "2027-01": "Enero de 2027"
+  },
+  "vecinos": {
+   "2026-10|-1": "2026-09",
+   "2026-10|3": "2027-01",
+   "2026-01|-1": "2025-12",
+   "2026-12|1": "2027-01"
+  },
+  "rejillas": {
+   "2026-10||": [
+    {
+     "n": 27,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 0.28
+    },
+    {
+     "n": 28,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 0.28
+    },
+    {
+     "n": 29,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 0.28
+    },
+    {
+     "n": 30,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 0.28
+    },
+    {
+     "n": 1,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 2,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 3,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 4,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 5,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 6,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 7,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 8,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 9,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 10,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 11,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 12,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 13,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 14,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 15,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 16,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 17,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 18,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 19,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 20,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 21,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 22,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 23,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 24,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 25,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 26,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 27,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 28,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 29,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 30,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 31,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    }
+   ],
+   "2026-02|2026-02-10|2026-02-20": [
+    {
+     "n": 1,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 2,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 3,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 4,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 5,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 6,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 7,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 8,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 9,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 10,
+     "banda": "FRANJA",
+     "bandaRadio": "999px 0 0 999px",
+     "circulo": "AMARILLO",
+     "fg": "SOBRE",
+     "peso": 600,
+     "opacidad": 1
+    },
+    {
+     "n": 11,
+     "banda": "FRANJA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 12,
+     "banda": "FRANJA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 13,
+     "banda": "FRANJA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 14,
+     "banda": "FRANJA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 15,
+     "banda": "FRANJA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 16,
+     "banda": "FRANJA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 17,
+     "banda": "FRANJA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 18,
+     "banda": "FRANJA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 19,
+     "banda": "FRANJA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 20,
+     "banda": "FRANJA",
+     "bandaRadio": "0 999px 999px 0",
+     "circulo": "AMARILLO",
+     "fg": "SOBRE",
+     "peso": 600,
+     "opacidad": 1
+    },
+    {
+     "n": 21,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 22,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 23,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 24,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 25,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 26,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 27,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 28,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    }
+   ],
+   "2026-11|2026-11-07|": [
+    {
+     "n": 1,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 2,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 3,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 4,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 5,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 6,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 7,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "AMARILLO",
+     "fg": "SOBRE",
+     "peso": 600,
+     "opacidad": 1
+    },
+    {
+     "n": 8,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 9,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 10,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 11,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 12,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 13,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 14,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 15,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 16,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 17,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 18,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 19,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 20,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 21,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 22,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 23,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 24,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 25,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 26,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 27,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 28,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 29,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 30,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 1
+    },
+    {
+     "n": 1,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 0.28
+    },
+    {
+     "n": 2,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 0.28
+    },
+    {
+     "n": 3,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 0.28
+    },
+    {
+     "n": 4,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 0.28
+    },
+    {
+     "n": 5,
+     "banda": "NADA",
+     "bandaRadio": "0",
+     "circulo": "NADA",
+     "fg": "TINTA",
+     "peso": 400,
+     "opacidad": 0.28
+    }
+   ]
+  },
+  "presets": {
+   "2026-10-08": {
+    "esteMes": {
+     "mes": "2026-10",
+     "desde": "",
+     "hasta": ""
+    },
+    "mesPasado": {
+     "mes": "2026-09",
+     "desde": "",
+     "hasta": ""
+    },
+    "ultimos3": {
+     "mes": "2026-10",
+     "desde": "2026-08-01",
+     "hasta": "2026-10-31"
+    },
+    "ultimos6": {
+     "mes": "2026-10",
+     "desde": "2026-05-01",
+     "hasta": "2026-10-31"
+    },
+    "esteAnio": {
+     "mes": "2026-10",
+     "desde": "2026-01-01",
+     "hasta": "2026-12-31"
+    },
+    "anioPasado": {
+     "mes": "2025-12",
+     "desde": "2025-01-01",
+     "hasta": "2025-12-31"
+    },
+    "personalizado": {
+     "mes": "",
+     "desde": "",
+     "hasta": ""
+    }
+   },
+   "2026-01-15": {
+    "esteMes": {
+     "mes": "2026-01",
+     "desde": "",
+     "hasta": ""
+    },
+    "mesPasado": {
+     "mes": "2025-12",
+     "desde": "",
+     "hasta": ""
+    },
+    "ultimos3": {
+     "mes": "2026-01",
+     "desde": "2025-11-01",
+     "hasta": "2026-01-31"
+    },
+    "ultimos6": {
+     "mes": "2026-01",
+     "desde": "2025-08-01",
+     "hasta": "2026-01-31"
+    },
+    "esteAnio": {
+     "mes": "2026-01",
+     "desde": "2026-01-01",
+     "hasta": "2026-12-31"
+    },
+    "anioPasado": {
+     "mes": "2025-12",
+     "desde": "2025-01-01",
+     "hasta": "2025-12-31"
+    },
+    "personalizado": {
+     "mes": "",
+     "desde": "",
+     "hasta": ""
+    }
+   }
+  },
+  "etiquetas": {
+   "2026-01-01|2026-12-31": {
+    "corto": "2026",
+    "largo": "2026"
+   },
+   "2026-10-01|2026-10-31": {
+    "corto": "oct 2026",
+    "largo": "Octubre 2026"
+   },
+   "2026-08-01|2026-10-31": {
+    "corto": "ago – oct 2026",
+    "largo": "Agosto – octubre 2026"
+   },
+   "2026-10-05|2026-10-05": {
+    "corto": "5 oct 2026",
+    "largo": "5 oct 2026"
+   },
+   "2026-10-05|2026-11-12": {
+    "corto": "5 oct – 12 nov 2026",
+    "largo": "5 oct – 12 nov 2026"
+   },
+   "2025-12-20|2026-01-08": {
+    "corto": "20 dic 2025 – 8 ene 2026",
+    "largo": "20 dic 2025 – 8 ene 2026"
+   },
+   "2026-02-01|2026-02-28": {
+    "corto": "feb 2026",
+    "largo": "Febrero 2026"
+   }
+  }
+ }
+}

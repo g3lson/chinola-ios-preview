@@ -17,6 +17,7 @@ on:
     # comprueba es un cambio que nadie mira.
     paths: ['hibrido/app-clasico/**', 'hibrido/overlay/**',
             'hibrido/siembra.js', 'hibrido/calculo-oro.json', 'hibrido/fusion-oro.json',
+            'hibrido/periodo-oro.json',
             'sondas/**', '.github/workflows/hoy.yml']
 
 jobs:
@@ -55,6 +56,10 @@ jobs:
           cp ../hibrido/calculo-oro.json www/calculo-oro.json
           # Y el de la FUSIÓN, que lo genera otro guion: la capa de nube.
           cp ../hibrido/fusion-oro.json www/fusion-oro.json
+          # Y el de la HOJA DEL PERIODO: la rejilla del calendario es lo que más
+          # fácil se tuerce sin que se note —una casilla corrida sale completa y
+          # creíble— y una expresión regular sobre el Swift no lo ve.
+          cp ../hibrido/periodo-oro.json www/periodo-oro.json
           python3 - <<'PYX'
           import re, pathlib
           p = pathlib.Path('www/index.html')
@@ -450,7 +455,8 @@ jobs:
           sleep 14
           xcrun simctl spawn "$UDID" log show --last 2m --style compact \
             --predicate 'eventMessage CONTAINS "CNORO"' 2>/dev/null > /tmp/oro.txt || true
-          python3 ../sondas/oro-cuadra.py www/calculo-oro.json www/fusion-oro.json /tmp/oro.txt
+          python3 ../sondas/oro-cuadra.py www/calculo-oro.json www/fusion-oro.json \
+            www/periodo-oro.json /tmp/oro.txt
 
           # EL CICLO DE SINCRONIZACIÓN, ENTERO, contra el servidor de mentira.
           #

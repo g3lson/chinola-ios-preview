@@ -422,7 +422,14 @@ enum CNTextos {
      * Primero el que la web haya dicho la última vez —que es el que la persona
      * eligió y puede no ser el del teléfono—, y si no hay, el del teléfono.
      */
+    /// El idioma que pide el oro del banco. El fichero está en español —lo
+    /// genera la web en español— y el simulador arranca en inglés, así que sin
+    /// esto la comparación diría «This month» contra «Este mes» y culparía al
+    /// Swift de un fallo que no existe. Vacío en un teléfono de verdad.
+    static var idiomaDePrueba = ""
+
     static var idioma: String {
+        if !idiomaDePrueba.isEmpty { return idiomaDePrueba }
         let guardado = UserDefaults.standard.string(forKey: "cnIdioma") ?? ""
         if !guardado.isEmpty { return guardado }
         return String((Locale.preferredLanguages.first ?? "es").prefix(2))
@@ -473,7 +480,14 @@ func cnMonto(_ texto: String) -> Double {
 }
 
 func cnT(_ es: String) -> String {
-    CNTextos.mapa[es] ?? CNTextosGenerados.de(CNTextos.idioma)[es] ?? es
+    // Con el idioma forzado (el oro del banco) manda la tabla generada y NO lo
+    // que haya mandado la web: la web manda el suyo, y en el simulador ese es
+    // el inglés. Comparar «This month» con «Este mes» culparía al Swift de un
+    // fallo que no existe.
+    if !CNTextos.idiomaDePrueba.isEmpty {
+        return CNTextosGenerados.de(CNTextos.idiomaDePrueba)[es] ?? es
+    }
+    return CNTextos.mapa[es] ?? CNTextosGenerados.de(CNTextos.idioma)[es] ?? es
 }
 /// Como `cnT`, pero con un hueco: cnT("Presupuesto de {n}", nombre).
 func cnT(_ es: String, _ hueco: String) -> String {
@@ -1833,7 +1847,6 @@ final class CNDatos: ObservableObject {
         if m.listo || cuentas == nil { cuentas = m }
     }
     func cargarMovDetalle(json: String) { movDetalle = CNMovDetalle.desde(json: json) }
-    func cargarPeriodo(json: String) { periodo = CNPeriodo.desde(json: json) }
     /// Marca una opción, una muestra o un interruptor de una subpantalla EN EL
     /// ACTO, sin esperar a que la web conteste. Es lo que hace que tocar se
     /// sienta como tocar y no como pedir: la web confirma un instante después.
@@ -1905,6 +1918,40 @@ final class CNDatos: ObservableObject {
         desdeActivo = desde
         hastaActivo = hasta
         refrescarCifras(); refrescarCuentas(); refrescarPlan()
+        // Y la hoja del periodo, si está abierta: la palomita se mueve al
+        // elegir, no un cuarto de segundo después y con una vuelta al puente.
+        if periodo != nil { refrescarPeriodo() }
+    }
+
+    /**
+     * EL CALENDARIO DE LA HOJA DEL PERIODO.
+     *
+     * Vive aquí y no en el periodo de cálculo porque NO es el periodo: es lo
+     * que llevas marcado mientras eliges, y hasta que no tocas «Aplicar» no
+     * cambia nada de lo que se ve. `calMes` vacío quiere decir «el mes que se
+     * está mirando»: así, al abrir el calendario, se abre donde estás.
+     */
+    @Published var calAbierto = false
+    @Published var calMes = ""
+    @Published var calDesde = ""
+    @Published var calHasta = ""
+
+    /// La hoja del periodo, armada aquí. Antes se le pedía a la web y venía
+    /// vacía cuando no había repintado todavía.
+    func refrescarPeriodo() {
+        let t = CNPeriodoArma.Tinte(side: CNC.hexSide, tinta: cnHexDe(CNC.ink), borde: cnHexDe(CNC.line))
+        periodo = CNPeriodoArma.arma(libreta: libreta, periodo: periodoCalculo,
+                                     calAbierto: calAbierto, calMes: calMes,
+                                     calDesde: calDesde, calHasta: calHasta, tinte: t)
+    }
+
+    /// Abrir la hoja: el calendario empieza cerrado y sin nada marcado, y el
+    /// mes del calendario es el que se está mirando.
+    func abrePeriodo(conCalendario: Bool = false) {
+        calAbierto = conCalendario
+        calMes = mesActivo
+        calDesde = ""; calHasta = ""
+        refrescarPeriodo()
     }
 
     /// Las CIFRAS de la cabecera del resumen, calculadas aquí con CNCalculo.

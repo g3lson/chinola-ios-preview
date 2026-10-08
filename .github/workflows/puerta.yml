@@ -60,6 +60,10 @@ jobs:
           cp ../hibrido/calculo-oro.json www/calculo-oro.json
           # Y el de la FUSIÓN, que lo genera otro guion: la capa de nube.
           cp ../hibrido/fusion-oro.json www/fusion-oro.json
+          # Y el de la HOJA DEL PERIODO: la rejilla del calendario es lo que más
+          # fácil se tuerce sin que se note —una casilla corrida sale completa y
+          # creíble— y una expresión regular sobre el Swift no lo ve.
+          cp ../hibrido/periodo-oro.json www/periodo-oro.json
           python3 - <<'PYX'
           import re, pathlib
           p = pathlib.Path('www/index.html')

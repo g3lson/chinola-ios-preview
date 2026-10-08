@@ -1154,35 +1154,28 @@ class ChinolaViewController: CAPBridgeViewController {
         }
         // El periodo tiene su propia hoja NATIVA: se abre en la web (para que
         // su estado sea el de siempre) y se dibuja aquí.
+        // El calendario de la cabecera abre la hoja NATIVA, sin pasar por la
+        // web: antes se le pedía que abriera la suya, se esperaban 300 ms y se
+        // preguntaba a ver qué decía. Esa espera es la que se veía.
         datos.onCalendario = { [weak self] in
-            guard let s = self else { return }
-            s.eval("window.__chinolaCalendario && window.__chinolaCalendario()")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { s.abrirPeriodo() }
+            self?.abrirPeriodo()
         }
         datos.onPeriodo = { [weak self] tipo, i in
             guard let s = self else { return }
-            s.eval("window.__chinolaPeriodo && window.__chinolaPeriodo(\(s.comillas(tipo)),\(i))")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                if tipo == "aplicar" || tipo == "cerrar" {
-                    s.cerrarPeriodo()
-                } else {
-                    s.refrescarPeriodo()
-                }
-            }
+            s.hacePeriodo(tipo, i)
         }
+        // LA TIRA DE MESES: cuatro meses y «Rango».
+        //
+        // Los cuatro son el de dos atrás, el de uno, el de ahora y el que
+        // viene —así los arma `CNCabecera.meses`—, y el quinto no es un mes:
+        // abre el calendario. Esto iba a la web, esperaba 300 ms y le
+        // preguntaba si había abierto el suyo; si contestaba tarde, tocar
+        // «Rango» no hacía nada.
         datos.onMesTira = { [weak self] i in
             guard let s = self else { return }
-            s.eval("window.__chinolaMesTira && window.__chinolaMesTira(\(i))")
+            if i >= 4 { s.abrirPeriodo(conCalendario: true); return }
+            s.fijaPeriodo(mes: CNCabecera.mesVecino(s.datos.mesActivo, i - 2), desde: "", hasta: "")
             s.refrescarPronto()
-            // «Rango…» no cambia de mes: abre el calendario. Si la web lo abrió,
-            // se dibuja la hoja NATIVA del periodo. Antes no pasaba nada.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                s.bridge?.webView?.evaluateJavaScript("(window.__chinolaPeriodoJSON && window.__chinolaPeriodoJSON()) || ''") { res, _ in
-                    guard let json = res as? String, json.count > 2, let p = CNPeriodo.desde(json: json), p.abierto else { return }
-                    CNDatos.shared.cargarPeriodo(json: json)
-                    s.abrirPeriodo()
-                }
-            }
         }
         datos.onPlegar = { [weak self] in
             self?.eval("window.__chinolaPliega && window.__chinolaPliega()")
@@ -1761,23 +1754,77 @@ class ChinolaViewController: CAPBridgeViewController {
      * enseña la pantalla WEB, que tiene su propia hoja con el mismo estado
      * por detrás. Mejor la de la web que una hoja vacía.
      */
-    private func abrirPeriodo(intentos: Int = 5) {
-        guard periodoVC == nil else { refrescarPeriodo(); return }
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaPeriodoJSON && window.__chinolaPeriodoJSON()) || ''") { [weak self] res, _ in
-            guard let s = self else { return }
-            let json = (res as? String) ?? ""
-            if json.count > 2, let p = CNPeriodo.desde(json: json), !p.opciones.isEmpty {
-                CNDatos.shared.cargarPeriodo(json: json)
-                s.presentarPeriodo()
+    private func abrirPeriodo(conCalendario: Bool = false) {
+        datos.abrePeriodo(conCalendario: conCalendario)
+        guard periodoVC == nil else { return }
+        presentarPeriodo()
+    }
+
+    /**
+     * UN TOQUE EN LA HOJA DEL PERIODO.
+     *
+     * Lo hace el teléfono y luego se lo cuenta a la web, no al revés. Antes era
+     * al revés: se mandaba el toque, se esperaba un cuarto de segundo y se
+     * volvía a pedir la hoja entera para ver qué había pasado. Por eso la
+     * palomita tardaba en moverse y por eso, si la web no contestaba, no pasaba
+     * nada en absoluto.
+     *
+     * «Cerrar» sí sigue yendo a la web: su hoja también está abierta por
+     * detrás, y dejarla abierta se ve si alguna vez se enseña su pantalla.
+     */
+    private func hacePeriodo(_ tipo: String, _ i: Int) {
+        let d = datos
+        switch tipo {
+        case "opcion":
+            guard i >= 0, i < CNPeriodoArma.claves.count else { return }
+            let k = CNPeriodoArma.claves[i]
+            // «Personalizado» no lleva a ningún periodo: saca el calendario y
+            // espera a que marques dos fechas.
+            guard let destino = CNPeriodoArma.destino(k) else {
+                d.calAbierto = true; d.calDesde = ""; d.calHasta = ""
+                d.calMes = d.mesActivo
+                d.refrescarPeriodo()
                 return
             }
-            guard intentos > 1 else {
-                NSLog("CNPERIODO: la web no da el periodo; se enseña la suya")
-                s.webTemporal()
-                return
+            d.calAbierto = false
+            fijaPeriodo(mes: destino.mes, desde: destino.desde, hasta: destino.hasta)
+        case "dia":
+            guard i >= 0, i < (d.periodo?.dias.count ?? 0) else { return }
+            // La rejilla no guarda la fecha —la vista solo necesita el número—,
+            // así que se rehace la del hueco `i` a partir del mes que se está
+            // mirando. Es la misma cuenta que la armó.
+            guard let fecha = CNPeriodoArma.fechaDelHueco(
+                d.calMes.isEmpty ? d.mesActivo : d.calMes, i) else { return }
+            // Primera fecha, o segunda; y si la segunda es anterior, es que
+            // estabas empezando de nuevo por ahí.
+            if d.calDesde.isEmpty || !d.calHasta.isEmpty {
+                d.calDesde = fecha; d.calHasta = ""
+            } else if fecha >= d.calDesde {
+                d.calHasta = fecha
+            } else {
+                d.calDesde = fecha
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { s.abrirPeriodo(intentos: intentos - 1) }
+            d.refrescarPeriodo()
+        case "antes", "despues":
+            let mes = d.calMes.isEmpty ? d.mesActivo : d.calMes
+            d.calMes = CNCabecera.mesVecino(mes, tipo == "antes" ? -1 : 1)
+            d.refrescarPeriodo()
+        case "aplicar":
+            guard !d.calDesde.isEmpty else { return }
+            let hasta = d.calHasta.isEmpty ? d.calDesde : d.calHasta
+            fijaPeriodo(mes: String(hasta.prefix(7)), desde: d.calDesde, hasta: hasta)
+            cerrarPeriodo()
+        default:
+            cerrarPeriodo()
         }
+    }
+
+    /// El periodo nuevo: primero aquí —que es quien dibuja— y luego a la web,
+    /// que sigue llevando lo suyo por detrás.
+    private func fijaPeriodo(mes: String, desde: String, hasta: String) {
+        datos.ponPeriodo(mes: mes, desde: desde, hasta: hasta)
+        eval("window.__chinolaPonPeriodo && window.__chinolaPonPeriodo("
+             + comillas(mes) + "," + comillas(desde) + "," + comillas(hasta) + ")")
     }
 
     private func presentarPeriodo() {
@@ -1804,16 +1851,16 @@ class ChinolaViewController: CAPBridgeViewController {
             present(host, animated: false)
         }
     }
-    private func refrescarPeriodo() {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaPeriodoJSON && window.__chinolaPeriodoJSON()) || ''") { res, _ in
-            guard let json = res as? String, json.count > 2 else { return }
-            CNDatos.shared.cargarPeriodo(json: json)
-        }
-    }
+    private func refrescarPeriodo() { datos.refrescarPeriodo() }
     private func cerrarPeriodo() {
         periodoVC?.dismiss(animated: false) { [weak self] in
             guard let s = self else { return }
             CNDatos.shared.periodo = nil
+            // Y lo marcado en el calendario se va con la hoja: si no, al
+            // volver a abrirla seguiría ahí lo de la vez pasada, con el botón
+            // de aplicar encendido sobre un rango que nadie acaba de elegir.
+            CNDatos.shared.calAbierto = false
+            CNDatos.shared.calDesde = ""; CNDatos.shared.calHasta = ""
             s.traerDatos(intentos: 3); s.traerResumen(intentos: 4)
         }
         periodoVC = nil
@@ -3099,40 +3146,25 @@ class ChinolaViewController: CAPBridgeViewController {
      * EL CALENDARIO DE LA CABECERA ABRE UNA HOJA VACÍA.
      *
      * Dos sitios lo abren —el botón del calendario y «Rango…» de la tira de
-     * meses— y la hoja sale con su título, su «Listo» y nada dentro. Una hoja
-     * vacía puede ser tres cosas distintas: que la web no tenga el periodo
-     * armado, que lo tenga y el puente devuelva vacío, o que llegue bien y lo
-     * que falle sea el dibujo. Leyendo el código las tres parecen imposibles,
-     * que es exactamente lo que pasó con «no se agregan las tarjetas».
+     * meses— y la hoja salía con su título, su «Listo» y nada dentro, porque se
+     * le pedía a la web y la web contestaba tarde o no contestaba.
      *
-     * Con `CN_CON=periodo` el banco toca el calendario y dice, en orden: qué
-     * contesta el puente y qué acabó teniendo la pantalla.
+     * Ahora la arma el teléfono, así que la pregunta ya no es qué contesta el
+     * puente: es si el modelo sale con sus siete atajos y su rejilla. Con
+     * `CN_CON=periodo` el banco toca el calendario y lo dice.
      */
     private func bancoAbreElPeriodo() {
         guard ProcessInfo.processInfo.environment["CN_CON"]?.contains("periodo") == true else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
             guard let s = self else { return }
-            s.bridge?.webView?.evaluateJavaScript(
-                "(function(){try{if(!window.__chinolaPeriodoJSON)return 'NO HAY PUENTE';"
-                + "var j=window.__chinolaPeriodoJSON()||'';if(!j)return 'EL PUENTE DEVUELVE VACIO';"
-                + "var p=JSON.parse(j);return 'abierto='+p.abierto+' opciones='+(p.opciones||[]).length"
-                + "+' dias='+(p.dias||[]).length;}catch(x){return 'se rompio: '+x}})()") { r, _ in
-                    NSLog("CNPERIODO: antes de tocar · \((r as? String) ?? "sin respuesta")")
-                    CNDatos.shared.onCalendario()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                        let p = CNDatos.shared.periodo
-                        NSLog("CNPERIODO: la pantalla tiene modelo=\(p != nil ? "sí" : "NO")"
-                              + " opciones=\(p?.opciones.count ?? -1) calendario=\(p?.calendario ?? false)")
-                        s.bridge?.webView?.evaluateJavaScript(
-                            "(function(){try{var j=window.__chinolaPeriodoJSON&&window.__chinolaPeriodoJSON();"
-                            + "if(!j)return 'EL PUENTE DEVUELVE VACIO';var p=JSON.parse(j);"
-                            + "return 'abierto='+p.abierto+' opciones='+(p.opciones||[]).length;}"
-                            + "catch(x){return 'se rompio: '+x}})()") { r2, _ in
-                                NSLog("CNPERIODO: despues de tocar · \((r2 as? String) ?? "sin respuesta")")
-                                s.bancoUsaYRepite()
-                            }
-                    }
-                }
+            CNDatos.shared.onCalendario()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                let p = CNDatos.shared.periodo
+                NSLog("CNPERIODO: la pantalla tiene modelo=\(p != nil ? "sí" : "NO")"
+                      + " opciones=\(p?.opciones.count ?? -1) dias=\(p?.dias.count ?? -1)"
+                      + " calendario=\(p?.calendario ?? false) resumen=\(p?.resumen ?? "")")
+                s.bancoUsaYRepite()
+            }
         }
     }
 

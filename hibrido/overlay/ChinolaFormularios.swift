@@ -1386,29 +1386,6 @@ struct CNPeriodo {
     var opciones: [Opcion] = []
     var calTitulo = ""; var diasSemana: [String] = []; var dias: [Dia] = []
     var seleccion = ""; var textoAplicar = ""; var puedeAplicar = false
-
-    static func desde(json: String) -> CNPeriodo? {
-        guard let d = json.data(using: .utf8),
-              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
-        func s(_ o: [String: Any]?, _ k: String) -> String { (o?[k] as? String) ?? "" }
-        func b(_ o: [String: Any]?, _ k: String) -> Bool { (o?[k] as? Bool) ?? false }
-        func n(_ o: [String: Any]?, _ k: String) -> Double { ((o?[k] as? NSNumber)?.doubleValue) ?? 0 }
-        func l(_ o: [String: Any]?, _ k: String) -> [[String: Any]] { (o?[k] as? [[String: Any]]) ?? [] }
-        var p = CNPeriodo()
-        p.abierto = b(r, "abierto"); p.calendario = b(r, "calendario"); p.resumen = s(r, "resumen")
-        p.calTitulo = s(r, "calTitulo"); p.diasSemana = (r["diasSemana"] as? [String]) ?? []
-        p.seleccion = s(r, "seleccion"); p.textoAplicar = s(r, "textoAplicar"); p.puedeAplicar = b(r, "puedeAplicar")
-        p.opciones = l(r, "opciones").map {
-            Opcion(id: Int(n($0, "indice")), label: s($0, "label"), puesta: b($0, "puesta"),
-                   fondo: s($0, "fondo"), tinta: s($0, "tinta"), borde: s($0, "borde"))
-        }
-        p.dias = l(r, "dias").map {
-            Dia(id: Int(n($0, "indice")), n: Int(n($0, "n")), banda: s($0, "banda"),
-                bandaRadio: s($0, "bandaRadio"), circulo: s($0, "circulo"), tinta: s($0, "tinta"),
-                fuerte: b($0, "fuerte"), opacidad: n($0, "opacidad"))
-        }
-        return p
-    }
 }
 
 private struct CNAltoDelPeriodo: PreferenceKey {

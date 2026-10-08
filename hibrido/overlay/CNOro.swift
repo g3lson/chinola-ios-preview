@@ -620,6 +620,105 @@ enum CNOro {
             }
         }
 
+        /*
+         * LA HOJA DEL PERIODO, CASILLA POR CASILLA.
+         *
+         * De todo lo que se ha pasado a nativo, esto es lo que más fácil se
+         * tuerce sin que nadie lo note: un calendario con el hueco de la
+         * primera semana mal sale COMPLETO y CREÍBLE, con los días corridos
+         * una casilla. No falla nada; simplemente marcas el 9 y se guarda el
+         * 10. Una expresión regular sobre el Swift no lo ve.
+         *
+         * Así que la rejilla se ejecuta de verdad contra la de la web, y con
+         * ella los nombres de los meses, las iniciales de los días, los
+         * rótulos de los rangos y a dónde lleva cada atajo.
+         */
+        if let bruto = leer("periodo-oro"),
+           let raizP = (try? JSONSerialization.jsonObject(with: bruto)) as? [String: Any] {
+            // El oro está en español y el simulador arranca en inglés.
+            CNTextos.idiomaDePrueba = "es"
+            defer { CNTextos.idiomaDePrueba = "" }
+            var out: [String: Any] = [:]
+            out["claves"] = CNPeriodoArma.claves
+            out["rotulos"] = CNPeriodoArma.claves.map { CNPeriodoArma.rotulo($0) }
+            out["seleccion"] = ["inicio": cnT("Elige la fecha de inicio"),
+                                "fin": cnT("Ahora elige la fecha final"),
+                                "aplicar": cnT("Aplicar")]
+            out["diasSemana"] = CNPeriodoArma.diasSemana()
+            if let t = raizP["titulos"] as? [String: Any] {
+                var m: [String: Any] = [:]
+                for ym in t.keys { m[ym] = CNPeriodoArma.tituloMes(ym) }
+                out["titulos"] = m
+            }
+            if let v = raizP["vecinos"] as? [String: Any] {
+                var m: [String: Any] = [:]
+                for k in v.keys {
+                    let p = k.split(separator: "|").map(String.init)
+                    guard p.count == 2, let n = Int(p[1]) else { continue }
+                    m[k] = CNCabecera.mesVecino(p[0], n)
+                }
+                out["vecinos"] = m
+            }
+            // Los colores van por su PAPEL y no por su ortografía: la web
+            // escribe la franja con `color-mix` y aquí no hay `color-mix`. Lo
+            // que tiene que cuadrar es qué casilla lleva qué, que es donde se
+            // tuerce sin que se note.
+            func papel(_ c: String) -> String {
+                switch c {
+                case "rgba(0,0,0,0)": return "NADA"
+                case CNPeriodoArma.franja: return "FRANJA"
+                case CNPeriodoArma.amarillo: return "AMARILLO"
+                case CNPeriodoArma.sobreAmarillo: return "SOBRE"
+                case "TINTA": return "TINTA"
+                default: return "SIN NOMBRE: " + c
+                }
+            }
+            if let r = raizP["rejillas"] as? [String: Any] {
+                var m: [String: Any] = [:]
+                for k in r.keys {
+                    // La clave es «mes|desde|hasta», y los dos últimos pueden
+                    // ir vacíos: por eso se parte sin descartar los huecos.
+                    let p = k.split(separator: "|", maxSplits: 2,
+                                    omittingEmptySubsequences: false).map(String.init)
+                    guard p.count == 3 else { continue }
+                    m[k] = CNPeriodoArma.rejilla(p[0], desde: p[1], hasta: p[2], tinta: "TINTA")
+                        .map { d -> [String: Any] in
+                            ["n": d.n, "banda": papel(d.banda), "bandaRadio": d.bandaRadio,
+                             "circulo": papel(d.circulo), "fg": papel(d.tinta),
+                             "peso": d.fuerte ? 600 : 400, "opacidad": d.opacidad]
+                        }
+                }
+                out["rejillas"] = m
+            }
+            if let e = raizP["etiquetas"] as? [String: Any] {
+                var m: [String: Any] = [:]
+                for k in e.keys {
+                    let p = k.split(separator: "|").map(String.init)
+                    guard p.count == 2 else { continue }
+                    m[k] = ["corto": CNPeriodoArma.etiquetaRango(desde: p[0], hasta: p[1], corto: true),
+                            "largo": CNPeriodoArma.etiquetaRango(desde: p[0], hasta: p[1], corto: false)]
+                }
+                out["etiquetas"] = m
+            }
+            // A dónde lleva cada atajo, con el día congelado: `destino` mira
+            // «hoy», y sin congelarlo esto no se podría comparar con nada.
+            if let pr = raizP["presets"] as? [String: Any] {
+                var m: [String: Any] = [:]
+                for hoy in pr.keys {
+                    CNPeriodoArma.hoyDePrueba = hoy
+                    var uno: [String: Any] = [:]
+                    for k in CNPeriodoArma.claves {
+                        let d = CNPeriodoArma.destino(k)
+                        uno[k] = ["mes": d?.mes ?? "", "desde": d?.desde ?? "", "hasta": d?.hasta ?? ""]
+                    }
+                    m[hoy] = uno
+                }
+                CNPeriodoArma.hoyDePrueba = ""
+                out["presets"] = m
+            }
+            salida["periodo"] = out
+        }
+
         if let j = try? JSONSerialization.data(withJSONObject: salida),
            let texto = String(data: j, encoding: .utf8) {
             escupe(texto)
