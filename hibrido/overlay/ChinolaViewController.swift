@@ -384,6 +384,17 @@ class ChinolaViewController: CAPBridgeViewController {
             // El dibujo acaba de pasar de la web a Swift, y un dibujo no se
             // comprueba con una expresión regular: los seis juntos en una foto
             // es la única forma de ver si tienen cara.
+            // Y «orbe», LA OTRA FAMILIA: seis ánimos por tres pieles.
+            if ir == "orbe" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                    guard let s = self else { return }
+                    NSLog("CNIR: el orbe, con sus tres pieles")
+                    let host = UIHostingController(rootView: CNOrbeMuestra())
+                    host.modalPresentationStyle = .fullScreen
+                    s.present(host, animated: false)
+                }
+                return
+            }
             if ir == "chino" {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
                     guard let s = self else { return }
@@ -1518,26 +1529,31 @@ class ChinolaViewController: CAPBridgeViewController {
         eval("\(fn) && \(fn)(\(json))")
         refrescarPronto()
     }
-    /// El dibujo de Chino y los pagos que vienen, para el icono del perfil.
-    /// EL SELLO DEL DIBUJO. Dice qué Chino toca sin mandar el dibujo.
-
-    /// Los avisos de Chino, y su dibujo SOLO si cambió.
-    ///
-    /// El dibujo son 49 KB en base64 y esto se llama en cada refresco —y otra
-    /// vez un segundo después—. El personaje cambia cuando lo cambias tú o
-    /// cuando cambia el ánimo del mes: no en cada toque de pestaña. Se pregunta
-    /// primero cuál toca (unos caracteres) y solo se pide el dibujo cuando de
-    /// verdad es otro.
+    /**
+     * LA HOJA DE CHINO, ARMADA AQUÍ.
+     *
+     * Era de la web entera: su dibujo —49 KB en base64, en cada refresco y otra
+     * vez un segundo después, con un sello de por medio para no mandarlo
+     * cuando no cambiaba— y la lista de pagos cercanos.
+     *
+     * Las tres piezas estaban ya en el teléfono: el dibujo lo hace `CNChino`,
+     * la cara que pone la decide `CNAnimo` y los pagos los calcula `CNCalculo`,
+     * el mismo que los pone en el panel.
+     */
     fileprivate func traerMascota() {
-        // SIEMPRE SIN DIBUJO. El `false` es lo único que queda de un baile de
-        // dos preguntas: antes se preguntaba primero un sello —unos caracteres—
-        // para no pedir el dibujo cuando no había cambiado, porque pedirlo eran
-        // 106 KB por el puente. Ahora el personaje lo dibuja el teléfono y lo
-        // único que hace falta del modelo es la clave del ánimo.
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaMascotaJSON && window.__chinolaMascotaJSON(false)) || ''") { res, _ in
-            guard let json = res as? String, json.count > 2 else { return }
-            CNDatos.shared.cargarMascota(json: json)
-        }
+        let cab = datos.resumen?.cabecera
+        func oSi(_ a: String?, _ b: Color) -> String { (a?.isEmpty == false) ? a! : cnHexDe(b) }
+        let t = CNMascotaArma.Tinte(positivo: oSi(cab?.positivo, CNC.pos),
+                                    negativo: oSi(cab?.negativo, CNC.neg),
+                                    aviso: oSi(cab?.aviso, CNC.aviso))
+        // SIN LIBRETA NO SE PISA LO QUE YA HAY. Mientras llega, una lista
+        // vacía dice «No tienes pagos cerca» con toda la confianza del mundo,
+        // y eso es peor que no decir nada. Pero la PRIMERA vez sí se arma: con
+        // el modelo en nil la hoja se abre con los rótulos en blanco, que es
+        // peor todavía —y recién instalada, sin pagos, el texto es verdad—.
+        if datos.libreta.sinLlegar && datos.mascota != nil { return }
+        let m = CNMascotaArma.arma(datos.libreta, tinte: t)
+        if datos.mascota != m { datos.mascota = m }
     }
 
     /// El modelo de UNA pantalla, en cuanto se entra en ella. La web tarda un
@@ -3515,21 +3531,22 @@ class ChinolaViewController: CAPBridgeViewController {
     // MARK: Chino en grande (mantener pulsado en Perfil)
     private var mascotaVC: UIViewController?
     fileprivate func abrirMascota() {
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaMascotaJSON && window.__chinolaMascotaJSON()) || ''") { [weak self] res, _ in
-            guard let s = self else { return }
-            if let json = res as? String, json.count > 2 { CNDatos.shared.cargarMascota(json: json) }
-            guard s.mascotaVC == nil else { return }
-            let host = UIHostingController(rootView: CNMascotaVista(datos: s.datos, onClose: { [weak self] in
-                self?.cerrarMascota()
-            }))
-            host.view.backgroundColor = .clear
-            s.addChild(host); s.view.addSubview(host.view); host.didMove(toParent: s)
-            host.view.frame = s.view.bounds
-            host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            host.view.alpha = 0
-            s.mascotaVC = host
-            UIView.animate(withDuration: 0.2) { host.view.alpha = 1 }
-        }
+        // SE ABRE YA. Antes se le preguntaba a la web su modelo y la hoja no
+        // aparecía hasta que contestara: un toque que no hace nada durante un
+        // momento parece un toque que no se registró. Ahora se arma aquí, antes
+        // de abrirla.
+        traerMascota()
+        guard mascotaVC == nil else { return }
+        let host = UIHostingController(rootView: CNMascotaVista(datos: datos, onClose: { [weak self] in
+            self?.cerrarMascota()
+        }))
+        host.view.backgroundColor = .clear
+        addChild(host); view.addSubview(host.view); host.didMove(toParent: self)
+        host.view.frame = view.bounds
+        host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        host.view.alpha = 0
+        mascotaVC = host
+        UIView.animate(withDuration: 0.2) { host.view.alpha = 1 }
     }
     private func cerrarMascota() {
         guard let host = mascotaVC else { return }

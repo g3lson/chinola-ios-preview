@@ -296,13 +296,28 @@ enum CNCalculo {
     /// Los pagos que vienen, del más cercano al más lejano: el corte de cada
     /// tarjeta con deuda y la cuota de cada préstamo que se debe.
     static func pagosQueVienen(_ l: CNLibreta, desde: Date = Date()) -> [Pago] {
+        // LO QUE YA SE PAGÓ ESTE MES NO SE VUELVE A PEDIR.
+        //
+        // Esta lista pedía otra vez el pago de una tarjeta que acababas de
+        // pagar, hasta que pasara su día del mes. Y lo dice la MARCA que
+        // llevan el pago y el abono —`tarjeta` y `prestamo`—, no el concepto
+        // escrito: comparar textos se rompe en cuanto renombras la tarjeta o
+        // cambias de idioma. El texto se mira solo para los movimientos de
+        // antes de que la marca existiera.
+        let mes = CNAnimo.mesDe(desde)
+        let delMes = l.tx.filter { String($0.fecha.prefix(7)) == mes }
+        func yaPagada(_ c: CNTarjeta) -> Bool {
+            delMes.contains { $0.tarjeta == c.id || $0.concepto == "Pago " + c.nombre
+                || $0.concepto == cnT("Pago") + " " + c.nombre }
+        }
+        func yaAbonado(_ p: CNPrestamo) -> Bool { delMes.contains { $0.prestamo == p.id } }
         var salida: [Pago] = []
-        for t in l.tarjetas where t.saldo > 0 {
+        for t in l.tarjetas where t.saldo > 0 && !yaPagada(t) {
             salida.append(Pago(tipo: "tarjeta", referencia: t.id, nombre: t.nombre,
                                monto: t.saldo, dias: diasHastaElDia(t.pago, desde: desde),
                                corte: t.corte, dia: t.pago))
         }
-        for p in l.prestamos where p.sentido != "meDeben" {
+        for p in l.prestamos where p.sentido != "meDeben" && !yaAbonado(p) {
             let pendiente = max(0, p.total - p.pagado)
             guard pendiente > 0 else { continue }
             // Lo que se recuerda de un préstamo es la CUOTA del mes y el día en

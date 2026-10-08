@@ -2363,7 +2363,7 @@ struct CNTourVista: View {
             VStack(spacing: 0) {
                 HStack(alignment: .top, spacing: 12) {
                     if !m.animo.isEmpty {
-                        CNChino(animo: m.animo, tam: 58, conSombra: false, ajustado: true)
+                        CNChinoVista(animo: m.animo, tam: 58, conSombra: false, ajustado: true)
                             .offset(y: flota ? -4 : 3)
                             .rotationEffect(.degrees(flota ? -3 : 3))
                     }
@@ -2484,26 +2484,24 @@ struct CNLatido: View {
     }
 }
 
-struct CNMascota {
-    struct Aviso: Identifiable { var id: Int; var titulo = ""; var detalle = ""; var color = "" }
-    /// SIN EL DIBUJO: el teléfono lo hace con la clave del ánimo. El PNG sigue
-    /// viajando en el modelo porque Android todavía lo lee; leerlo aquí era
-    /// quedarse con una copia que nadie enseña.
+/**
+ * LA HOJA DE CHINO.
+ *
+ * Sin el dibujo —lo hace `CNChino`— y sin lector de JSON: la arma el propio
+ * teléfono (`CNMascotaArma`) con lo que ya sabe. Era de la web entera: su
+ * dibujo, 49 KB en base64 en cada refresco, y la lista de pagos cercanos, que
+ * es la misma que el panel ya calcula aquí.
+ *
+ * `Equatable` porque se compara antes de escribirla: reasignarla igual avisa
+ * igual, y ese aviso repinta la app entera varias veces por segundo al
+ * arrancar.
+ */
+struct CNMascota: Equatable {
+    struct Aviso: Identifiable, Equatable {
+        var id: Int; var titulo = ""; var detalle = ""; var color = ""
+    }
     var tituloAvisos = ""; var verAvisos = ""; var volver = ""; var nadaTexto = ""
     var avisos: [Aviso] = []
-
-    static func desde(json: String) -> CNMascota? {
-        guard let d = json.data(using: .utf8),
-              let r = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
-        func s(_ o: [String: Any], _ k: String) -> String { (o[k] as? String) ?? "" }
-        var m = CNMascota()
-        m.tituloAvisos = s(r, "tituloAvisos")
-        m.verAvisos = s(r, "verAvisos"); m.volver = s(r, "volver"); m.nadaTexto = s(r, "nadaTexto")
-        m.avisos = ((r["avisos"] as? [[String: Any]]) ?? []).enumerated().map { i, a in
-            Aviso(id: i, titulo: s(a, "titulo"), detalle: s(a, "detalle"), color: s(a, "color"))
-        }
-        return m
-    }
 }
 
 struct CNMascotaVista: View {
@@ -2540,7 +2538,7 @@ struct CNMascotaVista: View {
             // web, y hasta que ella arrancaba la hoja se abría SIN personaje
             // —con el hueco y los avisos debajo—, que es justo lo que se abre
             // tocando a Chino.
-            CNChino(animo: datos.animoDeChino, tam: 150)
+            CNChinoVista(animo: datos.animoDeChino, tam: 150)
                 // Vivo, como en la web: respira despacio.
                 .scaleEffect(salto ? 1.045 : 0.985)
                 .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: salto)
@@ -2922,7 +2920,7 @@ struct CNPuertaVista: View {
                 // pantalla se ve pegada; subiendo y bajando dos puntos cada dos
                 // segundos y medio parece que está ahí contigo. Es el mismo
                 // gesto que ya hace en la charla.
-                CNChino(animo: m.animo, tam: lado, conSombra: false, ajustado: true)
+                CNChinoVista(animo: m.animo, tam: lado, conSombra: false, ajustado: true)
                     .offset(y: flota ? -5 : 5)
                     .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: flota)
                     .onAppear { flota = true }
@@ -2964,7 +2962,7 @@ struct CNPuertaVista: View {
             if !m.animo.isEmpty {
                 let lado = ladoDeChino(alto, base: m.paso == "lamina" ? 148 : 132,
                                        conLista: !m.lista.isEmpty)
-                CNChino(animo: m.animo, tam: lado, conSombra: false, ajustado: true)
+                CNChinoVista(animo: m.animo, tam: lado, conSombra: false, ajustado: true)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.bottom, 4)
                     .cnEntra(entro, 0)
@@ -4354,7 +4352,7 @@ struct CNExitoPlanVista: View {
     var body: some View {
         VStack(spacing: 0) {
             if !x.animo.isEmpty {
-                CNChino(animo: x.animo, tam: 132, conSombra: false, ajustado: true)
+                CNChinoVista(animo: x.animo, tam: 132, conSombra: false, ajustado: true)
                     // Brinca, y poco: una celebración que no para cansa a los
                     // tres segundos, y esta pantalla se queda hasta que la
                     // cierren.
@@ -4567,7 +4565,7 @@ struct CNCharlaVista: View {
                         if m.mensajes.isEmpty {
                             VStack(spacing: 12) {
                                 if !m.animo.isEmpty {
-                                    CNChino(animo: m.animo, tam: 120, conSombra: false, ajustado: true)
+                                    CNChinoVista(animo: m.animo, tam: 120, conSombra: false, ajustado: true)
                                         .offset(y: flota ? -4 : 3)
                                         .animation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true), value: flota)
                                         .onAppear { flota = true }
@@ -4634,7 +4632,7 @@ struct CNCharlaVista: View {
                                     // la columna de caras y cansa.
                                     if x.de != "yo" {
                                         if x.primeroDeChino, !m.animo.isEmpty {
-                                            CNChino(animo: m.animo, tam: 28,
+                                            CNChinoVista(animo: m.animo, tam: 28,
                                                     conSombra: false, ajustado: true)
                                         } else {
                                             // El hueco se respeta igual, o las
@@ -5182,7 +5180,7 @@ struct CNAvisoVista: View {
                     .cnEntra(entro, 0)
             } else if !aviso.animo.isEmpty {
                 let lado: CGFloat = aviso.plantilla == "lamina" ? 168 : 124
-                CNChino(animo: aviso.animo, tam: lado, conSombra: false, ajustado: true)
+                CNChinoVista(animo: aviso.animo, tam: lado, conSombra: false, ajustado: true)
                     .offset(y: flota ? -4 : 4)
                     .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: flota)
                     .cnEntra(entro, 0)

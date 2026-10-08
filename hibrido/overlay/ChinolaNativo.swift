@@ -282,6 +282,11 @@ struct CNFormato {
     /// Qué grupos de Cuentas están plegados. Venía dentro del modelo de esa
     /// pantalla; sin él, armándola aquí, lo que alguien plegó reaparecía.
     var plegadoCuentas = false; var plegadoTarjetas = false; var plegadoPrestamos = false
+    /// CON QUÉ APARECE CHINO: «chinola» —la fruta— u «orbe», y de qué está
+    /// hecho el orbe. Son dos dibujos distintos y los dos los hace el teléfono;
+    /// sin esto, quien tuviera el orbe elegido veía la fruta.
+    var familia = "chinola"
+    var pielChino = "clara"
     /// QUÉ CARA PONE CHINO: «auto» —lo de fábrica— o una de las cinco a mano.
     ///
     /// La elección, no el ánimo: con el ánimo ya resuelto, la subpantalla del
@@ -779,6 +784,10 @@ struct CNPaletaTema {
     var pos  = cnColor(0x137d41)
     var neg  = cnColor(0xd55948)
     var info = cnColor(0x398ad6)
+    /// EL ÁMBAR: «ojo con esto», que no es ni bueno ni malo. Faltaba, así que
+    /// lo que iba en ámbar —un pago de la semana que viene— se pintaba con el
+    /// color que mandara la web, y sin ella salía vacío.
+    var aviso = cnColor(0xd9962b)
     var oscuro = false
 
     /// La misma paleta con los colores de OTRO tema encima: los semánticos
@@ -863,6 +872,7 @@ enum CNC {
     static var pos: Color  { tema.pos }
     static var neg: Color  { tema.neg }
     static var info: Color { tema.info }
+    static var aviso: Color { tema.aviso }
     /// Lo que se escribe ENCIMA del acento (el amarillo de la marca pide tinta
     /// oscura; un acento oscuro pide tinta clara).
     static var sobreAcc: Color { cnSobre(tema.acc) }
@@ -1896,7 +1906,7 @@ final class CNDatos: ObservableObject {
     /// quien entre después. Lo llama el controlador en cuanto la web dice que
     /// ya no se está dentro.
     func olvidaLoGuardado() {
-        for que in ["libreta", "tema", "resumen", "cuentas", "plan", "ajustes", "perfil", "mascota"] {
+        for que in ["libreta", "tema", "resumen", "cuentas", "plan", "ajustes", "perfil"] {
             UserDefaults.standard.removeObject(forKey: Self.guardados + que)
         }
     }
@@ -1941,7 +1951,6 @@ final class CNDatos: ObservableObject {
         if let j = Self.guardado("cuentas") { cargarCuentas(json: j) }
         refrescarAjustes()
         refrescarPerfil()
-        if let j = Self.guardado("mascota") { cargarMascota(json: j) }
         // Y el Plan, rehecho con la libreta que se acaba de leer.
         refrescarPlan()
     }
@@ -1980,23 +1989,22 @@ final class CNDatos: ObservableObject {
         sec.bloques[bi] = q
         seccion = sec
     }
-    func cargarTour(json: String) { tour = CNTour.desde(json: json) }
     /**
-     * SIN EL DIBUJO DENTRO.
+     * EL RECORRIDO: EL PASO LO DICE LA WEB, EL CONTENIDO LO PONE EL TELÉFONO.
      *
-     * Aquí vivían los dos PNG de Chino —106 KB— con todo su aparato: se
-     * guardaban en memoria y se volvían a pegar cuando el modelo llegaba sin
-     * ellos, porque pedirlos en cada refresco era mandar 106 KB por el puente
-     * cada vez que alguien tocaba una pestaña.
+     * Ella es la que lo saca la primera vez y la que recuerda que ya se vio
+     * —eso vive con los ajustes—, así que de su respuesta se lee EN QUÉ paso
+     * va. El título, el párrafo, la cara y lo que señala el aro salen del
+     * catálogo: son datos fijos y viajaban enteros por el puente en cada paso.
      *
-     * Ahora el personaje lo dibuja el teléfono y el modelo trae solo la clave
-     * del ánimo: cinco letras. No hay nada que guardar ni que volver a pegar, y
-     * de paso el modelo entero cabe en el almacén sin pensarlo.
+     * Con la web de respaldo si el catálogo no tiene ese paso: una web más
+     * nueva que el catálogo podría contar uno más, y quedarse sin globo a mitad
+     * del recorrido es peor que enseñar el suyo.
      */
-    func cargarMascota(json: String) {
-        guard let m = CNMascota.desde(json: json) else { return }
-        guarda("mascota", json)
-        mascota = m
+    func cargarTour(json: String) {
+        let suyo = CNTour.desde(json: json)
+        guard let i = suyo?.paso, let mio = CNTourArma.paso(i) else { tour = suyo; return }
+        tour = mio
     }
     /// La puerta se vuelve a pedir cada poco mientras está puesta; si la web
     /// contesta lo mismo, no se repinta (lo que se escribe en un campo no se
@@ -9260,7 +9268,7 @@ struct CNTarjetaChino: View {
                 // web todavía no había mandado el dibujo, y ahora no hay nada
                 // que esperar. Y decían menos que el personaje: dos caras para
                 // seis ánimos.
-                CNChino(animo: animo, tam: 54, conSombra: false, ajustado: true)
+                CNChinoVista(animo: animo, tam: 54, conSombra: false, ajustado: true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(frase).font(cnLetra(14, .semibold))
                         .foregroundColor(cnSobre(CNC.acc))
@@ -9686,7 +9694,7 @@ struct CNBotonFlotante: View {
                     // de bocadillo dentro de un círculo. O sea que lo primero
                     // que veía quien abría la app no era el personaje. Ya no
                     // hay nada que esperar, así que ese caso se va.
-                    CNChino(animo: datos.animoDeChino, tam: lado, conSombra: false, ajustado: true)
+                    CNChinoVista(animo: datos.animoDeChino, tam: lado, conSombra: false, ajustado: true)
                 }
             }
             .frame(width: lado, height: lado)

@@ -29,6 +29,14 @@
         "limite": 30000,
         "corte": 20,
         "pago": 25
+      },
+      {
+        "id": 12,
+        "nombre": "Scotia",
+        "saldo": 7000,
+        "limite": 40000,
+        "corte": 10,
+        "pago": 18
       }
     ],
     "prestamos": [
@@ -225,17 +233,37 @@
         "categoria": "Gastos Personales",
         "concepto": "Gimnasio",
         "medio": "cuenta:1"
+      },
+      {
+        "id": "m1758870000000",
+        "tipo": "Gasto Fijo",
+        "monto": 2000,
+        "fecha": "2026-09-20",
+        "categoria": "Préstamo",
+        "concepto": "A la Scotia",
+        "medio": "cuenta:1",
+        "tarjeta": 12
+      },
+      {
+        "id": "m1758880000000",
+        "tipo": "Gasto Fijo",
+        "monto": 1500,
+        "fecha": "2026-09-21",
+        "categoria": "Préstamo",
+        "concepto": "Lo del viejo",
+        "medio": "cuenta:1",
+        "prestamo": 22
       }
     ]
   },
   "totales": {
     "2026-09": {
       "ing": 82000,
-      "gas": 25620,
-      "fij": 21600,
+      "gas": 29120,
+      "fij": 25100,
       "vari": 4020,
       "aho": 10000,
-      "bal": 46380
+      "bal": 42880
     },
     "2026-08": {
       "ing": 4000,
@@ -325,6 +353,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ]
       },
@@ -345,6 +381,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ]
       }
@@ -409,6 +453,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ]
       },
@@ -441,6 +493,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ]
       }
@@ -594,15 +654,75 @@
           }
         ]
       }
+    },
+    "m1758870000000": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 48000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 52000
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      }
+    },
+    "m1758880000000": {
+      "mas": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 48500
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      },
+      "menos": {
+        "cuentas": [
+          {
+            "id": 1,
+            "nombre": "Banco",
+            "saldo": 51500
+          },
+          {
+            "id": 2,
+            "nombre": "Efectivo",
+            "saldo": 3000
+          }
+        ]
+      }
     }
   },
   "saldos": {
     "enCuentas": 53000,
-    "deudaTC": 12000,
+    "deudaTC": 19000,
     "deudaPr": 200000,
     "porCobrarPr": 25000,
     "pendienteTodos": 225000,
-    "patrimonio": -134000
+    "patrimonio": -141000
   },
   "presupuesto": {
     "2026-09": {
@@ -617,7 +737,7 @@
         {
           "categoria": "Préstamo",
           "limite": 16000,
-          "gastado": 18500,
+          "gastado": 22000,
           "pct": 100,
           "excedida": true
         },
@@ -644,8 +764,8 @@
         }
       ],
       "limiteTotal": 34000,
-      "gastadoTotal": 25620,
-      "pctTotal": 75,
+      "gastadoTotal": 29120,
+      "pctTotal": 86,
       "excedidas": 1
     }
   },
@@ -683,25 +803,25 @@
       "tono": "positivo"
     },
     "2026-09|kpi-gastos": {
-      "monto": 25620,
+      "monto": 29120,
       "nota": "% de tus ingresos",
-      "pct": 31,
+      "pct": 36,
       "tono": "negativo"
     },
     "2026-09|kpi-balance": {
-      "monto": 46380,
+      "monto": 42880,
       "pct": 0,
       "nota": "disponible este mes",
       "tono": "tinta"
     },
     "2026-09|kpi-deuda": {
-      "monto": 237000,
+      "monto": 244000,
       "nota": "tarjetas + préstamos",
       "pct": 0,
       "tono": "ambar"
     },
     "2026-09|kpi-patrimonio": {
-      "monto": -134000,
+      "monto": -141000,
       "nota": "cuentas − deudas",
       "pct": 0,
       "tono": "negativo"
@@ -725,13 +845,13 @@
       "tono": "tinta"
     },
     "2026-08|kpi-deuda": {
-      "monto": 237000,
+      "monto": 244000,
       "nota": "tarjetas + préstamos",
       "pct": 0,
       "tono": "ambar"
     },
     "2026-08|kpi-patrimonio": {
-      "monto": -134000,
+      "monto": -141000,
       "nota": "cuentas − deudas",
       "pct": 0,
       "tono": "negativo"
@@ -794,28 +914,28 @@
     "2026-09": [
       {
         "categoria": "Préstamo",
-        "gastado": 18500,
+        "gastado": 22000,
         "pct": 100
       },
       {
         "categoria": "Ahorro",
         "gastado": 10000,
-        "pct": 54
+        "pct": 45
       },
       {
         "categoria": "Gastos Personales",
         "gastado": 3100,
-        "pct": 17
+        "pct": 14
       },
       {
         "categoria": "Comida",
         "gastado": 2480,
-        "pct": 13
+        "pct": 11
       },
       {
         "categoria": "Alimentación",
         "gastado": 1540,
-        "pct": 8
+        "pct": 7
       }
     ],
     "2026-08": [
@@ -868,9 +988,9 @@
         {
           "mes": "2026-09",
           "ing": 82000,
-          "gas": 35620,
+          "gas": 39120,
           "a": 100,
-          "b": 43
+          "b": 48
         }
       ]
     },
@@ -880,22 +1000,22 @@
         {
           "mes": "2026-09",
           "ing": 82000,
-          "gas": 35620,
+          "gas": 39120,
           "a": 100,
-          "b": 43
+          "b": 48
         }
       ]
     }
   },
   "mezcla": {
     "2026-09": {
-      "total": 35620,
-      "fijos": 21600,
+      "total": 39120,
+      "fijos": 25100,
       "variables": 4020,
       "ahorro": 10000,
-      "a": 61,
-      "c": 11,
-      "hasta": 72
+      "a": 64,
+      "c": 10,
+      "hasta": 74
     },
     "2026-08": {
       "total": 1200,
@@ -1044,7 +1164,7 @@
             },
             {
               "x": 100,
-              "y": 27.1273
+              "y": 25.5054
             }
           ]
         }
@@ -1058,7 +1178,7 @@
         },
         {
           "serie": "gastos",
-          "ultimo": 25620
+          "ultimo": 29120
         }
       ]
     },
@@ -1094,7 +1214,7 @@
         true
       ],
       "minV": 0,
-      "maxV": 46380,
+      "maxV": 42880,
       "trazos": [
         {
           "serie": "balance",
@@ -1141,7 +1261,7 @@
             },
             {
               "x": 90.9091,
-              "y": 36.7059
+              "y": 36.5187
             },
             {
               "x": 100,
@@ -1200,7 +1320,7 @@
             },
             {
               "x": 90.9091,
-              "y": 36.7059
+              "y": 36.5187
             },
             {
               "x": 100,
@@ -1217,7 +1337,7 @@
       "leyenda": [
         {
           "serie": "balance",
-          "ultimo": 46380
+          "ultimo": 42880
         }
       ]
     },
@@ -1241,7 +1361,7 @@
         true
       ],
       "minV": 0,
-      "maxV": 46380,
+      "maxV": 42880,
       "trazos": [
         {
           "serie": "patrimonio",
@@ -1264,7 +1384,7 @@
             },
             {
               "x": 80,
-              "y": 36.7059
+              "y": 36.5187
             },
             {
               "x": 100,
@@ -1278,7 +1398,7 @@
       "leyenda": [
         {
           "serie": "patrimonio",
-          "ultimo": 46380
+          "ultimo": 42880
         }
       ]
     },
@@ -1386,9 +1506,9 @@
         {
           "serie": "gastos",
           "x": 86.5,
-          "y": 27.1273,
+          "y": 25.5054,
           "w": 10.3333,
-          "h": 11.8727
+          "h": 13.4946
         }
       ],
       "leyenda": [
@@ -1398,7 +1518,7 @@
         },
         {
           "serie": "gastos",
-          "ultimo": 25620
+          "ultimo": 29120
         }
       ]
     },
@@ -1506,9 +1626,9 @@
         {
           "serie": "gastos",
           "x": 89.9444,
-          "y": 27.1273,
+          "y": 25.5054,
           "w": 3.4444,
-          "h": 11.8727
+          "h": 13.4946
         },
         {
           "serie": "ahorro",
@@ -1560,7 +1680,7 @@
         },
         {
           "serie": "gastos",
-          "ultimo": 25620
+          "ultimo": 29120
         },
         {
           "serie": "ahorro",
@@ -1683,16 +1803,6 @@
         "dias": 14,
         "plazo": "en 14 d",
         "tono": "positivo"
-      },
-      {
-        "tipo": "prestamo",
-        "nombre": "Viejo sin sentido",
-        "monto": 1500,
-        "corte": 0,
-        "dia": 12,
-        "dias": 16,
-        "plazo": "en 16 d",
-        "tono": "positivo"
       }
     ]
   },
@@ -1741,6 +1851,8 @@
       "3",
       "1",
       "2",
+      "m1758880000000",
+      "m1758870000000",
       "5",
       "4"
     ],
@@ -1749,7 +1861,9 @@
     ],
     "2026-09|Fijos|": [
       "m1758820000000",
-      "2"
+      "2",
+      "m1758880000000",
+      "m1758870000000"
     ],
     "2026-09|Variables|": [
       "m1758860000000",
@@ -1784,6 +1898,14 @@
       {
         "fecha": "2026-09-23",
         "total": -18500
+      },
+      {
+        "fecha": "2026-09-21",
+        "total": -1500
+      },
+      {
+        "fecha": "2026-09-20",
+        "total": -2000
       },
       {
         "fecha": "2026-09-12",
@@ -1976,27 +2098,27 @@
       "puntos": [
         {
           "mes": "2026-04",
-          "valor": -183180
+          "valor": -192180
         },
         {
           "mes": "2026-05",
-          "valor": -183180
+          "valor": -192180
         },
         {
           "mes": "2026-06",
-          "valor": -183180
+          "valor": -192180
         },
         {
           "mes": "2026-07",
-          "valor": -183180
+          "valor": -192180
         },
         {
           "mes": "2026-08",
-          "valor": -180380
+          "valor": -189380
         },
         {
           "mes": "2026-09",
-          "valor": -134000
+          "valor": -141000
         }
       ]
     },
@@ -2016,15 +2138,15 @@
         },
         {
           "mes": "2026-07",
-          "valor": -183180
+          "valor": -192180
         },
         {
           "mes": "2026-08",
-          "valor": -180380
+          "valor": -189380
         },
         {
           "mes": "2026-09",
-          "valor": -134000
+          "valor": -141000
         }
       ]
     },
@@ -2052,7 +2174,7 @@
         },
         {
           "mes": "2026-09",
-          "valor": -134000
+          "valor": -141000
         }
       ]
     },
@@ -2060,27 +2182,27 @@
       "puntos": [
         {
           "mes": "2026-04",
-          "valor": -183180
+          "valor": -192180
         },
         {
           "mes": "2026-05",
-          "valor": -183180
+          "valor": -192180
         },
         {
           "mes": "2026-06",
-          "valor": -183180
+          "valor": -192180
         },
         {
           "mes": "2026-07",
-          "valor": -183180
+          "valor": -192180
         },
         {
           "mes": "2026-08",
-          "valor": -180380
+          "valor": -189380
         },
         {
           "mes": "2026-09",
-          "valor": -134000
+          "valor": -141000
         }
       ]
     }
@@ -2205,6 +2327,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -2277,6 +2403,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           },
           {
             "id": "m-nuevo",
@@ -2308,6 +2448,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -2380,6 +2524,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           },
           {
             "id": "m-tarj",
@@ -2411,6 +2569,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -2483,6 +2645,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           },
           {
             "id": "m-ing",
@@ -2514,6 +2690,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -2586,6 +2766,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           },
           {
             "id": "m-it",
@@ -2617,6 +2811,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -2689,6 +2887,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           }
         ]
       }
@@ -2713,6 +2925,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -2785,6 +3001,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           }
         ]
       }
@@ -2809,6 +3039,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -2881,6 +3115,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           }
         ]
       }
@@ -2905,6 +3153,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -2977,6 +3229,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           }
         ]
       }
@@ -3001,6 +3267,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -3073,6 +3343,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           }
         ]
       }
@@ -3097,6 +3381,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -3162,6 +3450,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           }
         ]
       }
@@ -3186,6 +3488,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -3251,6 +3557,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           }
         ]
       }
@@ -3275,6 +3595,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "tx": [
@@ -3347,6 +3671,20 @@
             "monto": 3100,
             "medio": "cuenta:1",
             "fecha": "2026-09-26"
+          },
+          {
+            "id": "m1758870000000",
+            "tipo": "Gasto Fijo",
+            "monto": 2000,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-20"
+          },
+          {
+            "id": "m1758880000000",
+            "tipo": "Gasto Fijo",
+            "monto": 1500,
+            "medio": "cuenta:1",
+            "fecha": "2026-09-21"
           }
         ]
       }
@@ -3426,6 +3764,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -3486,6 +3828,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -3549,6 +3895,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -3609,6 +3959,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -3669,6 +4023,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -3729,6 +4087,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -3789,6 +4151,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -3852,6 +4218,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -3912,6 +4282,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -3978,6 +4352,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -4031,6 +4409,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -4084,6 +4466,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -4137,6 +4523,10 @@
           {
             "id": 11,
             "saldo": 0
+          },
+          {
+            "id": 12,
+            "saldo": 7000
           }
         ],
         "metas": [
@@ -4299,6 +4689,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ],
         "prestamos": [
@@ -4402,7 +4800,9 @@
           "Extra",
           "Alimentación",
           "Alimentación",
-          "Gastos Personales"
+          "Gastos Personales",
+          "Préstamo",
+          "Préstamo"
         ]
       }
     },
@@ -4438,6 +4838,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ],
         "prestamos": [
@@ -4541,7 +4949,9 @@
           "Extra",
           "Alimentación",
           "Alimentación",
-          "Gastos Personales"
+          "Gastos Personales",
+          "Préstamo",
+          "Préstamo"
         ]
       }
     },
@@ -4577,6 +4987,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           },
           {
             "id": 1,
@@ -4688,7 +5106,9 @@
           "Extra",
           "Alimentación",
           "Alimentación",
-          "Gastos Personales"
+          "Gastos Personales",
+          "Préstamo",
+          "Préstamo"
         ]
       }
     },
@@ -4724,6 +5144,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ],
         "prestamos": [
@@ -4835,7 +5263,9 @@
           "Extra",
           "Alimentación",
           "Alimentación",
-          "Gastos Personales"
+          "Gastos Personales",
+          "Préstamo",
+          "Préstamo"
         ]
       }
     },
@@ -4871,6 +5301,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ],
         "prestamos": [
@@ -4982,7 +5420,9 @@
           "Extra",
           "Alimentación",
           "Alimentación",
-          "Gastos Personales"
+          "Gastos Personales",
+          "Préstamo",
+          "Préstamo"
         ]
       }
     },
@@ -5018,6 +5458,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ],
         "prestamos": [
@@ -5128,7 +5576,9 @@
           "Extra",
           "Alimentación",
           "Alimentación",
-          "Gastos Personales"
+          "Gastos Personales",
+          "Préstamo",
+          "Préstamo"
         ]
       }
     },
@@ -5164,6 +5614,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ],
         "prestamos": [
@@ -5267,7 +5725,9 @@
           "Extra",
           "Alimentación",
           "Alimentación",
-          "Gastos Personales"
+          "Gastos Personales",
+          "Préstamo",
+          "Préstamo"
         ]
       }
     },
@@ -5303,6 +5763,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ],
         "prestamos": [
@@ -5412,7 +5880,9 @@
           "Extra",
           "Alimentación",
           "Alimentación",
-          "Gastos Personales"
+          "Gastos Personales",
+          "Préstamo",
+          "Préstamo"
         ]
       }
     },
@@ -5448,6 +5918,14 @@
             "limite": 30000,
             "corte": 20,
             "pago": 25
+          },
+          {
+            "id": 12,
+            "nombre": "Scotia",
+            "saldo": 7000,
+            "limite": 40000,
+            "corte": 10,
+            "pago": 18
           }
         ],
         "prestamos": [
@@ -5551,7 +6029,9 @@
           "Extra",
           "Alimentación",
           "Alimentación",
-          "Gastos Personales"
+          "Gastos Personales",
+          "Préstamo",
+          "Préstamo"
         ]
       }
     }
@@ -5560,7 +6040,7 @@
     "2026-09": [
       {
         "categoria": "Préstamo",
-        "gastado": 18500
+        "gastado": 22000
       },
       {
         "categoria": "Ahorro",

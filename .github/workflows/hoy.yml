@@ -435,6 +435,19 @@ jobs:
           sleep 10
           xcrun simctl io "$UDID" screenshot "chino.png"
 
+          # Y EL ORBE, la otra familia: seis ánimos por tres pieles.
+          #
+          # Mientras el teléfono solo supo dibujar la fruta, quien tuviera el
+          # orbe elegido veía otra cosa. Y no falla nada: simplemente le
+          # cambian el personaje.
+          echo "=== el orbe, con sus tres pieles ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          env SIMCTL_CHILD_CN_IR=orbe SIMCTL_CHILD_CN_CON=sonda,flota \
+            SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
+          sleep 10
+          xcrun simctl io "$UDID" screenshot "orbe.png"
+
           # Y lo que dijo cada una: una ficha sin datos ni botones está vacía
           # aunque la foto parezca normal.
           xcrun simctl spawn "$UDID" log show --last 3m --style compact \

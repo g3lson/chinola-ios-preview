@@ -73,6 +73,7 @@ enum CNTemaArma {
         p.pos = cnColor(hexString: c.positivo)
         p.neg = cnColor(hexString: c.negativo)
         p.info = cnColor(hexString: c.ahorro)
+        p.aviso = cnColor(hexString: c.aviso)
         p.oscuro = oscuros.contains(clave)
         return p
     }
@@ -118,6 +119,8 @@ enum CNTemaArma {
         f.colorPatrimonio = s("colorPatrimonio", "tema")
         f.metaPatrimonio = ((a["metaPatrimonio"] as? NSNumber)?.doubleValue) ?? 0
         f.personaje = s("personaje", "auto")
+        f.familia = s("familiaChino", "chinola")
+        f.pielChino = s("pielChino", "clara")
         f.planAro = b("planAro")
         f.planPestanas = s("planPestanas", "pastillas")
         return f

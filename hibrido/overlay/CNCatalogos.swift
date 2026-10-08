@@ -460,6 +460,178 @@ enum CNCatalogos {
         holgado: 0.25
     )
 
+    /**
+     * EL ORBE: LA SEGUNDA FAMILIA DE CHINO, en figuras.
+     *
+     * Siete caras, tres pieles y sus degradados, traducidos de
+     * `src/orbe.js` —que a su vez es la transcripción de unos cuadros del
+     * diseño—. No es una copia del dibujo: es EL dibujo, pasado a datos
+     * por la construcción. Rehacerlo mirándolo sale parecido y no igual,
+     * y además serían dos dibujos que un día dirían cosas distintas.
+     */
+    static let carasDelOrbe: [String: CNOrbeCara] = [
+        "orbe": .init(fondo: "normal", detras: [], cara: [
+                .init(forma: "rect", x: 34, y: 42, w: 9, h: 14, rx: 4.5, relleno: "#12331f"),
+                .init(forma: "rect", x: 57, y: 42, w: 9, h: 14, rx: 4.5, relleno: "#12331f")
+            ]),
+        "ojazos": .init(fondo: "normal", detras: [], cara: [
+                .init(forma: "elipse", x: 21, y: 30, w: 25, h: 32, relleno: "#ffffff"),
+                .init(forma: "elipse", x: 28.5, y: 37.68, w: 15.5, h: 19.84, relleno: "#12331f"),
+                .init(forma: "elipse", x: 34, y: 38.96, w: 6, h: 7.68, relleno: "#ffffff"),
+                .init(forma: "elipse", x: 54, y: 30, w: 25, h: 32, relleno: "#ffffff"),
+                .init(forma: "elipse", x: 56, y: 37.68, w: 15.5, h: 19.84, relleno: "#12331f"),
+                .init(forma: "elipse", x: 60, y: 38.96, w: 6, h: 7.68, relleno: "#ffffff"),
+                .init(forma: "trazo", w: 43, h: 70, d: "M43 70a7 6 0 0 0 14 0z", relleno: "#12331f")
+            ]),
+        "contento": .init(fondo: "normal", brinca: true, chispas: true, detras: [], cara: [
+                .init(forma: "trazo", w: 24, h: 54, d: "M24 54a10 14 0 0 1 20 0", trazo: "#12331f", grosor: 6),
+                .init(forma: "trazo", w: 56, h: 54, d: "M56 54a10 14 0 0 1 20 0", trazo: "#12331f", grosor: 6),
+                .init(forma: "elipse", x: 13, y: 55, w: 17, h: 9, relleno: "rgba(230,90,60,0.45)"),
+                .init(forma: "elipse", x: 70, y: 55, w: 17, h: 9, relleno: "rgba(230,90,60,0.45)"),
+                .init(forma: "trazo", w: 38, h: 58, d: "M38 58a12 13 0 0 0 24 0z", relleno: "#12331f")
+            ]),
+        "pensando": .init(fondo: "normal", quieto: true, orbita: true, detras: [
+                .init(forma: "elipse", x: -9, y: -9, w: 118, h: 118, trazo: "rgba(29,122,69,0.45)", grosor: 2, raya: 5)
+            ], cara: [
+                .init(forma: "elipse", x: 22, y: 32, w: 23, h: 28, relleno: "#ffffff"),
+                .init(forma: "elipse", x: 32.12, y: 34.8, w: 12.42, h: 15.12, relleno: "#12331f"),
+                .init(forma: "elipse", x: 55, y: 32, w: 23, h: 28, relleno: "#ffffff"),
+                .init(forma: "elipse", x: 55.46, y: 34.8, w: 12.42, h: 15.12, relleno: "#12331f"),
+                .init(forma: "rect", x: 22, y: 26, w: 23, h: 5, rx: 2.5, relleno: "#1f5231", gira: -6, giraX: 33.5, giraY: 28.5),
+                .init(forma: "rect", x: 44, y: 70, w: 12, h: 5, rx: 2.5, relleno: "#12331f")
+            ]),
+        "escuchando": .init(fondo: "normal", quieto: true, detras: [], cara: [
+                .init(forma: "elipse", x: 22, y: 32, w: 24, h: 30, relleno: "#ffffff"),
+                .init(forma: "elipse", x: 27.76, y: 40.4, w: 14.4, h: 18, relleno: "#12331f"),
+                .init(forma: "elipse", x: 54, y: 32, w: 24, h: 30, relleno: "#ffffff"),
+                .init(forma: "elipse", x: 57.84, y: 40.4, w: 14.4, h: 18, relleno: "#12331f"),
+                .init(forma: "rect", x: 44, y: 70, w: 12, h: 6, rx: 3, relleno: "#12331f")
+            ]),
+        "pasado": .init(fondo: "calida", quieto: true, detras: [], cara: [
+                .init(forma: "elipse", x: 22, y: 34, w: 24, h: 28, relleno: "#ffffff"),
+                .init(forma: "elipse", x: 27.76, y: 44.08, w: 13.44, h: 15.68, relleno: "#3a0e08"),
+                .init(forma: "elipse", x: 54, y: 34, w: 24, h: 28, relleno: "#ffffff"),
+                .init(forma: "elipse", x: 58.8, y: 44.08, w: 13.44, h: 15.68, relleno: "#3a0e08"),
+                .init(forma: "rect", x: 20, y: 26, w: 26, h: 5, rx: 2.5, relleno: "#6b1a10", gira: 14, giraX: 33, giraY: 28.5),
+                .init(forma: "rect", x: 54, y: 26, w: 26, h: 5, rx: 2.5, relleno: "#6b1a10", gira: -14, giraX: 67, giraY: 28.5),
+                .init(forma: "trazo", w: 38, h: 78, d: "M38 78a12 8 0 0 1 24 0z", relleno: "#3a0e08")
+            ]),
+        "calma": .init(fondo: "normal", lento: true, detras: [], cara: [
+                .init(forma: "trazo", w: 24, h: 54, d: "M24 54a10 14 0 0 1 20 0", trazo: "#12331f", grosor: 6),
+                .init(forma: "trazo", w: 56, h: 54, d: "M56 54a10 14 0 0 1 20 0", trazo: "#12331f", grosor: 6),
+                .init(forma: "trazo", w: 43, h: 70, d: "M43 70a7 6 0 0 0 14 0z", relleno: "#12331f")
+            ])
+    ]
+
+    /// De qué está hecho: la piel la elige la persona, el ánimo lo elige el mes.
+    static let pielesDelOrbe: [String: CNOrbePiel] = [
+        "clara": .init(nombre: "Orbe", fondoPropio: "", encima: [], delante: [], caraPropia: false, propiaNormal: [], propiaCalida: []),
+        "chinola": .init(nombre: "Orbe chinola", fondoPropio: "", encima: [
+                .init(forma: "rect", x: 48, y: -12, w: 6, h: 18, rx: 4, relleno: "#1f5231", gira: 8, giraX: 51, giraY: -3),
+                .init(forma: "trazo", w: 52, h: 82, d: "M52 2A30 18 0 0 1 82 -16A30 18 0 0 1 52 2Z", relleno: "#5fb672", gira: -18, giraX: 67, giraY: -7)
+            ], delante: [
+                .init(forma: "trazo", x: 80, y: 8, w: 26, h: 26, d: "M93 8L95.86 18.14L106 21L95.86 23.86L93 34L90.14 23.86L80 21L90.14 18.14Z", relleno: "#ffffff")
+            ], caraPropia: false, propiaNormal: [], propiaCalida: []),
+        "semilla": .init(nombre: "Semilla que mira", fondoPropio: "semilla", encima: [], delante: [], caraPropia: true, propiaNormal: [
+                .init(forma: "elipse", x: 22, y: 34, w: 22, h: 26, relleno: "grad:osem"),
+                .init(forma: "elipse", x: 56, y: 34, w: 22, h: 26, relleno: "grad:osem"),
+                .init(forma: "elipse", x: 28, y: 16, w: 16, h: 10, relleno: "rgba(255,255,255,0.14)", gira: -30, giraX: 36, giraY: 21)
+            ], propiaCalida: [
+                .init(forma: "elipse", x: 22, y: 34, w: 22, h: 26, relleno: "grad:osem"),
+                .init(forma: "elipse", x: 56, y: 34, w: 22, h: 26, relleno: "grad:osem"),
+                .init(forma: "elipse", x: 28, y: 16, w: 16, h: 10, relleno: "rgba(255,255,255,0.14)", gira: -30, giraX: 36, giraY: 21)
+            ])
+    ]
+
+    /// Y en qué orden se ofrecen, que un diccionario no tiene orden.
+    static let ordenDePieles: [String] = ["clara", "chinola", "semilla"]
+
+    /// Qué cara pone cada ánimo, y los dos estados que van encima.
+    static let animosDelOrbe: [String: String] = ["feliz": "orbe", "fiesta": "contento", "fuerte": "ojazos", "estudiosa": "pensando", "rota": "pasado", "jugo": "calma"]
+
+    static let estadosDelOrbe: [String: String] = ["escuchando": "escuchando", "pensando": "pensando"]
+
+    static let gradientesDelOrbe: [String: CNOrbeGrad] = [
+        "esfera:normal": .init(tipo: "radial", cx: 30, cy: 25, r: 102.5914, paradas: [(off: 0, color: "#fff3a8", alfa: 1), (off: 0.3, color: "#ffd426", alfa: 1), (off: 0.7, color: "#6cc287", alfa: 1), (off: 1, color: "#1f6b3e", alfa: 1)]),
+        "halo:normal": .init(tipo: "radial", cx: 50, cy: 50, r: 50, paradas: [(off: 0.62, color: "#6cc287", alfa: 0.5), (off: 1, color: "#6cc287", alfa: 0)]),
+        "esfera:calida": .init(tipo: "radial", cx: 30, cy: 25, r: 102.5914, paradas: [(off: 0, color: "#ffe0b0", alfa: 1), (off: 0.35, color: "#ffb45c", alfa: 1), (off: 0.8, color: "#e0574e", alfa: 1), (off: 1, color: "#9e2a20", alfa: 1)]),
+        "halo:calida": .init(tipo: "radial", cx: 50, cy: 50, r: 50, paradas: [(off: 0.62, color: "#e0574e", alfa: 0.5), (off: 1, color: "#e0574e", alfa: 0)]),
+        "esfera:semilla": .init(tipo: "radial", cx: 32, cy: 26, r: 100.4988, paradas: [(off: 0, color: "#3a3222", alfa: 1), (off: 0.55, color: "#1e1a10", alfa: 1), (off: 1, color: "#0a0804", alfa: 1)]),
+        "halo:semilla": .init(tipo: "radial", cx: 50, cy: 50, r: 50, paradas: [(off: 0.62, color: "#ffbe00", alfa: 0.5), (off: 1, color: "#ffbe00", alfa: 0)]),
+        "ohoja": .init(tipo: "lineal", x1: 14.6447, y1: 85.3553, x2: 85.3553, y2: 14.6447, paradas: [(off: 0, color: "#1e6d3a", alfa: 1), (off: 1, color: "#5fb672", alfa: 1)]),
+        "osem:normal": .init(tipo: "radial", cx: 50, cy: 50, r: 70.7107, paradas: [(off: 0, color: "#fff6b8", alfa: 1), (off: 0.55, color: "#ffd426", alfa: 1), (off: 1, color: "#f5a500", alfa: 1)]),
+        "osem:calida": .init(tipo: "radial", cx: 50, cy: 50, r: 70.7107, paradas: [(off: 0, color: "#ffd9b8", alfa: 1), (off: 0.55, color: "#ff9a5c", alfa: 1), (off: 1, color: "#e0574e", alfa: 1)])
+    ]
+
+    static let haloDelOrbe: [CNOrbePieza] = [
+        .init(forma: "elipse", x: -18, y: -18, w: 136, h: 136, relleno: "grad:halo")
+    ]
+
+    static let esferaDelOrbe: [CNOrbePieza] = [
+        .init(forma: "elipse", w: 100, h: 100, relleno: "grad:esfera")
+    ]
+
+    static let aroDelOrbe: [CNOrbePieza] = [
+        .init(forma: "elipse", x: -3, y: -3, w: 106, h: 106, trazo: "#ffd426", grosor: 6, opacidad: 0.2)
+    ]
+
+    static let chispasDelOrbe: [CNOrbePieza] = [
+        .init(forma: "trazo", x: 84, y: 4, w: 20, h: 20, d: "M94 4L96.2 11.8L104 14L96.2 16.2L94 24L91.8 16.2L84 14L91.8 11.8Z", relleno: "#ffffff"),
+        .init(forma: "trazo", x: -2, y: 10, w: 13, h: 13, d: "M4.5 10L5.93 15.07L11 16.5L5.93 17.93L4.5 23L3.07 17.93L-2 16.5L3.07 15.07Z", relleno: "#ffd426"),
+        .init(forma: "trazo", x: 92, y: 34, w: 10, h: 10, d: "M97 34L98.1 37.9L102 39L98.1 40.1L97 44L95.9 40.1L92 39L95.9 37.9Z", relleno: "#ffd426")
+    ]
+
+    static let orbitaDelOrbe: [CNOrbePieza] = [
+        .init(forma: "trazo", x: 90, y: -4, w: 22, h: 22, d: "M101 -4L103.42 4.58L112 7L103.42 9.42L101 18L98.58 9.42L90 7L98.58 4.58Z", relleno: "#ffd426"),
+        .init(forma: "trazo", x: -8, y: 82, w: 12, h: 12, d: "M-2 82L-0.68 86.68L4 88L-0.68 89.32L-2 94L-3.32 89.32L-8 88L-3.32 86.68Z", relleno: "#1d7a45")
+    ]
+
+    static let orbitaSolaDelOrbe: [CNOrbePieza] = [
+        .init(forma: "trazo", x: 90, y: -4, w: 22, h: 22, d: "M101 -4L103.42 4.58L112 7L103.42 9.42L101 18L98.58 9.42L90 7L98.58 4.58Z", relleno: "#ffd426")
+    ]
+
+    static let puntosDelOrbe: [CNOrbePieza] = [
+        .init(forma: "elipse", x: 36.6, y: 108.6, w: 6.8, h: 6.8),
+        .init(forma: "elipse", x: 46.6, y: 108.6, w: 6.8, h: 6.8),
+        .init(forma: "elipse", x: 56.6, y: 108.6, w: 6.8, h: 6.8)
+    ]
+
+    static let hojaDelOrbe: [CNOrbePieza] = [
+        .init(forma: "rect", x: 48, y: -12, w: 6, h: 18, rx: 4, relleno: "#1f5231", gira: 8, giraX: 51, giraY: -3),
+        .init(forma: "trazo", w: 52, h: 82, d: "M52 2A30 18 0 0 1 82 -16A30 18 0 0 1 52 2Z", relleno: "grad:ohoja", gira: -18, giraX: 67, giraY: -7)
+    ]
+
+    /// El aire de alrededor: para el resplandor y las chispas, que se
+    /// salen de la esfera. Recortado es menos, que en un icono ese aire lo
+    /// hace verse más chico que los iconos de al lado.
+    static let aireDelOrbe: (normal: Double, ajustado: Double) = (normal: 16, ajustado: 4)
+
+    /**
+     * LOS DIEZ PASOS DEL RECORRIDO.
+     *
+     * Viajaban ENTEROS por el puente: el teléfono le pedía a la web
+     * hasta el texto de cada globo. Son datos fijos.
+     *
+     * `vista` es en qué pestaña se cuenta cada uno y `ancla` qué señala
+     * el aro —vacío en el último, que ya no hay que mirar a ningún
+     * sitio—. El texto es el del TELÉFONO cuando el paso tiene uno
+     * propio: aquí no hay «+» flotante, y el paso que lo explicaba
+     * señalaba la pestaña de Movimientos mientras el globo hablaba de
+     * «este botón».
+     */
+    static let pasosDelTour: [(vista: String, animo: String, ancla: String, titulo: String, texto: String)] = [
+        (vista: "resumen", animo: "feliz", ancla: "tab-perfil", titulo: "Hola, soy Chino", texto: "Vivo aquí abajo y voy cambiando de cara según cómo te vaya el mes. Te enseño la casa en un minuto; si prefieres mirar por tu cuenta, sáltatelo."),
+        (vista: "resumen", animo: "feliz", ancla: "libreta", titulo: "Una libreta por cada bolsillo", texto: "Este es el nombre de la libreta que estás mirando. Tócalo para cambiar: lo de la casa no se mezcla con lo del negocio."),
+        (vista: "resumen", animo: "estudiosa", ancla: "meses", titulo: "El mes que tienes delante", texto: "Esta tira son los meses de alrededor: tócalos para saltar. Y en «Rango…» pides los últimos tres meses, el año, o dos fechas a tu medida."),
+        (vista: "resumen", animo: "estudiosa", ancla: "tab-resumen", titulo: "El resumen, a tu manera", texto: "Esta pantalla son tarjetas: lo que entró, lo que salió, lo que te queda, las gráficas. Mantén una pulsada para moverlas de sitio, y en Personalización eliges cuáles quieres ver."),
+        (vista: "resumen", animo: "fuerte", ancla: "fab", titulo: "Todo se anota desde aquí", texto: "Mantén pulsada esta pestaña y se abre directamente el formulario para anotar. Y dentro de Movimientos tienes el «+» arriba a la derecha."),
+        (vista: "movs", animo: "estudiosa", ancla: "tab-movs", titulo: "Todo lo que anotas, por días", texto: "Aquí sale cada movimiento con su día y su total. Arriba buscas —sin tildes, como te salga— y con el embudo dejas solo ingresos, fijos, variables o ahorro."),
+        (vista: "cuentas", animo: "fuerte", ancla: "tab-cuentas", titulo: "Dónde está tu dinero", texto: "Tus cuentas, tus tarjetas y tus préstamos, con lo que tienes y lo que debes arriba del todo. Entra en cualquiera y verás sus movimientos y sus fechas."),
+        (vista: "plan", animo: "fiesta", ancla: "tab-plan", titulo: "Ponte presupuestos y metas", texto: "Aquí le pones un presupuesto a cada categoría y guardas para lo que viene. Entra en una meta y verás cuánto llevas y cuándo la alcanzas a este ritmo."),
+        (vista: "perfil", animo: "jugo", ancla: "tab-perfil", titulo: "Ponla como te guste", texto: "En Personalización tienes treinta y un temas, la letra, los colores de las cifras y el orden de las tarjetas del resumen. Y cuando se acerque un pago, te lo marco encima de mi cara."),
+        (vista: "perfil", animo: "fiesta", ancla: "", titulo: "Y ya está", texto: "Eso es todo lo que hay que saber para empezar. Si algo se te olvida, vuelve a Perfil y toca «Ver el tour otra vez»: estoy aquí siempre que hagas falta.")
+    ]
+
     /// Y la risa, que es la única RELLENA: la boca abierta y la lengua.
     static let risaDeChino: [(d: String, color: String)] = [
         (d: "M45 71q15 20 30 0z", color: "#2a1f10"),
