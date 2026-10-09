@@ -107,8 +107,7 @@ enum CNAlmacen {
             if let n = x["id"] as? NSNumber { return n.stringValue }
             return ""
         }
-        var cual = (j["activa"] as? String) ?? ""
-        if cual.isEmpty, let n = j["activa"] as? NSNumber { cual = n.stringValue }
+        let cual = activa()
         guard !cual.isEmpty, let donde = ls.firstIndex(where: { idDe($0) == cual }),
               (ls[donde]["nombre"] as? String) == l.nombre else { return false }
         ls[donde] = l.aDiccionario()
@@ -116,6 +115,41 @@ enum CNAlmacen {
         guard let fuera = try? JSONSerialization.data(withJSONObject: j),
               let t = String(data: fuera, encoding: .utf8) else { return false }
         return escribe([LIBRETAS: t])
+    }
+
+    /**
+     * LA HUELLA DE UNA LIBRETA, con la misma receta que la web.
+     *
+     * Es sobre qué se escribió: el teléfono calcula encima de la copia que se
+     * trajo, y manda esta huella para que la web solo adopte si sigue siendo la
+     * suya. Cuando no hay web, el teléfono se la queda él, y entonces tiene que
+     * salir IGUAL que la de ella o la siguiente escritura se rechaza para
+     * siempre.
+     *
+     * Son los largos y los dos extremos de la lista de movimientos, no su
+     * contenido: lo que se quiere saber es si entró o salió algo por otro lado,
+     * no si cambió un importe. Y la cuenta predeterminada, que no es de la
+     * libreta pero cambiarla no movía ningún largo ni ningún id — así que la
+     * huella salía igual y el teléfono no volvía a preguntar.
+     */
+    static func huellaDe(_ l: CNLibreta) -> String {
+        let cual = activa()
+        let primero = l.tx.first?.id ?? ""
+        let ultimo = l.tx.last?.id ?? ""
+        let pred = (ajustes()["cuentaPred"] as? [String: Any]).flatMap { $0[cual] as? String } ?? ""
+        return [cual, String(l.tx.count), primero, ultimo,
+                String(l.cuentas.count), String(l.tarjetas.count), String(l.prestamos.count),
+                String(l.metas.count), String(l.categorias.count), pred].joined(separator: "|")
+    }
+
+    /// Cuál libreta está en uso, leída del mismo fichero. Las de antes
+    /// guardaban el identificador en número.
+    static func activa() -> String {
+        guard let t = copia()?[LIBRETAS], let d = t.data(using: .utf8),
+              let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return "" }
+        if let x = j["activa"] as? String { return x }
+        if let n = j["activa"] as? NSNumber { return n.stringValue }
+        return ""
     }
 
     /// Las libretas, ya leídas. Vacío si no hay copia o si está a medias: es

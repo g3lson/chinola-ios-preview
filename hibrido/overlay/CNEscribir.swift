@@ -49,6 +49,27 @@ enum CNEscribir {
         return nueva
     }
 
+    /**
+     * EL MISMO MOVIMIENTO, OTRA VEZ.
+     *
+     * Con su id propio —«dp» y la hora— para que sean dos y no uno: un
+     * duplicado con el mismo id es el mismo movimiento contado dos veces, y al
+     * borrarlo desaparecen los dos.
+     *
+     * Y MUEVE EL SALDO. Antes la copia salía en la lista y la cuenta se quedaba
+     * como estaba, así que el dinero no cuadraba. Por eso va por `aplica`, que
+     * es el mismo sitio por el que pasa cualquier movimiento.
+     */
+    static func movimientoDuplicado(_ l: CNLibreta, _ id: String) -> CNLibreta {
+        guard let x = l.tx.first(where: { $0.id == id }) else { return l }
+        var copia = x
+        copia.id = "dp" + String(Int(Date().timeIntervalSince1970 * 1000))
+        var nueva = l
+        _ = CNCalculo.aplica(&nueva, copia, signo: 1)
+        nueva.tx.append(copia)
+        return nueva
+    }
+
     /// Uno que ya existe. Lo que no venga en `m` se queda como estaba.
     static func movimientoCambiado(_ l: CNLibreta, _ m: [String: Any]) -> CNLibreta {
         guard let id = m["id"] as? String,

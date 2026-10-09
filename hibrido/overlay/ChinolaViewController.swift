@@ -412,6 +412,41 @@ class ChinolaViewController: CAPBridgeViewController {
                 }
                 return
             }
+            /*
+             * Y «escribe», UN MOVIMIENTO DE VERDAD, DE PUNTA A PUNTA.
+             *
+             * El fichero de oro comprueba la CUENTA —que la libreta que sale
+             * es la que sale en la web— pero no el camino: que se adopte, que
+             * llegue a disco y que al abrir siga ahí. Y ahí es donde estaban
+             * los dos fallos: la web pisaba lo que el teléfono escribía, y sin
+             * web no escribía nadie.
+             *
+             * Así que esto anota uno y lee el FICHERO, no la memoria.
+             */
+            if ir == "escribe" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
+                    guard let s = self else { return }
+                    let antes = CNAlmacen.libretas().count
+                    let concepto = "sonda-" + String(Int(Date().timeIntervalSince1970))
+                    let cuantos = CNDatos.shared.libreta.tx.count
+                    s.datos.onCrearMov(["concepto": concepto, "categoria": "Otros",
+                                        "tipo": "Gasto Variable", "monto": 137,
+                                        "fecha": cnHoy()])
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        // EN EL FICHERO, que es lo que sobrevive. En memoria
+                        // estaría aunque no se hubiera guardado nada.
+                        let enDisco = CNAlmacen.libretas().contains { l in
+                            ((l["tx"] as? [[String: Any]]) ?? []).contains {
+                                ($0["concepto"] as? String) == concepto
+                            }
+                        }
+                        NSLog("CNESCRIBE: tx %d→%d · libretas=%d · en el fichero: %@",
+                              cuantos, CNDatos.shared.libreta.tx.count, antes,
+                              enDisco ? "SI" : "NO")
+                    }
+                }
+                return
+            }
             // Y «mascota», LA HOJA QUE SE ABRE AL TOCAR A CHINO.
             //
             // Solo se abre tocándolo, así que el banco no pasaba nunca por
@@ -706,13 +741,27 @@ class ChinolaViewController: CAPBridgeViewController {
         }
         datos.onMovAccion = { [weak self] tipo, id in
             guard let s = self else { return }
+            // DUPLICAR LO HACE EL TELÉFONO, como anotar y como borrar: es la
+            // misma cuenta y el mismo sitio por el que pasa cualquier
+            // movimiento. La web queda de respaldo si rechaza la adopción.
+            //
             // CON EL ID. La web sabía cuál se estaba mirando porque ella armaba
             // el detalle; ahora lo arma el teléfono y esa puerta está cerrada,
             // así que si no se lo dice nadie, duplicar no duplicaba nada.
-            s.eval("window.__chinolaMovAccion && window.__chinolaMovAccion("
-                   + s.comillas(tipo) + "," + s.comillas(id) + ")")
-            s.refrescarPronto()
-            if tipo == "duplicar" { s.cerrar() }
+            func aLaWeb() {
+                s.eval("window.__chinolaMovAccion && window.__chinolaMovAccion("
+                       + s.comillas(tipo) + "," + s.comillas(id) + ")")
+                s.refrescarPronto()
+            }
+            guard tipo == "duplicar", s.telefonoEscribe else {
+                aLaWeb()
+                if tipo == "duplicar" { s.cerrar() }
+                return
+            }
+            let concepto = s.datos.libreta.tx.first(where: { $0.id == id })?.concepto ?? ""
+            s.adopta(CNEscribir.movimientoDuplicado(s.datos.libreta, id)) { aLaWeb() }
+            s.menuEstado.alAviso(cnT("Duplicado"), concepto)
+            s.cerrar()
         }
         datos.onCuentasAccion = { [weak self] tipo, i in
             guard let s = self else { return }
@@ -1553,9 +1602,33 @@ class ChinolaViewController: CAPBridgeViewController {
         // solo adopta si sigue siendo la suya. Si no, escribe ella sobre lo
         // suyo, que es exactamente lo que se hacía antes de todo esto.
         let base = huellaLibreta
-        eval("(window.__chinolaAdoptaLibreta && window.__chinolaAdoptaLibreta(\(comillas(json)), \(comillas(base)))) || ''") { [weak self] r in
+        // CON UNA MARCA DELANTE PARA SABER QUIÉN CONTESTÓ.
+        //
+        // La web devuelve la huella nueva, y una cadena vacía cuando rechaza.
+        // Pero vacío es TAMBIÉN lo que sale cuando no hay puerta que llamar
+        // —un webview que no arrancó, o que algún día no esté—, y las dos
+        // cosas acababan en el mismo sitio: «que escriba ella». Cuando no hay
+        // nadie al otro lado, eso es perder el movimiento en silencio.
+        let llamada = "(function(){if(!window.__chinolaAdoptaLibreta)return '';"
+            + "return 'si:'+(window.__chinolaAdoptaLibreta(\(comillas(json)), \(comillas(base)))||'');})()"
+        eval(llamada) { [weak self] r in
             guard let s = self else { return }
-            guard let nueva = r as? String, !nueva.isEmpty else {
+            let dicho = (r as? String) ?? ""
+            // SIN PUERTA: la escribe el teléfono y se queda con su huella.
+            //
+            // Es lo que hace que un movimiento no dependa de que el webview
+            // esté vivo. Antes esto caía en «que escriba ella» y no escribía
+            // nadie: ni error, ni movimiento.
+            guard dicho.hasPrefix("si:") else {
+                let aDisco = CNAlmacen.guardaLibreta(l)
+                NSLog("CNADOPTA: no hay web · la escribe el teléfono: %@", aDisco ? "sí" : "NO")
+                guard aDisco else { siNo(); return }
+                CNDatos.shared.libreta = l
+                s.huellaLibreta = CNAlmacen.huellaDe(l)
+                return
+            }
+            let nueva = String(dicho.dropFirst(3))
+            guard !nueva.isEmpty else {
                 NSLog("CNADOPTA: la web tenía algo que el teléfono no · escribe ella")
                 siNo()
                 return

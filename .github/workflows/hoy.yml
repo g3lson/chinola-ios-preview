@@ -604,6 +604,26 @@ jobs:
           # convertido en PNG. Ahora lo dibuja Swift, y las pruebas de `npm
           # test` solo pueden decir que los trazos y los números son los
           # mismos. Que la cara se vea como una cara lo dice esta foto.
+          # UN MOVIMIENTO DE PUNTA A PUNTA: que se adopte, que llegue al
+          # FICHERO y que siga ahí. El oro comprueba la cuenta; esto, el
+          # camino, que es donde estaban los dos fallos —la web pisaba lo que
+          # el teléfono escribía, y sin web no escribía nadie—.
+          estaEnPie
+          echo "=== escribir un movimiento ==="
+          xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+          sleep 2
+          env SIMCTL_CHILD_CN_IR=escribe SIMCTL_CHILD_CN_CON=sonda,flota \
+            SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
+          sleep 14
+          xcrun simctl spawn "$UDID" log show --last 1m --style compact \
+            --predicate 'eventMessage CONTAINS "CNESCRIBE" OR eventMessage CONTAINS "CNADOPTA" OR eventMessage CONTAINS "CNCOPIA"' \
+            2>/dev/null | grep -oE "CN(ESCRIBE|ADOPTA|COPIA):.*" | sort -u | tail -8 || true
+          if ! xcrun simctl spawn "$UDID" log show --last 1m --style compact \
+            --predicate 'eventMessage CONTAINS "CNESCRIBE"' 2>/dev/null | grep -q "en el fichero: SI"; then
+            echo "::error::el movimiento no llegó al fichero (ver arriba)"
+            exit 1
+          fi
+
           estaEnPie
           echo "=== Chino, los seis ánimos ==="
           xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true

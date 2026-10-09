@@ -30,16 +30,9 @@ enum CNLibretasArma {
         return l
     }
 
-    /// Cuál está en uso. En la copia, junto a las libretas.
-    static func activa() -> String {
-        guard let c = CNAlmacen.copia(), let texto = c[CNAlmacen.LIBRETAS],
-              let d = texto.data(using: .utf8),
-              let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return "" }
-        if let s = j["activa"] as? String { return s }
-        // Las de antes tenían el identificador en número.
-        if let n = j["activa"] as? NSNumber { return n.stringValue }
-        return ""
-    }
+    /// Cuál está en uso. Lo dice el almacén, que es quien tiene el fichero:
+    /// escrito también aquí, un día dirían cosas distintas de cuál es la tuya.
+    static func activa() -> String { CNAlmacen.activa() }
 
     static func arma(periodo p: CNCalculo.Periodo, yo correo: String, tinte t: Tinte) -> CNLibretas? {
         let crudas = CNAlmacen.libretas()
