@@ -632,6 +632,27 @@ jobs:
             exit 1
           fi
 
+          # LA PUERTA: las tres pantallas que ya pone el teléfono.
+          #
+          # El disparador existía en el Swift y NINGÚN paso lo usaba, así que
+          # la portada —lo primero que ve quien instala la app— no se había
+          # fotografiado nunca. Es el mismo hueco por el que «Tu personaje»
+          # estuvo escrita sin salir.
+          for P in "onboarding|0" "onboarding|2" "listo"; do
+            N=$(echo "$P" | tr -d '|' | tr -d ' ')
+            estaEnPie
+            echo "=== la puerta · $P ==="
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+            sleep 2
+            env SIMCTL_CHILD_CN_IR="puerta:$P" SIMCTL_CHILD_CN_CON=sonda,flota \
+              SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
+            sleep 15
+            xcrun simctl io "$UDID" screenshot "puerta-$N.png"
+          done
+          xcrun simctl spawn "$UDID" log show --last 3m --style compact \
+            --predicate 'eventMessage CONTAINS "CNIR: puerta"' 2>/dev/null \
+            | grep -oE "CNIR: puerta.*" | sort -u | tail -4 || true
+
           estaEnPie
           echo "=== Chino, los seis ánimos ==="
           xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
