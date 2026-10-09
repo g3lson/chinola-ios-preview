@@ -52,7 +52,7 @@ enum CNSecciones {
      * web. Y no se veía —la de la web enseña lo mismo—; lo dijo la sonda del
      * banco. Hay una prueba que compara las dos.
      */
-    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores", "icono-app", "personaje"]
+    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores", "icono-app", "personaje", "integraciones"]
 
     /**
      * Lo que se le ha pedido al servidor, guardado mientras dure la app.
@@ -121,6 +121,7 @@ enum CNSecciones {
         case "colores": return colores()
         case "icono-app": return iconoDeLaApp()
         case "personaje": return personaje()
+        case "integraciones": return integraciones()
         // «libreta:3» es una libreta por dentro: sus miembros y sus permisos.
         case let x where x.hasPrefix("libreta:"): return unaLibreta(String(x.dropFirst(8)))
         default: return nil
@@ -136,6 +137,10 @@ enum CNSecciones {
         case "dosPasos": return ["/mfa/metodos"]
         case "seguridad": return ["/sesiones", "/actividad", "/mfa/metodos"]
         case "cuenta": return ["/yo"]
+        // Las tres de Integraciones: por dónde se puede anotar, las claves de
+        // API y los métodos de dos pasos —de ahí sale si Telegram está
+        // enlazado, que es el mismo enlace que sirve para entrar—.
+        case "integraciones": return ["/integraciones/voz", "/claves", "/mfa/metodos"]
         // Estas dos no le preguntan NADA a nadie: todo lo que enseñan está en
         // el teléfono. Se dibujan enteras antes de que la web despierte.
         // Los miembros vienen DENTRO de la libreta, no de la API: la web los
@@ -752,6 +757,188 @@ enum CNSecciones {
                              puesta: comoEsta == "aro", abre: "pon:chinoBoton=aro")
         ]
         s.bloques.append(boton)
+        return s
+    }
+
+    /**
+     * «INTEGRACIONES», ARMADA AQUÍ.
+     *
+     * La más grande que hay: por dónde se puede anotar sin abrir la app
+     * —Telegram, WhatsApp, Alexa, Siri—, el interruptor de Chino con IA, la IA
+     * del propio iPhone, en qué orden se intentan y las claves de API.
+     *
+     * Tira de tres rutas del servidor, y por eso es la última que quedaba en la
+     * web: las otras doce se dibujan con lo que ya hay en el teléfono. Sin
+     * respuesta del servidor no se inventa nada —una fila que diga «Conectar»
+     * cuando ya está conectado es peor que no estar—: se enseña lo que se sabe
+     * y lo demás espera.
+     *
+     * LAS ACCIONES SIGUEN SIENDO DE LA WEB, por una sola puerta y dichas por su
+     * nombre. Enlazar Telegram, pedir el código de WhatsApp o crear una clave
+     * son conversaciones con el servidor que ella ya tiene montadas; lo que se
+     * muda aquí es la PANTALLA, que es lo que se queda en blanco esperándola.
+     */
+    @MainActor private static func integraciones() -> CNSeccion? {
+        var s = CNSeccion()
+        s.id = "integraciones"
+        s.titulo = cnT("Integraciones")
+
+        let voz = delServidor["/integraciones/voz"] ?? [:]
+        let claves = delServidor["/claves"] ?? [:]
+        let metodos = (delServidor["/mfa/metodos"]?["metodos"] as? [String: Any]) ?? [:]
+        func sub(_ d: [String: Any], _ k: String) -> [String: Any] { (d[k] as? [String: Any]) ?? [:] }
+        func si(_ d: [String: Any], _ k: String) -> Bool { (d[k] as? Bool) ?? false }
+
+        var texto = CNSeccion.Bloque(); texto.tipo = "texto"
+        texto.texto = cnT("Con una clave puedes anotar gastos y transferencias desde WhatsApp, Instagram o Telegram, o desde cualquier cosa que sepa hacer una llamada web.")
+        s.bloques = [texto]
+
+        // ── EN QUÉ LIBRETA ANOTA CHINO ──────────────────────────────────────
+        //
+        // Lo primero, antes que los canales: por WhatsApp y por Telegram no se
+        // ve dónde cae lo que anotas, así que elegirlo deja de ser un ajuste y
+        // pasa a ser lo que hace que te fíes.
+        //
+        // SOLO LAS TUYAS. En las que eres Lector no puedes anotar, y ofrecerlas
+        // es ofrecer que Chino escriba donde no le dejan.
+        let yo = CNPapeles.yo(CNPerfilInfo.delAlmacen() ?? CNPerfilInfo())
+        let mias = CNAlmacen.libretas().compactMap { CNLibretasArma.libretaDe($0) }
+            .enumerated().filter { CNPapeles.rol($0.element, yo: yo) != CNPapeles.lector }
+        if mias.count > 1 {
+            let crudas = CNAlmacen.libretas()
+            func idDe(_ i: Int) -> String {
+                let x = crudas[i]
+                if let t = x["id"] as? String { return t }
+                if let n = x["id"] as? NSNumber { return n.stringValue }
+                return ""
+            }
+            let puesta = (CNAlmacen.usuario()["libretaChino"] as? String) ?? ""
+            let cual = mias.first { idDe($0.offset) == puesta } ?? mias[0]
+            var b = CNSeccion.Bloque(); b.tipo = "lista"
+            b.titulo = cnT("Dónde anota Chino")
+            var it = CNSeccion.Item()
+            it.titulo = cnT("Libreta por defecto")
+            it.detalle = cual.element.nombre + " · " + cnT("Cuando no le digas en cuál, anota aquí")
+            it.icono = CNCatalogos.iconosDeAjuste["libretas"] ?? ""
+            it.color = CNCatalogos.tonos["indigo"] ?? ""
+            it.chip = cnT("Cambiar")
+            it.opciones = mias.map { CNSeccion.Elegible(id: idDe($0.offset), label: $0.element.nombre) }
+            it.puesta = idDe(cual.offset)
+            it.abre = "integra:libreta-chino"
+            b.items = [it]
+            s.bloques.append(b)
+        }
+
+        // ── POR DÓNDE SE PUEDE ANOTAR ───────────────────────────────────────
+        let tg = sub(metodos, "telegram")
+        let wa = sub(voz, "whatsapp")
+        let alexa = sub(voz, "alexa")
+        let conIA = si(voz, "ia")
+        var canales = CNSeccion.Bloque(); canales.tipo = "lista"
+        canales.titulo = cnT("Anotar por mensaje")
+        canales.pie = cnT("Con «Chino con IA» apagado, Telegram solo entiende el formato corto («500 comida»).")
+
+        func canal(_ titulo: String, _ detalle: String, _ icono: String, _ tono: String,
+                   _ chip: String, puesto: Bool, abre: String,
+                   fuera: String = "") -> CNSeccion.Item {
+            var it = CNSeccion.Item()
+            it.titulo = titulo; it.detalle = detalle
+            it.icono = CNCatalogos.iconosDeAjuste[icono] ?? ""
+            it.color = CNCatalogos.tonos[tono] ?? ""
+            it.chip = chip
+            it.abre = abre
+            if puesto, !fuera.isEmpty {
+                it.acciones = [CNSeccion.AccionItem(label: cnT("Desenlazar"), peligro: true, abre: fuera)]
+            }
+            return it
+        }
+
+        canales.items = [
+            canal("Chino", conIA ? cnT("Aquí mismo, escribiendo o dictando")
+                                 : cnT("Enciende «Chino con IA» abajo"),
+                  "personajeIco", "oro", conIA ? cnT("Abrir") : "",
+                  puesto: false, abre: conIA ? "integra:charla" : ""),
+            canal("Telegram",
+                  si(tg, "enlazado")
+                    ? cnT("Enlazado {p} · escribe «500 comida» al bot")
+                        .replacingOccurrences(of: "{p}", with: (tg["pista"] as? String) ?? "")
+                    : (tg["disponible"] as? Bool == false ? cnT("No disponible todavía")
+                        : cnT("Escribe «500 comida» y queda anotado")),
+                  "telegram", "azul",
+                  si(tg, "enlazado") ? cnT("Activo") : cnT("Conectar"),
+                  puesto: si(tg, "enlazado"), abre: "integra:telegram",
+                  fuera: "integra:telegram-fuera"),
+            canal("WhatsApp",
+                  si(wa, "enlazado") ? cnT("Enlazado · escríbele al número de Chinola")
+                    : (si(wa, "disponible") ? cnT("Te damos un código y lo mandas al número de Chinola")
+                        : cnT("No disponible todavía")),
+                  "whatsapp", "verde",
+                  si(wa, "enlazado") ? cnT("Activo") : cnT("Conectar"),
+                  puesto: si(wa, "enlazado"), abre: "integra:voz:whatsapp",
+                  fuera: "integra:voz-fuera:whatsapp"),
+            canal("Alexa",
+                  si(alexa, "enlazada") ? cnT("Enlazada · «Alexa, abre Chinola»")
+                    : cnT("«Alexa, abre Chinola» y dile el código"),
+                  "alexa", "azul",
+                  si(alexa, "enlazada") ? cnT("Activo") : cnT("Conectar"),
+                  puesto: si(alexa, "enlazada"), abre: "integra:voz:alexa",
+                  fuera: "integra:voz-fuera:alexa"),
+            // SIRI NO SE CONECTA: viene con la app. Por eso dice «Listo» y no
+            // «Conectar», que es lo que se ofrece cuando hay algo que hacer.
+            canal("Siri", cnT("Di «Anota en Chinola 500 de comida»"),
+                  "siri", "morado", cnT("Listo"), puesto: false, abre: "")
+        ]
+        s.bloques.append(canales)
+
+        // ── CHINO CON IA ────────────────────────────────────────────────────
+        var ia = CNSeccion.Bloque(); ia.tipo = "interruptor"
+        ia.label = cnT("Chino con IA")
+        ia.pie = (voz["hayIA"] as? Bool) == false
+            ? cnT("No disponible en este servidor todavía.")
+            : cnT("Entiende lo que escribes o dictas —«pagué la luz, 2.300 con la Visa»— y te aconseja con tus números. Apagado de fábrica; solo se mandan totales y categorías.")
+        ia.puesto = conIA
+        ia.abre = "integra:ia"
+        s.bloques.append(ia)
+
+        // ── LAS CLAVES DE API ───────────────────────────────────────────────
+        let lista = (claves["claves"] as? [[String: Any]]) ?? []
+        let puedeCrear = (claves["api"] as? Bool) != false
+        if lista.isEmpty {
+            var vacio = CNSeccion.Bloque(); vacio.tipo = "texto"
+            vacio.texto = puedeCrear
+                ? cnT("Todavía no tienes ninguna. Crea una para empezar a conectar.")
+                : cnT("Las integraciones son del plan Pro.")
+            s.bloques.append(vacio)
+        } else {
+            var b = CNSeccion.Bloque(); b.tipo = "lista"
+            b.titulo = cnT("Tus claves")
+            b.items = lista.map { k in
+                var it = CNSeccion.Item()
+                it.titulo = (k["nombre"] as? String) ?? ""
+                // QUÉ PUEDE HACER VA PRIMERO: es lo que hay que poder
+                // comprobar de un vistazo al repasar las claves sueltas.
+                let permisos = (k["permisosTexto"] as? String) ?? cnT("Todo")
+                let usada = (k["ultimo_uso"] as? String).map {
+                    cnT("usada el") + " " + cnFechaCorta($0)
+                } ?? cnT("sin usar")
+                it.detalle = permisos + "\n" + ((k["prefijo"] as? String) ?? "") + "… · "
+                    + cnT("creada el") + " " + cnFechaCorta((k["creada"] as? String) ?? "")
+                    + " · " + usada
+                it.icono = "M15 7a4 4 0 1 1-3.9 5H7v3H4v-3l3.1-3H11A4 4 0 0 1 15 7M16 10h.01"
+                return it
+            }
+            s.bloques.append(b)
+        }
+        var crear = CNSeccion.Bloque(); crear.tipo = "boton"
+        crear.label = puedeCrear ? cnT("Nueva clave") : cnT("Ver los planes")
+        crear.estilo = "acento"
+        crear.abre = puedeCrear ? "integra:clave-nueva" : "integra:planes"
+        s.bloques.append(crear)
+
+        var docs = CNSeccion.Bloque(); docs.tipo = "boton"
+        docs.label = cnT("Ver la documentación")
+        docs.abre = "abrir:/desarrolladores.html"
+        s.bloques.append(docs)
         return s
     }
 

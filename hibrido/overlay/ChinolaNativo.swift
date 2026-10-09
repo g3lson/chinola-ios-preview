@@ -8122,7 +8122,13 @@ private struct CNElige: ViewModifier {
                 ForEach(it.opciones.indices, id: \.self) { k in
                     let o = it.opciones[k]
                     Button {
-                        if it.accion >= 0 { datos.onSeccionAccion(it.accion, o.id) }
+                        // POR SU NOMBRE TAMBIÉN AQUÍ. Una fila que elige en
+                        // una subpantalla ARMADA POR EL TELÉFONO no tiene
+                        // número que disparar —esa lista la hace él—, así que
+                        // lo elegido se manda pegado al nombre: la fila de
+                        // «Libreta por defecto» se quedaba sin hacer nada.
+                        if !it.abre.isEmpty { datos.onAbrirSeccion(it.abre + ":" + o.id) }
+                        else if it.accion >= 0 { datos.onSeccionAccion(it.accion, o.id) }
                     } label: {
                         if o.id == it.puesta { Label(o.label, systemImage: "checkmark") }
                         else { Text(o.label) }

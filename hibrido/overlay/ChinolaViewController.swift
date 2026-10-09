@@ -424,15 +424,18 @@ class ChinolaViewController: CAPBridgeViewController {
              * Así que esto anota uno y lee el FICHERO, no la memoria.
              */
             if ir == "escribe" {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { [weak self] in
-                    guard let s = self else { return }
-                    let antes = CNAlmacen.libretas().count
-                    let concepto = "sonda-" + String(Int(Date().timeIntervalSince1970))
-                    let cuantos = CNDatos.shared.libreta.tx.count
-                    s.datos.onCrearMov(["concepto": concepto, "categoria": "Otros",
-                                        "tipo": "Gasto Variable", "monto": 137,
-                                        "fecha": cnHoy()])
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                // DOS, NO UNO. Recién instalada, el fichero todavía no existe
+                // —la web lo escribe dos segundos después del primer guardado—
+                // así que el camino rápido del teléfono no puede entrar y cae
+                // al de siempre. Que es correcto, pero no es lo que se viene a
+                // probar. El segundo sí lo prueba.
+                func anota(_ n: Int, _ luego: @escaping () -> Void) {
+                    let concepto = "sonda\(n)-" + String(Int(Date().timeIntervalSince1970))
+                    let antes = CNDatos.shared.libreta.tx.count
+                    CNDatos.shared.onCrearMov(["concepto": concepto, "categoria": "Otros",
+                                               "tipo": "Gasto Variable", "monto": 137,
+                                               "fecha": cnHoy()])
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                         // EN EL FICHERO, que es lo que sobrevive. En memoria
                         // estaría aunque no se hubiera guardado nada.
                         let enDisco = CNAlmacen.libretas().contains { l in
@@ -440,10 +443,13 @@ class ChinolaViewController: CAPBridgeViewController {
                                 ($0["concepto"] as? String) == concepto
                             }
                         }
-                        NSLog("CNESCRIBE: tx %d→%d · libretas=%d · en el fichero: %@",
-                              cuantos, CNDatos.shared.libreta.tx.count, antes,
-                              enDisco ? "SI" : "NO")
+                        NSLog("CNESCRIBE: %d · tx %d→%d · en el fichero: %@",
+                              n, antes, CNDatos.shared.libreta.tx.count, enDisco ? "SI" : "NO")
+                        luego()
                     }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) {
+                    anota(1) { anota(2) {} }
                 }
                 return
             }
@@ -1086,6 +1092,32 @@ class ChinolaViewController: CAPBridgeViewController {
                 s.webTemporal()
                 s.eval("window.__chinolaAjustePor && window.__chinolaAjustePor(" + s.comillas(que) + ")")
                 s.refrescarPronto()
+                return
+            }
+            /*
+             * LAS ACCIONES DE INTEGRACIONES, por una sola puerta.
+             *
+             * Enlazar Telegram, pedir el código de WhatsApp o crear una clave
+             * son conversaciones con el servidor que la web ya tiene montadas,
+             * con sus errores y sus avisos. Lo que se mudó al teléfono es la
+             * PANTALLA, que es lo que se quedaba en blanco esperándola.
+             *
+             * Por su NOMBRE y no por el número de una lista: el número solo
+             * tiene sentido si esa lista la hizo la web, y esta la hace él.
+             */
+            if id.hasPrefix("integra:") {
+                let t = String(id.dropFirst(8)).split(separator: ":", maxSplits: 1).map(String.init)
+                let valor = t.count > 1 ? t[1] : ""
+                s.eval("window.__chinolaIntegra && window.__chinolaIntegra("
+                       + s.comillas(t[0]) + "," + s.comillas(valor) + ")")
+                // Lo que cambie sale del servidor, así que se vuelve a pedir:
+                // sin esto, enlazar Telegram deja la fila diciendo «Conectar».
+                CNSecciones.olvida("/integraciones/voz")
+                CNSecciones.olvida("/claves")
+                CNSecciones.olvida("/mfa/metodos")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    CNDatos.shared.onAbrirSeccion("integraciones")
+                }
                 return
             }
             // «Ayuda y guía» y «Privacidad»: una página, abierta por el

@@ -614,13 +614,21 @@ jobs:
           sleep 2
           env SIMCTL_CHILD_CN_IR=escribe SIMCTL_CHILD_CN_CON=sonda,flota \
             SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
-          sleep 14
-          xcrun simctl spawn "$UDID" log show --last 1m --style compact \
+          sleep 22
+          xcrun simctl spawn "$UDID" log show --last 2m --style compact \
             --predicate 'eventMessage CONTAINS "CNESCRIBE" OR eventMessage CONTAINS "CNADOPTA" OR eventMessage CONTAINS "CNCOPIA"' \
-            2>/dev/null | grep -oE "CN(ESCRIBE|ADOPTA|COPIA):.*" | sort -u | tail -8 || true
-          if ! xcrun simctl spawn "$UDID" log show --last 1m --style compact \
-            --predicate 'eventMessage CONTAINS "CNESCRIBE"' 2>/dev/null | grep -q "en el fichero: SI"; then
-            echo "::error::el movimiento no llegó al fichero (ver arriba)"
+            2>/dev/null | grep -oE "CN(ESCRIBE|ADOPTA|COPIA):.*" | sort -u | tail -10 > /tmp/escribe.txt || true
+          cat /tmp/escribe.txt
+          # LOS DOS TIENEN QUE LLEGAR AL FICHERO. Y EL SEGUNDO, POR EL CAMINO
+          # DEL TELÉFONO: recién instalada el fichero no existe todavía, así
+          # que el primero cae al de siempre —correcto, pero no es lo que se
+          # viene a probar—.
+          if [ "$(grep -c 'en el fichero: SI' /tmp/escribe.txt)" != 2 ]; then
+            echo "::error::algún movimiento no llegó al fichero (ver arriba)"
+            exit 1
+          fi
+          if ! grep -q 'a disco: sí' /tmp/escribe.txt; then
+            echo "::error::el teléfono nunca escribió en disco: lo hizo todo la web"
             exit 1
           fi
 
