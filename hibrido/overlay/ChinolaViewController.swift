@@ -3595,13 +3595,16 @@ class ChinolaViewController: CAPBridgeViewController {
 
     fileprivate func mirarAviso() {
         guard !avisoYaMirado, avisoVC == nil, puertaVC == nil, !puertaRendida else { return }
-        bridge?.webView?.evaluateJavaScript("(window.__chinolaAvisoJSON && window.__chinolaAvisoJSON()) || ''") { [weak self] r, _ in
-            guard let s = self, let json = r as? String, json.count > 2,
-                  let a = CNAviso.desde(json: json) else { return }
+        // SE LO PIDE AL SERVIDOR, no a la web. El aviso viaja dentro de «quién
+        // soy», que es lo que el teléfono ya pregunta para la pantalla de Mi
+        // cuenta: ella solo hacía de cartero.
+        Task { @MainActor [weak self] in
+            guard let s = self, let a = await CNAvisos.traer() else { return }
+            guard !s.avisoYaMirado, s.avisoVC == nil, s.puertaVC == nil else { return }
             s.avisoYaMirado = true
             DispatchQueue.main.asyncAfter(deadline: .now() + a.esperaSegundos) {
                 guard s.avisoVC == nil, s.puertaVC == nil else { return }
-                s.eval("window.__chinolaAviso && window.__chinolaAviso(\(s.comillas(a.id)),'visto')")
+                CNAvisos.responde(a.id, "visto")
                 let host = UIHostingController(rootView: CNAvisoVista(aviso: a, onAccion: { [weak s] que in
                     s?.respuestaAlAviso(a, que)
                 }))
@@ -3621,7 +3624,7 @@ class ChinolaViewController: CAPBridgeViewController {
     /// aviso que explica una ruta en vez de llevarte a ella es media tarea que
     /// la gente abandona.
     private func respuestaAlAviso(_ a: CNAviso, _ que: String) {
-        eval("window.__chinolaAviso && window.__chinolaAviso(\(comillas(a.id)),\(comillas(que)))")
+        CNAvisos.responde(a.id, que)
         avisoVC?.dismiss(animated: false)
         avisoVC = nil
         guard que == "tocado", !a.ir.isEmpty else { return }
@@ -3667,7 +3670,11 @@ class ChinolaViewController: CAPBridgeViewController {
         bridge?.webView?.evaluateJavaScript("(window.__chinolaExitoPlanJSON && window.__chinolaExitoPlanJSON()) || ''") { [weak self] res, _ in
             guard let s = self, s.exitoVC == nil,
                   let json = res as? String, json.count > 2,
-                  let x = CNExitoPlan.desde(json: json) else { return }
+                  let suyo = CNExitoPlan.desde(json: json) else { return }
+            // EL CONTENIDO LO PONE EL TELÉFONO: de la web solo hace falta CUÁL
+            // plan se acaba de pagar. Lo demás son tres frases y tres atajos
+            // que salen de ahí, y viajaban enteros por el puente.
+            let x = suyo.plan.isEmpty ? suyo : CNExitoPlanArma.arma(suyo.plan)
             let host = UIHostingController(rootView: CNExitoPlanVista(x: x, onIr: { [weak self] destino in
                 self?.cerrarExitoDePlan()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { self?.irA(destino) }

@@ -802,28 +802,32 @@ enum CNSecciones {
         // SOLO LAS TUYAS. En las que eres Lector no puedes anotar, y ofrecerlas
         // es ofrecer que Chino escriba donde no le dejan.
         let yo = CNPapeles.yo(CNPerfilInfo.delAlmacen() ?? CNPerfilInfo())
-        let mias = CNAlmacen.libretas().compactMap { CNLibretasArma.libretaDe($0) }
-            .enumerated().filter { CNPapeles.rol($0.element, yo: yo) != CNPapeles.lector }
+        // EL ID SALE DE LA MISMA FILA, no de su número en la lista. Leyendo la
+        // libreta por un lado y su id por otro, una que no se pueda leer corre
+        // todas las demás: elegirías una y Chino anotaría en la siguiente.
+        func idDe(_ x: [String: Any]) -> String {
+            if let t = x["id"] as? String { return t }
+            if let n = x["id"] as? NSNumber { return n.stringValue }
+            return ""
+        }
+        let mias: [(id: String, l: CNLibreta)] = CNAlmacen.libretas().compactMap { cruda in
+            guard let l = CNLibretasArma.libretaDe(cruda) else { return nil }
+            guard CNPapeles.rol(l, yo: yo) != CNPapeles.lector else { return nil }
+            return (id: idDe(cruda), l: l)
+        }
         if mias.count > 1 {
-            let crudas = CNAlmacen.libretas()
-            func idDe(_ i: Int) -> String {
-                let x = crudas[i]
-                if let t = x["id"] as? String { return t }
-                if let n = x["id"] as? NSNumber { return n.stringValue }
-                return ""
-            }
             let puesta = (CNAlmacen.usuario()["libretaChino"] as? String) ?? ""
-            let cual = mias.first { idDe($0.offset) == puesta } ?? mias[0]
+            let cual = mias.first { $0.id == puesta } ?? mias[0]
             var b = CNSeccion.Bloque(); b.tipo = "lista"
             b.titulo = cnT("Dónde anota Chino")
             var it = CNSeccion.Item()
             it.titulo = cnT("Libreta por defecto")
-            it.detalle = cual.element.nombre + " · " + cnT("Cuando no le digas en cuál, anota aquí")
+            it.detalle = cual.l.nombre + " · " + cnT("Cuando no le digas en cuál, anota aquí")
             it.icono = CNCatalogos.iconosDeAjuste["libretas"] ?? ""
             it.color = CNCatalogos.tonos["indigo"] ?? ""
             it.chip = cnT("Cambiar")
-            it.opciones = mias.map { CNSeccion.Elegible(id: idDe($0.offset), label: $0.element.nombre) }
-            it.puesta = idDe(cual.offset)
+            it.opciones = mias.map { CNSeccion.Elegible(id: $0.id, label: $0.l.nombre) }
+            it.puesta = cual.id
             it.abre = "integra:libreta-chino"
             b.items = [it]
             s.bloques.append(b)
