@@ -8427,10 +8427,9 @@ struct CNSeccionVista: View {
         let p = t.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
         let animo = p.count > 1 && !p[1].isEmpty ? p[1] : "feliz"
         if p.first == "orbe" {
-            CNOrbe(animo: animo, piel: p.count > 2 && !p[2].isEmpty ? p[2] : "clara",
-                   tam: 66, ajustado: true)
+            CNOrbe(animo: animo, piel: p.count > 2 && !p[2].isEmpty ? p[2] : "clara", tam: 66)
         } else {
-            CNChino(animo: animo, tam: 66, conSombra: false, ajustado: true)
+            CNChino(animo: animo, tam: 66, conSombra: false)
         }
     }
 

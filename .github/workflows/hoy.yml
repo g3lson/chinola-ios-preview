@@ -632,6 +632,25 @@ jobs:
             exit 1
           fi
 
+          # LA DE DESPUÉS DE PAGAR, que solo sale una vez en la vida.
+          #
+          # El banco no pasaba por ella NUNCA, y ahora su contenido lo pone el
+          # teléfono. Una pantalla que nadie mira puede llevar meses rota.
+          # Los dos planes, que no enseñan los mismos primeros pasos.
+          for PL in pro negocio; do
+            estaEnPie
+            echo "=== ya eres $PL ==="
+            xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
+            sleep 2
+            env SIMCTL_CHILD_CN_IR="exito:$PL" SIMCTL_CHILD_CN_CON=sonda,flota \
+              SIMCTL_CHILD_CN_API=http://127.0.0.1:8099 xcrun simctl launch "$UDID" "$ID"
+            sleep 11
+            xcrun simctl io "$UDID" screenshot "exito-$PL.png"
+          done
+          xcrun simctl spawn "$UDID" log show --last 2m --style compact \
+            --predicate 'eventMessage CONTAINS "CNIR: el éxito"' 2>/dev/null \
+            | grep -oE "CNIR: el .xito.*" | sort -u | tail -3 || true
+
           # LA PUERTA: las tres pantallas que ya pone el teléfono.
           #
           # El disparador existía en el Swift y NINGÚN paso lo usaba, así que

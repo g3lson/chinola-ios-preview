@@ -470,6 +470,27 @@ class ChinolaViewController: CAPBridgeViewController {
                 }
                 return
             }
+            /*
+             * Y «exito:pro», LA DE DESPUÉS DE PAGAR.
+             *
+             * Solo sale una vez en la vida y justo después de una compra, así
+             * que el banco no pasaba por ella NUNCA. Ahora el contenido lo
+             * pone el teléfono, y una pantalla que nadie mira es una pantalla
+             * que puede estar rota desde hace meses.
+             */
+            if ir.hasPrefix("exito:") {
+                let plan = String(ir.dropFirst(6))
+                DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in
+                    guard let s = self else { return }
+                    let x = CNExitoPlanArma.arma(plan)
+                    NSLog("CNIR: el éxito de «%@» dice «%@» con %d primeros pasos",
+                          plan, x.titulo, x.primeros.count)
+                    let host = UIHostingController(rootView: CNExitoPlanVista(x: x, onIr: { _ in }))
+                    host.modalPresentationStyle = .fullScreen
+                    s.present(host, animated: false)
+                }
+                return
+            }
             // Y «orbe», LA OTRA FAMILIA: seis ánimos por tres pieles.
             if ir == "orbe" {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in

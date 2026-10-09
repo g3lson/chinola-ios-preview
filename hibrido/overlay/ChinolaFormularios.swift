@@ -2363,7 +2363,7 @@ struct CNTourVista: View {
             VStack(spacing: 0) {
                 HStack(alignment: .top, spacing: 12) {
                     if !m.animo.isEmpty {
-                        CNChinoVista(animo: m.animo, tam: 58, conSombra: false, ajustado: true)
+                        CNChinoVista(animo: m.animo, tam: 58, conSombra: false)
                             .offset(y: flota ? -4 : 3)
                             .rotationEffect(.degrees(flota ? -3 : 3))
                     }
@@ -2920,7 +2920,7 @@ struct CNPuertaVista: View {
                 // pantalla se ve pegada; subiendo y bajando dos puntos cada dos
                 // segundos y medio parece que está ahí contigo. Es el mismo
                 // gesto que ya hace en la charla.
-                CNChinoVista(animo: m.animo, tam: lado, conSombra: false, ajustado: true)
+                CNChinoVista(animo: m.animo, tam: lado, conSombra: false)
                     .offset(y: flota ? -5 : 5)
                     .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: flota)
                     .onAppear { flota = true }
@@ -2962,7 +2962,7 @@ struct CNPuertaVista: View {
             if !m.animo.isEmpty {
                 let lado = ladoDeChino(alto, base: m.paso == "lamina" ? 148 : 132,
                                        conLista: !m.lista.isEmpty)
-                CNChinoVista(animo: m.animo, tam: lado, conSombra: false, ajustado: true)
+                CNChinoVista(animo: m.animo, tam: lado, conSombra: false)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.bottom, 4)
                     .cnEntra(entro, 0)
@@ -4352,7 +4352,7 @@ struct CNExitoPlanVista: View {
     var body: some View {
         VStack(spacing: 0) {
             if !x.animo.isEmpty {
-                CNChinoVista(animo: x.animo, tam: 132, conSombra: false, ajustado: true)
+                CNChinoVista(animo: x.animo, tam: 132, conSombra: false)
                     // Brinca, y poco: una celebración que no para cansa a los
                     // tres segundos, y esta pantalla se queda hasta que la
                     // cierren.
@@ -4565,7 +4565,7 @@ struct CNCharlaVista: View {
                         if m.mensajes.isEmpty {
                             VStack(spacing: 12) {
                                 if !m.animo.isEmpty {
-                                    CNChinoVista(animo: m.animo, tam: 120, conSombra: false, ajustado: true)
+                                    CNChinoVista(animo: m.animo, tam: 120, conSombra: false)
                                         .offset(y: flota ? -4 : 3)
                                         .animation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true), value: flota)
                                         .onAppear { flota = true }
@@ -4633,7 +4633,7 @@ struct CNCharlaVista: View {
                                     if x.de != "yo" {
                                         if x.primeroDeChino, !m.animo.isEmpty {
                                             CNChinoVista(animo: m.animo, tam: 28,
-                                                    conSombra: false, ajustado: true)
+                                                    conSombra: false)
                                         } else {
                                             // El hueco se respeta igual, o las
                                             // burbujas de abajo se desalinean.
@@ -5180,7 +5180,7 @@ struct CNAvisoVista: View {
                     .cnEntra(entro, 0)
             } else if !aviso.animo.isEmpty {
                 let lado: CGFloat = aviso.plantilla == "lamina" ? 168 : 124
-                CNChinoVista(animo: aviso.animo, tam: lado, conSombra: false, ajustado: true)
+                CNChinoVista(animo: aviso.animo, tam: lado, conSombra: false)
                     .offset(y: flota ? -4 : 4)
                     .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: flota)
                     .cnEntra(entro, 0)
