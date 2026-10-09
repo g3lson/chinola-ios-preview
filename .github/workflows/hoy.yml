@@ -584,6 +584,19 @@ jobs:
           # ÚLTIMOS MINUTOS, y estos cuatro arranques empujaron el último de
           # las subpantallas fuera de su ventana. La sonda dijo «el nativo no
           # dijo nada» y tumbó la vuelta entera, con todas las fotos ya hechas.
+          #
+          # Y CON EL SIMULADOR VUELTO A ARRANCAR. Para cuando se llega aquí se
+          # ha abierto la app cuarenta veces en cincuenta minutos, y una vuelta
+          # se murió justo en el último lanzamiento —«Unable to lookup in
+          # current state: Shutdown»— tirando la vuelta entera con todas las
+          # medidas ya tomadas. No se tapa con `|| true`: se arranca.
+          estaEnPie() {
+            xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 && return 0
+            echo "  (el simulador se había apagado: lo vuelvo a arrancar)"
+            xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
+            xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1
+            xcrun simctl install "$UDID" "$APP"
+          }
 
           # CHINO, LOS SEIS ÁNIMOS.
           #
@@ -591,6 +604,7 @@ jobs:
           # convertido en PNG. Ahora lo dibuja Swift, y las pruebas de `npm
           # test` solo pueden decir que los trazos y los números son los
           # mismos. Que la cara se vea como una cara lo dice esta foto.
+          estaEnPie
           echo "=== Chino, los seis ánimos ==="
           xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
           sleep 2
@@ -604,6 +618,7 @@ jobs:
           # Mientras el teléfono solo supo dibujar la fruta, quien tuviera el
           # orbe elegido veía otra cosa. Y no falla nada: simplemente le
           # cambian el personaje.
+          estaEnPie
           echo "=== el orbe, con sus tres pieles ==="
           xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
           sleep 2
@@ -616,6 +631,7 @@ jobs:
           # pagos que vienen. Solo se abre tocándolo, así que el banco no pasó
           # nunca por ella — y es la que acaba de pasar a armarse en el
           # teléfono.
+          estaEnPie
           echo "=== la hoja de Chino ==="
           xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
           sleep 2
@@ -630,6 +646,7 @@ jobs:
           # la libreta ya sembrada— no pasaba nunca por ellos. Y es lo que
           # acaba de pasar a contarse desde el teléfono.
           for N in 0 4; do
+            estaEnPie
             echo "=== el recorrido · globo $N ==="
             xcrun simctl terminate "$UDID" "$ID" 2>/dev/null || true
             sleep 2
