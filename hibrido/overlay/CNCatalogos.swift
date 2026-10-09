@@ -618,6 +618,36 @@ enum CNCatalogos {
     static let aireDelOrbe: (normal: Double, ajustado: Double) = (normal: 16, ajustado: 4)
 
     /**
+     * LAS TRES LÁMINAS DE BIENVENIDA.
+     *
+     * Lo primero que ve quien instala la app, y viajaban ENTERAS por
+     * el puente: tres títulos, tres párrafos y nueve filas con su
+     * icono y su color. Son datos fijos, y mientras la web no
+     * arrancaba esa pantalla estaba en blanco — que es justo la
+     * primera impresión.
+     *
+     * El TONO va por su nombre y no resuelto: así cambiarlo lo cambia
+     * en los dos sitios, que es de lo que sirve tener un catálogo.
+     */
+    static let laminasDeBienvenida: [(rotulo: String, animo: String, titulo: String, texto: String, filas: [(titulo: String, pie: String, icono: String, tono: String)])] = [
+        (rotulo: "Así funciona", animo: "fuerte", titulo: "Anota y ya está", texto: "Un toque en el + y listo. Chinola arma los gráficos, los totales y el resto por ti.", filas: [
+            (titulo: "Cuentas, tarjetas y fiados", pie: "Todo tu dinero en un solo lugar", icono: "banco", tono: "indigo"),
+            (titulo: "Presupuesto por categoría", pie: "Con aviso cuando te pasas del presupuesto", icono: "grafico", tono: "morado"),
+            (titulo: "Metas de ahorro", pie: "Mira cuánto falta y en cuántos meses", icono: "hucha", tono: "verde")
+        ]),
+        (rotulo: "No se te olvida nada", animo: "estudiosa", titulo: "Te aviso antes del corte", texto: "Lo guardas una vez y ya no hay que acordarse.", filas: [
+            (titulo: "El corte y el pago de cada tarjeta", pie: "Chino avisa tres días antes", icono: "tarjeta", tono: "naranja"),
+            (titulo: "Las cuotas de tus préstamos", pie: "Qué día toca y cuánto", icono: "factura", tono: "oro"),
+            (titulo: "Y «Lo que viene», en el Resumen", pie: "Todo lo del mes en una lista", icono: "reloj", tono: "azul")
+        ]),
+        (rotulo: "Cada cosa aparte", animo: "fiesta", titulo: "Una libreta por cada vida", texto: "Números separados, y compartes la que quieras.", filas: [
+            (titulo: "Personal, la casa, el negocio", pie: "Cada libreta con sus cuentas y sus totales", icono: "libro2", tono: "indigo"),
+            (titulo: "Compartes la que quieras", pie: "Y a quien invitas no le cuesta nada", icono: "familia", tono: "rosa"),
+            (titulo: "En el teléfono y en la web", pie: "Anotas en uno y lo ves en el otro", icono: "telefono", tono: "verde")
+        ])
+    ]
+
+    /**
      * LOS DIEZ PASOS DEL RECORRIDO.
      *
      * Viajaban ENTEROS por el puente: el teléfono le pedía a la web

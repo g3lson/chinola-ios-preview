@@ -2031,10 +2031,41 @@ final class CNDatos: ObservableObject {
     /// mueve). Con la puerta quitada, el mismo JSON de antes SÍ vale: es una
     /// puerta nueva.
     private var puertaCruda = ""
+    /**
+     * LA PUERTA: EL PASO LO DICE LA WEB, LAS LÁMINAS LAS PONE EL TELÉFONO.
+     *
+     * Ella lleva la cuenta de por dónde vas, si ya hay sesión y si el correo
+     * está confirmado: eso no es una pantalla, es el estado de una
+     * conversación con el servidor. Lo que sí son datos fijos son las tres
+     * láminas de bienvenida —lo PRIMERO que ve quien instala la app— y
+     * viajaban enteras por el puente, así que hasta que la web arrancaba esa
+     * pantalla estaba en blanco.
+     *
+     * Con la web de respaldo si el catálogo no tiene esa lámina: una web más
+     * nueva podría traer una cuarta, y quedarse sin ella es peor que enseñar
+     * la suya.
+     */
     func cargarPuerta(json: String) {
         guard json != puertaCruda || puerta == nil else { return }
         puertaCruda = json
-        puerta = CNPuerta.desde(json: json)
+        let suya = CNPuerta.desde(json: json)
+        guard let p = suya else { puerta = nil; return }
+        // LAS TRES FIJAS. Los otros pasos —entrar, confirmar el correo, elegir
+        // plan— son conversación con el servidor y los sigue contando ella:
+        // llevan su error, su «un momento» y lo que vaya escrito en el campo.
+        switch p.paso {
+        case "lamina":
+            puerta = CNPuertaArma.lamina(p.indice) ?? p
+        case "portada":
+            puerta = CNPuertaArma.portada()
+        case "listo":
+            // El nombre y el plan los sabe el teléfono: están en la copia.
+            let yo = CNAlmacen.usuario()
+            let suyo = (yo["nombre"] as? String) ?? (CNAlmacen.ajustes()["nombreLocal"] as? String) ?? ""
+            puerta = CNPuertaArma.listo(suyo, plan: (yo["plan"] as? String) ?? "")
+        default:
+            puerta = p
+        }
     }
     func cargarHojaWeb(json: String) { hojaWeb = CNHojaWeb.Modelo.desde(json: json) }
     /// El panel del resumen, YA calculado por la web.
