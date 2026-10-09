@@ -173,11 +173,16 @@ enum CNAjustesArma {
     static func tarjeta(_ p: CNPerfilInfo) -> CNAjustes.Usuario {
         var u = CNAjustes.Usuario()
         u.inicial = CNCategorias.inicial(p.nombre)
-        u.nombre = p.nombre
+        // POR EL DICCIONARIO LOS DOS, que los dos pueden ser un valor de
+        // fábrica: sin nombre pone «Tú» y sin cuenta, el plan «Gratis». Los dos
+        // salían en español dentro de una app en inglés, en la primera tarjeta
+        // de Perfil. Un nombre de verdad pasa tal cual: `cnT` devuelve lo que
+        // no encuentra.
+        u.nombre = cnT(p.nombre)
         // SIN CUENTA AQUÍ NO VA UN CORREO, va una frase. Dejarlo vacío deja un
         // hueco donde se espera un dato.
         u.correo = p.local ? cnT("Datos solo en este equipo") : p.email
-        u.plan = p.plan
+        u.plan = cnT(p.plan)
         u.modoLabel = p.local ? cnT("Local") : cnT("Sincronizado")
         u.modoBg = p.local ? CNC.hexSoft : CNCuentasFilas.tinte(cnHexDe(CNC.pos), 0.14)
         u.modoFg = p.local ? cnHexDe(CNC.pmut) : cnHexDe(CNC.pos)

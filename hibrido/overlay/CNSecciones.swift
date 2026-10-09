@@ -43,8 +43,16 @@ enum CNSecciones {
         sabeHacer.contains(id) || id.hasPrefix("libreta:")
     }
 
-    /// Las que este lado sabe armar. Lo demás sigue viniendo de la web.
-    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores", "icono-app"]
+    /**
+     * Las que este lado sabe armar. Lo demás sigue viniendo de la web.
+     *
+     * TIENE QUE DECIR LO MISMO QUE `armaDeVerdad`, y son dos listas. «Tu
+     * personaje» se escribió entera aquí, con su prueba, y no salía nunca:
+     * estaba en una y no en la otra, así que ni se intentaba y ganaba la de la
+     * web. Y no se veía —la de la web enseña lo mismo—; lo dijo la sonda del
+     * banco. Hay una prueba que compara las dos.
+     */
+    static let sabeHacer: Set<String> = ["dosPasos", "seguridad", "cuenta", "panel", "dinero", "libretas", "menu", "letra", "cabecera", "colores", "icono-app", "personaje"]
 
     /**
      * Lo que se le ha pedido al servidor, guardado mientras dure la app.
