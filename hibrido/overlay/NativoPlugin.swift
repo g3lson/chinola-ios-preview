@@ -38,7 +38,9 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
         // La sincronización, cuando la lleva el teléfono.
         CAPPluginMethod(name: "nubeManda", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "nubeTraer", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "nubeEmpujar", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "nubeEmpujar", returnType: CAPPluginReturnPromise),
+        // Y la copia en disco, que ahora escribe el teléfono.
+        CAPPluginMethod(name: "guardaCopia", returnType: CAPPluginReturnPromise)
     ]
 
     // Los pone ChinolaViewController; son el estado de la barra y los datos que
@@ -350,6 +352,30 @@ public class NativoPlugin: CAPPlugin, CAPBridgedPlugin {
     // que se hace DESPUÉS —adoptar lo conciliado, avisar de que te sacaron de
     // una libreta, aplicar un renombrado— se queda en la web: así sigue habiendo
     // UNA sola mano escribiendo la libreta, y lo que se muda es la red.
+
+    /**
+     * LA COPIA EN DISCO, ESCRITA AQUÍ.
+     *
+     * La escribía la web con el sistema de ficheros de Capacitor. El dato sigue
+     * siendo suyo —ella lleva la libreta en su almacén— y lo que cambia es
+     * quién toca el fichero: UNO SOLO.
+     *
+     * Antes no se podía: si el teléfono escribía lo suyo, el temporizador de la
+     * web llegaba dos segundos después con su versión entera y se lo llevaba
+     * por delante. Sin error, y sin que se notara hasta que faltara un
+     * movimiento.
+     */
+    @objc func guardaCopia(_ call: CAPPluginCall) {
+        var llaves: [String: String] = [:]
+        for (k, v) in (call.getObject("datos") ?? [:]) {
+            if let t = v as? String { llaves[k] = t }
+        }
+        let hecho = CNAlmacen.escribe(llaves)
+        if ProcessInfo.processInfo.environment["CN_CON"]?.contains("sonda") == true {
+            NSLog("CNCOPIA: %@ %d llave(s)", hecho ? "escrita" : "NO se pudo", llaves.count)
+        }
+        call.resolve(["si": hecho])
+    }
 
     /// ¿Sincroniza el teléfono? Solo si tiene con qué: la copia y el vale.
     @objc func nubeManda(_ call: CAPPluginCall) {

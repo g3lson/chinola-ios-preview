@@ -1564,6 +1564,16 @@ class ChinolaViewController: CAPBridgeViewController {
             // próxima escritura se compara contra esta.
             CNDatos.shared.libreta = l
             s.huellaLibreta = nueva
+            // Y A DISCO YA, sin esperar a la web.
+            //
+            // Su temporizador escribe el fichero dos segundos después de que
+            // dejes de tocar nada. Si la app se cierra en ese hueco —o si iOS
+            // le vacía el almacén al webview, que es justo para lo que existe
+            // ese fichero— el movimiento no está en ninguna parte.
+            let aDisco = CNAlmacen.guardaLibreta(l)
+            if ProcessInfo.processInfo.environment["CN_CON"]?.contains("sonda") == true {
+                NSLog("CNADOPTA: aceptada · a disco: %@", aDisco ? "sí" : "no (la escribe la web)")
+            }
             s.refrescarPronto()
         }
     }
